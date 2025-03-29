@@ -3,8 +3,8 @@
 <head>
   <meta name="google-site-verification" content="..." />
   <meta charset="UTF-8">
-  <title>Project Manager Helper | Free PM & Financial Tools</title>
-  <meta name="description" content="Project Manager Helper offers free, easy-to-use tools..." />
+  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
+  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Link to external stylesheet if needed -->
@@ -30,7 +30,6 @@
       position: relative;
       z-index: 1000;
     }
-    /* Desktop Inline Menu */
     nav.header__inline-menu {
       display: none;
       background-color: #333;
@@ -89,11 +88,9 @@
       color: #fff;
       display: block;
     }
-    /* Hamburger Icon */
     .mobile-menu-toggle svg {
       vertical-align: middle;
     }
-    /* Mobile sidebar menu – hidden by default */
     .mobile-menu {
       position: fixed;
       top: 0;
@@ -131,7 +128,6 @@
       background-color: #ddd;
       color: #333;
     }
-    /* Submenu: hidden by default */
     .mobile-menu nav ul li ul.submenu {
       display: none;
       background-color: #444;
@@ -142,7 +138,6 @@
     .mobile-menu nav ul li ul.submenu li a {
       padding-left: 40px;
     }
-    /* Close button inside mobile menu */
     .mobile-menu .close-menu {
       background: none;
       border: none;
@@ -177,121 +172,55 @@
     }
 
     /* ============================================================
-       Feature Slider
+       Weekly Stock Picks Section
     ============================================================ */
-    .feature-slider {
-      width: 100%;
-      overflow: hidden;
-      background-color: #222;
-      color: #fff;
+    #weekly-stock-picks {
+      padding: 2rem 1rem;
+      background-color: #f0f0f0;
       text-align: center;
-      margin-bottom: 2rem;
-      position: relative;
     }
-    .slider-wrapper {
-      display: flex;
-      transition: transform 0.5s ease;
+    #weekly-stock-picks h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
-    .slide {
-      min-width: 100%;
-      height: 400px;
+    .stock-picks-container {
       display: flex;
-      align-items: center;
       justify-content: center;
-      padding: 2rem;
-      position: relative;
+      gap: 2rem;
+      flex-wrap: wrap;
     }
-    .slide-video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
+    .stock-pick {
+      background: #fff;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      width: 300px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .slide-content {
-      position: relative;
-      z-index: 1;
-      background: rgba(0, 0, 0, 0.5);
-      padding: 2rem;
-      border-radius: 10px;
+    .stock-pick h3 {
+      margin-top: 0;
     }
-    .slider-arrow {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      background-color: rgba(0, 0, 0, 0.5);
-      color: #fff;
-      border: none;
-      padding: 10px 15px;
-      font-size: 1.5rem;
-      cursor: pointer;
-      z-index: 10;
-      border-radius: 50%;
-    }
-    .slider-arrow:hover {
-      background-color: rgba(255, 255, 255, 0.7);
-      color: #222;
-    }
-    .prev {
-      left: 10px;
-    }
-    .next {
-      right: 10px;
-    }
-    .slider-counter {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      color: #fff;
-    }
-    .final-slide {
-      background-color: #222;
-      height: 400px;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      position: relative;
-      text-align: center;
-    }
-    .credits-scroll-wrapper {
-      width: 90%;
-      max-width: 600px;
-      height: 100%;
-      overflow: hidden;
-      position: relative;
-      margin: 0 auto;
-    }
-    .credits-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-      visibility: hidden;
-      animation: none;
-    }
-    .credits-list li {
-      margin: 1rem 0;
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-    @keyframes creditsScroll {
-      0% { transform: translateY(0); }
-      100% { transform: translateY(-100%); }
+    .stock-pick ol {
+      text-align: left;
+      padding-left: 1.5rem;
     }
 
     /* ============================================================
-       Tools Grid & Cards
+       Tools Section
     ============================================================ */
+    #tools {
+      padding: 2rem 1rem;
+    }
+    #tools h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+    }
     .tool-grid {
       display: flex;
       flex-wrap: wrap;
       gap: 2rem;
       justify-content: center;
-      padding: 2rem;
     }
     .tool-card {
       background: #fff;
@@ -328,6 +257,46 @@
       transition: background-color 0.3s ease, color 0.3s ease;
     }
     .tool-button:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+
+    /* ============================================================
+       Newsletter Signup Section
+    ============================================================ */
+    #newsletter-signup {
+      padding: 2rem 1rem;
+      background-color: #fff;
+      text-align: center;
+    }
+    #newsletter-signup h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    #newsletter-signup form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    #newsletter-signup input {
+      padding: 0.75rem;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #newsletter-signup button {
+      padding: 0.75rem 1.5rem;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    #newsletter-signup button:hover {
       background-color: #ddd;
       color: #333;
     }
@@ -375,29 +344,15 @@
        Responsive Adjustments
     ============================================================ */
     @media (min-width: 768px) {
-      /* Hide mobile menu toggle and sidebar on desktop */
       .mobile-menu-toggle { display: none; }
       .mobile-menu { display: none; }
       nav.header__inline-menu { display: block; }
     }
     @media (max-width: 767px) {
-      /* Hide desktop menu on mobile */
       nav.header__inline-menu { display: none; }
     }
     @media (max-width: 768px) {
-      .tool-card {
-        width: 90%;
-      }
-      .slide h2 {
-        font-size: 1.5rem;
-      }
-      .slide p {
-        font-size: 1rem;
-      }
-      .slider-arrow {
-        font-size: 1.2rem;
-        padding: 8px;
-      }
+      .tool-card { width: 90%; }
     }
   </style>
 </head>
@@ -406,7 +361,6 @@
   <!-- Mobile Header: Hamburger Toggle -->
   <header>
     <button class="mobile-menu-toggle" id="openMenu" aria-label="Open Menu">
-      <!-- Hamburger Icon -->
       <svg viewBox="0 0 18 16" width="24" height="24">
         <rect y="2" width="18" height="2" fill="white"></rect>
         <rect y="7" width="18" height="2" fill="white"></rect>
@@ -421,42 +375,17 @@
     <nav>
       <ul>
         <li><a href="/">Home</a></li>
+        <!-- Removed PM Tools and Templates menus -->
         <li>
-          <span class="submenu-toggle">PM Tools &#9662;</span>
-          <ul class="submenu">
-            <li><a href="network-diagram/">Network Diagram Tool</a></li>
-            <li><a href="WSB-generator/">WBS Generator</a></li>
-            <li><a href="statistics/">Data Distribution Analysis</a></li>
-            <li><a href="evc/">Earned Value Management</a></li>
-            <li><a href="risk-register/">Risk Register &amp; Assessment</a></li>
-            <li><a href="statistics/">Simple Regression</a></li>
-            <li><a href="multi-regression/">Multivariable Regression</a></li>
-            <li><a href="monte-carlo/">Monte Carlo Simulation</a></li>
-            <li><a href="advanced-network-diagram/">Advanced Network Diagram</a></li>
-            <li><a href="advanced-scheduling/">Advanced Schedule Predictor</a></li>
-            <li><a href="resources/">Resource Allocator and Gantt</a></li>
-            <li><a href="calculators/">PM Financial Calculator</a></li>
-            <li><a href="queueing/">Queueing Theory and CFD</a></li>
-          </ul>
-        </li>
-        <li>
-          <span class="submenu-toggle">Finance Tools &#9662;</span>
+          <span class="submenu-toggle">Tools &#9662;</span>
           <ul class="submenu">
             <li><a href="stocks/">Stock Trend Forecast</a></li>
             <li><a href="sentiment">Market Sentiment</a></li>
             <li><a href="insider/">Insider Tracker</a></li>
             <li><a href="technical/">Combined Technical Analysis</a></li>
             <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
-          </ul>
-        </li>
-        <li>
-          <span class="submenu-toggle">Templates &#9662;</span>
-          <ul class="submenu">
-            <li><a href="/templates/learning_curve.xlsx">Learning Curve</a></li>
-            <li><a href="/templates/linear_and_polynomial_regression.xlsx">Regression Models</a></li>
-            <li><a href="/templates/Example Agile Project with EVM.xlsx">Agile Project</a></li>
           </ul>
         </li>
         <li>
@@ -474,263 +403,115 @@
     <nav class="header__inline-menu topnav">
       <ul>
         <li><a href="/">Home</a></li>
+        <!-- Removed PM Tools and Templates menus -->
         <li class="dropdown">
-          <a href="#PMtools" class="parent-link">PM Tools</a>
-          <ul class="dropdown-menu">
-            <li><a href="network-diagram/">Network Diagram Tool</a></li>
-            <li><a href="WSB-generator/">WBS Generator</a></li>
-            <li><a href="statistics/">Data Distribution Analysis</a></li>
-            <li><a href="evc/">Earned Value Management</a></li>
-            <li><a href="risk-register/">Risk Register &amp; Assessment</a></li>
-            <li><a href="statistics/">Simple Regression</a></li>
-            <li><a href="multi-regression/">Multivariable Regression</a></li>
-            <li><a href="monte-carlo/">Monte Carlo Simulation</a></li>
-            <li><a href="advanced-network-diagram/">Advanced Network Diagram</a></li>
-            <li><a href="advanced-scheduling/">Advanced Schedule Predictor</a></li>
-            <li><a href="resources/">Resource Allocator and Gantt</a></li>
-            <li><a href="calculators/">PM Financial Calculator</a></li>
-            <li><a href="queueing/">Queueing Theory and CFD</a></li>
-          </ul>
-        </li>
-        <li class="dropdown">
-          <a href="#finance-tools" class="parent-link">Finance Tools</a>
+          <a href="#tools" class="parent-link">Tools</a>
           <ul class="dropdown-menu">
             <li><a href="stocks/">Stock Trend Forecast</a></li>
             <li><a href="sentiment">Market Sentiment</a></li>
             <li><a href="insider/">Insider Tracker</a></li>
             <li><a href="technical/">Combined Technical Analysis</a></li>
             <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
           </ul>
         </li>
         <li class="dropdown">
-          <a href="/templates/" class="parent-link">Templates</a>
-          <ul class="dropdown-menu">
-            <li><a href="/templates/learning_curve.xlsx">Learning Curve</a></li>
-            <li><a href="/templates/linear_and_polynomial_regression.xlsx">Regression Models</a></li>
-            <li><a href="/templates/Example Agile Project with EVM.xlsx">Agile Project</a></li>
-          </ul>
-        </li>
-        <li class="dropdown">
           <a href="/tutorials/" class="parent-link">Tutorials</a>
-          <ul class="dropdown-menu">
-          </ul>
+          <ul class="dropdown-menu"></ul>
         </li>
       </ul>
     </nav>
   </header>
 
-  <!-- MAIN CONTENT -->
   <!-- Hero Section -->
   <header class="hero">
     <div class="hero-content">
-      <h1>Project Manager Helper</h1>
-      <p>Streamline your projects with easy-to-use tools.</p>
+      <h1>Intuition Trades</h1>
+      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
   </header>
 
-  <!-- Feature Slider -->
-  <section class="feature-slider">
-    <button class="slider-arrow prev" onclick="moveSlide(-1)">&#10094;</button>
-    <div class="slider-wrapper" id="slider">
-      <!-- Slide 1 -->
-      <div class="slide">
-        <video autoplay loop muted playsinline class="slide-video">
-          <source src="videos/stocks.mp4" type="video/mp4">
-        </video>
-        <div class="slide-content">
-          <h2>How Are Industry Insiders Trading My Favorite Stocks?</h2>
-          <p>Discover market opportunities by combining Monte Carlo simulations, regression analysis, technical indicators, sentiment insights, and insider trading activity.</p>
-        </div>
+  <!-- Weekly Stock Picks Section (replaces old slider) -->
+  <section id="weekly-stock-picks">
+    <h2>Weekly Stock Picks</h2>
+    <div class="stock-picks-container">
+      <div class="stock-pick">
+        <h3>Top 3 Buys</h3>
+        <ol>
+          <li>Stock A</li>
+          <li>Stock B</li>
+          <li>Stock C</li>
+        </ol>
       </div>
-      <!-- Slide 2 -->
-      <div class="slide">
-        <video autoplay loop muted playsinline class="slide-video">
-          <source src="videos/monte_carlo.mp4" type="video/mp4">
-        </video>
-        <div class="slide-content">
-          <h2>Will my project be completed on time and within budget?</h2>
-          <p>Find out the probability of completing your project on schedule and within budget using the Monte Carlo Simulation Tool.</p>
-        </div>
+      <div class="stock-pick">
+        <h3>Top 3 Shorts</h3>
+        <ol>
+          <li>Stock X</li>
+          <li>Stock Y</li>
+          <li>Stock Z</li>
+        </ol>
       </div>
-      <!-- Slide 3 -->
-      <div class="slide">
-        <video autoplay loop muted playsinline class="slide-video">
-          <source src="videos/network.mp4" type="video/mp4">
-        </video>
-        <div class="slide-content">
-          <h2>Where can resources be allocated most effectively to expedite project completion?</h2>
-          <p>Identify float, crashable activities, and the critical path with the Network Diagram Tool.</p>
-        </div>
-      </div>
-      <!-- Slide 4 -->
-      <div class="slide">
-        <video autoplay loop muted playsinline class="slide-video">
-          <source src="videos/weighted_average.mp4" type="video/mp4">
-        </video>
-        <div class="slide-content">
-          <h2>Which project should I choose?</h2>
-          <p>Compare project options and calculate future value with the Weighted Average Calculator.</p>
-        </div>
-      </div>
-      <!-- Slide 5 -->
-      <div class="slide">
-        <video autoplay loop muted playsinline class="slide-video">
-          <source src="videos/risk_assessment.mp4" type="video/mp4">
-        </video>
-        <div class="slide-content">
-          <h2>How do I manage project risk?</h2>
-          <p>Predict, model, and mitigate risks by combining the Risk Register, Monte Carlo Simulation, and Linear Regression Template.</p>
-        </div>
-      </div>
-      <!-- Final Slide with Scrolling Credits -->
-      <div class="slide final-slide">
-        <div class="credits-scroll-wrapper">
-          <ul class="credits-list" id="creditsList">
-            <li>...</li>
-            <li>Use Project Manager Helper to answer questions like</li>
-            <li>...</li>
-            <li>How are insiders trading my favorite stocks?</li>
-            <li>How is the market sentiment on my top companies?</li>
-            <li>When will the project break even based on learning curve analysis?</li>
-            <li>What is the probability our final project cost will exceed the budget?</li>
-            <li>How can we estimate staffing levels using regression?</li>
-            <li>When will the project break even using learning curves?</li>
-            <li>How do we forecast cash flow trends with polynomial regression?</li>
-            <li>Which tasks carry the highest risk exposure?</li>
-            <li>How do we calculate cost variance using earned value?</li>
-            <li>Which tasks can be fast-tracked or crashed?</li>
-            <li>What’s the expected schedule slip if resources are reduced?</li>
-            <li>How do we compare project alternatives using NPV?</li>
-            <li>Which project has the higher return on investment?</li>
-            <li>What is the optimal way to allocate our finite resources?</li>
-            <li>...and many more...<li>Check out our tutorials!</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <button class="slider-arrow next" onclick="moveSlide(1)">&#10095;</button>
-    <div class="slider-counter caption">
-      <span class="slider-counter--current">1</span>
-      <span aria-hidden="true"> / </span>
-      <span class="visually-hidden">of</span>
-      <span class="slider-counter--total">5</span>
     </div>
   </section>
 
   <!-- Tools Section -->
   <main>
-    <section id="Finance Tools" class="tool-grid">
-      <div class="tool-card">
-        <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
-        <h2>Stock Trend Forecast</h2>
-        <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
-        <a href="stocks/" class="tool-button">Open Tool</a>
+    <section id="tools">
+      <h2>Tools</h2>
+      <div class="tool-grid">
+        <div class="tool-card">
+          <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
+          <h2>Stock Trend Forecast</h2>
+          <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
+          <a href="stocks/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/insider.PNG" alt="Insider Tracker" />
+          <h2>Insider Tracker</h2>
+          <p>Uncover insider activity on your favorite stocks.</p>
+          <a href="insider/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
+          <h2>Market Sentiment Viewer</h2>
+          <p>Analyze the latest news articles on your favorite stocks.</p>
+          <a href="sentiment/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/technical.PNG" alt="Combined Technical Analysis" />
+          <h2>Combined Technical Analysis</h2>
+          <p>Analyze the top 5 technicals to generate a combined bullish or bearish signal.</p>
+          <a href="technical/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/MACD.PNG" alt="MACD Analysis" />
+          <h2>MACD Analysis</h2>
+          <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
+          <a href="MACD/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/imchimoku.PNG" alt="Ichimoku Cloud Analysis" />
+          <h2>Ichimoku Cloud Analysis</h2>
+          <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
+          <a href="ichimoku/" class="tool-button">Open Tool</a>
+        </div>
       </div>
-      <div class="tool-card">
-        <img src="images/insider.PNG" alt="Insider Tracker" />
-        <h2>Insider Tracker</h2>
-        <p>Uncover insider activity on your favorite stocks.</p>
-        <a href="insider/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
-        <h2>Market Sentiment Viewer</h2>
-        <p>Analyse the latest news articles on your favorite stocks.</p>
-        <a href="sentiment/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/technical.PNG" alt="Combined Technical Analysis" />
-        <h2>Combined Technical Analysis</h2>
-        <p>Analyse the top 5 technicals to generate a combined bullsih or bearish signal.</p>
-        <a href="technical/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/MACD.PNG" alt="MACD Analysis" />
-        <h2>MACD Analysis</h2>
-        <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
-        <a href="MACD/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/imchimoku.PNG" alt="Ichimoku Cloud Analysis" />
-        <h2>Ichimoku Cloud Analysis</h2>
-        <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
-        <a href="ichimoku/" class="tool-button">Open Tool</a>
-      </div>
-    <section id="PM Tools" class="tool-grid">
-      <div class="tool-card">
-        <img src="images/network.png" alt="Network Diagram" />
-        <h2>Network Diagram Tool</h2>
-        <p>Analyze your project's critical path and schedule.</p>
-        <a href="network-diagram/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/WSB.png" alt="WBS Generator" />
-        <h2>WBS Generator</h2>
-        <p>Create a work breakdown structure for your project.</p>
-        <a href="WSB-generator/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/statistics.PNG" alt="Simple Regression & Distribution" />
-        <h2>Simple Regression & Distribution</h2>
-        <p>Analyze data distribution and predict using simple linear and polynomial regression models.</p>
-        <a href="statistics/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/advanced-network-diagram.PNG" alt="Advanced Network Diagram" />
-        <h2>Advanced Network Diagram</h2>
-        <p>Calculates complex activity dependencies.</p>
-        <a href="advanced-network-diagram/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/advanced-scheduling.PNG" alt="Advanced Scheduling" />
-        <h2>Advanced Scheduling</h2>
-        <p>Uses output from Advanced Network Diagram to simulate complex interdependencies using Monte Carlo.</p>
-        <a href="advanced-scheduling/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/multi-regression.PNG" alt="Multiple Regression" />
-        <h2>Multiple Regression</h2>
-        <p>Predict using multivariable linear regression.</p>
-        <a href="multi-regression/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/evm.PNG" alt="Earned Value Calculator" />
-        <h2>Earned Value Management</h2>
-        <p>Compare project performance and forecast using EVM calculations.</p>
-        <a href="evc/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/resources.png" alt="Resource Allocator and Gantt" />
-        <h2>Resource Allocator and Gantt</h2>
-        <p>Allocate resources and generate interactive Gantt chart.</p>
-        <a href="resources/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/risk_assessment.png" alt="Risk Register" />
-        <h2>Risk Register &amp; Assessment</h2>
-        <p>Identify, prioritize, and manage project risks efficiently.</p>
-        <a href="risk-register/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/monte_carlo.png" alt="Monte Carlo Simulations" />
-        <h2>Monte Carlo Simulation</h2>
-        <p>Predict project outcomes based on uncertainty and risks.</p>
-        <a href="monte-carlo/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/calculator.png" alt="PM Financial Calculator" />
-        <h2>PM Financial Calculator</h2>
-        <p>Evaluate projects using PV, FV, IRR, and Weighted Averages.</p>
-        <a href="calculators/" class="tool-button">Open Tool</a>
-      </div>
-      <div class="tool-card">
-        <img src="images/cfd.PNG" alt="Queueing Theory and CFD" />
-        <h2>Queueing Theory and CFD</h2>
-        <p>Improve efficiency &amp; identify bottlenecks using Queueing Calculators.</p>
-        <a href="queueing/" class="tool-button">Open Tool</a>
-      </div>
+    </section>
+
+
+    <!-- Newsletter Signup Section -->
+    <section id="newsletter-signup">
+      <h2>Sign Up for Our Weekly Newsletter</h2>
+      <p>Get the top stock picks delivered to your inbox every week, free!</p>
+      <form action="https://formspree.io/f/xrbpaajg" method="POST">
+        <input type="hidden" name="_subject" value="Newsletter Signup">
+        <label for="name">Your Name:</label>
+        <input type="text" id="name" name="name" placeholder="Your Name" required>
+        <label for="email">Your Email:</label>
+        <input type="email" id="email" name="email" placeholder="Your Email" required>
+        <button type="submit">Sign Up</button>
+      </form>
     </section>
   </main>
 
@@ -745,43 +526,6 @@
   <footer>
     <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
   </footer>
-
-  <!-- JavaScript for Slide Navigation -->
-  <script>
-    let currentSlide = 0;
-    const slides = document.querySelectorAll(".slide");
-    const totalSlides = slides.length;
-    const creditsList = document.getElementById("creditsList");
-
-    function moveSlide(direction) {
-      currentSlide += direction;
-      if (currentSlide < 0) currentSlide = 0;
-      if (currentSlide >= totalSlides) currentSlide = totalSlides - 1;
-      document.getElementById("slider").style.transform = `translateX(-${currentSlide * 100}%)`;
-
-      if (slides[currentSlide].classList.contains("final-slide")) {
-        startScrollingCredits();
-      } else {
-        stopScrollingCredits();
-      }
-      // Update counter (if needed)
-      document.querySelector(".slider-counter--current").textContent = currentSlide + 1;
-    }
-
-    function startScrollingCredits() {
-      creditsList.style.visibility = "visible";
-      creditsList.style.animation = "none";
-      requestAnimationFrame(() => {
-        creditsList.style.animation = "creditsScroll 30s linear infinite";
-        creditsList.style.animationDelay = "0s";
-      });
-    }
-
-    function stopScrollingCredits() {
-      creditsList.style.animation = "none";
-      creditsList.style.visibility = "hidden";
-    }
-  </script>
 
   <!-- JavaScript for Desktop Dropdown Behavior -->
   <script>
@@ -848,7 +592,6 @@
 
   <!-- JavaScript for Mobile Menu Toggle and Accordion -->
   <script>
-    // Mobile menu open/close toggle
     const openMenuBtn = document.getElementById("openMenu");
     const closeMenuBtn = document.getElementById("closeMenu");
     const mobileMenu = document.getElementById("mobileMenu");
@@ -860,7 +603,6 @@
       mobileMenu.classList.remove("open");
     });
 
-    // Accordion behavior for mobile submenu toggles
     const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
     submenuToggles.forEach(toggle => {
       toggle.addEventListener("click", () => {
