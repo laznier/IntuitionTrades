@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Congress Trading Insights</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+      display: none;
+    }
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #fff;
+      padding: 1rem;
+    }
+    .column h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pickItem {
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: #f3f3f3;
+    }
+    .bullish {
+      color: green;
+    }
+    .bearish {
+      color: red;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Optional Back Button -->
+  <button onclick="window.location.href='https://www.projectmanagerhelper.com'">
+    Back to Main Page
+  </button>
+
+  <h1>Congress Trading Insights</h1>
+  <p>
+    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades. 
+    We will filter by date only.
+  </p>
+
+  <label for="ticker">Ticker Symbol:</label>
+  <input type="text" id="ticker" placeholder="e.g. TSLA" />
+
+  <label for="days">Timeframe (days):</label>
+  <input type="number" id="days" placeholder="e.g. 30" value="30" />
+
+  <!-- Button to fetch data -->
+  <button id="fetchButton">Get Congress Data</button>
+
+  <div id="loading">Loading congress trading data...</div>
+
+  <!-- Summary Section -->
+  <div id="statsSection" class="section" style="display:none;">
+    <h2>Congress Summary</h2>
+    <p id="statsSummary"></p>
+  </div>
+
+  <!-- Two columns for Purchases and Sales -->
+  <div class="two-column" style="margin-top: 20px;">
+    <div id="buyCol" class="column" style="display:none;">
+      <h2>Purchases</h2>
+      <div id="buyContainer"></div>
+    </div>
+    <div id="sellCol" class="column" style="display:none;">
+      <h2>Sales</h2>
+      <div id="sellContainer"></div>
+    </div>
+  </div>
+
+  <!-- Transaction Details Section -->
+  <div id="summarySection" class="section" style="display:none;">
+    <h2>Transaction Details</h2>
+    <div id="summary"></div>
+  </div>
+
+  <script>
+    document.getElementById('fetchButton').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      const days = parseInt(document.getElementById('days').value.trim()) || 30;
+      if (!ticker) {
+        alert("Please enter a ticker symbol first.");
+        return;
+      }
+
+      // Reset UI elements
+      const loadingEl = document.getElementById('loading');
+      loadingEl.style.display = 'block';
+      document.getElementById('statsSection').style.display = 'none';
+      document.getElementById('buyCol').style.display = 'none';
+      document.getElementById('sellCol').style.display = 'none';
+      document.getElementById('summarySection').style.display = 'none';
+      document.getElementById('summary').innerHTML = '';
+
+      try {
+        // Fetch from the local /api/congress endpoint
+        const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Failed to fetch: ${response.status} - ${text}`);
+        }
+
+        // Expect a JSON object with a data property
+        const jsonResponse = await response.json();
+        if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+          throw new Error("Invalid congress data format.");
+        }
+        const rawData = jsonResponse.data;
+
+        // Filter transactions by timeframe (using TransactionDate)
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const filtered = rawData.filter(item => {
+          const tradeDate = new Date(item.TransactionDate);
+          return !isNaN(tradeDate) && tradeDate >= cutoff;
+        });
+
+        // Sort transactions by TransactionDate (oldest first)
+        filtered.sort((a, b) => new Date(a.TransactionDate) - new Date(b.TransactionDate));
+
+        // Separate purchases and sales based on the Transaction field
+        const purchases = filtered.filter(item => /purchase/i.test(item.Transaction));
+        const sales = filtered.filter(item => /sale/i.test(item.Transaction));
+
+        // Calculate summary statistics
+        let totalPurchase = 0, totalSale = 0;
+        filtered.forEach(item => {
+          const amt = parseFloat(item.Amount) || 0;
+          if (/purchase/i.test(item.Transaction)) totalPurchase += amt;
+          if (/sale/i.test(item.Transaction)) totalSale += amt;
+        });
+
+        // Render summary
+        const statsSection = document.getElementById('statsSection');
+        const statsSummary = document.getElementById('statsSummary');
+        statsSummary.innerHTML = `
+          <p><strong>Ticker:</strong> ${ticker.toUpperCase()}</p>
+          <p><strong>Timeframe:</strong> Last ${days} day(s)</p>
+          <p><strong>Transactions Found:</strong> ${filtered.length}</p>
+          <p><strong>Total Purchase Amount:</strong> $${totalPurchase.toLocaleString()}</p>
+          <p><strong>Total Sale Amount:</strong> $${totalSale.toLocaleString()}</p>
+        `;
+        statsSection.style.display = 'block';
+
+        // Render columns for purchases and sales
+        showColumn(purchases, 'buyCol', 'buyContainer', true);
+        showColumn(sales, 'sellCol', 'sellContainer', false);
+
+      } catch (err) {
+        console.error("Error fetching congress data:", err);
+        alert(`Error: ${err.message}`);
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    });
+
+    // Helper function to render transaction columns
+    function showColumn(list, colId, containerId, isBuy) {
+      const colEl = document.getElementById(colId);
+      const containerEl = document.getElementById(containerId);
+      containerEl.innerHTML = "";
+      if (list.length === 0) {
+        colEl.style.display = 'none';
+        return;
+      }
+      colEl.style.display = 'block';
+      list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.classList.add('pickItem');
+        div.classList.add(isBuy ? 'bullish' : 'bearish');
+        const tradeDateStr = item.TransactionDate ? new Date(item.TransactionDate).toLocaleDateString() : "N/A";
+        div.innerHTML = `<strong>${item.Ticker}</strong> - ${item.Transaction} on ${tradeDateStr}`;
+        div.addEventListener('click', () => showDetails(item, idx + 1, isBuy));
+        containerEl.appendChild(div);
+      });
+    }
+
+    // Function to display detailed information about a transaction
+    function showDetails(item, rank, isBuy) {
+      document.getElementById('summarySection').style.display = 'block';
+      const summaryEl = document.getElementById('summary');
+      const dateStr = item.TransactionDate ? new Date(item.TransactionDate).toLocaleString() : "N/A";
+      let html = `<p><strong>Transaction #${rank}: ${item.Ticker}</strong> (${isBuy ? 'Purchase' : 'Sale'})</p>`;
+      html += "<ul>";
+      html += `<li><strong>Representative:</strong> ${item.Representative || 'N/A'}</li>`;
+      html += `<li><strong>Transaction Date:</strong> ${dateStr}</li>`;
+      html += `<li><strong>Transaction Type:</strong> ${item.Transaction || 'N/A'}</li>`;
+      html += `<li><strong>Amount:</strong> $${(item.Amount || 0).toLocaleString()}</li>`;
+      html += `<li><strong>Range:</strong> ${item.Range || 'N/A'}</li>`;
+      html += `<li><strong>Party:</strong> ${item.Party || 'N/A'}</li>`;
+      html += `<li><strong>House:</strong> ${item.House || 'N/A'}</li>`;
+      html += `<li><strong>District:</strong> ${item.District || 'N/A'}</li>`;
+      html += `<li><strong>Excess Return:</strong> ${item.ExcessReturn || 0}</li>`;
+      html += `<li><strong>Price Change:</strong> ${item.PriceChange || 0}</li>`;
+      html += `<li><strong>SPY Change:</strong> ${item.SPYChange || 0}</li>`;
+      html += `<li><strong>Description:</strong> ${item.Description || 'N/A'}</li>`;
+      html += "</ul>";
+      summaryEl.innerHTML = html;
+      summaryEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

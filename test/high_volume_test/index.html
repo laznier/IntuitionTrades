@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Batch Backtesting & Weight Optimization Tool</title>
+  
+  <!-- Plotly (optional) -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Math.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 1200px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    p, li {
+      margin-bottom: 0.75em;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    #progressContainer {
+      margin-top: 20px;
+      display: none;
+    }
+    #progressBar {
+      width: 100%;
+      height: 20px;
+    }
+    #progressText {
+      text-align: center;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+    #logOutput {
+      margin-top: 20px;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+    }
+    /* Manual Parameters Section */
+    #manualParams {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #e7e7e7;
+    }
+    #manualParams label {
+      font-weight: bold;
+    }
+    #manualParams input {
+      width: 80px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to main page -->
+  <button onclick="window.location.href='https://www.projectmanagerhelper.com'">Back to Main Page</button>
+
+  <h1>Manual Batch Analysis</h1>
+
+  <p>
+    This tool fetches Monte Carlo, Technical, Sentiment, Insider, Fundamental, and Congress trading for each ticker.  
+    By default, the aggregator is the average of all six (0..100), but with market-condition-specific weights &amp; scaling 
+    (Bear/Bull/Neutral). If you check “Use Manual Weights &amp; Scaling,” you can override them.  
+  </p>
+
+  <!-- Inputs -->
+  <label for="simulatedCurrentDate">Simulated Current Date (Training Data Cutoff):</label>
+  <input type="date" id="simulatedCurrentDate">
+
+  <label for="futureDate">Future Date (Test Period End):</label>
+  <input type="date" id="futureDate">
+
+  <label for="historicalPeriod">Historical Period (months, default 4):</label>
+  <input type="number" id="historicalPeriod" value="4" min="1">
+
+  <!-- Manual Weights & Scaling -->
+  <div id="manualParams">
+    <h3>Manual Input for Weights & Scaling</h3>
+    <label>
+      <input type="checkbox" id="useManualParams"> Use Manual Weights &amp; Scaling
+    </label>
+    <!-- Market Regime Selection -->
+    <div id="marketRegimeContainer" style="display:none;">
+      <label for="marketRegimeSelect">Select Market Regime:</label>
+      <select id="marketRegimeSelect">
+        <option value="Neutral">Neutral</option>
+        <option value="Bull">Bull</option>
+        <option value="Bear">Bear</option>
+      </select>
+      <p style="font-style: italic; margin-top: 5px;">
+        <strong>Scaling Explanation:</strong><br>
+        Bear Market ⇒ Lower scaling factor (0.25)<br>
+        Neutral ⇒ Midrange scaling factor (0.50)<br>
+        Bull Market ⇒ Higher scaling factor (1.00)
+      </p>
+    </div>
+
+    <div id="manualInputs" style="display:none; margin-top:10px;">
+      <label>Monte Carlo Weight (0-1):</label>
+      <input type="number" id="manualMCWeight" value="0.10" min="0" max="1" step="0.01">
+
+      <label>Technical Weight (0-1):</label>
+      <input type="number" id="manualTechWeight" value="0.25" min="0" max="1" step="0.01">
+
+      <label>Sentiment Weight (0-1):</label>
+      <input type="number" id="manualSentWeight" value="0.20" min="0" max="1" step="0.01">
+
+      <label>Insider Weight (0-1):</label>
+      <input type="number" id="manualInsiderWeight" value="0.15" min="0" max="1" step="0.01">
+
+      <label>Fundamental Weight (0-1):</label>
+      <input type="number" id="manualFundWeight" value="0.20" min="0" max="1" step="0.01">
+
+      <label>Congress Weight (0-1):</label>
+      <input type="number" id="manualCongressWeight" value="0.10" min="0" max="1" step="0.01">
+
+      <label>Scaling Factor:</label>
+      <input type="number" id="manualScalingFactor" value="0.50" step="0.001">
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div id="progressContainer">
+    <progress id="progressBar" value="0" max="100"></progress>
+    <div id="progressText">0% Completed</div>
+  </div>
+
+  <!-- Button -->
+  <button id="batchButton">Run Batch Backtest & Optimize Weights</button>
+  <div id="loading" style="display:none;">Loading data and running simulation...</div>
+
+  <!-- Results -->
+  <div id="batchResults" class="section" style="display:none;">
+    <h2>Overall Backtesting Results</h2>
+    <p id="directionAccuracyEqual"></p>
+    <p id="directionAccuracyOptimized"></p>
+    <p id="optimalWeights"></p>
+    <p id="optimalTieBreakerError"></p>
+  </div>
+
+  <div id="analysisSection" style="text-align:center; margin-top:20px;">
+    <button id="analysisButton">View Detailed Analysis</button>
+  </div>
+
+  <!-- Log Output -->
+  <div id="logOutput">Logs will appear here...</div>
+
+  <script>
+    /*********************************************************
+     * Default Date Setup
+     *********************************************************/
+    (function setDefaultDates(){
+      let now = new Date();
+      // By default, set the Sim Date ~1 month ago
+      let sim = new Date(now);
+      sim.setMonth(sim.getMonth()-1);
+      let yyyySim=sim.getFullYear(); let mmSim=("0"+(sim.getMonth()+1)).slice(-2); let ddSim=("0"+sim.getDate()).slice(-2);
+      document.getElementById("simulatedCurrentDate").value=`${yyyySim}-${mmSim}-${ddSim}`;
+
+      let yyyyF=now.getFullYear(); let mmF=("0"+(now.getMonth()+1)).slice(-2); let ddF=("0"+now.getDate()).slice(-2);
+      document.getElementById("futureDate").value=`${yyyyF}-${mmF}-${ddF}`;
+    })();
+
+    // Toggling "Use Manual Weights" 
+    const useManualParamsCheckbox = document.getElementById("useManualParams");
+    const manualInputsDiv = document.getElementById("manualInputs");
+    const marketRegimeContainer = document.getElementById("marketRegimeContainer");
+    useManualParamsCheckbox.addEventListener("change", function(){
+      if(this.checked) {
+        marketRegimeContainer.style.display = "block";
+        manualInputsDiv.style.display = "block";
+      } else {
+        marketRegimeContainer.style.display = "none";
+        manualInputsDiv.style.display = "none";
+      }
+    });
+
+    // If user changes sim date, auto-set future date to "today"
+    document.getElementById("simulatedCurrentDate").addEventListener("change", () => {
+      let sim = new Date(document.getElementById("simulatedCurrentDate").value);
+      if(!isNaN(sim)) {
+        let now = new Date();
+        let yyyy=now.getFullYear(); let mm=("0"+(now.getMonth()+1)).slice(-2); let dd=("0"+now.getDate()).slice(-2);
+        document.getElementById("futureDate").value=`${yyyy}-${mm}-${dd}`;
+      }
+    });
+
+    // Market Regime Selection in Manual Mode
+    const regimeSelect = document.getElementById("marketRegimeSelect");
+    regimeSelect.addEventListener("change", function(){
+      const val = this.value;
+      if(val==="Bear"){
+        // Bear
+        document.getElementById("manualMCWeight").value = 0.05;
+        document.getElementById("manualTechWeight").value = 0.05;
+        document.getElementById("manualSentWeight").value = 0.10;
+        document.getElementById("manualInsiderWeight").value = 0.30;
+        document.getElementById("manualFundWeight").value = 0.30;
+        document.getElementById("manualCongressWeight").value = 0.20;
+        document.getElementById("manualScalingFactor").value = 0.25;
+      } else if(val==="Bull"){
+        // Bull
+        document.getElementById("manualMCWeight").value = 0.20;
+        document.getElementById("manualTechWeight").value = 0.25;
+        document.getElementById("manualSentWeight").value = 0.15;
+        document.getElementById("manualInsiderWeight").value = 0.15;
+        document.getElementById("manualFundWeight").value = 0.15;
+        document.getElementById("manualCongressWeight").value = 0.10;
+        document.getElementById("manualScalingFactor").value = 1.00;
+      } else {
+        // Neutral
+        document.getElementById("manualMCWeight").value = 0.15;
+        document.getElementById("manualTechWeight").value = 0.20;
+        document.getElementById("manualSentWeight").value = 0.15;
+        document.getElementById("manualInsiderWeight").value = 0.15;
+        document.getElementById("manualFundWeight").value = 0.20;
+        document.getElementById("manualCongressWeight").value = 0.15;
+        document.getElementById("manualScalingFactor").value = 0.50;
+      }
+    });
+
+    /*********************************************************
+     * Ticker List & Logging
+     *********************************************************/
+    const predeterminedTickers=[
+      "NVDA","TSLA","F","NIO","AMD","AMZN","PLTR","GME","AAPL","BAC","INTC","SOFI","HOOD","GM","SMCI",
+      "PFE","META","MSFT","GOOGL","NFLX","C","T","XOM","CCL","NCLH","UAL","DAL","AAL","WFC","COST","HD",
+      "LOW","DIS","PYPL","SPCE","NKLA","RIVN","BLNK","CHPT","PLUG","FCEL","RUN","ENPH","SEDG","FSLR","CSCO",
+      "ORCL","CRM","ADBE","ZM","DOCU","SNOW","RBLX","TTD","ETSY","PINS","BABA","JD","PDD","NTES","MELI",
+      "SHOP","WIX","ZI","MDB","DDOG","NET","OKTA","ZS","CRWD","PANW","CHWY","PTON","NKE","LULU","UAA","UA",
+      "VFC","ANF","AEO","URBN","BBY","WMT","TGT","KSS","M","JWN","DASH","UBER","LYFT","V","MA","UNH","JNJ",
+      "CVX","PEP","KO","ABBV","MRK","AVGO","TXN","ADP","CME","LMT","RTX","BA","FDX","UPS","GE","CAT","DE",
+      "NOC","LRCX","QCOM","BKNG","TMO","NEE","DUK","SO","EXC","MCD","SBUX","CMCSA","WBA","PGR",
+      "GS","USB","BK","SCHW","BLK","MS","ALL","MET","PRU","SPGI","ICE","MO","CL","PG","EL","ROST","TJX",
+      "DHR","LIN","EOG","OXY","PSX","MPC","HAL","SLB","BKR","FANG","VLO"
+    ];
+    let allResults=[];
+
+    function log(msg){
+      let div=document.getElementById("logOutput");
+      let p=document.createElement("p");
+      p.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
+      div.appendChild(p);
+      div.scrollTop=div.scrollHeight;
+      console.log(msg);
+    }
+    function clearLog(){
+      document.getElementById("logOutput").innerHTML="";
+    }
+    function sleep(ms){
+      return new Promise(r=>setTimeout(r,ms));
+    }
+
+    /*********************************************************
+     * parseAlphaDate, processTrainingData, processTestData
+     * (unchanged from before)
+     *********************************************************/
+    function parseAlphaDate(str){
+      let year = str.substring(0,4);
+      let month= str.substring(4,6);
+      let day  = str.substring(6,8);
+      let hh   = str.substring(9,11)||"00";
+      let mm   = str.substring(11,13)||"00";
+      let ss   = str.substring(13,15)||"00";
+      return new Date(`${year}-${month}-${day}T${hh}:${mm}:${ss}Z`);
+    }
+    function processTrainingData(timeSeries, simDate, periodMonths){
+      let dates=Object.keys(timeSeries).sort((a,b)=>new Date(a)-new Date(b));
+      let end=new Date(simDate);
+      let start=new Date(simDate);
+      start.setMonth(start.getMonth()-periodMonths);
+      let out=[];
+      for(let d of dates){
+        let dt=new Date(d);
+        if(dt>=start && dt<=end){
+          out.push({ date:dt, close:parseFloat(timeSeries[d]["5. adjusted close"])});
+        }
+      }
+      out.sort((a,b)=>a.date-b.date);
+      return out;
+    }
+    function processTestData(timeSeries, simDate, futureDate){
+      let dates=Object.keys(timeSeries).sort((a,b)=>new Date(a)-new Date(b));
+      let out=[];
+      for(let d of dates){
+        let dt=new Date(d);
+        if(dt>simDate && dt<=futureDate){
+          out.push({ date:dt, close:parseFloat(timeSeries[d]["5. adjusted close"]) });
+        }
+      }
+      out.sort((a,b)=>a.date-b.date);
+      return out;
+    }
+
+    /*********************************************************
+     * Monte Carlo (unchanged)
+     *********************************************************/
+    function randn_bm(){
+      let u=0,v=0;
+      while(u===0) u=Math.random();
+      while(v===0) v=Math.random();
+      return Math.sqrt(-2.0*Math.log(u)) * Math.cos(2.0*Math.PI*v);
+    }
+    function computeStats(prices){
+      let logs=[];
+      for(let i=1;i<prices.length;i++){
+        let prev=prices[i-1].close, cur=prices[i].close;
+        logs.push(Math.log(cur/prev));
+      }
+      if(!logs.length){
+        return{ mean:0, stdDev:0, lastPrice:prices[prices.length-1].close };
+      }
+      let dMean= logs.reduce((a,b)=>a+b,0)/logs.length;
+      let variance= logs.reduce((acc,val)=> acc+(val-dMean)**2,0)/(logs.length-1);
+      let dStd=Math.sqrt(variance);
+      let tradingDays=252;
+      return {
+        mean: dMean*tradingDays,
+        stdDev:dStd*Math.sqrt(tradingDays),
+        lastPrice:prices[prices.length-1].close
+      };
+    }
+    function runMC(lastPrice, mean, stdDev, T, sims=10000){
+      let finals=[];
+      for(let i=0;i<sims;i++){
+        let Z=randn_bm();
+        let ST=lastPrice*Math.exp((mean-0.5*stdDev**2)*T + stdDev*Math.sqrt(T)*Z);
+        finals.push(ST);
+      }
+      return finals;
+    }
+    function computeMCBull(mcFinals,lastPrice){
+      let cnt= mcFinals.filter(x=> x>=lastPrice).length;
+      return (cnt/mcFinals.length)*100;
+    }
+
+    /*********************************************************
+     * Technical (MACD-based) (unchanged)
+     *********************************************************/
+    function computeEMA(series, period){
+      if(series.length<period)return[];
+      let alpha=2/(period+1);
+      let sum=0;
+      for(let i=0;i<period;i++){ sum+=series[i].close; }
+      let prev=sum/period;
+      let out=[];
+      out[period-1]={ date:series[period-1].date, ema:prev };
+      for(let i=period;i<series.length;i++){
+        let cur=series[i].close;
+        let nxt=(cur-prev)*alpha+prev;
+        out[i]={ date:series[i].date, ema:nxt };
+        prev=nxt;
+      }
+      return out.filter(Boolean);
+    }
+    function computeMACD(series,fast=12,slow=26,signal=9){
+      let fEMA=computeEMA(series,fast);
+      let sEMA=computeEMA(series,slow);
+      let macdLine=[];
+      for(let i=0;i<sEMA.length;i++){
+        let dt=sEMA[i].date;
+        let match=fEMA.find(x=> x.date.getTime()===dt.getTime());
+        if(match){
+          macdLine.push({ date:dt, macd: match.ema - sEMA[i].ema });
+        }
+      }
+      if(macdLine.length<signal) return{ macdLine, signalLine:[] };
+      let m=2/(signal+1);
+      let sum=0; 
+      for(let i=0;i<signal;i++){ sum+=macdLine[i].macd; }
+      let prevSig=sum/signal;
+      let signalLine=[];
+      signalLine[signal-1]={ date:macdLine[signal-1].date, signal:prevSig };
+      for(let i=signal;i<macdLine.length;i++){
+        let s=(macdLine[i].macd - prevSig)*m + prevSig;
+        signalLine[i]={ date:macdLine[i].date, signal:s };
+        prevSig=s;
+      }
+      return{ macdLine, signalLine:signalLine.filter(Boolean)};
+    }
+    function polynomialRegression(x,y,deg){
+      let X=[];
+      for(let i=0;i<x.length;i++){
+        let row=[];
+        for(let j=0;j<=deg;j++){
+          row.push( Math.pow(x[i], j) );
+        }
+        X.push(row);
+      }
+      let XT=math.transpose(X);
+      let XTX=math.multiply(XT,X);
+      let XTy=math.multiply(XT,y);
+      let sol=math.lusolve(XTX,XTy);
+      return sol.map(v=>v[0]);
+    }
+    function predictValue(coefs, x){
+      return coefs.reduce((acc,c,i)=> acc+c*Math.pow(x,i),0);
+    }
+    function computeGapTrend(macdArr, sigArr){
+      if(macdArr.length<6||sigArr.length<6) return null;
+      let recentMACD= macdArr.slice(-6).map(x=>x.macd);
+      let recentSig=  sigArr.slice(-6).map(x=>x.signal);
+      let x=[1,2,3,4,5,6];
+      let macdCoef= polynomialRegression(x,recentMACD,3);
+      let sigCoef=  polynomialRegression(x,recentSig,3);
+      let predMACD= predictValue(macdCoef,7);
+      let predSig=  predictValue(sigCoef,7);
+      let predGap=  predMACD - predSig;
+      let currentGap= macdArr[macdArr.length-1].macd - sigArr[sigArr.length-1].signal;
+      let delta= predGap - currentGap;
+      let k=5;
+      let gapScore= 100/(1+Math.exp(-k*delta));
+      return { gapScore };
+    }
+    function computeMomentum(hist){
+      if(hist.length<6) return 50;
+      let recent=hist.slice(-6);
+      let x=[1,2,3,4,5,6];
+      let coefs= polynomialRegression(x,recent,3);
+      let predict= predictValue(coefs,7);
+      let last= recent[recent.length-1];
+      let delta= predict-last;
+      let k=5;
+      let sc= 100/(1+Math.exp(-k*delta));
+      return isNaN(sc)?50:sc;
+    }
+    function computeTechnicalBull(series){
+      if(series.length<2) return 50;
+      let macdData= computeMACD(series,12,26,9);
+      let macdLine= macdData.macdLine, sigLine= macdData.signalLine;
+      if(macdLine.length<2 || sigLine.length<2) return 50;
+
+      let len= Math.min(macdLine.length,sigLine.length);
+      let latestMACD= macdLine[len-1].macd;
+      let positionScore= 100/(1+Math.exp(latestMACD));
+      let gapObj= computeGapTrend(macdLine,sigLine);
+      let gapScore= gapObj? gapObj.gapScore : 50;
+      let hist=[];
+      for(let i=0;i<len;i++){
+        hist.push(macdLine[i].macd - sigLine[i].signal);
+      }
+      let momentum= computeMomentum(hist);
+      return (positionScore + gapScore + momentum)/3;
+    }
+
+    /*********************************************************
+     * Sentiment
+     *********************************************************/
+    async function fetchSentimentData(ticker, periodMonths, simDate){
+      let url=`https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let r=await fetch(url);
+      let j=await r.json();
+      if(!j.feed) throw new Error("No sentiment data from server.");
+
+      let cutoff=new Date(simDate);
+      cutoff.setMonth(cutoff.getMonth()-periodMonths);
+
+      let byHour={};
+      for(let art of j.feed){
+        let dt=parseAlphaDate(art.time_published);
+        if(isNaN(dt) || dt<cutoff || dt>simDate) continue;
+        if(!art.ticker_sentiment) continue;
+        let item=art.ticker_sentiment.find(x=> x.ticker.toUpperCase()===ticker.toUpperCase());
+        if(!item) continue;
+        let raw= parseFloat(item.ticker_sentiment_score);
+        if(isNaN(raw)) continue;
+        let norm=((raw+1)/2)*100;
+        let hr= dt.toISOString().substring(0,13);
+        if(!byHour[hr]) byHour[hr]=[];
+        byHour[hr].push(norm);
+      }
+      let arr=[];
+      for(let hStr in byHour){
+        let vals= byHour[hStr];
+        let avg= vals.reduce((a,b)=>a+b,0)/vals.length;
+        let dt=new Date(`${hStr}:00:00Z`);
+        arr.push({ date:dt, sentiment:avg });
+      }
+      arr.sort((a,b)=>a.date-b.date);
+      return arr;
+    }
+    function computeSentimentBull(data){
+      if(data.length<2) return 50;
+      let first=data[0].date;
+      let xs=data.map(d=> (d.date-first)/(1000*60*60*24));
+      let ys=data.map(d=> d.sentiment);
+      let n=xs.length;
+      let sumX=xs.reduce((a,b)=>a+b,0);
+      let sumY=ys.reduce((a,b)=>a+b,0);
+      let sumXY=xs.reduce((acc,val,i)=>acc+val*ys[i],0);
+      let sumX2=xs.reduce((acc,val)=>acc+val*val,0);
+      let slope=(n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX);
+      let avg= sumY/n;
+      let k=0.3;
+      let slopeScore= 100/(1+Math.exp(-k*slope));
+      return 0.5*slopeScore + 0.5*avg;
+    }
+
+    /*********************************************************
+     * Insider
+     *********************************************************/
+    async function fetchInsiderData(ticker, periodMonths, simDate, currPrice){
+      let url=`https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+      let r=await fetch(url);
+      let j=await r.json();
+      if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
+
+      let cutoff=new Date(simDate);
+      cutoff.setMonth(cutoff.getMonth()-periodMonths);
+
+      let totalBuy=0, totalSell=0;
+      for(let item of j.data){
+        if(!item.transaction_date || !item.acquisition_or_disposal || !item.shares) continue;
+        if(!item.share_price|| parseFloat(item.share_price)===0) continue;
+        let tradePrice=parseFloat(item.share_price);
+        let lb= currPrice*0.5, ub= currPrice*1.5;
+        if(tradePrice<lb || tradePrice>ub) continue;
+        let dt=new Date(item.transaction_date);
+        if(isNaN(dt)|| dt<cutoff|| dt>simDate) continue;
+        let shares=parseFloat(item.shares);
+        if(item.acquisition_or_disposal==="A") totalBuy+=shares;
+        else if(item.acquisition_or_disposal==="D") totalSell+=shares;
+      }
+      return { totalBuys:totalBuy, totalSells:totalSell };
+    }
+    function computeInsiderBull(buys, sells){
+      let sum=buys+sells;
+      if(sum<=0)return 50;
+      return ((buys-sells)/sum)*50+50;
+    }
+
+    /*********************************************************
+     * Fundamental
+     *********************************************************/
+    function computeFundScores(data){
+      const norm=(val, min, max)=>{
+        if(!val||isNaN(val))return 50;
+        let ratio=(val-min)/(max-min);
+        return Math.max(0,Math.min(100, ratio*100));
+      };
+      let margin=norm(parseFloat(data.ProfitMargin),0,0.25);
+      let opMarg=norm(parseFloat(data.OperatingMarginTTM),0,0.3);
+      let roa=norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
+      let roe=norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
+      let profitability=(margin+opMarg+roa+roe)/4;
+
+      let pe=parseFloat(data.PERatio);
+      let peScore=100- norm(pe,5,40);
+      let peg=parseFloat(data.PEGRatio);
+      let pegScore=100- norm(peg,0.5,2.5);
+      let ps=parseFloat(data.PriceToSalesRatioTTM);
+      let psScore=100- norm(ps,1,10);
+      let pb=parseFloat(data.PriceToBookRatio);
+      let pbScore=100- norm(pb,1,10);
+      let valuation=(peScore+pegScore+psScore+pbScore)/4;
+
+      let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2,0.3);
+      let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3,0.3);
+      let pRef= parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage'])||0;
+      let ratio=0; 
+      if(pRef>0 && data.AnalystTargetPrice){
+        ratio=(parseFloat(data.AnalystTargetPrice)/pRef)-1;
+      }
+      let tgtScore= norm(ratio, 0, 0.5);
+      let growth=(rg+eg+tgtScore)/3;
+
+      let dy= norm(parseFloat(data.DividendYield),0,0.07);
+      let dps=norm(parseFloat(data.DividendPerShare),0,10);
+      let eps=norm(parseFloat(data.EPS),0,12);
+      let dividends=(dy+dps+eps)/3;
+
+      let ebitda=parseFloat(data.EBITDA);
+      let revTTM=parseFloat(data.RevenueTTM);
+      let ebitdaMarginScore= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3):50;
+      let evEbitda=parseFloat(data.EVToEBITDA);
+      let evEbitdaScore=100- norm(evEbitda,5,30);
+      let beta=parseFloat(data.Beta);
+      let betaScore=50;
+      if(!isNaN(beta)) betaScore=100- norm(beta,0,2);
+      let financial=(ebitdaMarginScore+evEbitdaScore+betaScore)/3;
+
+      return{ profitability, valuation, growth, dividends, financial };
+    }
+    async function fetchFundamentalData(ticker){
+      let url=`https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+      let r=await fetch(url);
+      let data=await r.json();
+      if(!data.Symbol) return 50;
+      let cat=computeFundScores(data);
+      let sum=0, n=0;
+      for(let k in cat){ sum+=cat[k]; n++; }
+      return sum/n;
+    }
+
+    /*********************************************************
+     * Congress
+     *********************************************************/
+    async function fetchCongressData(ticker, periodMonths){
+      const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
+      const resp=await fetch(url);
+      const jsonResponse=await resp.json();
+      if(!jsonResponse.data || !Array.isArray(jsonResponse.data)){
+        throw new Error("Invalid congress data format.");
+      }
+      const rawData=jsonResponse.data;
+      const cutoff=new Date();
+      cutoff.setMonth(cutoff.getMonth()-periodMonths);
+      let totalPurchase=0, totalSale=0;
+      for(let item of rawData){
+        if(!item.TransactionDate||!item.Transaction)continue;
+        let dt=new Date(item.TransactionDate);
+        if(isNaN(dt)|| dt<cutoff) continue;
+        let amt=parseFloat(item.Amount)||0;
+        if(/purchase/i.test(item.Transaction)) totalPurchase+=amt;
+        if(/sale/i.test(item.Transaction)) totalSale+=amt;
+      }
+      return { totalPurchase, totalSale };
+    }
+    function computeCongressBull(purchase, sale){
+      let sum=purchase+sale;
+      if(sum<=0)return 50;
+      return ((purchase-sale)/sum)*50+50;
+    }
+
+    /*********************************************************
+     * Automatic Weights Based on Bull/Bear/Neutral
+     *********************************************************/
+    function getAutoWeightsForRegime(regime){
+      // Return an object with wMC, wTech, wSent, wIns, wFund, wCong, scale
+      if(regime==="Bear"){
+        return {
+          wMC: 0.05,
+          wTech: 0.05,
+          wSent: 0.10,
+          wIns: 0.30,
+          wFund: 0.30,
+          wCong: 0.20,
+          scale: 0.25
+        };
+      } else if(regime==="Bull"){
+        return {
+          wMC: 0.20,
+          wTech: 0.25,
+          wSent: 0.15,
+          wIns: 0.15,
+          wFund: 0.15,
+          wCong: 0.10,
+          scale: 1.00
+        };
+      } else {
+        // Neutral
+        return {
+          wMC: 0.15,
+          wTech: 0.20,
+          wSent: 0.15,
+          wIns: 0.15,
+          wFund: 0.20,
+          wCong: 0.15,
+          scale: 0.50
+        };
+      }
+    }
+
+    /*********************************************************
+     * Single Ticker Logic
+     *********************************************************/
+    async function runSimulationForTicker(ticker, simDate, futDate, histPeriod, regime){
+      try{
+        log(`Processing ${ticker}...`);
+        let hUrl=`https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let r=await fetch(hUrl);
+        let j=await r.json();
+        if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily");
+
+        // Training & Test
+        let training=processTrainingData(j["Time Series (Daily)"], simDate, histPeriod);
+        if(training.length<2) throw new Error("Not enough training data");
+        let testing=processTestData(j["Time Series (Daily)"], simDate, futDate);
+        if(testing.length<1) throw new Error("No test data in that window");
+
+        let lastTrain= training[training.length-1].close;
+        let lastTest=  testing[testing.length-1].close;
+        let actualRet=((lastTest/lastTrain)-1)*100;
+        let actualDir=(actualRet>0)?"Positive":"Negative";
+
+        // 1) Monte Carlo
+        let stats= computeStats(training);
+        let T=(futDate - simDate)/(365*24*60*60*1000);
+        let mcArr= runMC(stats.lastPrice, stats.mean, stats.stdDev, T);
+        let mcBull= computeMCBull(mcArr, stats.lastPrice);
+
+        // 2) Tech
+        let techBull= computeTechnicalBull(training);
+
+        // 3) Sent
+        let sentData= await fetchSentimentData(ticker, histPeriod, simDate);
+        let sentBull= computeSentimentBull(sentData);
+
+        // 4) Insider
+        let inside= await fetchInsiderData(ticker, histPeriod, simDate, stats.lastPrice);
+        let insiderBull= computeInsiderBull(inside.totalBuys, inside.totalSells);
+
+        // 5) Fundamental
+        let fundamentalBull= await fetchFundamentalData(ticker);
+
+        // 6) Congress
+        let cData= await fetchCongressData(ticker, histPeriod);
+        let congressBull= computeCongressBull(cData.totalPurchase, cData.totalSale);
+
+        // aggregator
+        let useManual= document.getElementById("useManualParams").checked;
+        let finalRet;
+        if(useManual){
+          // user-chosen
+          let wMC= parseFloat(document.getElementById("manualMCWeight").value);
+          let wTech= parseFloat(document.getElementById("manualTechWeight").value);
+          let wSent= parseFloat(document.getElementById("manualSentWeight").value);
+          let wIns= parseFloat(document.getElementById("manualInsiderWeight").value);
+          let wFund= parseFloat(document.getElementById("manualFundWeight").value);
+          let wCong= parseFloat(document.getElementById("manualCongressWeight").value);
+          let sc=  parseFloat(document.getElementById("manualScalingFactor").value);
+          let sumW= wMC+wTech+wSent+wIns+wFund+wCong;
+          if(Math.abs(sumW-1)>0.000001){
+            // fallback => do nothing or default aggregator
+            // We'll do "equal weighting" fallback, but you specifically said you want 
+            // these new weights if we are not manual. 
+            // For fallback, we can either do "equal" or "auto"? 
+            // We'll do "auto" for fallback.
+            let autoW= getAutoWeightsForRegime(regime);
+            let agg= autoW.wMC*mcBull + autoW.wTech*techBull + autoW.wSent*sentBull 
+                   + autoW.wIns*insiderBull + autoW.wFund*fundamentalBull + autoW.wCong*congressBull;
+            finalRet= (agg - 50)* autoW.scale;
+          } else {
+            // manual aggregator
+            let agg= wMC*mcBull + wTech*techBull + wSent*sentBull + wIns*insiderBull + wFund*fundamentalBull + wCong*congressBull;
+            finalRet= (agg - 50)* sc;
+          }
+        } else {
+          // auto based on regime
+          let autoW= getAutoWeightsForRegime(regime);
+          let agg= autoW.wMC*mcBull + autoW.wTech*techBull + autoW.wSent*sentBull 
+                 + autoW.wIns*insiderBull + autoW.wFund*fundamentalBull + autoW.wCong*congressBull;
+          finalRet= (agg - 50)* autoW.scale;
+        }
+
+        let predDir= finalRet>0?"Positive":"Negative";
+        let correct= (predDir===actualDir);
+
+        log(`${ticker}: Actual: ${actualRet.toFixed(2)}% (${actualDir}), Pred: ${finalRet.toFixed(2)}% (${predDir})`);
+        return {
+          ticker,
+          componentScores: {
+            mc: mcBull,
+            tech: techBull,
+            sent: sentBull,
+            insider: insiderBull,
+            fundamental: fundamentalBull,
+            congress: congressBull
+          },
+          predictedReturn: finalRet,
+          actualReturn: actualRet,
+          actualDirection: actualDir,
+          predictedDirection: predDir,
+          correctPrediction: correct,
+          // For reference, let's store a "aggregatedBull" if you want
+          aggregatedBullEqual: 50 + finalRet, // not strictly "equal" now, but a reference
+        };
+      } catch(e){
+        log(`Error with ${ticker}: ${e.message}`);
+        return null;
+      }
+    }
+
+    /*********************************************************
+     * Market Regime Calculation
+     *********************************************************/
+    async function determineSPYMarketRegime(simDate, futDate, histPeriod){
+      try {
+        let url=`https://www.projectmanagerhelper.com/api/historical?symbol=SPY`;
+        let resp=await fetch(url);
+        let j=await resp.json();
+        if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
+
+        // we do shortSMA = histPeriod*5, longSMA= histPeriod*15 
+        // ~ histPeriod * 30 days total
+        let totalDays= histPeriod*30;
+        let shortWindow= histPeriod*5;   
+        let longWindow=  histPeriod*15;  
+        
+        let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)-new Date(b));
+        let spyPrices=[];
+        for(let d of allKeys){
+          let dt=new Date(d);
+          let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+          spyPrices.push({ date:dt, close:c });
+        }
+
+        let startDate= new Date(futDate);
+        startDate.setDate(startDate.getDate()- totalDays);
+        let filtered= spyPrices.filter(pt=> pt.date>=startDate && pt.date<=futDate);
+        if(filtered.length< Math.max(shortWindow,longWindow)){
+          log("Not enough SPY data => Neutral by default");
+          return "Neutral";
+        }
+
+        let shortSMA= computeSMA(filtered, shortWindow);
+        let longSMA=  computeSMA(filtered, longWindow);
+        let smaSignal= classifyBySMA(shortSMA, longSMA);
+
+        let slopeVal= computePriceSlope(filtered);
+        let slopeSignal= classifyBySlope(slopeVal);
+
+        let votes=0;
+        if(smaSignal==="Bull") votes++;
+        if(smaSignal==="Bear") votes--;
+        if(slopeSignal==="Bull") votes++;
+        if(slopeSignal==="Bear") votes--;
+
+        if(votes>=2)  return "Bull";
+        if(votes<=-2) return "Bear";
+        return "Neutral";
+
+      } catch(e){
+        log("Error in determineSPYMarketRegime: "+e.message);
+        return "Neutral";
+      }
+    }
+
+    function computeSMA(priceArray, period){
+      if(priceArray.length<period) return null;
+      let slice= priceArray.slice(-period);
+      let sum=0;
+      for(let p of slice){ sum+=p.close; }
+      return sum/period;
+    }
+    function classifyBySMA(shortSMA, longSMA){
+      if(!shortSMA|| !longSMA) return "Neutral";
+      let ratio= shortSMA/longSMA;
+      if(ratio>1.01) return "Bull";
+      if(ratio<0.99) return "Bear";
+      return "Neutral";
+    }
+    function computePriceSlope(prices){
+      let n= prices.length;
+      if(n<2) return 0;
+      let sumX=0, sumY=0, sumXY=0, sumX2=0;
+      for(let i=0;i<n;i++){
+        sumX += i;
+        sumY += prices[i].close;
+        sumXY+= i*prices[i].close;
+        sumX2+= i*i;
+      }
+      let numerator= n*sumXY - sumX*sumY;
+      let denominator= n*sumX2 - sumX*sumX;
+      if(denominator===0) return 0;
+      return numerator/denominator;
+    }
+    function classifyBySlope(slope){
+      let bullThr= 0.2, bearThr= -0.2;
+      if(slope>bullThr)  return "Bull";
+      if(slope<bearThr)  return "Bear";
+      return "Neutral";
+    }
+
+    /*********************************************************
+     *  Batch Ticker-by-Ticker
+     *********************************************************/
+    async function runBatchBacktest(){
+      document.getElementById("loading").style.display="block";
+      document.getElementById("batchResults").style.display="none";
+      document.getElementById("progressContainer").style.display="block";
+      allResults=[];
+      clearLog();
+
+      let simDateStr= document.getElementById("simulatedCurrentDate").value;
+      let futDateStr= document.getElementById("futureDate").value;
+      let histPeriod= parseInt(document.getElementById("historicalPeriod").value);
+      if(!simDateStr|| !futDateStr|| isNaN(histPeriod)){
+        alert("Please fill all required fields");
+        document.getElementById("loading").style.display="none";
+        return;
+      }
+      let sim= new Date(simDateStr);
+      let fut= new Date(futDateStr);
+      if(sim>=fut){
+        alert("Future date must be after simulated date");
+        document.getElementById("loading").style.display="none";
+        return;
+      }
+
+      // 1) auto-detect SPY regime => eqScale
+      let regime= await determineSPYMarketRegime(sim, fut, histPeriod);
+      log(`Detected SPY Market Regime: ${regime}`);
+
+      // 2) single loop => 0.5 second delay for each symbol
+      let total= predeterminedTickers.length;
+      let done=0;
+      for(let tk of predeterminedTickers){
+        let res= await runSimulationForTicker(tk, sim, fut, histPeriod, regime);
+        if(res) allResults.push(res);
+        done++;
+        let pct= Math.round((done/total)*100);
+        document.getElementById("progressBar").value= pct;
+        document.getElementById("progressText").innerText= `${pct}% Completed`;
+        await sleep(500); // <---- 0.5s per symbol
+      }
+
+      // measure eq aggregator accuracy
+      let eqCorrect= allResults.filter(r=> r && r.correctPrediction).length;
+      let eqAccuracy= (eqCorrect/allResults.length)*100;
+
+      // find best weights
+      let best= optimizeWeightsByDirection(allResults);
+      let used=0, correctOpt=0, sumErr=0;
+      for(let r of allResults){
+        if(!r) continue;
+        let wMC=best.wMC, wTech=best.wTech, wSent=best.wSent, wIns=best.wIns, wFund=best.wFund, wCong=best.wCong;
+        let agg= wMC*r.componentScores.mc + wTech*r.componentScores.tech + wSent*r.componentScores.sent 
+               + wIns*r.componentScores.insider + wFund*r.componentScores.fundamental + wCong*r.componentScores.congress;
+        let ret= agg-50;
+        let dir= ret>0?"Positive":"Negative";
+        if(dir===r.actualDirection) correctOpt++;
+        sumErr+= Math.abs(ret-r.actualReturn);
+        used++;
+      }
+      let optAcc=(correctOpt/used)*100;
+      let optErr= sumErr/used;
+
+      document.getElementById("batchResults").style.display="block";
+      document.getElementById("directionAccuracyEqual").innerText=
+        `Directional Accuracy (Auto Weighted & Scaled): ${eqAccuracy.toFixed(2)}%`;
+      document.getElementById("directionAccuracyOptimized").innerText=
+        `Directional Accuracy (Optimized): ${optAcc.toFixed(2)}%`;
+      document.getElementById("optimalWeights").innerText=
+        `Optimal Weights => MC: ${(best.wMC*100).toFixed(0)}%, Tech: ${(best.wTech*100).toFixed(0)}%, Sent: ${(best.wSent*100).toFixed(0)}%, `+
+        `Insider: ${(best.wIns*100).toFixed(0)}%, Fund: ${(best.wFund*100).toFixed(0)}%, Congress: ${(best.wCong*100).toFixed(0)}%`;
+      document.getElementById("optimalTieBreakerError").innerText=
+        `(Tie-breaker) Mean Absolute Error at Optimal: ${optErr.toFixed(2)}%`;
+
+      log("Batch backtest complete!");
+      document.getElementById("loading").style.display="none";
+    }
+
+    /*********************************************************
+     * 14) Optimize Weights By Direction
+     *********************************************************/
+    function optimizeWeightsByDirection(results){
+      if(!results || !results.length){
+        return { wMC:1/6, wTech:1/6, wSent:1/6, wIns:1/6, wFund:1/6, wCong:1/6 };
+      }
+      let bestAcc=-Infinity, bestErr=Infinity;
+      let bestW={ wMC:1/6, wTech:1/6, wSent:1/6, wIns:1/6, wFund:1/6, wCong:1/6 };
+      let step=0.1;
+
+      for(let wMC=0;wMC<=1;wMC+=step){
+        for(let wTech=0;wTech<=1;wTech+=step){
+          for(let wSent=0;wSent<=1;wSent+=step){
+            for(let wIns=0;wIns<=1;wIns+=step){
+              for(let wFund=0;wFund<=1;wFund+=step){
+                for(let wCong=0;wCong<=1;wCong+=step){
+                  let sumW= wMC+wTech+wSent+wIns+wFund+wCong;
+                  if(Math.abs(sumW-1)>1e-9) continue;
+                  let c=0, e=0, u=0;
+                  for(let r of results){
+                    if(!r) continue;
+                    let agg= wMC*r.componentScores.mc + wTech*r.componentScores.tech 
+                             + wSent*r.componentScores.sent + wIns*r.componentScores.insider
+                             + wFund*r.componentScores.fundamental + wCong*r.componentScores.congress;
+                    let ret= agg-50;
+                    let d= (ret>0)?"Positive":"Negative";
+                    if(d===r.actualDirection) c++;
+                    e+= Math.abs(ret-r.actualReturn);
+                    u++;
+                  }
+                  let acc=(u>0)?(c/u):0;
+                  let avgErr=(u>0)?(e/u):999999;
+                  // maximize direction acc, tie-break by min MAE
+                  if(acc>bestAcc){
+                    bestAcc=acc; bestErr=avgErr;
+                    bestW={ wMC,wTech,wSent,wIns,wFund,wCong };
+                  } else if(Math.abs(acc-bestAcc)<1e-12 && avgErr<bestErr){
+                    bestAcc=acc; bestErr=avgErr;
+                    bestW={ wMC,wTech,wSent,wIns,wFund,wCong };
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      return bestW;
+    }
+
+    /*********************************************************
+     * 15) Detailed Analysis
+     *********************************************************/
+    function viewDetailedAnalysis(){
+      if(!allResults.length){
+        alert("No simulation results. Run the backtest first.");
+        return;
+      }
+      // 1) direction accuracy for auto aggregator
+      let correctEq= allResults.filter(r=> r && r.correctPrediction).length;
+      let incorrectEq= allResults.length - correctEq;
+      let eqAccuracy= (correctEq/allResults.length)*100;
+
+      // 2) Weighted optimization
+      let best= optimizeWeightsByDirection(allResults);
+      let used=0, cOpt=0, sumErr=0;
+      for(let r of allResults){
+        if(!r) continue;
+        let agg= best.wMC*r.componentScores.mc + best.wTech*r.componentScores.tech 
+               + best.wSent*r.componentScores.sent + best.wIns*r.componentScores.insider
+               + best.wFund*r.componentScores.fundamental + best.wCong*r.componentScores.congress;
+        let ret= agg-50;
+        let d= ret>0?"Positive":"Negative";
+        if(d===r.actualDirection) cOpt++;
+        sumErr+= Math.abs(ret-r.actualReturn);
+        used++;
+      }
+      let optAccuracy=(cOpt/used)*100;
+      let optIncorrect= used-cOpt;
+      let optMAE=(used>0)?(sumErr/used):0;
+
+      // 3) best scaling factor for aggregator
+      let bestScale=-1;
+      let bestScaleAcc=-Infinity;
+      let bestScaleErr=999999;
+      for(let sc=0.0; sc<=2.0; sc+=0.01){
+        let c=0, e=0, u=0;
+        for(let r of allResults){
+          if(!r) continue;
+          // We'll interpret r.aggregatedBullEqual as 50 + finalRet 
+          // from the auto aggregator. We can just do:
+          let rawBull= r.aggregatedBullEqual; 
+          let retScaled= (rawBull - 50)*sc; 
+          let dirScaled= (retScaled>0)?"Positive":"Negative";
+          if(dirScaled===r.actualDirection) c++;
+          e+= Math.abs(retScaled-r.actualReturn);
+          u++;
+        }
+        let scaleAcc=(u>0)?(c/u):0;
+        let scaleErr=(u>0)?(e/u):99999;
+        if(scaleAcc>bestScaleAcc){
+          bestScale= sc; bestScaleAcc= scaleAcc; bestScaleErr= scaleErr;
+        } else if(Math.abs(scaleAcc-bestScaleAcc)<1e-12 && scaleErr<bestScaleErr){
+          bestScale= sc; bestScaleAcc= scaleAcc; bestScaleErr= scaleErr;
+        }
+      }
+      let bestScaleAccPct= bestScaleAcc*100;
+
+      let detailHTML=`
+        <h1>Detailed Analysis</h1>
+        <p>Number of Tickers Processed: ${allResults.length}</p>
+
+        <h2>Auto Weighted &amp; Scaled</h2>
+        <p>Correct Predictions: ${correctEq}, Incorrect: ${incorrectEq}</p>
+        <p>Directional Accuracy: ${eqAccuracy.toFixed(2)}%</p>
+
+        <h3>Suggested Scaling Factor (Strict "Auto" aggregator)</h3>
+        <p>
+          Best scaling factor in [0..2]: <strong>${bestScale.toFixed(2)}</strong><br>
+          Dir. Accuracy w/ that factor: <strong>${bestScaleAccPct.toFixed(2)}%</strong><br>
+          Tie-breaker MAE: <strong>${bestScaleErr.toFixed(2)}%</strong>
+        </p>
+
+        <h2>Optimized Weights (All Tickers)</h2>
+        <p>
+          Monte Carlo: ${(best.wMC*100).toFixed(0)}%, 
+          Technical: ${(best.wTech*100).toFixed(0)}%,
+          Sentiment: ${(best.wSent*100).toFixed(0)}%,
+          Insider: ${(best.wIns*100).toFixed(0)}%,
+          Fundamental: ${(best.wFund*100).toFixed(0)}%,
+          Congress: ${(best.wCong*100).toFixed(0)}%
+        </p>
+        <p>Correct: ${cOpt}, Incorrect: ${optIncorrect}, Accuracy: ${optAccuracy.toFixed(2)}%</p>
+        <p>Mean Absolute Error (Tie-breaker): ${optMAE.toFixed(2)}%</p>
+      `;
+
+      let w= window.open("","_blank");
+      if(!w){
+        alert("Please allow popups for the detailed analysis.");
+        return;
+      }
+      let htmlDoc=`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Detailed Analysis</title>
+        <style>
+          body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background:#f9fafb;
+            color:#333;
+            margin:0 auto;
+            max-width:900px;
+            padding:2rem;
+            line-height:1.6;
+          }
+          h1, h2, h3 {
+            text-align:center;
+          }
+          a {
+            color:#2563eb;
+          }
+        </style>
+      </head>
+      <body>
+        ${detailHTML}
+        <div style="text-align:center; margin-top:20px;">
+          <p><a href="#" onclick="window.close();return false;">Close Window</a></p>
+        </div>
+      </body>
+      </html>
+      `;
+      w.document.open();
+      w.document.write(htmlDoc);
+      w.document.close();
+    }
+
+    // Attach event listeners
+    document.getElementById("batchButton").addEventListener("click", runBatchBacktest);
+    document.getElementById("analysisButton").addEventListener("click", viewDetailedAnalysis);
+  </script>
+</body>
+</html>

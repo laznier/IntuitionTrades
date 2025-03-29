@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MACD Score Calculator</title>
+  <!-- Include Plotly for charting and Math.js for regression calculations -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 800px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    #output, #macdChart {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    #macdChart {
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to Home Button -->
+  <button onclick="window.location.href='https://www.projectmanagerhelper.com'">Back to Home</button>
+  <h1>MACD Score Calculator</h1>
+  <p>Enter a ticker symbol and historical period (in months) to compute the MACD score using our enhanced regression‐based gap and momentum methods, and view the MACD histogram chart.</p>
+  
+  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+  <input type="text" id="ticker" value="AAPL">
+  
+  <label for="period">Historical Period (months):</label>
+  <input type="number" id="period" value="12" min="1">
+  
+  <button id="runAnalysis">Run MACD Calculation</button>
+  <div id="loading" style="display:none; margin-top:10px; color:#f97316;">Loading data and running MACD analysis...</div>
+  
+  <!-- Output container for scores -->
+  <div id="output" style="display:none;"></div>
+  <!-- Container for MACD chart -->
+  <div id="macdChart" style="height: 500px; display:none;"></div>
+  
+  <!-- View Detailed Explanation Button -->
+  <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
+  
+  <script>
+    // Process historical data from the API response.
+    function processHistoricalData(timeSeries, periodMonths) {
+      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+      const endDate = new Date(dates[dates.length - 1]);
+      const startDate = new Date(endDate);
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let prices = [];
+      for (let date of dates) {
+        const dt = new Date(date);
+        if (dt >= startDate && dt <= endDate) {
+          prices.push({
+            date: dt,
+            open: timeSeries[date]["1. open"] ? parseFloat(timeSeries[date]["1. open"]) : parseFloat(timeSeries[date]["5. adjusted close"]),
+            close: parseFloat(timeSeries[date]["5. adjusted close"]),
+            high: parseFloat(timeSeries[date]["2. high"]),
+            low: parseFloat(timeSeries[date]["3. low"])
+          });
+        }
+      }
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
+    }
+    
+    // Exponential Moving Average (EMA) calculation.
+    function computeEMA(prices, period) {
+      let ema = [];
+      const multiplier = 2 / (period + 1);
+      let sum = 0;
+      for (let i = 0; i < period; i++) {
+        sum += prices[i].close;
+      }
+      let prevEma = sum / period;
+      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+      for (let i = period; i < prices.length; i++) {
+        const cur = prices[i].close;
+        let nextEma = (cur - prevEma) * multiplier + prevEma;
+        ema[i] = { date: prices[i].date, ema: nextEma };
+        prevEma = nextEma;
+      }
+      return ema.filter(x => x !== undefined);
+    }
+    
+    // Compute MACD and Signal lines.
+    function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
+      let fastEMA = computeEMA(prices, fast);
+      let slowEMA = computeEMA(prices, slow);
+      let macdLine = [];
+      for (let i = 0; i < slowEMA.length; i++) {
+        let date = slowEMA[i].date;
+        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+        if (match) {
+          macdLine.push({ date: date, macd: match.ema - slowEMA[i].ema });
+        }
+      }
+      if (macdLine.length < signal) return { macdLine: macdLine, signalLine: [] };
+      let signalLine = [];
+      const m = 2 / (signal + 1);
+      let sumMacd = 0;
+      for (let i = 0; i < signal; i++) {
+        sumMacd += macdLine[i].macd;
+      }
+      let prevSig = sumMacd / signal;
+      signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
+      for (let i = signal; i < macdLine.length; i++) {
+        let s = (macdLine[i].macd - prevSig) * m + prevSig;
+        signalLine[i] = { date: macdLine[i].date, signal: s };
+        prevSig = s;
+      }
+      signalLine = signalLine.filter(x => x !== undefined);
+      return { macdLine: macdLine, signalLine: signalLine };
+    }
+    
+    // Plot MACD Chart with histogram bars for visual confirmation.
+    function plotMACD(prices) {
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if (macdLine.length === 0 || signalLine.length === 0) return;
+      
+      const datesMACD = macdLine.map(item => item.date);
+      const macdValues = macdLine.map(item => item.macd);
+      const datesSignal = signalLine.map(item => item.date);
+      const signalValues = signalLine.map(item => item.signal);
+      
+      // Compute histogram: difference between MACD and Signal.
+      let histDates = [];
+      let histValues = [];
+      const len = Math.min(macdLine.length, signalLine.length);
+      for (let i = 0; i < len; i++) {
+        histDates.push(macdLine[i].date);
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      
+      const traceHist = {
+        x: histDates,
+        y: histValues,
+        type: 'bar',
+        name: 'Histogram',
+        marker: {
+          color: histValues.map(val => val >= 0 ? 'green' : 'red')
+        }
+      };
+      
+      const traceMACD = {
+        x: datesMACD,
+        y: macdValues,
+        mode: 'lines',
+        name: 'MACD',
+        line: { color: 'blue' }
+      };
+      
+      const traceSignal = {
+        x: datesSignal,
+        y: signalValues,
+        mode: 'lines',
+        name: 'Signal',
+        line: { color: 'orange' }
+      };
+      
+      const layout = {
+        title: "MACD Chart",
+        xaxis: { title: "Date" },
+        yaxis: { title: "MACD" },
+        dragmode: 'zoom'
+      };
+      
+      Plotly.newPlot("macdChart", [traceHist, traceMACD, traceSignal], layout);
+      // Make the chart container visible.
+      document.getElementById("macdChart").style.display = "block";
+      
+      return { macdLine, signalLine, histValues };
+    }
+    
+    // Polynomial regression using a Vandermonde matrix (3rd degree).
+    function polynomialRegression(x, y, degree) {
+      let X = [];
+      for (let i = 0; i < x.length; i++) {
+        let row = [];
+        for (let j = 0; j <= degree; j++) {
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      const XT = math.transpose(X);
+      const XTX = math.multiply(XT, X);
+      const XTy = math.multiply(XT, y);
+      const coeffsMatrix = math.lusolve(XTX, XTy);
+      const coeffs = coeffsMatrix.map(val => val[0]);
+      return coeffs;
+    }
+    
+    // Evaluate a polynomial at a given x.
+    function predictValue(coeffs, x) {
+      return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
+    }
+    
+    // Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
+    function computeMomentumScoreUsingRegression(histValues) {
+      if (histValues.length < 6) return null;
+      const recentHist = histValues.slice(-6);
+      const x = [1, 2, 3, 4, 5, 6];
+      const coeffs = polynomialRegression(x, recentHist, 3);
+      const predicted = predictValue(coeffs, 7);
+      const lastValue = recentHist[recentHist.length - 1];
+      const delta = predicted - lastValue;
+      const k = 5; // sensitivity factor
+      const score = 100 / (1 + Math.exp(-k * delta));
+      return score;
+    }
+    
+    // Compute the gap trend score using regression on both the MACD and Signal lines.
+    function computeGapTrendScore(macdLine, signalLine) {
+      if (macdLine.length < 6 || signalLine.length < 6) return null;
+      const recentMACD = macdLine.slice(-6).map(item => item.macd);
+      const recentSignal = signalLine.slice(-6).map(item => item.signal);
+      const x = [1, 2, 3, 4, 5, 6];
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+      const predictedMACD = predictValue(macdCoeffs, 7);
+      const predictedSignal = predictValue(signalCoeffs, 7);
+      const predictedGap = predictedMACD - predictedSignal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const delta = predictedGap - currentGap;
+      const k = 5; // sensitivity factor
+      const gapScore = 100 / (1 + Math.exp(-k * delta));
+      return { gapScore, delta, currentGap, predictedGap };
+    }
+    
+    // Compute the overall MACD score using Position Score, new Gap Trend Score, and the new Momentum Score.
+    function computeNewMACDScore(prices) {
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if (macdLine.length < 2 || signalLine.length < 2) return null;
+      
+      const len = Math.min(macdLine.length, signalLine.length);
+      const latestMACD = macdLine[len - 1].macd;
+      
+      // 1. Position Score: Map the latest MACD relative to zero using a logistic function.
+      const positionScore = 100 / (1 + Math.exp(latestMACD));
+      
+      // 2. New Gap Trend Score using regression on both MACD and Signal lines.
+      const gapData = computeGapTrendScore(macdLine, signalLine);
+      const gapScore = gapData ? gapData.gapScore : null;
+      
+      // 3. Momentum Score: Use histogram regression.
+      let histValues = [];
+      for (let i = 0; i < len; i++) {
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      const momentumScore = computeMomentumScoreUsingRegression(histValues);
+      
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
+      return { positionScore, gapScore, momentumScore, finalScore };
+    }
+    
+    // Main analysis: fetch historical data, compute scores, and plot the MACD chart.
+    document.getElementById("runAnalysis").addEventListener("click", async () => {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('output').style.display = 'none';
+      document.getElementById("macdChart").style.display = "none";
+      document.getElementById("explanationButton").style.display = "none";
+      
+      const ticker = document.getElementById('ticker').value.trim();
+      const periodMonths = parseInt(document.getElementById('period').value);
+      if (!ticker) {
+        alert("Please enter a ticker symbol.");
+        document.getElementById('loading').style.display = 'none';
+        return;
+      }
+      
+      try {
+        const histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        const resp = await fetch(histUrl);
+        const data = await resp.json();
+        if (!data["Time Series (Daily)"]) {
+          throw new Error("Unable to retrieve valid historical data.");
+        }
+        const prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+        if (prices.length < 80) { // Ensure sufficient data.
+          alert("Not enough historical data for the selected period.");
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+        
+        // Plot the MACD chart with histogram.
+        const macdData = plotMACD(prices);
+        
+        // Compute the MACD scores.
+        const macdScores = computeNewMACDScore(prices);
+        if (!macdScores) {
+          alert("Not enough MACD data to compute scores.");
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+        
+        // Display the individual scores and the final MACD score.
+        document.getElementById('output').innerHTML = `
+          <h2>MACD Analysis for ${ticker}</h2>
+          <p><strong>Position Score:</strong> ${macdScores.positionScore.toFixed(2)}%</p>
+          <p><strong>Gap Trend Score:</strong> ${macdScores.gapScore.toFixed(2)}%</p>
+          <p><strong>Momentum Score (Regression based):</strong> ${macdScores.momentumScore.toFixed(2)}%</p>
+          <hr>
+          <p><strong>Final MACD Score:</strong> ${macdScores.finalScore.toFixed(2)}%</p>
+        `;
+        document.getElementById('output').style.display = 'block';
+        document.getElementById("explanationButton").style.display = "block";
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+      document.getElementById('loading').style.display = 'none';
+    });
+    
+    // View Detailed Explanation: Opens a new window with a detailed explanation of each calculation.
+    document.getElementById("explanationButton").addEventListener("click", () => {
+      const explanationWindow = window.open("", "_blank");
+      const explanationHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>Detailed MACD Calculation Explanation</title>
+        <style>
+          body { 
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f9fafb; 
+            color: #333; 
+            margin: 0 auto; 
+            max-width: 900px; 
+            padding: 2rem; 
+            line-height: 1.6; 
+          }
+          h1, h2 { text-align: center; }
+          pre { 
+            background: #eee; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+          }
+          a { color: #2563eb; }
+        </style>
+      </head>
+      <body>
+        <h1>Detailed MACD Calculation Explanation</h1>
+        <section>
+          <h2>1. Position Score</h2>
+          <p>The Position Score uses the latest MACD value and maps it to a 0–100 range using a logistic function. The formula is:</p>
+          <pre>positionScore = 100 / (1 + Math.exp(latestMACD));</pre>
+          <p>
+            This means that if the latest MACD value is very negative, the exponential term becomes very small and the score approaches 100 (bullish). Conversely, if the MACD is positive, the score moves toward 0 (bearish).
+          </p>
+        </section>
+        <section>
+          <h2>2. Gap Trend Score</h2>
+          <p>
+            The Gap Trend Score measures how the gap between the MACD and Signal lines is expected to change. Instead of comparing only the last two values, we:
+          </p>
+          <ol>
+            <li>
+              Use the last 6 data points from both the MACD and Signal lines.
+            </li>
+            <li>
+              Fit a 3rd-degree polynomial regression (using a Vandermonde matrix) to each series.
+            </li>
+            <li>
+              Predict the 7th value for both the MACD and Signal lines.
+            </li>
+            <li>
+              Calculate the <strong>predicted gap</strong> as the difference between the predicted MACD and predicted Signal.
+            </li>
+            <li>
+              Compare it with the <strong>current gap</strong> (latest MACD minus latest Signal) to obtain the delta.
+            </li>
+            <li>
+              Map the delta via a logistic function:
+              <pre>gapScore = 100 / (1 + Math.exp(-k * delta));</pre>
+            </li>
+          </ol>
+          <p>
+            A positive delta indicates a bullish change (whether the MACD is below or above the Signal), while a negative delta would lower the score.
+          </p>
+        </section>
+        <section>
+          <h2>3. Momentum Score</h2>
+          <p>
+            The Momentum Score examines the MACD histogram (difference between MACD and Signal) over the last 6 values:
+          </p>
+          <ol>
+            <li>
+              Gather the last 6 histogram values.
+            </li>
+            <li>
+              Fit a 3rd-degree polynomial regression to these values.
+            </li>
+            <li>
+              Predict the 7th histogram value.
+            </li>
+            <li>
+              Calculate the delta between the predicted and the last observed histogram value.
+            </li>
+            <li>
+              Use a logistic function to map this delta to a score:
+              <pre>momentumScore = 100 / (1 + Math.exp(-k * delta));</pre>
+            </li>
+          </ol>
+          <p>
+            A positive delta means the histogram (and therefore momentum) is increasing, leading to a score above 50, while a negative delta suggests decreasing momentum.
+          </p>
+        </section>
+        <section>
+          <h2>4. Final MACD Score</h2>
+          <p>
+            The Final MACD Score is the average of the three individual scores:
+          </p>
+          <pre>finalScore = (positionScore + gapScore + momentumScore) / 3;</pre>
+          <p>
+            This combined score provides a nuanced overall view of the MACD, taking into account the current position, the anticipated change in the gap between the MACD and Signal lines, and the momentum as indicated by the histogram.
+          </p>
+        </section>
+        <section style="text-align:center;">
+          <p><a href="#" onclick="window.close(); return false;">Close Explanation</a></p>
+        </section>
+      </body>
+      </html>
+      `;
+      explanationWindow.document.write(explanationHTML);
+      explanationWindow.document.close();
+    });
+  </script>
+</body>
+</html>

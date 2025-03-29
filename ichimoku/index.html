@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ichimoku Technical Analysis Tool</title>
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    p, li {
+      margin-bottom: 0.75em;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .chartContainer {
+      margin-top: 20px;
+    }
+    /* Aggregated Signal Meter styles */
+    #aggregateSection {
+      display: none;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    #aggregateBar {
+      position: relative;
+      background: linear-gradient(to right, red, green);
+      height: 30px;
+      border-radius: 15px;
+      margin: 10px 0;
+    }
+    #aggregateMarker {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: black;
+    }
+    #aggregateScoreText {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+    }
+    /* Back to Home Button */
+    #backHome {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to Home Button -->
+  <button id="backHome" onclick="window.location.href='https://www.projectmanagerhelper.com'">Back to Home</button>
+
+  <h1>Ichimoku Technical Analysis Tool</h1>
+  <p>Enter a ticker symbol and a historical period (in months) to generate a candlestick chart with Ichimoku overlays and detailed parameter scores.</p>
+
+  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+  <input type="text" id="ticker" value="AAPL">
+  
+  <label for="period">Historical Period (months):</label>
+  <input type="number" id="period" value="12" min="1">
+
+  <button id="runAnalysis">Run Analysis</button>
+  <div id="loading" style="display:none;">Loading data and running analysis...</div>
+
+  <!-- Aggregated Signal Meter -->
+  <div id="aggregateSection">
+    <h2>Aggregated Ichimoku Signal</h2>
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
+      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
+        <div id="aggregateMarker"></div>
+        <span id="aggregateScoreText"></span>
+      </div>
+      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
+    </div>
+  </div>
+
+  <!-- Candlestick Chart with Ichimoku Overlay -->
+  <div class="chartContainer section" id="candleSection" style="display:none;">
+    <h2>Candlestick Chart with Ichimoku Overlay</h2>
+    <div id="candleChart"></div>
+  </div>
+
+  <!-- Parameter Scores Section -->
+  <div class="section" id="scoresSection" style="display:none;">
+    <h2>Ichimoku Parameter Scores</h2>
+    <ul>
+      <li id="scoreCloud"></li>
+      <li id="scoreTenkan"></li>
+      <li id="scoreChikou"></li>
+      <li id="scoreSenkou"></li>
+    </ul>
+    <p><strong>Overall Ichimoku Signal:</strong> <span id="overallScore"></span>%</p>
+  </div>
+
+  <!-- Detailed Explanation Button -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="explanationButton">View Detailed Explanation</button>
+  </div>
+
+  <script>
+    // Global variable to store analysis details
+    let ichimokuReport = null;
+
+    /*************** Utility Functions ***************/
+    function parseAlphaDate(str) {
+      const year  = str.substring(0, 4);
+      const month = str.substring(4, 6);
+      const day   = str.substring(6, 8);
+      return new Date(`${year}-${month}-${day}`);
+    }
+
+    // Process historical data; expects keys "5. adjusted close", "2. high", "3. low"
+    function processHistoricalData(timeSeries, periodMonths) {
+      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+      const endDate = new Date(dates[dates.length - 1]);
+      const startDate = new Date(endDate);
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let prices = [];
+      for (let date of dates) {
+        const dt = new Date(date);
+        if (dt >= startDate && dt <= endDate) {
+          prices.push({
+            date: dt,
+            open: parseFloat(timeSeries[date]["1. open"]),
+            high: parseFloat(timeSeries[date]["2. high"]),
+            low: parseFloat(timeSeries[date]["3. low"]),
+            close: parseFloat(timeSeries[date]["5. adjusted close"])
+          });
+        }
+      }
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
+    }
+
+    /*************** Ichimoku Calculations ***************/
+    function computeIchimoku(prices) {
+      let tenkan = [];
+      let kijun = [];
+      let senkouA = [];
+      let senkouB = [];
+      // Tenkan-sen (Conversion Line): 9-period high and low average
+      for (let i = 8; i < prices.length; i++) {
+        let period9 = prices.slice(i - 8, i + 1);
+        let high9 = Math.max(...period9.map(p => p.high));
+        let low9 = Math.min(...period9.map(p => p.low));
+        tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
+      }
+      // Kijun-sen (Base Line): 26-period high and low average
+      for (let i = 25; i < prices.length; i++) {
+        let period26 = prices.slice(i - 25, i + 1);
+        let high26 = Math.max(...period26.map(p => p.high));
+        let low26 = Math.min(...period26.map(p => p.low));
+        kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+      }
+      // Senkou Span A: (Tenkan-sen + Kijun-sen) / 2, plotted 26 periods ahead
+      let minLen = Math.min(tenkan.length, kijun.length);
+      for (let i = 0; i < minLen; i++) {
+        let baseDate = kijun[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+      }
+      // Senkou Span B: 52-period high and low average, plotted 26 periods ahead
+      for (let i = 51; i < prices.length; i++) {
+        let period52 = prices.slice(i - 51, i + 1);
+        let high52 = Math.max(...period52.map(p => p.high));
+        let low52 = Math.min(...period52.map(p => p.low));
+        let baseDate = prices[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+      }
+      // Chikou Span: Today's close, plotted 26 periods back
+      let chikou = [];
+      for (let i = 26; i < prices.length; i++) {
+        chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+      }
+      return {
+        tenkan: tenkan,
+        kijun: kijun,
+        senkouA: senkouA,
+        senkouB: senkouB,
+        chikou: chikou
+      };
+    }
+
+    /*************** Scoring Functions ***************/
+    // Parameter 1: Price vs Cloud Score
+    function scoreCloud(currentPrice, senkouA, senkouB) {
+      let cloudTop = Math.max(senkouA, senkouB);
+      let cloudBottom = Math.min(senkouA, senkouB);
+      let mid = (cloudTop + cloudBottom) / 2;
+      let half = (cloudTop - cloudBottom) / 2 || 1;
+      let norm = (currentPrice - mid) / half;
+      // Use logistic function with moderate steepness
+      let C = 1;
+      return 100 / (1 + Math.exp(-C * norm));
+    }
+
+    // Parameter 2: Tenkan/Kijun Cross Score
+    function scoreTenkan(tenkan, kijun) {
+      let diff = tenkan - kijun;
+      // Use logistic function: positive diff is bullish.
+      let D = 0.2;
+      return 100 / (1 + Math.exp(-D * diff));
+    }
+
+    // Parameter 3: Chikou Span Confirmation Score
+    function scoreChikou(currentPrice, price26PeriodsAgo) {
+      let diff = currentPrice - price26PeriodsAgo;
+      // Use logistic with a gentle slope
+      let E = 0.1;
+      return 100 / (1 + Math.exp(-E * diff));
+    }
+
+    // Parameter 4: Senkou Cross Score (Cloud Color)
+    function scoreSenkou(senkouA, senkouB) {
+      let diff = senkouA - senkouB;
+      // Normalize by average of senkou values
+      let avg = (senkouA + senkouB) / 2 || 1;
+      let norm = diff / avg;
+      let F = 3;
+      return 100 / (1 + Math.exp(-F * norm));
+    }
+
+    // Overall Ichimoku Signal: Average of the four scores.
+    function overallIchimokuScore(score1, score2, score3, score4) {
+      return (score1 + score2 + score3 + score4) / 4;
+    }
+
+    /*************** Charting Functions ***************/
+    // Create candlestick chart with Ichimoku overlays
+    function plotCandlestickIchimoku(prices, ichimokuData) {
+      // Prepare arrays for candlestick chart
+      let dates = prices.map(p => p.date);
+      let open = prices.map(p => p.open);
+      let high = prices.map(p => p.high);
+      let low = prices.map(p => p.low);
+      let close = prices.map(p => p.close);
+      
+      // Candlestick trace
+      let traceCandlestick = {
+        x: dates,
+        open: open,
+        high: high,
+        low: low,
+        close: close,
+        type: 'candlestick',
+        name: 'Price'
+      };
+      
+      // Overlay Ichimoku lines
+      let traceTenkan = {
+        x: ichimokuData.tenkan.map(item => item.date),
+        y: ichimokuData.tenkan.map(item => item.value),
+        mode: 'lines',
+        name: 'Tenkan-sen',
+        line: { dash: 'dash', color: 'blue' }
+      };
+      let traceKijun = {
+        x: ichimokuData.kijun.map(item => item.date),
+        y: ichimokuData.kijun.map(item => item.value),
+        mode: 'lines',
+        name: 'Kijun-sen',
+        line: { dash: 'dash', color: 'red' }
+      };
+      let traceSenkouA = {
+        x: ichimokuData.senkouA.map(item => item.date),
+        y: ichimokuData.senkouA.map(item => item.value),
+        mode: 'lines',
+        name: 'Senkou Span A',
+        line: { color: 'green' }
+      };
+      let traceSenkouB = {
+        x: ichimokuData.senkouB.map(item => item.date),
+        y: ichimokuData.senkouB.map(item => item.value),
+        mode: 'lines',
+        name: 'Senkou Span B',
+        line: { color: 'brown' },
+        fill: 'tonexty'
+      };
+      let traceChikou = {
+        x: ichimokuData.chikou.map(item => item.date),
+        y: ichimokuData.chikou.map(item => item.value),
+        mode: 'lines',
+        name: 'Chikou Span',
+        line: { color: 'purple' }
+      };
+      
+      let layout = {
+        title: "Candlestick Chart with Ichimoku Cloud",
+        xaxis: { title: "Date" },
+        yaxis: { title: "Price" },
+        dragmode: 'zoom'
+      };
+      
+      Plotly.newPlot("candleChart", [traceCandlestick, traceTenkan, traceKijun, traceSenkouA, traceSenkouB, traceChikou], layout);
+    }
+
+    /*************** Main Analysis Function ***************/
+    document.getElementById("runAnalysis").addEventListener("click", async () => {
+      document.getElementById('loading').style.display = 'block';
+      // Hide previous sections
+      document.getElementById('aggregateSection').style.display = 'none';
+      document.getElementById('candleSection').style.display = 'none';
+      document.getElementById('scoresSection').style.display = 'none';
+      
+      let ticker = document.getElementById('ticker').value.trim();
+      let periodMonths = parseInt(document.getElementById('period').value);
+      if (!ticker) {
+        alert("Please enter a ticker symbol.");
+        document.getElementById('loading').style.display = 'none';
+        return;
+      }
+      
+      try {
+        let histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let resp = await fetch(histUrl);
+        let data = await resp.json();
+        if (!data["Time Series (Daily)"]) {
+          throw new Error("Unable to retrieve valid historical data.");
+        }
+        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+        if (prices.length < 80) {  // need enough data for Ichimoku (at least 52+26)
+          alert("Not enough historical data for the selected period.");
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+        
+        // Compute Ichimoku lines
+        let ichimokuData = computeIchimoku(prices);
+        
+        // Plot candlestick chart with Ichimoku overlay
+        plotCandlestickIchimoku(prices, ichimokuData);
+        document.getElementById('candleSection').style.display = 'block';
+        
+        // For scoring, use the last day's values:
+        let currentPrice = prices[prices.length - 1].close;
+        // For Cloud score, use last senkou values:
+        let lastSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+        let lastSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+        let cloudScore = scoreCloud(currentPrice, lastSenkouA, lastSenkouB);
+        
+        // Tenkan/Kijun score: use last available values
+        let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+        let latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+        let tenkanScore = scoreTenkan(latestTenkan, latestKijun);
+        
+        // Chikou score: compare current price to price 26 periods ago
+        let price26PeriodsAgo = prices[prices.length - 26].close;
+        let chikouScore = scoreChikou(currentPrice, price26PeriodsAgo);
+        
+        // Senkou score: based on cloud cross (difference between Senkou A and B)
+        let senkouScore = scoreSenkou(lastSenkouA, lastSenkouB);
+        
+        // Overall Ichimoku Signal is the average of these 4 scores.
+        let overallScore = overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore);
+        
+        // Display individual scores
+        document.getElementById('scoreCloud').innerText = `Price vs Cloud Score: ${cloudScore.toFixed(1)}%`;
+        document.getElementById('scoreTenkan').innerText = `Tenkan/Kijun Cross Score: ${tenkanScore.toFixed(1)}%`;
+        document.getElementById('scoreChikou').innerText = `Chikou Span Score: ${chikouScore.toFixed(1)}%`;
+        document.getElementById('scoreSenkou').innerText = `Cloud Cross Score: ${senkouScore.toFixed(1)}%`;
+        
+        // Set overall score in the scores section
+        document.getElementById('overallScore').innerText = overallScore.toFixed(2);
+        
+        // Set aggregated meter
+        document.getElementById('aggregateScoreText').innerText = `${overallScore.toFixed(2)}%`;
+        document.getElementById('aggregateMarker').style.left = `${overallScore}%`;
+        document.getElementById('aggregateSection').style.display = 'block';
+        
+        // Show scores section
+        document.getElementById('scoresSection').style.display = 'block';
+        
+        ichimokuReport = {
+          ticker: ticker,
+          periodMonths: periodMonths,
+          currentPrice: currentPrice,
+          senkouA: lastSenkouA,
+          senkouB: lastSenkouB,
+          tenkan: latestTenkan,
+          kijun: latestKijun,
+          price26Ago: price26PeriodsAgo,
+          scores: {
+            cloud: cloudScore,
+            tenkan: tenkanScore,
+            chikou: chikouScore,
+            senkou: senkouScore
+          },
+          overall: overallScore
+        };
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    /*************** Detailed Explanation ***************/
+    document.getElementById("explanationButton").addEventListener("click", () => {
+      if (!ichimokuReport) {
+        alert("Please run an analysis first.");
+        return;
+      }
+      let win = window.open("", "_blank");
+      let html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</title>
+        <style>
+          body { 
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f9fafb; 
+            color: #333; 
+            margin: 0 auto; 
+            max-width: 900px; 
+            padding: 2rem; 
+            line-height: 1.6; 
+          }
+          h1, h2, h3 { text-align: center; }
+          section { margin-bottom: 2rem; }
+          pre { 
+            background: #eee; 
+            padding: 1rem; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+          }
+          a { color: #2563eb; }
+        </style>
+      </head>
+      <body>
+        <h1>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</h1>
+        
+        <section>
+          <h2>Input Parameters</h2>
+          <p><strong>Ticker:</strong> ${ichimokuReport.ticker}</p>
+          <p><strong>Historical Period (months):</strong> ${ichimokuReport.periodMonths}</p>
+          <p>This report uses historical daily candlestick data (open, high, low, close) to calculate Ichimoku components and generate parameter scores.</p>
+        </section>
+        
+        <section>
+          <h2>Price vs. Cloud Score</h2>
+          <p><strong>Definition:</strong> The cloud is defined by Senkou Span A and Senkou Span B. We compute the cloud’s midpoint and half‑width, then normalize the current price relative to this cloud.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+Cloud Top = max(Senkou Span A, Senkou Span B)
+Cloud Bottom = min(Senkou Span A, Senkou Span B)
+mid = (Cloud Top + Cloud Bottom) / 2
+half = (Cloud Top - Cloud Bottom) / 2
+norm = (Current Price - mid) / half
+Base_Cloud = 100 / (1 + exp(-1 × norm))
+          </pre>
+          <p><strong>Interpretation:</strong> A price far above the cloud yields a high score (closer to 100, bullish), while a price far below gives a low score (closer to 0, bearish). In our example, the computed score is <strong>${ichimokuReport.scores.cloud.toFixed(1)}%</strong>.</p>
+        </section>
+        
+        <section>
+          <h2>Tenkan/Kijun Cross Score</h2>
+          <p><strong>Definition:</strong> The Tenkan-sen (Conversion Line) and Kijun-sen (Base Line) indicate short‑term and medium‑term trends. When Tenkan is above Kijun, it is bullish.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff = Tenkan - Kijun
+Base_Tenkan = 100 / (1 + exp(-0.2 × diff))
+          </pre>
+          <p><strong>Interpretation:</strong> A positive diff results in a score above 50 (bullish), while a negative diff yields a score below 50. In our example, the score is <strong>${ichimokuReport.scores.tenkan.toFixed(1)}%</strong>.</p>
+        </section>
+        
+        <section>
+          <h2>Chikou Span Confirmation Score</h2>
+          <p><strong>Definition:</strong> The Chikou Span is the current closing price plotted 26 periods back. It is bullish if it lies above the price from 26 periods ago.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff_Chikou = Current Price - Price 26 Periods Ago
+Base_Chikou = 100 / (1 + exp(-0.1 × diff_Chikou))
+          </pre>
+          <p><strong>Interpretation:</strong> A positive difference (current price > price 26 periods ago) leads to a higher score, indicating bullish confirmation. Here the score is <strong>${ichimokuReport.scores.chikou.toFixed(1)}%</strong>.</p>
+        </section>
+        
+        <section>
+          <h2>Senkou Span Cross (Cloud Color) Score</h2>
+          <p><strong>Definition:</strong> The difference between Senkou Span A and Senkou Span B indicates the bullishness of the cloud. If Senkou Span A is well above Span B, the cloud is bullish.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff_Senkou = Senkou Span A - Senkou Span B
+avg_Senkou = (Senkou Span A + Senkou Span B) / 2
+norm = diff_Senkou / avg_Senkou
+Base_Senkou = 100 / (1 + exp(-3 × norm))
+          </pre>
+          <p><strong>Interpretation:</strong> A positive normalized difference results in a high score. In our case, the score is <strong>${ichimokuReport.scores.senkou.toFixed(1)}%</strong>.</p>
+        </section>
+        
+        <section>
+          <h2>Overall Ichimoku Signal</h2>
+          <p>The overall signal is computed as the average of the four parameter scores:</p>
+          <pre>
+Overall Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
+          </pre>
+          <p><strong>Overall Technical Bullish Score:</strong> ${ichimokuReport.overall.toFixed(2)}%</p>
+        </section>
+        
+        <section>
+          <h2>Disclaimers</h2>
+          <p><strong>Market Data Disclaimer:</strong> Historical candlestick data (open, high, low, close) is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time conditions.</p>
+          <p><strong>Analytical Disclaimer:</strong> The methods and metrics in this report are for informational purposes only and should not be taken as financial advice. Conduct your own research before making any decisions.</p>
+        </section>
+        
+        <section>
+          <h2>Conclusion</h2>
+          <p>This Ichimoku analysis tool integrates multiple aspects of the indicator – including the price’s position relative to the cloud, the Tenkan/Kijun cross, Chikou Span confirmation, and the cloud’s internal structure (Senkou Span A vs. B) – to provide a comprehensive technical signal. Each parameter is scored continuously based on its deviation from key trigger levels and its recent momentum. The overall score, presented on a signal meter, offers a unified view of the technical outlook. Use these insights as part of your broader trading strategy.</p>
+        </section>
+        
+        <section style="text-align:center;">
+          <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
+        </section>
+      </body>
+      </html>
+      `;
+      win.document.write(html);
+      win.document.close();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  color: #333;
+}
+
+/* Hero Section */
+.hero {
+  position: relative;
+  background: url('images/hero-background.jpg') center/cover no-repeat;
+  color: #fff;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 0;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Top Navigation with horizontal scrolling */
+.topnav {
+  background-color: #333;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+
+/* Hide the dropdown menu off-screen by default (for portal approach) */
+.dropdown-menu {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: none;
+  background-color: #333;
+  min-width: 150px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Top-level nav links */
+.topnav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+.topnav ul li {
+  flex: none;
+  position: relative; /* for initial dropdown positioning before portaling */
+}
+.topnav ul li a {
+  display: block;
+  padding: 14px 20px;
+  color: white;
+  text-decoration: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.topnav ul li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* ===== Dropdown items match the same styling as parent links ===== */
+.dropdown-menu li a {
+  display: block;
+  padding: 14px 20px; /* same as topnav links */
+  color: white;       /* same as topnav links */
+  background-color: #333; /* same background as parent */
+  text-decoration: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.dropdown-menu li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Main Tool Grid */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+/* Tool Cards */
+.tool-card {
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  text-align: center;
+  padding-bottom: 1rem;
+  transition: transform 0.2s ease;
+}
+.tool-card:hover {
+  transform: translateY(-2px);
+}
+.tool-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+}
+.tool-card h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.25rem;
+  color: #333;
+}
+.tool-card p {
+  margin: 0 1rem 1rem;
+  color: #666;
+}
+
+/* Buttons */
+.tool-button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #0078d4;
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+.tool-button:hover {
+  background: #005fa3;
+}
+.tool-button.disabled {
+  background: #ccc;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+
+/* === Override Feedback Button to Darker Theme === */
+#feedback-section a {
+  background-color: #333;
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  transition: background-color 0.3s;
+}
+#feedback-section a:hover {
+  background-color: #555;
+  color: #fff;
+}

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interactive Top Congress Trades</title>
+  <!-- Include Chart.js for graphing -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      text-align: center;
+      font-weight: 600;
+    }
+    p {
+      text-align: center;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    #loading {
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+    }
+    /* CSS spinner */
+    .spinner {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #2563eb;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #fff;
+      padding: 1rem;
+    }
+    .item {
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .item:hover {
+      background-color: #f3f3f3;
+    }
+    /* Filter section styling */
+    #filterSection {
+      margin-top: 20px;
+      text-align: center;
+      display: none;
+    }
+    #filterSection input {
+      width: 100px;
+      padding: 6px;
+      font-size: 1rem;
+      margin-right: 10px;
+    }
+    /* Chart container */
+    #chartContainer {
+      max-width: 800px;
+      margin: 20px auto;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Interactive Top Congress Trades</h1>
+  <p>This page displays the top 5 stocks bought and sold by Congress with filtering and interactive details.</p>
+
+  <!-- Button to load data -->
+  <div style="text-align: center;">
+    <button id="fetchButton">Load Congress Trades Data</button>
+  </div>
+
+  <!-- Spinner for buffering -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Loading data... (this may take 15 seconds)</p>
+  </div>
+
+  <!-- Filter section (appears after data load) -->
+  <div id="filterSection">
+    <label for="filterDays">Filter by days (e.g. 90):</label>
+    <input type="number" id="filterDays" value="90" min="1"/>
+    <button id="applyFilter">Apply Filter</button>
+  </div>
+
+  <!-- Two columns for Top 5 Buying and Selling -->
+  <div class="two-column">
+    <div id="buyCol" class="column" style="display:none;">
+      <h2>Top 5 Buying</h2>
+      <div id="buyContainer"></div>
+    </div>
+    <div id="sellCol" class="column" style="display:none;">
+      <h2>Top 5 Selling</h2>
+      <div id="sellContainer"></div>
+    </div>
+  </div>
+
+  <!-- Details section for a selected stock:
+       The graph appears at the top,
+       followed by the transaction details. -->
+  <div id="detailsSection" class="section" style="display:none;">
+    <h2>Stock Details</h2>
+    <div id="chartContainer">
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div id="details"></div>
+  </div>
+
+  <script>
+    let allData = []; // Global storage for fetched data
+
+    // Utility: Parse the Range string "$1,001 - $15,000" and compute the average
+    function getAverageFromRange(rangeStr) {
+      if (!rangeStr) return 0;
+      const cleanStr = rangeStr.replace(/\$/g, '').replace(/,/g, '');
+      const parts = cleanStr.split('-').map(s => parseFloat(s.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return (parts[0] + parts[1]) / 2;
+      }
+      return 0;
+    }
+
+    // Render the top stocks from the filtered data
+    function renderTopStocks(filteredData) {
+      // Group all trades by ticker (combining purchases and sales)
+      function groupByTicker(trades) {
+        const map = {};
+        trades.forEach(trade => {
+          const ticker = trade.Ticker || 'Unknown';
+          if (!map[ticker]) {
+            map[ticker] = { ticker, trades: [] };
+          }
+          map[ticker].trades.push(trade);
+        });
+        return Object.values(map);
+      }
+
+      const groups = groupByTicker(filteredData);
+
+      // For each group, compute:
+      // - Total Buy Dollars (sum of averages for purchase trades)
+      // - Total Sell Dollars (sum of averages for sale trades)
+      // - Net Dollars = Total Buy Dollars - Total Sell Dollars
+      // - Trade Count
+      groups.forEach(group => {
+        let totalBuy = 0, totalSell = 0;
+        group.trades.forEach(trade => {
+          const avg = getAverageFromRange(trade.Range);
+          if (trade.Transaction && trade.Transaction.toLowerCase() === 'purchase') {
+            totalBuy += avg;
+          } else if (trade.Transaction && trade.Transaction.toLowerCase() === 'sale') {
+            totalSell += avg;
+          }
+        });
+        group.totalBuy = totalBuy;
+        group.totalSell = totalSell;
+        group.netDollars = totalBuy - totalSell;
+        group.tradeCount = group.trades.length;
+      });
+
+      // Separate groups into top buys (net positive) and top sells (net negative)
+      const topBuys = groups.filter(group => group.netDollars > 0)
+                            .sort((a, b) => b.netDollars - a.netDollars)
+                            .slice(0, 5);
+      const topSells = groups.filter(group => group.netDollars < 0)
+                             .sort((a, b) => a.netDollars - b.netDollars)
+                             .slice(0, 5);
+
+      // Render top buying tickers
+      const buyContainer = document.getElementById('buyContainer');
+      buyContainer.innerHTML = '';
+      topBuys.forEach(group => {
+        const div = document.createElement('div');
+        div.classList.add('item');
+        div.innerHTML = `
+          <strong>${group.ticker}</strong><br>
+          Trades: ${group.tradeCount}<br>
+          Total Dollars Spent: $${group.netDollars.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        `;
+        // Clicking shows all transactions (buys and sells) for that ticker
+        div.addEventListener('click', () => showDetails(group));
+        buyContainer.appendChild(div);
+      });
+
+      // Render top selling tickers
+      const sellContainer = document.getElementById('sellContainer');
+      sellContainer.innerHTML = '';
+      topSells.forEach(group => {
+        const div = document.createElement('div');
+        div.classList.add('item');
+        // For sells, display the absolute value of net dollars
+        div.innerHTML = `
+          <strong>${group.ticker}</strong><br>
+          Trades: ${group.tradeCount}<br>
+          Total Dollars Acquired: $${Math.abs(group.netDollars).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        `;
+        div.addEventListener('click', () => showDetails(group));
+        sellContainer.appendChild(div);
+      });
+
+      document.getElementById('buyCol').style.display = topBuys.length > 0 ? 'block' : 'none';
+      document.getElementById('sellCol').style.display = topSells.length > 0 ? 'block' : 'none';
+    }
+
+    // Fetch data when the user clicks the fetch button
+    document.getElementById('fetchButton').addEventListener('click', async () => {
+      console.log("[DEBUG] Fetch button clicked");
+      document.getElementById('loading').style.display = 'block';
+
+      // Hide previous sections
+      document.getElementById('detailsSection').style.display = 'none';
+      document.getElementById('buyContainer').innerHTML = '';
+      document.getElementById('sellContainer').innerHTML = '';
+
+      try {
+        const response = await fetch('/api/topcongress');
+        console.log("[DEBUG] Response status:", response.status);
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`Failed to fetch data: ${response.status} - ${text}`);
+        }
+        const jsonResponse = await response.json();
+        if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+          throw new Error("Invalid data format from API. Expected { data: [] }");
+        }
+        allData = jsonResponse.data;
+        console.log("[DEBUG] Total records fetched:", allData.length);
+
+        // Initially render with all data (no date filter)
+        renderTopStocks(allData);
+        document.getElementById('filterSection').style.display = 'block';
+      } catch (error) {
+        console.error("[DEBUG] Error:", error);
+        alert("Error: " + error.message);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    });
+
+    // Apply filter by number of days (client-side filtering)
+    document.getElementById('applyFilter').addEventListener('click', () => {
+      const days = parseInt(document.getElementById('filterDays').value.trim()) || 90;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const filteredData = allData.filter(item => {
+        if (!item.TransactionDate) return false;
+        const tradeDate = new Date(item.TransactionDate);
+        return !isNaN(tradeDate) && tradeDate >= cutoff;
+      });
+      console.log("[DEBUG] Records after filtering by days (" + days + "):", filteredData.length);
+      renderTopStocks(filteredData);
+      document.getElementById('detailsSection').style.display = 'none';
+    });
+
+    // Show detailed transactions for a selected ticker and render timeline graph
+    function showDetails(group) {
+      const detailsSection = document.getElementById('detailsSection');
+      const detailsEl = document.getElementById('details');
+
+      // Render the timeline graph (using all transactions for the ticker)
+      renderTimelineGraph(group);
+
+      // Render the list of transactions
+      let html = `
+        <p><strong>Ticker:</strong> ${group.ticker}</p>
+        <p><strong>Total Trades:</strong> ${group.tradeCount}</p>
+        <p><strong>Net Dollars:</strong> $${group.netDollars.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+        <h3>All Transactions:</h3>
+        <ul>
+      `;
+      group.trades.forEach(trade => {
+        const representative = trade.Representative || 'N/A';
+        const party = trade.Party || 'N/A';
+        const transactionDate = trade.TransactionDate ? new Date(trade.TransactionDate).toLocaleDateString() : 'N/A';
+        const reportDate = trade.ReportDate ? new Date(trade.ReportDate).toLocaleDateString() : 'N/A';
+        const amount = trade.Amount || 'N/A';
+        const priceRange = trade.Range || 'N/A';
+        const transType = trade.Transaction || 'N/A';
+        html += `
+          <li>
+            <strong>Representative:</strong> ${representative}<br>
+            <strong>Party:</strong> ${party}<br>
+            <strong>Transaction Date:</strong> ${transactionDate}<br>
+            <strong>Report Date:</strong> ${reportDate}<br>
+            <strong>Amount:</strong> ${amount}<br>
+            <strong>Price Range:</strong> ${priceRange}<br>
+            <strong>Transaction:</strong> ${transType}
+            <hr>
+          </li>
+        `;
+      });
+      html += `</ul>`;
+      detailsEl.innerHTML = html;
+      detailsSection.style.display = 'block';
+      detailsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Render a timeline graph for the selected ticker using Chart.js
+    function renderTimelineGraph(group) {
+      // Group all trades (both purchase and sale) by TransactionDate
+      const timeline = {};
+      group.trades.forEach(trade => {
+        if (!trade.TransactionDate) return;
+        const dateStr = new Date(trade.TransactionDate).toLocaleDateString();
+        const avg = getAverageFromRange(trade.Range);
+        // For purchases add positive, for sales subtract
+        const value = (trade.Transaction && trade.Transaction.toLowerCase() === 'purchase') ? avg : -avg;
+        if (!timeline[dateStr]) {
+          timeline[dateStr] = 0;
+        }
+        timeline[dateStr] += value;
+      });
+      const sortedDates = Object.keys(timeline).sort((a, b) => new Date(a) - new Date(b));
+      const values = sortedDates.map(date => timeline[date]);
+
+      // Compute symmetric bounds for Y-axis
+      const minVal = Math.min(...values);
+      const maxVal = Math.max(...values);
+      const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
+
+      // Create or update the chart
+      const chartContainer = document.getElementById('chartContainer');
+      chartContainer.innerHTML = '<canvas id="trendChart"></canvas>';
+      const ctx = document.getElementById('trendChart').getContext('2d');
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sortedDates,
+          datasets: [{
+            label: 'Net Dollars per Day',
+            data: values,
+            fill: false,
+            borderColor: 'blue',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Daily Net Dollars Trend'
+            }
+          },
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: 'Dollars'
+              },
+              min: -absMax,
+              max: absMax
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

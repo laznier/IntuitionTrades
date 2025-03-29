@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Insider Trading Insights</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+      display: none;
+    }
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #fff;
+      padding: 1rem;
+    }
+    .column h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pickItem {
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: #f3f3f3;
+    }
+    .bullish {
+      color: green;
+    }
+    .bearish {
+      color: red;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Optional Back Button -->
+  <button onclick="window.location.href='https://www.projectmanagerhelper.com'">
+    Back to Main Page
+  </button>
+
+  <h1>Insider Trading Insights</h1>
+  <p>
+    Enter a ticker symbol (e.g., IBM) and a timeframe (in days) to retrieve insider trading data. 
+    Only transactions whose share price is within ±50% of the last close are considered.
+  </p>
+
+  <label for="ticker">Ticker Symbol:</label>
+  <input type="text" id="ticker" placeholder="e.g. IBM" />
+
+  <label for="days">Timeframe (days):</label>
+  <input type="number" id="days" placeholder="e.g. 30" value="30" />
+
+  <!-- Single button to fetch insider data -->
+  <button id="insiderButton">Get Insider Data</button>
+
+  <div id="loading">Loading insider data...</div>
+
+  <!-- Summary Section -->
+  <div id="statsSection" class="section" style="display:none;">
+    <h2>Insider Summary</h2>
+    <p id="statsSummary"></p>
+  </div>
+
+  <!-- Two columns for Acquisitions and Disposals -->
+  <div class="two-column" style="margin-top: 20px;">
+    <div id="bullishCol" class="column" style="display:none;">
+      <h2>Acquisitions (Buy)</h2>
+      <div id="bullishContainer"></div>
+    </div>
+    <div id="bearishCol" class="column" style="display:none;">
+      <h2>Disposals (Sell)</h2>
+      <div id="bearishContainer"></div>
+    </div>
+  </div>
+
+  <!-- Transaction Details Section -->
+  <div id="summarySection" class="section" style="display:none;">
+    <h2>Transaction Details</h2>
+    <div id="summary"></div>
+  </div>
+
+  <script>
+    // Fetch last close price using TIME_SERIES_DAILY_ADJUSTED data.
+    async function fetchLastPrice(ticker) {
+      const histUrl = `https://www.projectmanagerhelper.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
+      const histResponse = await fetch(histUrl);
+      if (!histResponse.ok) {
+        throw new Error("Failed to fetch historical data. Status: " + histResponse.status);
+      }
+      const histData = await histResponse.json();
+      const meta = histData["Meta Data"];
+      const timeSeries = histData["Time Series (Daily)"];
+      if (!meta || !timeSeries) {
+        throw new Error("Invalid historical data format.");
+      }
+      const lastRefreshed = meta["3. Last Refreshed"];
+      const lastRecord = timeSeries[lastRefreshed];
+      if (!lastRecord || !lastRecord["4. close"]) {
+        throw new Error("Could not determine last close price.");
+      }
+      return parseFloat(lastRecord["4. close"]);
+    }
+
+    // Event listener for "Get Insider Data" button
+    document.getElementById('insiderButton').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      const days = parseInt(document.getElementById('days').value.trim()) || 30;
+      if (!ticker) {
+        alert("Please enter a ticker symbol first.");
+        return;
+      }
+      
+      const loadingEl = document.getElementById('loading');
+      loadingEl.style.display = 'block';
+      document.getElementById('statsSection').style.display = 'none';
+      document.getElementById('bullishCol').style.display = 'none';
+      document.getElementById('bearishCol').style.display = 'none';
+      document.getElementById('summarySection').style.display = 'none';
+      document.getElementById('summary').innerHTML = '';
+
+      try {
+        // Fetch insider data
+        const url = `https://www.projectmanagerhelper.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to fetch insider data. Status: " + response.status);
+        }
+        const data = await response.json();
+        if (!data.data || !Array.isArray(data.data)) {
+          throw new Error("Invalid insider data format.");
+        }
+        // Fetch last close price from historical data
+        const lastPrice = await fetchLastPrice(ticker);
+        
+        // Define the price range: ±50% of lastPrice
+        const lowerBound = lastPrice * 0.5;
+        const upperBound = lastPrice * 1.5;
+        
+        // Optional: filter by timeframe
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        
+        // Filter transactions: must be within timeframe and have a valid share price within the bounds.
+        const filtered = data.data.filter(item => {
+          const d = new Date(item.transaction_date);
+          if (isNaN(d) || d < cutoff) return false;
+          const sharePrice = parseFloat(item.share_price);
+          if (isNaN(sharePrice) || sharePrice === 0) return false;
+          return sharePrice >= lowerBound && sharePrice <= upperBound;
+        });
+        
+        // Sort filtered transactions by date (oldest first)
+        filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+        
+        // Separate acquisitions and disposals
+        const acquisitions = filtered.filter(item => item.acquisition_or_disposal === 'A');
+        const disposals = filtered.filter(item => item.acquisition_or_disposal === 'D');
+        
+        // Calculate simple stats (optional)
+        let totalBuys = 0, totalSells = 0;
+        filtered.forEach(item => {
+          const sharesNum = parseFloat(item.shares) || 0;
+          if (item.acquisition_or_disposal === 'A') {
+            totalBuys += sharesNum;
+          } else if (item.acquisition_or_disposal === 'D') {
+            totalSells += sharesNum;
+          }
+        });
+        const statsSection = document.getElementById('statsSection');
+        const statsSummary = document.getElementById('statsSummary');
+        statsSummary.innerHTML = `
+          <p><strong>Timeframe:</strong> Last ${days} day(s)</p>
+          <p><strong>Total Buys:</strong> ${totalBuys.toLocaleString()} shares</p>
+          <p><strong>Total Sells:</strong> ${totalSells.toLocaleString()} shares</p>
+          <p><strong>Transactions Considered:</strong> ${filtered.length}</p>
+          <p><strong>Last Close Price:</strong> $${lastPrice.toFixed(2)}</p>
+          <p><strong>Valid Price Range:</strong> $${lowerBound.toFixed(2)} - $${upperBound.toFixed(2)}</p>
+        `;
+        statsSection.style.display = 'block';
+        
+        // Render acquisitions and disposals
+        showColumn(acquisitions, 'bullishCol', 'bullishContainer', true);
+        showColumn(disposals, 'bearishCol', 'bearishContainer', false);
+      } catch (err) {
+        console.error("Error retrieving insider data:", err);
+        alert("Error: " + err.message);
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    });
+
+    // Helper to render a column of transactions
+    function showColumn(list, colId, containerId, isBullish) {
+      const colEl = document.getElementById(colId);
+      const containerEl = document.getElementById(containerId);
+      containerEl.innerHTML = "";
+      if (list.length === 0) {
+        colEl.style.display = 'none';
+        return;
+      }
+      colEl.style.display = 'block';
+      list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.classList.add('pickItem');
+        div.classList.add(isBullish ? 'bullish' : 'bearish');
+        const sharesStr = parseFloat(item.shares).toLocaleString();
+        const dateStr = item.transaction_date || "N/A";
+        div.innerHTML = `<strong>${item.ticker}</strong> - ${sharesStr} shares on ${dateStr}`;
+        div.addEventListener('click', () => showSummary(item, idx + 1, isBullish));
+        containerEl.appendChild(div);
+      });
+    }
+
+    // Display details for a selected transaction
+    function showSummary(item, rank, isBullish) {
+      document.getElementById('summarySection').style.display = 'block';
+      const summaryEl = document.getElementById('summary');
+      let html = `<p><strong>Transaction #${rank}: ${item.ticker}</strong> (${isBullish ? 'Buy' : 'Sell'})</p>`;
+      html += "<ul>";
+      html += `<li><strong>Date:</strong> ${item.transaction_date || 'N/A'}</li>`;
+      html += `<li><strong>Executive:</strong> ${item.executive || 'N/A'}</li>`;
+      html += `<li><strong>Title:</strong> ${item.executive_title || 'N/A'}</li>`;
+      html += `<li><strong>Share Price:</strong> $${parseFloat(item.share_price).toFixed(2)}</li>`;
+      html += `<li><strong>Shares:</strong> ${parseFloat(item.shares).toLocaleString()}</li>`;
+      html += "</ul>";
+      summaryEl.innerHTML = html;
+      summaryEl.scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>
