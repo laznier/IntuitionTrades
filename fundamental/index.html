@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Standalone Fundamental Analysis</title>
+  <title>Combined Fundamental Analysis</title>
   <!-- Include Plotly for Charting -->
   <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
   <style>
@@ -66,7 +66,7 @@
     .chartContainer {
       margin-top: 20px;
     }
-    /* Aggregated Signal Meter styles */
+    /* Aggregated Fundamental Meter styles */
     #aggregateSection {
       display: none;
       margin-bottom: 20px;
@@ -123,13 +123,43 @@
       background: #f2f2f2;
       width: 30%;
     }
+
+    /* Mobile-specific adjustments */
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+      }
+      .section {
+        padding: 10px;
+        margin-top: 15px;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+      /* Adjust raw data table font size */
+      #rawDataTable th, #rawDataTable td {
+        padding: 4px;
+        font-size: 0.85rem;
+      }
+      /* Ensure Plotly charts resize on mobile */
+      .chartContainer div {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Standalone Fundamental Analysis</h1>
+  <h1>Combined Fundamental Analysis</h1>
   <p>Enter a ticker symbol to retrieve fundamental data.</p>
 
   <label for="ticker">Ticker Symbol (e.g. IBM):</label>
@@ -188,7 +218,7 @@
 
   <!-- Dividends -->
   <div class="section chartContainer" id="dividendSection" style="display:none;">
-    <h2>Dividend & Return Score</h2>
+    <h2>Dividend &amp; Return Score</h2>
     <div id="dividendChart"></div>
     <div id="dividendText" style="margin-top:10px; font-weight:600;"></div>
   </div>
@@ -239,7 +269,7 @@
           return;
         }
 
-        // 2) Show raw fundamental data (skipping 'Description') before anything else
+        // 2) Show raw fundamental data (skipping 'Description')
         showSection('rawDataSection');
         populateRawDataTable(data);
 
@@ -294,22 +324,18 @@
     /* 2) SCORING LOGIC                                    */
     /*******************************************************/
     function computeScores(d) {
-      // Utility for linear normalization
       const norm = (val, min, max) => {
         if(!val || isNaN(val)) return 50;
         const ratio = (val - min) / (max - min);
-        const scaled = ratio * 100;
-        return Math.max(0, Math.min(100, scaled));
+        return Math.max(0, Math.min(100, ratio * 100));
       };
 
-      // 1) Profitability
       const margin = norm(parseFloat(d.ProfitMargin), 0, 0.25);
       const opMargin = norm(parseFloat(d.OperatingMarginTTM), 0, 0.3);
       const roa = norm(parseFloat(d.ReturnOnAssetsTTM), 0, 0.15);
       const roe = norm(parseFloat(d.ReturnOnEquityTTM), 0, 0.35);
       const profitability = (margin + opMargin + roa + roe) / 4;
 
-      // 2) Valuation (inverted metrics)
       const pe = parseFloat(d.PERatio);
       const peScore = 100 - norm(pe, 5, 40);
       const peg = parseFloat(d.PEGRatio);
@@ -320,7 +346,6 @@
       const pbScore = 100 - norm(pb, 1, 10);
       const valuation = (peScore + pegScore + psScore + pbScore) / 4;
 
-      // 3) Growth
       const revGrowth = norm(parseFloat(d.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
       const earnGrowth = norm(parseFloat(d.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
       const priceRef = parseFloat(d['50DayMovingAverage']) || parseFloat(d['200DayMovingAverage']) || 0;
@@ -331,13 +356,11 @@
       const tgtScore = norm(ratio, 0, 0.5);
       const growth = (revGrowth + earnGrowth + tgtScore) / 3;
 
-      // 4) Dividend & Return
       const dy = norm(parseFloat(d.DividendYield), 0, 0.07);
       const dps = norm(parseFloat(d.DividendPerShare), 0, 10);
       const eps = norm(parseFloat(d.EPS), 0, 12);
       const dividends = (dy + dps + eps) / 3;
 
-      // 5) Financial Health
       const ebitda = parseFloat(d.EBITDA);
       const revTTM = parseFloat(d.RevenueTTM);
       const ebitdaMarginScore = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
@@ -368,7 +391,6 @@
     function showSection(id) {
       document.getElementById(id).style.display = 'block';
     }
-
     function plotCategory(divId, label, score) {
       const trace = {
         x: [label],
@@ -390,27 +412,16 @@
       };
       Plotly.newPlot(divId, [trace], layout);
     }
-
-    // Helper to fill the new "rawDataSection" table
-    // SKIP the 'Description' field so it only appears once in the Company Overview
     function populateRawDataTable(data) {
       const table = document.getElementById('rawDataTable');
-      // Clear any old content
       table.innerHTML = '';
-
-      // Build rows from key-value pairs
       for (const [key, value] of Object.entries(data)) {
-        // Skip the "Description" field
         if(key === "Description") continue;
-
         const row = document.createElement('tr');
-
         const cellKey = document.createElement('th');
         cellKey.textContent = key;
-
         const cellVal = document.createElement('td');
         cellVal.textContent = value;
-
         row.appendChild(cellKey);
         row.appendChild(cellVal);
         table.appendChild(row);
@@ -424,7 +435,6 @@
       let w = window.open('', '_blank');
       const html = `<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Fundamentals Explanation</title><style>body{font-family:Segoe UI;max-width:800px;margin:20px auto;padding:20px;line-height:1.6;}h1{text-align:center;font-weight:600;}code{background:#eee;padding:2px 4px;}table{border-collapse:collapse;margin-top:1rem;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f2f2f2;}p{text-align:justify;}</style></head><body>
       <h1>Expanded Fundamental Analysis Explanation</h1>
-
       <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
       <ul>
         <li><strong>Profitability</strong></li>
@@ -433,63 +443,28 @@
         <li><strong>Dividend & Return</strong></li>
         <li><strong>Financial Health</strong></li>
       </ul>
-
-      <p>Each category includes multiple metrics pulled from the Alpha Vantage <code>OVERVIEW</code> API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
-
+      <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
       <h2>Normalization Method</h2>
       <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
       <pre><code>ratio = (value - min) / (max - min)
 score = clamp(ratio * 100, 0, 100)</code></pre>
-      <p>If a value is higher than <code>max</code>, it caps at 100. If below <code>min</code>, it bottoms out at 0. Some examples:</p>
-      <table>
-        <thead>
-          <tr><th>Metric</th><th>Typical Bounds</th><th>Interpretation</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Profit Margin</td>
-            <td>0 to 25% (0.25)</td>
-            <td>Margin &gt; 25% is very high → near 100 score</td>
-          </tr>
-          <tr>
-            <td>Price-to-Earnings (P/E)</td>
-            <td>5 to 40</td>
-            <td>Lower is generally better → we invert using 100 - norm()</td>
-          </tr>
-          <tr>
-            <td>Beta</td>
-            <td>0 to 2</td>
-            <td>Beta = 1 is neutral (around 50); Beta=0 is stable (~100); Beta=2 is more risk (~0)</td>
-          </tr>
-        </tbody>
-      </table>
-
+      <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
       <h2>Profitability</h2>
-      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>Return on Assets (ROA)</strong>, and <strong>Return on Equity (ROE)</strong>. We assume typical upper ranges, then average the four normalized values for a single <strong>Profitability Score</strong>.</p>
-
+      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>, then averages the normalized values for a <strong>Profitability Score</strong>.</p>
       <h2>Valuation</h2>
-      <p>We look at <strong>P/E Ratio</strong>, <strong>PEG Ratio</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>. Because lower valuations are typically more attractive, we invert their scores: <code>ValuationScore = 100 - norm(metric)</code>. We then average these four metrics to get the <strong>Valuation Score</strong>.</p>
-
+      <p>We look at <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>, invert their scores, and average them to yield the <strong>Valuation Score</strong>.</p>
       <h2>Growth</h2>
-      <p>Growth includes metrics like <strong>Quarterly Revenue Growth (YoY)</strong>, <strong>Quarterly Earnings Growth (YoY)</strong>, and the <strong>upside difference</strong> between current price and the <strong>Analyst Target Price</strong>. Each is normalized and then averaged for a final <strong>Growth Score</strong>.</p>
-
+      <p>Growth includes metrics such as <strong>Quarterly Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>, averaged for a <strong>Growth Score</strong>.</p>
       <h2>Dividend &amp; Return</h2>
-      <p>We combine <strong>Dividend Yield</strong>, <strong>Dividend per Share</strong>, and <strong>Earnings per Share (EPS)</strong> into one category. We assume typical maximum bounds for yield (~7%), DPS (~$10), and EPS (~$12). The average of these three normalized metrics produces the <strong>Dividend &amp; Return Score</strong>.</p>
-
+      <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong> to yield the <strong>Dividend &amp; Return Score</strong>.</p>
       <h2>Financial Health</h2>
-      <p>This category looks at <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (also inverted around 1). We then average these for the <strong>Financial Health Score</strong>.</p>
-
+      <p>We compute a <strong>Financial Health Score</strong> from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
       <h2>Final Aggregation</h2>
-      <p>After computing each category score, we simply take their average:</p>
-      <pre><code>Aggregated Score = (Profitability + Valuation + Growth + Dividend & Return + Financial Health) / 5</code></pre>
-      <p>The aggregated score is displayed on a <em>meter</em> ranging from <strong>Weak (0%)</strong> to <strong>Strong (100%)</strong>.</p>
-
+      <p>The aggregated fundamental score is the average of the five category scores.</p>
       <h2>Interpretation &amp; Disclaimer</h2>
-      <p>A higher score often suggests a more fundamentally strong company by these basic metrics. However, these are <strong>generic cutoffs</strong> and do not account for industry-specific nuances. Always perform comprehensive research before investing.</p>
-
+      <p>A higher score suggests a fundamentally stronger company by these basic metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
       <p style='text-align:center;'><button onclick='window.close()'>Close</button></p>
       </body></html>`;
-
       w.document.write(html);
       w.document.close();
     });
