@@ -1167,23 +1167,23 @@
     }
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
-    let bufferDotInterval;
     function showBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "flex";
-      const loadingText = document.getElementById("loadingText");
-      let dotCount = 0;
-      loadingText.innerText = "Running 10,000 simulation";
-      bufferDotInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4;
-        loadingText.innerText = "Running 10,000 simulation" + ".".repeat(dotCount);
-      }, 500);
-    }
-    function hideBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "none";
-      clearInterval(bufferDotInterval);
-    }
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "flex";
+  const loadingText = document.getElementById("loadingText");
+  let dotCount = 0;
+  loadingText.innerText = "Running 10,000 simulation";
+  bufferDotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    loadingText.innerText = "Running 10,000 simulation" + ".".repeat(dotCount);
+  }, 500);
+}
+
+function hideBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "none";
+  clearInterval(bufferDotInterval);
+}
 
     // Run simulation immediately while showing the overlay.
     async function runSimulation() {
