@@ -204,6 +204,32 @@
       text-align: left;
       padding-left: 1.5rem;
     }
+    
+    /* Styling for buy and sell tickers */
+    .buy-ticker,
+    .sell-ticker {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+      text-decoration: none;
+      transition: background-color 0.3s;
+      margin-bottom: 0.5rem;
+    }
+    .buy-ticker {
+      background-color: #28a745; /* Green for buys */
+      color: white;
+    }
+    .buy-ticker:hover {
+      background-color: #218838;
+    }
+    .sell-ticker {
+      background-color: #dc3545; /* Red for shorts */
+      color: white;
+    }
+    .sell-ticker:hover {
+      background-color: #c82333;
+    }
 
     /* ============================================================
        Tools Section
@@ -432,24 +458,24 @@
     </div>
   </header>
 
-  <!-- Weekly Stock Picks Section (replaces old slider) -->
+  <!-- Weekly Stock Picks Section -->
   <section id="weekly-stock-picks">
     <h2>Weekly Stock Picks</h2>
     <div class="stock-picks-container">
       <div class="stock-pick">
         <h3>Top 3 Buys</h3>
         <ol>
-          <li>Stock A</li>
-          <li>Stock B</li>
-          <li>Stock C</li>
+          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=CEG">CEG</a></li>
+          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=DLTR">DLTR</a></li>
+          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MSFT">VRSN</a></li>
         </ol>
       </div>
       <div class="stock-pick">
         <h3>Top 3 Shorts</h3>
         <ol>
-          <li>Stock X</li>
-          <li>Stock Y</li>
-          <li>Stock Z</li>
+          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a></li>
+          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=TDG">TDG</a></li>
+          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a></li>
         </ol>
       </div>
     </div>
@@ -498,7 +524,6 @@
         </div>
       </div>
     </section>
-
 
     <!-- Newsletter Signup Section -->
     <section id="newsletter-signup">
@@ -617,5 +642,29 @@
       });
     });
   </script>
+
+  <!-- 
+    Note: To complete the functionality, add the following script to your stocks page 
+    (e.g., stocks/index.html) so that when a ticker is passed as a URL parameter, 
+    the search field is auto-populated and the simulation is run automatically.
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticker = urlParams.get('ticker');
+        if (ticker) {
+          const searchField = document.getElementById('ticker-search');
+          if (searchField) {
+            searchField.value = ticker;
+          }
+          const runButton = document.getElementById('run-simulation');
+          if (runButton) {
+            runButton.click();
+          }
+        }
+      });
+    </script>
+  -->
+
 </body>
 </html>
