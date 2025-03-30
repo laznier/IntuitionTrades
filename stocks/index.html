@@ -1796,7 +1796,18 @@ Weighted Score = ( w_MC × MC_Bull
       <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
     </section>
 
-    <script>
+  
+
+  </body>
+  </html>`;
+
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+});
+
+  </script>
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
     // Check for the 'ticker' parameter in the URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -1819,14 +1830,5 @@ Weighted Score = ( w_MC × MC_Bull
   });
 </script>
 
-  </body>
-  </html>`;
-
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-});
-
-  </script>
 </body>
 </html>
