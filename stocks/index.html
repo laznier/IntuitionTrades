@@ -1345,7 +1345,7 @@ function hideBufferOverlay() {
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=30", "_blank");
+        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=120", "_blank");
       } else {
         alert("Enter a ticker first.");
       }
