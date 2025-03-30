@@ -293,6 +293,20 @@
 
     // Wire up the button
     document.getElementById("loadButton").addEventListener("click", loadSentimentData);
+
+  // Auto-populate the ticker and run sentiment analysis if "symbol" is provided in the URL.
+  window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const symbol = urlParams.get('symbol');
+    if (symbol) {
+      document.getElementById('tickerInput').value = symbol;
+      // Delay the click slightly to ensure all elements are loaded.
+      setTimeout(() => {
+        document.getElementById('loadButton').click();
+      }, 100);
+    }
+  };
+
   </script>
 </body>
 </html>
