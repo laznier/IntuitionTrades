@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analyst Bullish Score | Intuition Trades</title>
-  <!-- Optional: Include Plotly if you want to use a gauge; here we use simple div meters -->
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -15,10 +16,12 @@
       padding: 2rem;
       line-height: 1.6;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 20px;
       font-weight: 600;
+    }
+    h1 {
+      margin-bottom: 20px;
     }
     p, label {
       margin-bottom: 0.75em;
@@ -46,6 +49,7 @@
     button:hover {
       background: #1e3a8a;
     }
+    /* Meter styling used for Combined Score */
     .meter-section {
       margin-top: 30px;
       padding: 20px;
@@ -72,9 +76,11 @@
       background: black;
     }
     .score-text {
+      position: absolute;
+      width: 100%;
       text-align: center;
-      font-weight: bold;
       line-height: 30px;
+      font-weight: bold;
       color: #fff;
       text-shadow: 1px 1px 2px #000;
     }
@@ -82,6 +88,51 @@
       margin-top: 10px;
       font-style: italic;
       color: #f97316;
+      text-align: center;
+    }
+    /* Section for analyst rating breakdown */
+    .breakdown-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    .breakdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .breakdown-section th, .breakdown-section td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+    .breakdown-section th {
+      background: #f2f2f2;
+    }
+    /* Price Comparison Chart Section */
+    .chart-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    /* Explanation Button */
+    .explanation-btn {
+      display: block;
+      margin: 30px auto 0;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .explanation-btn:hover {
+      background: #1e3a8a;
     }
     /* Back to Home Button */
     #backHome {
@@ -100,11 +151,11 @@
       input[type="text"] {
         padding: 6px;
       }
-      button {
+      button, .explanation-btn {
         font-size: 0.9rem;
         padding: 8px 16px;
       }
-      .meter-section {
+      .meter-section, .breakdown-section, .chart-section {
         padding: 10px;
         margin-top: 15px;
       }
@@ -116,33 +167,15 @@
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
   <h1>Analyst Bullish Score</h1>
-  <p>Enter a ticker symbol to compute the analyst bullish score based on analyst recommendations and target premium.</p>
+  <p>Enter a ticker symbol to compute the overall analyst bullish score, view the breakdown of ratings, and compare the current price to the analyst target price.</p>
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
 
   <button id="runAnalysis">Run Analysis</button>
-  <div id="loading" style="display:none;">Loading data and computing score...</div>
+  <div id="loading" style="display:none;">Loading data and computing scores...</div>
 
-  <!-- Analyst Recommendation Meter -->
-  <div class="meter-section" id="recSection" style="display:none;">
-    <h2>Analyst Recommendation Score</h2>
-    <div class="meter" id="recMeter">
-      <div class="marker" id="recMarker"></div>
-      <div class="score-text" id="recScoreText"></div>
-    </div>
-  </div>
-
-  <!-- Price Premium Meter -->
-  <div class="meter-section" id="premiumSection" style="display:none;">
-    <h2>Target Premium Score</h2>
-    <div class="meter" id="premiumMeter">
-      <div class="marker" id="premiumMarker"></div>
-      <div class="score-text" id="premiumScoreText"></div>
-    </div>
-  </div>
-
-  <!-- Combined Analyst Bullish Score -->
+  <!-- Combined Analyst Bullish Score Meter (0–100%) -->
   <div class="meter-section" id="combinedSection" style="display:none;">
     <h2>Combined Analyst Bullish Score</h2>
     <div class="meter" id="combinedMeter">
@@ -151,13 +184,53 @@
     </div>
   </div>
 
+  <!-- Analyst Ratings Breakdown Section -->
+  <div class="breakdown-section" id="ratingBreakdownSection" style="display:none;">
+    <h2>Analyst Ratings Breakdown</h2>
+    <table>
+      <tr>
+        <th>Rating</th>
+        <th>Count</th>
+      </tr>
+      <tr>
+        <td>Strong Buy</td>
+        <td id="ratingSB"></td>
+      </tr>
+      <tr>
+        <td>Buy</td>
+        <td id="ratingB"></td>
+      </tr>
+      <tr>
+        <td>Hold</td>
+        <td id="ratingHold"></td>
+      </tr>
+      <tr>
+        <td>Sell</td>
+        <td id="ratingS"></td>
+      </tr>
+      <tr>
+        <td>Strong Sell</td>
+        <td id="ratingSS"></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Price Comparison Chart Section -->
+  <div class="chart-section" id="priceChartSection" style="display:none;">
+    <h2>Current Price vs. Analyst Target Price</h2>
+    <div id="priceChart"></div>
+  </div>
+
+  <!-- Explanation Button -->
+  <button class="explanation-btn" id="explanationButton">View Detailed Explanation</button>
+
   <script>
     // Helper: Logistic function
     function logistic(x, c) {
       return 1 / (1 + Math.exp(-c * x));
     }
 
-    // Compute the normalized recommendation score R.
+    // Compute normalized recommendation score R from analyst ratings.
     // Ratings: Strong Buy = +2, Buy = +1, Hold = 0, Sell = -1, Strong Sell = -2.
     function computeRecommendationScore(data) {
       const SB = parseFloat(data.AnalystRatingStrongBuy) || 0;
@@ -167,27 +240,26 @@
       const SS = parseFloat(data.AnalystRatingStrongSell) || 0;
       const total = SB + B + Hold + S + SS;
       if(total === 0) return 0.5; // Neutral if no ratings
-      // Weighted average ignoring Hold (or treating hold as 0)
+      // Weighted average: (2*SB + 1*B + 0*Hold - 1*S - 2*SS) / total.
       const avgRating = (2 * SB + 1 * B - 1 * S - 2 * SS) / total;
-      // Normalize: when avgRating = -2, score=0; when avgRating = +2, score=1; 0 => 0.5.
+      // Normalize: Map average rating (-2 to +2) to 0–1 scale.
       return (avgRating + 2) / 4;
     }
 
-    // Compute the price premium score P.
-    // Use the target price from the fundamental data and current price from historical data.
-    // c is a sensitivity constant (we use 10 as an example).
+    // Compute the target premium score P.
+    // Use: P = logistic((TargetPrice/CurrentPrice - 1), sensitivityConstant)
     function computePremiumScore(targetPrice, currentPrice, c = 10) {
       if(currentPrice === 0) return 0.5;
       const ratio = (parseFloat(targetPrice) / parseFloat(currentPrice)) - 1;
       return logistic(ratio, c);
     }
 
-    // Combined Analyst Bullish Score is the average of R and P.
+    // Combined Score is the average of R and P.
     function computeCombinedScore(R, P) {
       return (R + P) / 2;
     }
 
-    // Update a meter element: container id, marker id, text id, and score (0-1)
+    // Update a meter element: marker and text for a given score (0–1).
     function updateMeter(meterId, markerId, textId, score) {
       const percent = score * 100;
       document.getElementById(markerId).style.left = percent + "%";
@@ -195,16 +267,45 @@
       document.getElementById(meterId).parentElement.style.display = 'block';
     }
 
-    // Hide an element by id
+    // Hide element by id.
     function hideElement(id) {
       document.getElementById(id).style.display = 'none';
     }
-
-    // Show an element by id
+    // Show element by id.
     function showElement(id) {
       document.getElementById(id).style.display = 'block';
     }
 
+    // Plot a simple bar chart comparing current price and target price using Plotly.
+    function plotPriceComparison(currentPrice, targetPrice) {
+      const data = [{
+        x: ["Current Price", "Target Price"],
+        y: [currentPrice, parseFloat(targetPrice)],
+        type: 'bar',
+        marker: {
+          color: ['#2563eb', '#16a34a']
+        }
+      }];
+      const layout = {
+        title: "Price Comparison",
+        yaxis: { title: "Price (USD)" },
+        margin: { t: 40 }
+      };
+      Plotly.newPlot("priceChart", data, layout);
+      showElement('priceChartSection');
+    }
+
+    // Populate the rating breakdown table.
+    function populateRatingBreakdown(data) {
+      document.getElementById('ratingSB').innerText = data.AnalystRatingStrongBuy || 0;
+      document.getElementById('ratingB').innerText = data.AnalystRatingBuy || 0;
+      document.getElementById('ratingHold').innerText = data.AnalystRatingHold || 0;
+      document.getElementById('ratingS').innerText = data.AnalystRatingSell || 0;
+      document.getElementById('ratingSS').innerText = data.AnalystRatingStrongSell || 0;
+      showElement('ratingBreakdownSection');
+    }
+
+    // Main analysis event handler.
     document.getElementById('runAnalysis').addEventListener('click', async () => {
       const ticker = document.getElementById('ticker').value.trim();
       if (!ticker) {
@@ -212,48 +313,262 @@
         return;
       }
       showElement('loading');
-      hideElement('recSection');
-      hideElement('premiumSection');
       hideElement('combinedSection');
+      hideElement('ratingBreakdownSection');
+      hideElement('priceChartSection');
 
       try {
-        // Fetch fundamental data
+        // Fetch fundamental data.
         const fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
         const fundResp = await fetch(fundUrl);
         const fundData = await fundResp.json();
         if (!fundData || !fundData.Symbol) {
           throw new Error("No fundamental data found.");
         }
-        // Fetch historical data for current price
+
+        // Fetch historical data to get current price.
         const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         const histResp = await fetch(histUrl);
         const histData = await histResp.json();
         if (!histData["Time Series (Daily)"]) {
           throw new Error("No historical data found.");
         }
-        // Process historical data to get the latest close price
         const dates = Object.keys(histData["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
         const latestDate = dates[dates.length - 1];
         const currentPrice = parseFloat(histData["Time Series (Daily)"][latestDate]["5. adjusted close"]);
 
-        // Compute scores
-        const R = computeRecommendationScore(fundData); // normalized rating score (0-1)
-        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice); // normalized premium score (0-1)
-        const combined = computeCombinedScore(R, P);
+        // Compute scores.
+        const R = computeRecommendationScore(fundData);  // Analyst Recommendation Score (normalized 0–1)
+        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice);  // Target Premium Score (normalized 0–1)
+        const combinedScore = computeCombinedScore(R, P);
 
-        // Update meters (convert normalized values to percentages)
-        updateMeter('recMeter', 'recMarker', 'recScoreText', R);
-        updateMeter('premiumMeter', 'premiumMarker', 'premiumScoreText', P);
-        updateMeter('combinedMeter', 'combinedMarker', 'combinedScoreText', combined);
+        // Update Combined Score meter.
+        updateMeter('combinedMeter', 'combinedMarker', 'combinedScoreText', combinedScore);
 
-        // Optionally, you can also display some textual context:
-        // e.g., "Current Price is 3% below Target" etc.
+        // Populate the analyst ratings breakdown.
+        populateRatingBreakdown(fundData);
+
+        // Plot the price comparison chart.
+        plotPriceComparison(currentPrice, fundData.AnalystTargetPrice);
       } catch (err) {
         alert("Error: " + err.message);
         console.error(err);
       }
       hideElement('loading');
     });
+
+    // Explanation Button navigates to a separate explanation page.
+    document.getElementById('explanationButton').addEventListener('click', () => {
+      window.location.href = "analyst_explanation.html";
+    });
+
+    /*************** Detailed Explanation ***************/
+    document.getElementById("explanationButton").addEventListener("click", () => {
+      if (!techReport) {
+        alert("Please run an analysis first.");
+        return;
+      }
+      let win = window.open("", "_blank");
+      let html = `
+      <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Analyst Bullish Score Explanation | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f9fafb;
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      text-align: center;
+      font-weight: 600;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+    p, li {
+      margin-bottom: 0.75em;
+    }
+    pre {
+      background: #eee;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #ddd;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #f2f2f2;
+    }
+    .close-btn {
+      display: block;
+      margin: 30px auto;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .close-btn:hover {
+      background: #1e3a8a;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      h2 {
+        font-size: 1.25rem;
+      }
+      pre {
+        font-size: 0.85rem;
+      }
+      table, th, td {
+        font-size: 0.85rem;
+      }
+      .close-btn {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Analyst Bullish Score Explanation</h1>
+  <p>
+    This tool calculates an overall Analyst Bullish Score by combining two key components: the normalized analyst recommendations and the normalized target premium.
+  </p>
+
+  <h2>1. Normalize the Analyst Recommendations</h2>
+  <p>
+    First, we assign numerical values to each rating:
+  </p>
+  <ul>
+    <li><code>Strong Buy = +2</code></li>
+    <li><code>Buy = +1</code></li>
+    <li><code>Hold = 0</code></li>
+    <li><code>Sell = -1</code></li>
+    <li><code>Strong Sell = -2</code></li>
+  </ul>
+  <p>
+    Next, we compute the average rating using:
+  </p>
+  <pre>
+Average Rating = (2 × N_SB + 1 × N_B - 1 × N_S - 2 × N_SS) / N_Total
+  </pre>
+  <p>
+    Because the average rating will fall between –2 and +2, we then shift and scale it to a 0–1 range:
+  </p>
+  <pre>
+R = (Average Rating + 2) / 4
+  </pre>
+  <p>
+    For example, if the weighted average rating is 0.8:
+  </p>
+  <pre>
+R = (0.8 + 2) / 4 = 2.8 / 4 = 0.70
+  </pre>
+  <p>
+    Here, <strong>R = 0.70</strong> indicates a moderately bullish consensus.
+  </p>
+
+  <h2>2. Normalize the Target Premium</h2>
+  <p>
+    The target premium is defined as the percentage difference between the analyst target price and the current price. We normalize it using a logistic function:
+  </p>
+  <pre>
+P = 1 / (1 + exp(-c × ((Target Price / Current Price) - 1)))
+  </pre>
+  <p>
+    In this equation, <code>c</code> is a sensitivity constant (for example, c = 10). When the current price equals the target price, the term (Target Price/Current Price - 1) is 0, yielding:
+  </p>
+  <pre>
+P = 1 / (1 + exp(0)) = 0.5
+  </pre>
+  <p>
+    For example, if the target price is 3% above the current price (i.e. Target Price / Current Price = 1.03):
+  </p>
+  <pre>
+P = 1 / (1 + exp(-10 × (1.03 - 1))) = 1 / (1 + exp(-0.3)) ≈ 0.57
+  </pre>
+  <p>
+    Here, <strong>P ≈ 0.57</strong> indicates a slightly bullish price premium.
+  </p>
+
+  <h2>3. Combine the Two Scores</h2>
+  <p>
+    Finally, we combine the two normalized scores by assigning weights <code>w_R</code> and <code>w_P</code> to the recommendation score and the premium score respectively. The overall score is computed as:
+  </p>
+  <pre>
+Analyst Bullish Score = (w_R × R + w_P × P) / (w_R + w_P)
+  </pre>
+  <p>
+    With equal weights (w_R = w_P = 1), the final score becomes:
+  </p>
+  <pre>
+Analyst Bullish Score = (R + P) / 2
+  </pre>
+  <p>
+    For example, if R = 0.70 and P = 0.57, then:
+  </p>
+  <pre>
+Analyst Bullish Score = (0.70 + 0.57) / 2 = 1.27 / 2 ≈ 0.635
+  </pre>
+  <p>
+    Converting to a percentage, the overall score is approximately 63.5%.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    In summary, the tool calculates:
+  </p>
+  <ol>
+    <li><strong>R</strong>: the normalized recommendation score based on analyst ratings (0 = most bearish, 1 = most bullish).</li>
+    <li><strong>P</strong>: the normalized target premium score using a logistic function.</li>
+    <li>The overall Analyst Bullish Score is the average of these two components (with equal weight by default), which provides a balanced view of analyst sentiment.</li>
+  </ol>
+  <p>
+    The values above are computed for the ticker you entered using data from the API. Adjustments (like the sensitivity constant <code>c</code>) can be made to fine-tune the responsiveness of the premium score.
+  </p>
+
+  <p style="text-align:center;"><button class="close-btn" onclick="window.history.back()">Go Back</button></p>
+</body>
+</html>
+      `;
+      win.document.write(html);
+      win.document.close();
+    });
+
   </script>
 </body>
 </html>
