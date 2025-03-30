@@ -99,6 +99,7 @@
       padding: 6px;
       font-size: 1rem;
       margin-right: 10px;
+      margin-bottom: 10px;
     }
     /* Chart container */
     #chartContainer {
@@ -122,13 +123,20 @@
   <!-- Spinner for buffering -->
   <div id="loading">
     <div class="spinner"></div>
-    <p>Loading data... (this may take 15 seconds)</p>
+    <p>Loading data... (<span id="countdown">15</span> seconds remaining)</p>
   </div>
 
   <!-- Filter section (appears after data load) -->
   <div id="filterSection">
     <label for="filterDays">Filter by days (e.g. 90):</label>
     <input type="number" id="filterDays" value="90" min="1"/>
+    <br>
+    <label for="filterPolitician">Filter by Politician:</label>
+    <input type="text" id="filterPolitician" placeholder="Enter name"/>
+    <br>
+    <label for="filterStock">Filter by Stock (Ticker):</label>
+    <input type="text" id="filterStock" placeholder="Enter ticker"/>
+    <br>
     <button id="applyFilter">Apply Filter</button>
   </div>
 
@@ -256,6 +264,18 @@
       console.log("[DEBUG] Fetch button clicked");
       document.getElementById('loading').style.display = 'block';
 
+      // Start the countdown timer
+      let countdown = 15;
+      const countdownEl = document.getElementById('countdown');
+      countdownEl.innerText = countdown;
+      const timerInterval = setInterval(() => {
+        countdown--;
+        countdownEl.innerText = countdown;
+        if (countdown <= 0) {
+          clearInterval(timerInterval);
+        }
+      }, 1000);
+
       // Hide previous sections
       document.getElementById('detailsSection').style.display = 'none';
       document.getElementById('buyContainer').innerHTML = '';
@@ -275,28 +295,43 @@
         allData = jsonResponse.data;
         console.log("[DEBUG] Total records fetched:", allData.length);
 
-        // Initially render with all data (no date filter)
+        // Initially render with all data (no filter)
         renderTopStocks(allData);
         document.getElementById('filterSection').style.display = 'block';
       } catch (error) {
         console.error("[DEBUG] Error:", error);
         alert("Error: " + error.message);
       } finally {
+        clearInterval(timerInterval);
         document.getElementById('loading').style.display = 'none';
       }
     });
 
-    // Apply filter by number of days (client-side filtering)
+    // Apply filter by number of days, politician, and stock (client-side filtering)
     document.getElementById('applyFilter').addEventListener('click', () => {
       const days = parseInt(document.getElementById('filterDays').value.trim()) || 90;
+      const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
+      const stockFilter = document.getElementById('filterStock').value.trim().toLowerCase();
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
+      
       const filteredData = allData.filter(item => {
+        // Filter by days
         if (!item.TransactionDate) return false;
         const tradeDate = new Date(item.TransactionDate);
-        return !isNaN(tradeDate) && tradeDate >= cutoff;
+        if (isNaN(tradeDate) || tradeDate < cutoff) return false;
+        // Filter by politician if provided
+        if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
+          return false;
+        }
+        // Filter by stock if provided
+        if (stockFilter && item.Ticker && item.Ticker.toLowerCase().indexOf(stockFilter) === -1) {
+          return false;
+        }
+        return true;
       });
-      console.log("[DEBUG] Records after filtering by days (" + days + "):", filteredData.length);
+      
+      console.log("[DEBUG] Records after filtering:", filteredData.length);
       renderTopStocks(filteredData);
       document.getElementById('detailsSection').style.display = 'none';
     });
