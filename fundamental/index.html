@@ -427,7 +427,18 @@
         table.appendChild(row);
       }
     }
-
+// Auto-populate ticker and run analysis if "symbol" query parameter is present.
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const symbol = urlParams.get('symbol');
+    if (symbol) {
+      document.getElementById('ticker').value = symbol;
+      // Optionally, you can delay the click to ensure everything is loaded.
+      setTimeout(() => {
+        document.getElementById('runFundamental').click();
+      }, 100);
+    }
+  };
     /*******************************************************/
     /* 4) EXPLANATION BUTTON                               */
     /*******************************************************/
