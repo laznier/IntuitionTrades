@@ -110,6 +110,34 @@
     #backHome {
       margin-bottom: 20px;
     }
+    
+    /* Mobile-specific adjustments */
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+      }
+      .section {
+        padding: 10px;
+        margin-top: 15px;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+      .chartContainer {
+        margin-top: 10px;
+      }
+      /* Ensure Plotly charts resize on mobile */
+      #rsiChart, #bbChart, #macdChart, #wmaChart, #ichimokuChart {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -368,11 +396,6 @@
     }
 
     /*************** Scoring Functions ***************/
-    // RSI Scoring:
-    // rel = 50 - RSI
-    // Base_RSI = 100 / (1 + exp(-0.05 × rel))
-    // dRSI = RSI(previous day) - RSI(current day)
-    // Score_RSI = Base_RSI × (1 + 0.01 × dRSI)
     function scoreRSI(latestRSI, prevRSI) {
       let rel = 50 - latestRSI;
       let base = 100 / (1 + Math.exp(-0.05 * rel));
@@ -380,11 +403,6 @@
       return base * (1 + 0.01 * dRSI);
     }
 
-    // Bollinger Bands Scoring:
-    // %B = (Price - Lower Band) / (Upper Band - Lower Band)
-    // Base_BB = 100 / (1 + exp(3 × (%B - 0.5)))
-    // d%B = %B(previous day) - %B(current day)
-    // Score_BB = Base_BB × (1 + 0.1 × d%B)
     function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
       let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
       let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
@@ -393,11 +411,6 @@
       return baseBB * (1 + 0.1 * dPercentB);
     }
 
-    // WMA Scoring:
-    // x = (Price / WMA) - 1
-    // Base_WMA = 100 / (1 + exp(-10 × x))
-    // dx = x(previous day) - x(current day)
-    // Score_WMA = Base_WMA × (1 + 0.5 × dx)
     function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
       let currentX = (latestPrice / latestWMA) - 1;
       let prevX = (prevPrice / prevWMA) - 1;
@@ -407,7 +420,6 @@
     }
 
     /*************** Plotting Functions ***************/
-    // Plot RSI Chart with horizontal red lines (typically at 70 and 30)
     function plotRSI(prices) {
       let rsidata = computeRSI(prices);
       let traceRSI = {
@@ -449,7 +461,6 @@
       return rsidata;
     }
 
-    // Plot Bollinger Bands Chart with a price trace
     function plotBollinger(prices) {
       let bands = computeBollingerBands(prices);
       let dates = bands.map(b => b.date);
@@ -475,7 +486,6 @@
         mode: 'lines',
         name: 'Lower Band'
       };
-      // Add price (close) trace
       let tracePrice = {
         x: prices.map(p => p.date),
         y: prices.map(p => p.close),
@@ -494,7 +504,6 @@
       return bands;
     }
 
-    // Plot MACD Chart with histogram
     function plotMACD(prices) {
       let macdData = computeMACD(prices);
       let datesMACD = macdData.macdLine.map(item => item.date);
@@ -502,7 +511,6 @@
       let datesSignal = macdData.signalLine.map(item => item.date);
       let signalValues = macdData.signalLine.map(item => item.signal);
       
-      // Compute histogram data (MACD - Signal)
       let histDates = [];
       let histValues = [];
       let len = Math.min(macdData.macdLine.length, macdData.signalLine.length);
@@ -543,7 +551,6 @@
       return macdData;
     }
 
-    // Plot WMA Chart with a price trace
     function plotWMA(prices) {
       let wmas = computeWMA(prices);
       let traceWMA = {
@@ -569,7 +576,6 @@
       return wmas;
     }
 
-    // Candlestick Chart with Ichimoku overlays
     function plotCandlestickIchimoku(prices, ichimokuData) {
       let dates = prices.map(p => p.date);
       let open = prices.map(p => p.open);
@@ -631,7 +637,6 @@
     }
 
     /*************** New MACD Scoring System ***************/
-    // Utility: Polynomial regression using a Vandermonde matrix (3rd degree).
     function polynomialRegression(x, y, degree) {
       let X = [];
       for (let i = 0; i < x.length; i++) {
@@ -648,11 +653,9 @@
       const coeffs = coeffsMatrix.map(val => val[0]);
       return coeffs;
     }
-    // Utility: Evaluate a polynomial at a given x.
     function predictValue(coeffs, x) {
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
-    // Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
     function computeMomentumScoreUsingRegression(histValues) {
       if (histValues.length < 6) return null;
       const recentHist = histValues.slice(-6);
@@ -661,11 +664,10 @@
       const predicted = predictValue(coeffs, 7);
       const lastValue = recentHist[recentHist.length - 1];
       const delta = predicted - lastValue;
-      const k = 5; // sensitivity factor
+      const k = 5;
       const score = 100 / (1 + Math.exp(-k * delta));
       return score;
     }
-    // Compute the gap trend score using regression on both the MACD and Signal lines.
     function computeGapTrendScore(macdLine, signalLine) {
       if (macdLine.length < 6 || signalLine.length < 6) return null;
       const recentMACD = macdLine.slice(-6).map(item => item.macd);
@@ -678,14 +680,10 @@
       const predictedGap = predictedMACD - predictedSignal;
       const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
       const delta = predictedGap - currentGap;
-      const k = 5; // sensitivity factor
+      const k = 5;
       const gapScore = 100 / (1 + Math.exp(-k * delta));
       return { gapScore, delta, currentGap, predictedGap };
     }
-    // Compute the overall MACD score using:
-    // 1. Position Score (based on the latest MACD value),
-    // 2. New Gap Trend Score (using regression on MACD and Signal lines),
-    // 3. Momentum Score (using regression on the histogram).
     function computeNewMACDScore(prices) {
       const macdData = computeMACD(prices);
       const macdLine = macdData.macdLine;
@@ -694,21 +692,14 @@
       
       const len = Math.min(macdLine.length, signalLine.length);
       const latestMACD = macdLine[len - 1].macd;
-      
-      // 1. Position Score: Logistic transformation.
       const positionScore = 100 / (1 + Math.exp(latestMACD));
-      
-      // 2. New Gap Trend Score: Regression-based on the last 6 MACD and Signal values.
       const gapData = computeGapTrendScore(macdLine, signalLine);
       const gapScore = gapData ? gapData.gapScore : null;
-      
-      // 3. Momentum Score: Regression-based on the histogram (MACD - Signal).
       let histValues = [];
       for (let i = 0; i < len; i++) {
         histValues.push(macdLine[i].macd - signalLine[i].signal);
       }
       const momentumScore = computeMomentumScoreUsingRegression(histValues);
-      
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       console.log("New MACD Scores -> Position:", positionScore.toFixed(2),
                   "Gap:", gapScore.toFixed(2),
@@ -720,7 +711,6 @@
     /*************** Main Analysis Function ***************/
     document.getElementById("runAnalysis").addEventListener("click", async () => {
       document.getElementById('loading').style.display = 'block';
-      // Hide previous sections
       document.getElementById('aggregateSection').style.display = 'none';
       document.getElementById('rsiSection').style.display = 'none';
       document.getElementById('bbSection').style.display = 'none';
@@ -744,45 +734,37 @@
           throw new Error("Unable to retrieve valid historical data.");
         }
         let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if (prices.length < 80) {  // Ensure enough data for Ichimoku (52+26)
+        if (prices.length < 80) {
           alert("Not enough historical data for the selected period.");
           document.getElementById('loading').style.display = 'none';
           return;
         }
         
-        // Plot indicators (RSI, Bollinger, MACD, WMA)
         let rsis = plotRSI(prices);
         let bands = plotBollinger(prices);
         let macdData = plotMACD(prices);
         let wmas = plotWMA(prices);
-        // Compute Ichimoku data and plot candlestick with Ichimoku overlays
         let ichimokuData = computeIchimoku(prices);
         plotCandlestickIchimoku(prices, ichimokuData);
         document.getElementById('ichimokuSection').style.display = 'block';
         
-        // For derivative calculations, use the last two values:
         let latestPrice = prices[prices.length - 1].close;
         let prevPrice = prices[prices.length - 2].close;
         
-        // RSI: last two RSI values
         let latestRSI = rsis[rsis.length - 1].rsi;
         let prevRSI = rsis[rsis.length - 2].rsi;
         let rsiScore = scoreRSI(latestRSI, prevRSI);
         
-        // Bollinger: last two band values and prices
         let latestBand = bands[bands.length - 1];
         let prevBand = bands[bands.length - 2];
         let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
         
-        // New MACD Score using our updated regression-based system
         let newMACDScore = computeNewMACDScore(prices);
         
-        // WMA: last two WMA values and prices
         let latestWMA = wmas[wmas.length - 1].wma;
         let prevWMA = wmas[wmas.length - 2].wma;
         let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
         
-        // Ichimoku Parameters:
         let cloudScore = 100 / (1 + Math.exp(-1 * (latestPrice - ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value)));        
         let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
         let latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
@@ -792,20 +774,17 @@
         let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value - ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / (((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value + ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / 2) || 1))));
         let overallIchimoku = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
         
-        // Display individual indicator scores
         document.getElementById('rsiScoreDisplay').innerText = `RSI Score: ${rsiScore.toFixed(1)}%`;
         document.getElementById('bbScoreDisplay').innerText = `Bollinger Score: ${bbScore.toFixed(1)}%`;
         document.getElementById('macdScoreDisplay').innerText = `MACD Score: ${newMACDScore ? newMACDScore.toFixed(1) : "N/A"}%`;
         document.getElementById('wmaScoreDisplay').innerText = `WMA Score: ${wmaScore.toFixed(1)}%`;
         document.getElementById('ichimokuScoreDisplay').innerText = `Ichimoku Score: ${overallIchimoku.toFixed(1)}%`;
         
-        // Combined overall technical score (average of RSI, Bollinger, MACD, WMA, and overall Ichimoku)
         let combinedScore = (rsiScore + bbScore + newMACDScore + wmaScore + overallIchimoku) / 5;
         document.getElementById('aggregateScoreText').innerText = `${combinedScore.toFixed(2)}%`;
         document.getElementById('aggregateMarker').style.left = `${combinedScore}%`;
         document.getElementById('aggregateSection').style.display = 'block';
         
-        // Show sections for RSI, Bollinger, MACD, WMA
         document.getElementById('rsiSection').style.display = 'block';
         document.getElementById('bbSection').style.display = 'block';
         document.getElementById('macdSection').style.display = 'block';
@@ -946,9 +925,9 @@ Score_BB = Base_BB × (1 + 0.1 × d%B)
           <h2>MACD Analysis</h2>
           <p>The updated MACD scoring system quantifies three key elements using regression-based methods:</p>
           <ul>
-            <li><strong>Position Score:</strong> This measures where the MACD line lies relative to zero. It is computed using the formula <code>100 / (1 + exp(latestMACD))</code> so that very negative MACD values (indicative of bullish conditions) yield high scores, while positive values yield low scores.</li>
-            <li><strong>Gap Trend Score:</strong> Rather than comparing only the last two values, we use a 3rd-degree polynomial regression on the last 6 values of both the MACD and Signal lines to predict their 7th values. The predicted gap (predicted MACD minus predicted Signal) is compared with the current gap. The difference (delta) is then mapped using a logistic function to yield the Gap Trend Score. A positive delta indicates a bullish adjustment, while a negative delta suggests bearish momentum.</li>
-            <li><strong>Momentum Score:</strong> The MACD histogram (the difference between MACD and Signal) over the last 6 periods is analyzed using a 3rd-degree polynomial regression to predict the next value. The delta between the predicted histogram value and the latest observed value is mapped via a logistic function, yielding a score above 50 if momentum is increasing (bullish) or below 50 if decreasing (bearish).</li>
+            <li><strong>Position Score:</strong> This measures where the MACD line lies relative to zero. It is computed using the formula <code>100 / (1 + exp(latestMACD))</code> so that very negative MACD values yield high scores, while positive values yield low scores.</li>
+            <li><strong>Gap Trend Score:</strong> A 3rd-degree polynomial regression is applied to the last 6 MACD and Signal values to predict the 7th values. The difference between the predicted gap and the current gap is then mapped through a logistic function to produce the gap trend score.</li>
+            <li><strong>Momentum Score:</strong> Similarly, a regression is applied to the MACD histogram over the last 6 periods to predict the next histogram value. The resulting delta is transformed via a logistic function, indicating whether momentum is increasing (bullish) or decreasing (bearish).</li>
           </ul>
           <p>The final MACD score is the average of these three components, providing a nuanced overall measure of MACD momentum. In our analysis, the MACD score is <strong>${techReport.macd ? techReport.macd.toFixed(1) : "N/A"}%</strong>.</p>
         </section>
@@ -1021,21 +1000,13 @@ Overall Score = (Score_RSI + Score_BB + Score_MACD + Score_WMA + Overall_Ichimok
         
         <section>
           <h2>Disclaimers</h2>
-          <p><strong>Market Data Disclaimer:</strong> The historical data (including high and low prices) is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time market conditions.</p>
-          <p><strong>Analytical Disclaimer:</strong> The techniques and metrics in this report are for informational purposes only and should not be considered financial advice. Please conduct your own research before making any investment decisions.</p>
+          <p><strong>Market Data Disclaimer:</strong> The historical data is provided via the API and may not reflect real-time market conditions.</p>
+          <p><strong>Analytical Disclaimer:</strong> The techniques and metrics in this report are for informational purposes only and should not be considered financial advice.</p>
         </section>
         
         <section>
           <h2>Conclusion</h2>
-          <p>This report integrates five technical indicators—RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud—to provide a detailed and dynamic evaluation of a stock's technical momentum. The updated MACD scoring system now quantifies three key aspects using regression-based methods: 
-          <br><br>
-          <strong>Position Score:</strong> The latest MACD value is transformed via a logistic function (<code>100 / (1 + exp(latestMACD))</code>) so that very negative values yield high (bullish) scores.
-          <br><br>
-          <strong>Gap Trend Score:</strong> A 3rd-degree polynomial regression is applied to the last 6 MACD and Signal values to predict the 7th values. The difference between the predicted gap and the current gap is then mapped through a logistic function to produce the gap trend score.
-          <br><br>
-          <strong>Momentum Score:</strong> Similarly, a regression is applied to the MACD histogram (MACD minus Signal) over the last 6 periods to predict the next histogram value. The resulting delta is transformed via a logistic function, indicating whether momentum is increasing (bullish) or decreasing (bearish).
-          <br><br>
-          The final MACD score is the average of these three components, offering a more nuanced view of MACD momentum. Use these insights as part of your comprehensive trading strategy.</p>
+          <p>This report integrates five technical indicators—RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud—to provide a detailed evaluation of a stock's technical momentum. Use these insights as part of your comprehensive trading strategy.</p>
         </section>
         
         <section style="text-align:center;">
