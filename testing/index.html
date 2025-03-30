@@ -1832,6 +1832,21 @@ Weighted Score = ( w_MC × MC_Bull
         }
       }
     });
+    // When simulation starts, also set a maximum timeout:
+const maxBufferTime = 10000; // 10 seconds
+const bufferTimeout = setTimeout(() => {
+  hideBufferOverlay();
+  console.warn("Buffer overlay hidden after max time reached");
+}, maxBufferTime);
+
+runSimulation().then(() => {
+  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
+  hideBufferOverlay();
+}).catch(() => {
+  clearTimeout(bufferTimeout);
+  hideBufferOverlay();
+});
+
   </script>
 </body>
 </html>
