@@ -308,7 +308,6 @@
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
       <button id="congressLinkButton">More Congress Analysis</button>
-      <button id="topCongressLinkButton">Top 5 Congress Picks</button>
     </div>
   </div>
 
@@ -1275,7 +1274,7 @@
     // Function to show the circular countdown overlay before running simulation.
     function showCountdownOverlay() {
       const overlay = document.getElementById("countdownOverlay");
-      let count = 3;
+      let count = 5;
       overlay.style.display = "flex";
       overlay.querySelector("span").innerText = count;
       const countdownInterval = setInterval(() => {
