@@ -225,7 +225,10 @@
   <button class="explanation-btn" id="explanationButton">View Detailed Explanation</button>
 
   <script>
-    // Helper: Logistic function
+    // Global object to store report details after analysis.
+    let techReport = null;
+
+    // Helper: Logistic function.
     function logistic(x, c) {
       return 1 / (1 + Math.exp(-c * x));
     }
@@ -239,15 +242,12 @@
       const S  = parseFloat(data.AnalystRatingSell) || 0;
       const SS = parseFloat(data.AnalystRatingStrongSell) || 0;
       const total = SB + B + Hold + S + SS;
-      if(total === 0) return 0.5; // Neutral if no ratings
-      // Weighted average: (2*SB + 1*B + 0*Hold - 1*S - 2*SS) / total.
+      if(total === 0) return 0.5; // Neutral if no ratings.
       const avgRating = (2 * SB + 1 * B - 1 * S - 2 * SS) / total;
-      // Normalize: Map average rating (-2 to +2) to 0–1 scale.
       return (avgRating + 2) / 4;
     }
 
-    // Compute the target premium score P.
-    // Use: P = logistic((TargetPrice/CurrentPrice - 1), sensitivityConstant)
+    // Compute the target premium score P using a logistic function.
     function computePremiumScore(targetPrice, currentPrice, c = 10) {
       if(currentPrice === 0) return 0.5;
       const ratio = (parseFloat(targetPrice) / parseFloat(currentPrice)) - 1;
@@ -325,7 +325,6 @@
         if (!fundData || !fundData.Symbol) {
           throw new Error("No fundamental data found.");
         }
-
         // Fetch historical data to get current price.
         const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         const histResp = await fetch(histUrl);
@@ -338,8 +337,8 @@
         const currentPrice = parseFloat(histData["Time Series (Daily)"][latestDate]["5. adjusted close"]);
 
         // Compute scores.
-        const R = computeRecommendationScore(fundData);  // Analyst Recommendation Score (normalized 0–1)
-        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice);  // Target Premium Score (normalized 0–1)
+        const R = computeRecommendationScore(fundData);
+        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice);
         const combinedScore = computeCombinedScore(R, P);
 
         // Update Combined Score meter.
@@ -350,6 +349,17 @@
 
         // Plot the price comparison chart.
         plotPriceComparison(currentPrice, fundData.AnalystTargetPrice);
+
+        // Store all relevant data in techReport for the explanation page.
+        techReport = {
+          ticker: ticker,
+          fundamentalData: fundData,
+          currentPrice: currentPrice,
+          R: R,
+          P: P,
+          combined: combinedScore
+        };
+
       } catch (err) {
         alert("Error: " + err.message);
         console.error(err);
@@ -357,20 +367,15 @@
       hideElement('loading');
     });
 
-    // Explanation Button navigates to a separate explanation page.
+    // Explanation Button: Open a new window with a detailed explanation.
     document.getElementById('explanationButton').addEventListener('click', () => {
-      window.location.href = "analyst_explanation.html";
-    });
-
-    /*************** Detailed Explanation ***************/
-    document.getElementById("explanationButton").addEventListener("click", () => {
       if (!techReport) {
         alert("Please run an analysis first.");
         return;
       }
       let win = window.open("", "_blank");
       let html = `
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -516,10 +521,10 @@ P = 1 / (1 + exp(-c × ((Target Price / Current Price) - 1)))
 P = 1 / (1 + exp(0)) = 0.5
   </pre>
   <p>
-    For example, if the target price is 3% above the current price (i.e. Target Price / Current Price = 1.03):
+    For example, if the target price is 3% above the current price:
   </p>
   <pre>
-P = 1 / (1 + exp(-10 × (1.03 - 1))) = 1 / (1 + exp(-0.3)) ≈ 0.57
+P = 1 / (1 + exp(-10 × (1.03 - 1))) ≈ 0.57
   </pre>
   <p>
     Here, <strong>P ≈ 0.57</strong> indicates a slightly bullish price premium.
@@ -527,38 +532,39 @@ P = 1 / (1 + exp(-10 × (1.03 - 1))) = 1 / (1 + exp(-0.3)) ≈ 0.57
 
   <h2>3. Combine the Two Scores</h2>
   <p>
-    Finally, we combine the two normalized scores by assigning weights <code>w_R</code> and <code>w_P</code> to the recommendation score and the premium score respectively. The overall score is computed as:
-  </p>
-  <pre>
-Analyst Bullish Score = (w_R × R + w_P × P) / (w_R + w_P)
-  </pre>
-  <p>
-    With equal weights (w_R = w_P = 1), the final score becomes:
+    Finally, we combine the two normalized scores by assigning weights <code>w_R</code> and <code>w_P</code> to the recommendation score and the premium score respectively. With equal weights (w_R = w_P = 1), the overall score is:
   </p>
   <pre>
 Analyst Bullish Score = (R + P) / 2
   </pre>
   <p>
-    For example, if R = 0.70 and P = 0.57, then:
+    For example, if R = 0.70 and P = 0.57:
   </p>
   <pre>
-Analyst Bullish Score = (0.70 + 0.57) / 2 = 1.27 / 2 ≈ 0.635
+Analyst Bullish Score = (0.70 + 0.57) / 2 ≈ 0.635
   </pre>
   <p>
     Converting to a percentage, the overall score is approximately 63.5%.
   </p>
 
   <h2>Summary</h2>
-  <p>
-    In summary, the tool calculates:
-  </p>
   <ol>
-    <li><strong>R</strong>: the normalized recommendation score based on analyst ratings (0 = most bearish, 1 = most bullish).</li>
-    <li><strong>P</strong>: the normalized target premium score using a logistic function.</li>
-    <li>The overall Analyst Bullish Score is the average of these two components (with equal weight by default), which provides a balanced view of analyst sentiment.</li>
+    <li><strong>R</strong>: Normalized recommendation score based on analyst ratings (0 = most bearish, 1 = most bullish).</li>
+    <li><strong>P</strong>: Normalized target premium score using a logistic function.</li>
+    <li>The overall Analyst Bullish Score is the simple average of R and P.</li>
   </ol>
   <p>
-    The values above are computed for the ticker you entered using data from the API. Adjustments (like the sensitivity constant <code>c</code>) can be made to fine-tune the responsiveness of the premium score.
+    For the ticker <strong>${techReport.ticker}</strong>:
+  </p>
+  <ul>
+    <li>Current Price: $${techReport.currentPrice.toFixed(2)}</li>
+    <li>Analyst Target Price: $${techReport.fundamentalData.AnalystTargetPrice}</li>
+    <li>Recommendation Score (R): ${(techReport.R * 100).toFixed(1)}%</li>
+    <li>Premium Score (P): ${(techReport.P * 100).toFixed(1)}%</li>
+    <li>Combined Analyst Bullish Score: ${(techReport.combined * 100).toFixed(1)}%</li>
+  </ul>
+  <p>
+    The tool uses these calculations to provide a balanced view of analyst sentiment.
   </p>
 
   <p style="text-align:center;"><button class="close-btn" onclick="window.history.back()">Go Back</button></p>
@@ -568,7 +574,6 @@ Analyst Bullish Score = (0.70 + 0.57) / 2 = 1.27 / 2 ≈ 0.635
       win.document.write(html);
       win.document.close();
     });
-
   </script>
 </body>
 </html>
