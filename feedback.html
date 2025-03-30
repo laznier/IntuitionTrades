@@ -2,15 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>User Story Feedback</title>
+  <title>Feedback | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
-      font-family: sans-serif;
-      margin: 20px;
-      background: #f7f7f7;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #fafafa;
+      color: #333;
+      padding: 1rem;
+    }
+    header, footer {
+      background-color: #333;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      margin: 2rem auto;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     h1 {
-      margin-bottom: 0.5em;
+      margin-bottom: 1rem;
+      font-size: 2rem;
+      text-align: center;
     }
     label {
       display: block;
@@ -21,20 +41,22 @@
     input[type="email"],
     textarea {
       width: 100%;
-      padding: 0.5em;
-      box-sizing: border-box;
+      padding: 0.75em;
       margin-bottom: 1em;
       border: 1px solid #ccc;
       border-radius: 4px;
+      box-sizing: border-box;
     }
     button {
       background: #0066cc;
       color: #fff;
       border: none;
       border-radius: 4px;
-      padding: 0.6em 1.2em;
+      padding: 0.75em 1.5em;
       cursor: pointer;
-      font-size: 1em;
+      font-size: 1rem;
+      display: block;
+      margin: 0 auto;
     }
     button:hover {
       background: #0055a3;
@@ -43,44 +65,45 @@
       margin-top: 1em;
       color: #666;
       font-size: 0.9em;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      padding: 1.5em;
+      text-align: center;
     }
   </style>
 </head>
 <body>
+<!-- Back to Main Page button -->
+<button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 
-<div class="container">
-  <h1>User Story Feedback</h1>
-  <p>
-    Please share your user story or feedback below. For example:
-    <em>“As a project management student, I want to run Monte Carlo simulations without purchasing or learning complex software, so that I can focus on practical assignments.”</em>
-  </p>
+  <header>
+    <h1>Intuition Trades</h1>
+  </header>
 
-  <form action="https://formspree.io/f/mvgzdrgl" method="POST">
-    <label for="email">Your Email (optional):</label>
-    <input type="email" id="email" name="email" placeholder="example@domain.com">
+  <div class="container">
+    <h1>Feedback</h1>
+    <p>
+      We appreciate your feedback. Please share your comments, suggestions, or questions below.
+    </p>
 
-    <label for="name">Your Name (optional):</label>
-    <input type="text" id="name" name="name" placeholder="e.g. John Doe">
+    <form action="https://formspree.io/f/mvgzdrgl" method="POST">
+      <label for="name">Your Name (optional):</label>
+      <input type="text" id="name" name="name" placeholder="e.g. John Doe">
 
-    <label for="message">Your User Story:</label>
-    <textarea id="message" name="message" rows="5"
-      placeholder="As a..., I want to..., so that..."></textarea>
+      <label for="email">Your Email (optional):</label>
+      <input type="email" id="email" name="email" placeholder="example@domain.com">
 
-    <button type="submit">Send</button>
-  </form>
+      <label for="message">Your Feedback:</label>
+      <textarea id="message" name="message" rows="5" placeholder="Your feedback here..."></textarea>
 
-  <p class="note">
-    Submissions are sent via Formspree. We’ll use your feedback to improve Project Manager Helper.
-  </p>
-</div>
+      <button type="submit">Send Feedback</button>
+    </form>
+
+    <p class="note">
+      Your feedback is important to us and will help improve our services.
+    </p>
+  </div>
+
+  <footer>
+    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+  </footer>
 
 </body>
 </html>
