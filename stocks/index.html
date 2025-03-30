@@ -893,7 +893,7 @@
       return Math.max(0, Math.min(100, raw));
     }
     async function fetchSentimentData(ticker, periodMonths){
-      let url=`https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       let resp= await fetch(url);
       let data= await resp.json();
       if(!data.feed) throw new Error("No sentiment data from server.");
@@ -980,7 +980,7 @@
 
     /* Insider */
     async function fetchInsiderData(ticker, periodMonths, currentPrice){
-      const url= `https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+      const url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
       const resp= await fetch(url);
       const data= await resp.json();
       if(!data.data|| !Array.isArray(data.data)) throw new Error("No insider data array found.");
@@ -1105,7 +1105,7 @@
     }
     async function determineSPYMarketRegime(periodMonths=4){
       try {
-        let url=`https://www.projectmanagerhelper.com/api/historical?symbol=SPY`;
+        let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
         let resp=await fetch(url);
         let j=await resp.json();
         if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
@@ -1247,7 +1247,7 @@
         console.log("Detected SPY Market Regime => ", regime);
 
         // 1) fundamental data
-        let fundUrl= `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+        let fundUrl= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
         let fundResp= await fetch(fundUrl);
         let fundamentalData= await fundResp.json();
         let companyDesc= fundamentalData.Description || "No description available.";
@@ -1263,7 +1263,7 @@
         }
 
         // 3) historical
-        let histUrl= `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let histUrl= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         let resp= await fetch(histUrl);
         let data= await resp.json();
         if(!data["Time Series (Daily)"]){
@@ -1348,7 +1348,7 @@
     document.getElementById("sentimentLinkButton").addEventListener("click", () => {
       let ticker= document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.projectmanagerhelper.com/sentiment?symbol="+ encodeURIComponent(ticker),"_blank");
+        window.open("https://www.intuitiontrades.com/sentiment?symbol="+ encodeURIComponent(ticker),"_blank");
       } else {
         alert("Enter a ticker first.");
       }
@@ -1356,7 +1356,7 @@
     document.getElementById("technicalLinkButton").addEventListener("click", () => {
       let ticker= document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.projectmanagerhelper.com/technical/?symbol="+ encodeURIComponent(ticker),"_blank");
+        window.open("https://www.intuitiontrades.com/technical/?symbol="+ encodeURIComponent(ticker),"_blank");
       } else {
         alert("Enter a ticker first.");
       }
@@ -1364,21 +1364,21 @@
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
       let ticker= document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.projectmanagerhelper.com/insider/?symbol="+ encodeURIComponent(ticker)+"&days=30","_blank");
+        window.open("https://www.intuitiontrades.com/insider/?symbol="+ encodeURIComponent(ticker)+"&days=30","_blank");
       } else {
         alert("Enter a ticker first.");
       }
     });
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-      window.open("https://www.projectmanagerhelper.com/congress/","_blank");
+      window.open("https://www.intuitiontrades.com/congress/","_blank");
     });
     document.getElementById("topCongressLinkButton").addEventListener("click", () => {
-      window.open("https://www.projectmanagerhelper.com/topcongress/","_blank");
+      window.open("https://www.intuitiontrades.com/topcongress/","_blank");
     });
     document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
       let ticker= document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.projectmanagerhelper.com/fundamental/?symbol="+ encodeURIComponent(ticker),"_blank");
+        window.open("https://www.intuitiontrades.com/fundamental/?symbol="+ encodeURIComponent(ticker),"_blank");
       } else {
         alert("Enter a ticker.");
       }
