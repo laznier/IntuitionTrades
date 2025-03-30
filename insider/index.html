@@ -299,18 +299,28 @@
       summaryEl.innerHTML = html;
       summaryEl.scrollIntoView({ behavior: 'smooth' });
     }
-    // Auto-populate ticker and run analysis if "symbol" query parameter is present.
+  // Auto-populate ticker and days, then run insider analysis if URL parameters are provided.
   window.onload = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const symbol = urlParams.get('symbol');
+    const days = urlParams.get('days');
+    
     if (symbol) {
       document.getElementById('ticker').value = symbol;
-      // Optionally, you can delay the click to ensure everything is loaded.
+    }
+    if (days) {
+      document.getElementById('days').value = days;
+    }
+    
+    // Auto-run the insider data fetch if a symbol is provided.
+    if (symbol) {
+      // Optionally delay to ensure the page is fully loaded.
       setTimeout(() => {
-        document.getElementById('runFundamental').click();
+        document.getElementById('insiderButton').click();
       }, 100);
     }
   };
+
   </script>
 </body>
 </html>
