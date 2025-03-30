@@ -1796,6 +1796,29 @@ Weighted Score = ( w_MC × MC_Bull
       <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
     </section>
 
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+    // Check for the 'ticker' parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tickerParam = urlParams.get('ticker');
+    if (tickerParam) {
+      // Set the ticker input field's value (input ID is "ticker")
+      const tickerInput = document.getElementById('ticker');
+      if (tickerInput) {
+        tickerInput.value = tickerParam;
+      }
+      // Automatically click the simulation button (button ID is "simulateButton")
+      const simulateBtn = document.getElementById('simulateButton');
+      if (simulateBtn) {
+        // Adding a short delay can help ensure any related scripts are ready
+        setTimeout(() => {
+          simulateBtn.click();
+        }, 100);
+      }
+    }
+  });
+</script>
+
   </body>
   </html>`;
 
