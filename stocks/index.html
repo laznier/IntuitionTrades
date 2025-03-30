@@ -69,7 +69,6 @@
       margin-bottom: 10px;
       font-weight: 600;
     }
-
     /* Aggregated bar meter styles */
     #aggregateSection {
       display: none;
@@ -113,7 +112,6 @@
       border-radius: 4px;
       margin-top: 10px;
     }
-
     /* Button grouping for additional links */
     .linkButtons {
       margin-top: 10px;
@@ -132,12 +130,10 @@
     .chartContainer {
       margin-top: 20px;
     }
-
     /* For Manual Historical Period */
     #manualPeriodDiv {
       display: none;
     }
-
     /* NEW: Manual Weights & Scaling for aggregator */
     #manualWeightsSection {
       border: 1px solid #ccc;
@@ -155,6 +151,37 @@
       display: inline-block;
       margin-left: 8px;
       margin-bottom: 8px;
+    }
+    /* NEW: Circular Buffer Overlay with Spinning Animation and Animated Text */
+    #countdownOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #countdownOverlay .circle {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #2563eb;
+      border-radius: 50%;
+      width: 100px;
+      height: 100px;
+      animation: spin 2s linear infinite;
+      margin-bottom: 20px;
+    }
+    #loadingText {
+      font-size: 1.2rem;
+      color: #2563eb;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -269,7 +296,7 @@
     <h2>Sentiment Analysis</h2>
     <div id="sentChart"></div>
     <div id="sentDetails" style="margin-top:10px; font-weight:600;"></div>
-    <button id="sentimentLinkButton">More Sentiment Info</button>
+    <button id="sentimentLinkButton">More Sentiment Analysis</button>
   </div>
 
   <!-- Insider -->
@@ -277,7 +304,7 @@
     <h2>Insider Trading Activity</h2>
     <div id="insiderChart"></div>
     <div id="insiderDetails" style="margin-top:10px; font-weight:600;"></div>
-    <button id="insiderLinkButton">More Insider Info</button>
+    <button id="insiderLinkButton">More Insider Analysis</button>
   </div>
 
   <!-- Congress -->
@@ -286,7 +313,7 @@
     <div id="congressChart"></div>
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
-      <button id="congressLinkButton">More Congress Info</button>
+      <button id="congressLinkButton">More Congress Analysis</button>
       <button id="topCongressLinkButton">Top 5 Congress Picks</button>
     </div>
   </div>
@@ -296,9 +323,16 @@
     <button id="explanationButton">View Detailed Explanation</button>
   </div>
 
+  <!-- NEW: Circular Buffer Overlay (Spinning Circle and Animated Text) -->
+  <div id="countdownOverlay">
+    <div class="circle"></div>
+    <div id="loadingText">Analysing data and running 10,000 simulations</div>
+  </div>
+
   <script>
     let simulationReport = null;
     let globalFinalPrices = [];
+    let bufferDotInterval;
 
     // Auto-populate futureDate with next month's date
     (function setDefaultFutureDate() {
@@ -360,7 +394,6 @@
      * UTILITY, FUNDAMENTALS, TECHNICAL, MONTE CARLO,
      * SENTIMENT, INSIDER, CONGRESS - same as user code
      ***********************************************/
-
     function parseAlphaDate(str) {
       const year  = str.substring(0,4);
       const month = str.substring(4,6);
@@ -370,13 +403,11 @@
       const sec   = str.substring(13,15) || "00";
       return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
     }
-
     function processHistoricalData(timeSeries, periodMonths) {
       const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
       const endDate = new Date(dates[dates.length - 1]);
       const startDate = new Date(endDate);
       startDate.setMonth(startDate.getMonth() - periodMonths);
-
       let prices = [];
       for (let date of dates) {
         const dt = new Date(date);
@@ -390,8 +421,6 @@
       prices.sort((a, b) => a.date - b.date);
       return prices;
     }
-
-    /* Fundamental logic with "computeFundScores" that we must keep */
     function computeFundScores(data) {
       const norm = (val, min, max) => {
         if(!val || isNaN(val)) return 50;
@@ -399,14 +428,11 @@
         let scaled= ratio*100;
         return Math.max(0, Math.min(100, scaled));
       };
-      // 1) Profitability
       let margin = norm(parseFloat(data.ProfitMargin),0,0.25);
       let opMarg = norm(parseFloat(data.OperatingMarginTTM),0,0.3);
       let roa    = norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
       let roe    = norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
       let profitability = (margin+ opMarg+ roa+ roe)/4;
-
-      // 2) Valuation
       let pe= parseFloat(data.PERatio);
       let peScore= 100- norm(pe,5,40);
       let peg= parseFloat(data.PEGRatio);
@@ -416,8 +442,6 @@
       let pb= parseFloat(data.PriceToBookRatio);
       let pbScore= 100- norm(pb,1,10);
       let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
-
-      // 3) Growth
       let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
       let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
       let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
@@ -427,14 +451,10 @@
       }
       let tgtScore= norm(ratio, 0, 0.5);
       let growth= (rg+ eg+ tgtScore)/3;
-
-      // 4) Dividends
       let dy= norm(parseFloat(data.DividendYield),0,0.07);
       let dps= norm(parseFloat(data.DividendPerShare),0,10);
       let eps= norm(parseFloat(data.EPS),0,12);
       let dividends= (dy+ dps+ eps)/3;
-
-      // 5) Financial
       let ebitda= parseFloat(data.EBITDA);
       let revTTM= parseFloat(data.RevenueTTM);
       let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3):50;
@@ -446,7 +466,6 @@
         betaScore= 100- norm(beta,0,2);
       }
       let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-
       return {
         profitability,
         valuation,
@@ -455,11 +474,9 @@
         financial
       };
     }
-
     function plotFundamentalCategories(categories) {
       const container = document.getElementById('fundamentalCharts');
       container.innerHTML = '';
-
       const xLabels = [];
       const yValues = [];
       for (const [key, value] of Object.entries(categories)) {
@@ -480,7 +497,6 @@
           ]
         }
       }];
-
       const layout = {
         title: 'Fundamental Categories',
         yaxis: { range: [0, 100] },
@@ -488,8 +504,6 @@
       };
       Plotly.newPlot('fundamentalCharts', data, layout);
     }
-
-    /* Technical */
     function computeEMA(prices, period) {
       let ema = [];
       let multi = 2 / (period + 1);
@@ -499,7 +513,7 @@
       }
       let prevEma = sum / period;
       ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
-      for (let i = period; i < prices.length; i++) {
+      for (let i = period; i < prices.length; i++){
         let cur = prices[i].close;
         let next = (cur - prevEma) * multi + prevEma;
         ema[i] = { date: prices[i].date, ema: next };
@@ -508,204 +522,202 @@
       return ema.filter(x => x !== undefined);
     }
     function computeMACD(prices, fast=12, slow=26, signal=9) {
-      let fastEMA= computeEMA(prices, fast);
-      let slowEMA= computeEMA(prices, slow);
-      let macdLine= [];
-      for(let i=0;i< slowEMA.length;i++){
-        let date= slowEMA[i].date;
-        let match= fastEMA.find(f => f.date.getTime()=== date.getTime());
+      let fastEMA = computeEMA(prices, fast);
+      let slowEMA = computeEMA(prices, slow);
+      let macdLine = [];
+      for(let i = 0; i < slowEMA.length; i++){
+        let date = slowEMA[i].date;
+        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
         if(match){
           macdLine.push({ date, macd: match.ema - slowEMA[i].ema });
         }
       }
-      if(macdLine.length< signal) return { macdLine, signalLine: [] };
-      let m= 2/(signal+1);
-      let sumMacd=0;
-      for(let i=0;i< signal;i++){ sumMacd+= macdLine[i].macd; }
-      let prevSig= sumMacd / signal;
-      let signalLine= [];
-      signalLine[signal-1]= { date: macdLine[signal-1].date, signal: prevSig };
-      for(let i= signal; i< macdLine.length; i++){
-        let s= (macdLine[i].macd - prevSig)* m + prevSig;
-        signalLine[i]= { date: macdLine[i].date, signal: s };
-        prevSig= s;
+      if(macdLine.length < signal) return { macdLine, signalLine: [] };
+      let m = 2 / (signal + 1);
+      let sumMacd = 0;
+      for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
+      let prevSig = sumMacd / signal;
+      let signalLine = [];
+      signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
+      for(let i = signal; i < macdLine.length; i++){
+        let s = (macdLine[i].macd - prevSig) * m + prevSig;
+        signalLine[i] = { date: macdLine[i].date, signal: s };
+        prevSig = s;
       }
-      signalLine= signalLine.filter(x=>x!== undefined);
+      signalLine = signalLine.filter(x => x !== undefined);
       return { macdLine, signalLine };
     }
     function computeRSI(prices, period=14){
-      let rsis= [];
-      for(let i= period; i< prices.length; i++){
-        let gains= 0, losses= 0;
-        for(let j= i-period+1; j<= i; j++){
-          let diff= prices[j].close - prices[j-1].close;
-          if(diff>0) gains+= diff; else losses-= diff;
+      let rsis = [];
+      for(let i = period; i < prices.length; i++){
+        let gains = 0, losses = 0;
+        for(let j = i - period + 1; j <= i; j++){
+          let diff = prices[j].close - prices[j-1].close;
+          if(diff > 0) gains += diff; else losses -= diff;
         }
-        let avgGain= gains/ period;
-        let avgLoss= losses/ period;
-        let rs= (avgLoss===0)? 100: (avgGain/ avgLoss);
-        let rsi= 100- (100/ (1+ rs));
-        rsis.push({ date: prices[i].date, rsi});
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+        let rsi = 100 - (100 / (1 + rs));
+        rsis.push({ date: prices[i].date, rsi });
       }
       return rsis;
     }
     function computeBollingerBands(prices, period=20, k=2){
-      let bands= [];
-      for(let i= period-1; i< prices.length; i++){
-        let slice= prices.slice(i- period+1, i+1).map(p => p.close);
-        let sma= slice.reduce((a,b)=>a+b,0)/ period;
-        let variance= slice.reduce((sum, val)=> sum+ (val- sma)**2,0)/ period;
-        let std= Math.sqrt(variance);
+      let bands = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let sma = slice.reduce((a, b) => a + b, 0) / period;
+        let variance = slice.reduce((sum, val) => sum + (val - sma) ** 2, 0) / period;
+        let std = Math.sqrt(variance);
         bands.push({
           date: prices[i].date,
-          sma, upper: sma+ k* std, lower: sma- k* std
+          sma,
+          upper: sma + k * std,
+          lower: sma - k * std
         });
       }
       return bands;
     }
     function computeWMA(prices, period=20){
-      let wmas= [];
-      for(let i= period-1; i< prices.length; i++){
-        let slice= prices.slice(i- period+1, i+1).map(p => p.close);
-        let numerator= 0, denominator=0;
-        for(let j=0;j< period;j++){
-          let weight= j+1;
-          numerator+= slice[j]* weight;
-          denominator+= weight;
+      let wmas = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let numerator = 0, denominator = 0;
+        for(let j = 0; j < period; j++){
+          let weight = j + 1;
+          numerator += slice[j] * weight;
+          denominator += weight;
         }
-        wmas.push({ date: prices[i].date, wma: numerator/ denominator});
+        wmas.push({ date: prices[i].date, wma: numerator / denominator });
       }
       return wmas;
     }
     function scoreRSI(latestRSI, prevRSI){
-      let rel= 50- latestRSI;
-      let base= 100/(1+ Math.exp(-0.05* rel));
-      let dRSI= prevRSI- latestRSI;
-      return base* (1+ 0.01* dRSI);
+      let rel = 50 - latestRSI;
+      let base = 100 / (1 + Math.exp(-0.05 * rel));
+      let dRSI = prevRSI - latestRSI;
+      return base * (1 + 0.01 * dRSI);
     }
     function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
-      let currentPercentB= (latestPrice- latestBand.lower)/(latestBand.upper- latestBand.lower);
-      let prevPercentB= (prevPrice- prevBand.lower)/(prevBand.upper- prevBand.lower);
-      let baseBB= 100/(1+ Math.exp(3* (currentPercentB- 0.5)));
-      let dPercentB= prevPercentB- currentPercentB;
-      return baseBB* (1+ 0.1* dPercentB);
+      let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+      let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+      let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+      let dPercentB = prevPercentB - currentPercentB;
+      return baseBB * (1 + 0.1 * dPercentB);
     }
     function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
-      let currentX= (latestPrice/ latestWMA)-1;
-      let prevX= (prevPrice/ prevWMA)-1;
-      let baseWMA= 100/(1+ Math.exp(-10* currentX));
-      let dx= prevX- currentX;
-      return baseWMA* (1+ 0.5* dx);
+      let currentX = (latestPrice / latestWMA) - 1;
+      let prevX = (prevPrice / prevWMA) - 1;
+      let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+      let dx = prevX - currentX;
+      return baseWMA * (1 + 0.5 * dx);
     }
-    function polynomialRegression(x,y,degree){
-      let X= [];
-      for(let i=0;i<x.length;i++){
-        let row= [];
-        for(let j=0;j<= degree;j++){
+    function polynomialRegression(x, y, degree){
+      let X = [];
+      for(let i = 0; i < x.length; i++){
+        let row = [];
+        for(let j = 0; j <= degree; j++){
           row.push(Math.pow(x[i], j));
         }
         X.push(row);
       }
-      let XT= math.transpose(X);
-      let XTX= math.multiply(XT, X);
-      let XTy= math.multiply(XT, y);
-      let coeffsMatrix= math.lusolve(XTX, XTy);
-      const coeffs= coeffsMatrix.map(val => val[0]);
+      let XT = math.transpose(X);
+      let XTX = math.multiply(XT, X);
+      let XTy = math.multiply(XT, y);
+      let coeffsMatrix = math.lusolve(XTX, XTy);
+      const coeffs = coeffsMatrix.map(val => val[0]);
       return coeffs;
     }
     function predictValue(coeffs, x){
-      return coeffs.reduce((sum, c, i)=> sum+ c* Math.pow(x, i), 0);
+      return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
     }
     function computeMomentumScoreUsingRegression(histValues){
-      if(histValues.length<6)return null;
-      const recent= histValues.slice(-6);
-      const x= [1,2,3,4,5,6];
-      const coeffs= polynomialRegression(x, recent, 3);
-      const predicted= predictValue(coeffs, 7);
-      const lastValue= recent[recent.length-1];
-      const delta= predicted- lastValue;
-      const k=5;
-      const score= 100/(1+ Math.exp(-k* delta));
+      if(histValues.length < 6) return null;
+      const recent = histValues.slice(-6);
+      const x = [1, 2, 3, 4, 5, 6];
+      const coeffs = polynomialRegression(x, recent, 3);
+      const predicted = predictValue(coeffs, 7);
+      const lastValue = recent[recent.length - 1];
+      const delta = predicted - lastValue;
+      const k = 5;
+      const score = 100 / (1 + Math.exp(-k * delta));
       return score;
     }
     function computeGapTrendScore(macdLine, signalLine){
-      if(macdLine.length<6|| signalLine.length<6)return null;
-      const recentMACD= macdLine.slice(-6).map(item=> item.macd);
-      const recentSignal= signalLine.slice(-6).map(item=> item.signal);
-      const x= [1,2,3,4,5,6];
-      const macdCoeffs= polynomialRegression(x, recentMACD,3);
-      const signalCoeffs= polynomialRegression(x, recentSignal,3);
-      const predictedMACD= predictValue(macdCoeffs,7);
-      const predictedSignal= predictValue(signalCoeffs,7);
-      const predictedGap= predictedMACD- predictedSignal;
-      const currentGap= macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
-      const delta= predictedGap- currentGap;
-      const k=5;
-      const gapScore= 100/(1+ Math.exp(-k* delta));
+      if(macdLine.length < 6 || signalLine.length < 6) return null;
+      const recentMACD = macdLine.slice(-6).map(item => item.macd);
+      const recentSignal = signalLine.slice(-6).map(item => item.signal);
+      const x = [1, 2, 3, 4, 5, 6];
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+      const predictedMACD = predictValue(macdCoeffs, 7);
+      const predictedSignal = predictValue(signalCoeffs, 7);
+      const predictedGap = predictedMACD - predictedSignal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const delta = predictedGap - currentGap;
+      const k = 5;
+      const gapScore = 100 / (1 + Math.exp(-k * delta));
       return { gapScore, delta, currentGap, predictedGap };
     }
     function computeNewMACDScore(prices){
-      const macdData= computeMACD(prices);
-      const macdLine= macdData.macdLine;
-      const signalLine= macdData.signalLine;
-      if(macdLine.length<2 || signalLine.length<2)return 50;
-      const len= Math.min(macdLine.length, signalLine.length);
-      const latestMACD= macdLine[len-1].macd;
-
-      const positionScore= 100/(1+ Math.exp(latestMACD));
-      const gapData= computeGapTrendScore(macdLine, signalLine);
-      const gapScore= gapData? gapData.gapScore: 50;
-
-      let histValues= [];
-      for(let i=0;i<len;i++){
-        histValues.push(macdLine[i].macd- signalLine[i].signal);
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if(macdLine.length < 2 || signalLine.length < 2) return 50;
+      const len = Math.min(macdLine.length, signalLine.length);
+      const latestMACD = macdLine[len - 1].macd;
+      const positionScore = 100 / (1 + Math.exp(latestMACD));
+      const gapData = computeGapTrendScore(macdLine, signalLine);
+      const gapScore = gapData ? gapData.gapScore : 50;
+      let histValues = [];
+      for(let i = 0; i < len; i++){
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
       }
-      const momentumScore= computeMomentumScoreUsingRegression(histValues)|| 50;
-      const finalScore= (positionScore+ gapScore+ momentumScore)/3;
+      const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return finalScore;
     }
-
     function updateTechChart(prices){
-      let bands= computeBollingerBands(prices);
-      let wmas= computeWMA(prices);
-      let rsis= computeRSI(prices);
-      let macdData= computeMACD(prices);
-
-      let priceTrace= {
-        x: prices.map(p=> p.date),
-        y: prices.map(p=> p.close),
+      let bands = computeBollingerBands(prices);
+      let wmas = computeWMA(prices);
+      let rsis = computeRSI(prices);
+      let macdData = computeMACD(prices);
+      let priceTrace = {
+        x: prices.map(p => p.date),
+        y: prices.map(p => p.close),
         mode: 'lines+markers',
         name: 'Historical'
       };
-      let smaTrace= {
-        x: bands.map(b=> b.date),
-        y: bands.map(b=> b.sma),
+      let smaTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.sma),
         mode: 'lines',
-        line: { dash:'dash', color:'#555'},
+        line: { dash:'dash', color:'#555' },
         name: 'Bollinger SMA'
       };
-      let upperTrace= {
-        x: bands.map(b=> b.date),
-        y: bands.map(b=> b.upper),
+      let upperTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.upper),
         mode: 'lines',
-        line: { color:'red'},
+        line: { color:'red' },
         name: 'Upper Band'
       };
-      let lowerTrace= {
-        x: bands.map(b=> b.date),
-        y: bands.map(b=> b.lower),
+      let lowerTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.lower),
         mode: 'lines',
-        line: { color:'red'},
+        line: { color:'red' },
         name: 'Lower Band'
       };
-      let wmaTrace= {
-        x: wmas.map(w=> w.date),
-        y: wmas.map(w=> w.wma),
+      let wmaTrace = {
+        x: wmas.map(w => w.date),
+        y: wmas.map(w => w.wma),
         mode: 'lines',
-        line: { color:'orange'},
+        line: { color:'orange' },
         name: 'WMA'
       };
-      let macdTrace= {
+      let macdTrace = {
         x: macdData.macdLine.map(m => m.date),
         y: macdData.macdLine.map(m => m.macd),
         mode: 'lines',
@@ -713,7 +725,7 @@
         xaxis: 'x2',
         yaxis: 'y2'
       };
-      let signalTrace= {
+      let signalTrace = {
         x: macdData.signalLine.map(s => s.date),
         y: macdData.signalLine.map(s => s.signal),
         mode: 'lines',
@@ -721,138 +733,127 @@
         xaxis: 'x2',
         yaxis: 'y2'
       };
-
-      let rsivals= computeRSI(prices,14);
-      let rsiTrace= {
-        x: rsivals.map(r=> r.date),
-        y: rsivals.map(r=> r.rsi),
+      let rsivals = computeRSI(prices, 14);
+      let rsiTrace = {
+        x: rsivals.map(r => r.date),
+        y: rsivals.map(r => r.rsi),
         mode: 'lines',
         name: 'RSI',
         xaxis: 'x3',
         yaxis: 'y3'
       };
-
-      let layout= {
-        grid: { rows:3, columns:1, roworder:'top to bottom'},
-        margin: { t:80 },
-        xaxis: { domain:[0,1], anchor:'y', title:'Date'},
-        yaxis: { domain:[0.55,1], title:'Price'},
-        xaxis2:{ domain:[0,1], anchor:'y2', title:'Date'},
-        yaxis2:{ domain:[0.3,0.55], title:'MACD'},
-        xaxis3:{ domain:[0,1], anchor:'y3', title:'Date'},
-        yaxis3:{ domain:[0,0.3], title:'RSI'},
-        shapes:[
+      let layout = {
+        grid: { rows: 3, columns: 1, roworder:'top to bottom' },
+        margin: { t: 80 },
+        xaxis: { domain: [0,1], anchor: 'y', title: 'Date' },
+        yaxis: { domain: [0.55,1], title: 'Price' },
+        xaxis2: { domain: [0,1], anchor: 'y2', title: 'Date' },
+        yaxis2: { domain: [0.3,0.55], title: 'MACD' },
+        xaxis3: { domain: [0,1], anchor: 'y3', title: 'Date' },
+        yaxis3: { domain: [0,0.3], title: 'RSI' },
+        shapes: [
           {
-            type:'line',
-            xref:'x3', yref:'y3',
-            x0: Math.min(...rsivals.map(r=> r.date)),
-            x1: Math.max(...rsivals.map(r=> r.date)),
+            type: 'line',
+            xref: 'x3', yref: 'y3',
+            x0: Math.min(...rsivals.map(r => r.date)),
+            x1: Math.max(...rsivals.map(r => r.date)),
             y0: 30, y1: 30,
-            line:{ dash:'dash', color:'red'}
+            line: { dash:'dash', color:'red' }
           },
           {
-            type:'line',
-            xref:'x3', yref:'y3',
-            x0: Math.min(...rsivals.map(r=> r.date)),
-            x1: Math.max(...rsivals.map(r=> r.date)),
-            y0:70, y1:70,
-            line:{ dash:'dash', color:'red'}
+            type: 'line',
+            xref: 'x3', yref: 'y3',
+            x0: Math.min(...rsivals.map(r => r.date)),
+            x1: Math.max(...rsivals.map(r => r.date)),
+            y0: 70, y1: 70,
+            line: { dash:'dash', color:'red' }
           }
         ],
-        title:"Combined Technical Indicators"
+        title: "Combined Technical Indicators"
       };
-
       Plotly.newPlot('techChart', [
         priceTrace, smaTrace, upperTrace, lowerTrace,
         wmaTrace, macdTrace, signalTrace, rsiTrace
       ], layout);
-
-      if(prices.length<2 || rsivals.length<2|| bands.length<2|| wmas.length<2){
-        document.getElementById('techDetails').innerText= "Not enough data => default 50.";
+      if(prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2){
+        document.getElementById('techDetails').innerText = "Not enough data => default 50.";
         return 50;
       }
-      let latestPrice= prices[prices.length-1].close;
-      let prevPrice= prices[prices.length-2].close;
-      let latestRSI= rsivals[rsivals.length-1].rsi;
-      let prevRSI= rsivals[rsivals.length-2].rsi;
-      let rsiScore= scoreRSI(latestRSI, prevRSI);
-
-      let latestBand= bands[bands.length-1];
-      let prevBand= bands[bands.length-2];
-      let bbScore= scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
-      let macdScore= computeNewMACDScore(prices);
-      let latestWMA= wmas[wmas.length-1].wma;
-      let prevWMA= wmas[wmas.length-2].wma;
-      let wmaScore= scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
-
-      let aggregatedScore= (rsiScore+ bbScore+ macdScore+ wmaScore)/4;
-      document.getElementById('techDetails').innerText=
+      let latestPrice = prices[prices.length - 1].close;
+      let prevPrice = prices[prices.length - 2].close;
+      let latestRSI = rsivals[rsivals.length - 1].rsi;
+      let prevRSI = rsivals[rsivals.length - 2].rsi;
+      let rsiScore = scoreRSI(latestRSI, prevRSI);
+      let latestBand = bands[bands.length - 1];
+      let prevBand = bands[bands.length - 2];
+      let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
+      let macdScore = computeNewMACDScore(prices);
+      let latestWMA = wmas[wmas.length - 1].wma;
+      let prevWMA = wmas[wmas.length - 2].wma;
+      let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
+      let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
+      document.getElementById('techDetails').innerText =
         `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-
       return aggregatedScore;
     }
-
-    /* Monte Carlo */
     function randn_bm() {
-      let u=0,v=0;
-      while(u===0)u=Math.random();
-      while(v===0)v=Math.random();
-      return Math.sqrt(-2* Math.log(u))* Math.cos(2* Math.PI* v);
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
     }
-    function getMedian(arr){
-      const sorted= [...arr].sort((a,b)=> a-b);
-      const mid= Math.floor(sorted.length/2);
-      if(sorted.length % 2!==0)return sorted[mid];
-      return (sorted[mid-1]+ sorted[mid])/ 2;
+    function getMedian(arr) {
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      if(sorted.length % 2 !== 0) return sorted[mid];
+      return (sorted[mid - 1] + sorted[mid]) / 2;
     }
-    function computeStats(prices){
-      let logReturns= [];
-      for(let i=1;i< prices.length;i++){
-        let prev= prices[i-1].close;
-        let curr= prices[i].close;
-        logReturns.push(Math.log(curr/prev));
+    function computeStats(prices) {
+      let logReturns = [];
+      for(let i = 1; i < prices.length; i++){
+        let prev = prices[i-1].close;
+        let curr = prices[i].close;
+        logReturns.push(Math.log(curr / prev));
       }
-      if(logReturns.length<1){
-        return{ mean:0, stdDev:0, lastPrice:prices[prices.length-1].close};
+      if(logReturns.length < 1){
+        return { mean: 0, stdDev: 0, lastPrice: prices[prices.length-1].close };
       }
-      let dailyMean= logReturns.reduce((a,b)=> a+b,0)/ logReturns.length;
-      let variance= logReturns.reduce((sum,r)=> sum+ (r- dailyMean)**2,0)/(logReturns.length-1);
-      let dailyStd= Math.sqrt(variance);
-      let tradingDays= 252;
+      let dailyMean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+      let variance = logReturns.reduce((sum, r) => sum + (r - dailyMean) ** 2, 0) / (logReturns.length - 1);
+      let dailyStd = Math.sqrt(variance);
+      let tradingDays = 252;
       return {
-        mean: dailyMean* tradingDays,
-        stdDev: dailyStd* Math.sqrt(tradingDays),
+        mean: dailyMean * tradingDays,
+        stdDev: dailyStd * Math.sqrt(tradingDays),
         lastPrice: prices[prices.length-1].close
       };
     }
-    function runMC(lastPrice, mean, stdDev, T, sims=10000){
-      let finals= [];
-      for(let i=0;i<sims;i++){
-        let Z= randn_bm();
-        let ST= lastPrice* Math.exp((mean- 0.5* stdDev**2)* T + stdDev* Math.sqrt(T)* Z);
+    function runMC(lastPrice, mean, stdDev, T, sims = 10000) {
+      let finals = [];
+      for(let i = 0; i < sims; i++){
+        let Z = randn_bm();
+        let ST = lastPrice * Math.exp((mean - 0.5 * stdDev**2) * T + stdDev * Math.sqrt(T) * Z);
         finals.push(ST);
       }
       return finals;
     }
-    function updateMCChart(finalPrices, lastPrice){
-      globalFinalPrices= finalPrices;
-      let trace= { x: finalPrices, type:'histogram', marker:{ color:'gray'} };
-      let layout= {
-        title:"Monte Carlo Distribution of Final Prices",
-        xaxis:{ title:"Price"},
-        yaxis:{ title:"Frequency"}
+    function updateMCChart(finalPrices, lastPrice) {
+      globalFinalPrices = finalPrices;
+      let trace = { x: finalPrices, type: 'histogram', marker: { color: 'gray' } };
+      let layout = {
+        title: "Monte Carlo Distribution of Final Prices",
+        xaxis: { title: "Price" },
+        yaxis: { title: "Frequency" }
       };
       Plotly.newPlot("mcChart", [trace], layout);
-
-      let countCurrent= finalPrices.filter(p=> p>= lastPrice).length;
-      let bullishScore= (countCurrent/ finalPrices.length)*100;
-      document.getElementById('mcBullScore').innerText=
+      let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
+      let bullishScore = (countCurrent / finalPrices.length) * 100;
+      document.getElementById('mcBullScore').innerText =
         `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
-
-      const minPrice= Math.min(...finalPrices);
-      const maxPrice= Math.max(...finalPrices);
-      const medianPrice= getMedian(finalPrices);
-      let sliderHTML=`
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const medianPrice = getMedian(finalPrices);
+      let sliderHTML = `
         <label for="priceSlider">Select Target Price:</label>
         <input type="range"
                id="priceSlider"
@@ -864,348 +865,329 @@
         <span id="sliderValue">${medianPrice.toFixed(2)}</span>
         <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
       `;
-      document.getElementById('mcSliderSection').innerHTML= sliderHTML;
+      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
       updateMCSlider(medianPrice);
       return bullishScore;
     }
-    function updateMCSlider(val){
-      val= parseFloat(val);
-      document.getElementById('sliderValue').textContent= val.toFixed(2);
-      let countTarget= globalFinalPrices.filter(p=> p>= val).length;
-      let sliderProb= (countTarget/ globalFinalPrices.length)*100;
-      document.getElementById('mcSliderProb').innerText=
+    function updateMCSlider(val) {
+      val = parseFloat(val);
+      document.getElementById('sliderValue').textContent = val.toFixed(2);
+      let countTarget = globalFinalPrices.filter(p => p >= val).length;
+      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+      document.getElementById('mcSliderProb').innerText =
         `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
       Plotly.relayout("mcChart", {
         shapes: [{
-          type:'line',
-          xref:'x', yref:'paper',
+          type: 'line',
+          xref: 'x', yref: 'paper',
           x0: val, x1: val,
-          y0:0, y1:1,
-          line: { color:'red', width:2 }
+          y0: 0, y1: 1,
+          line: { color: 'red', width: 2 }
         }]
       });
     }
-
-    /* Sentiment */
-    function logisticBullish(slope){
-      const k=0.3;
-      let raw= 100/(1+ Math.exp(-k* slope));
+    function logisticBullish(slope) {
+      const k = 0.3;
+      let raw = 100 / (1 + Math.exp(-k * slope));
       return Math.max(0, Math.min(100, raw));
     }
-    async function fetchSentimentData(ticker, periodMonths){
-      let url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-      let resp= await fetch(url);
-      let data= await resp.json();
+    async function fetchSentimentData(ticker, periodMonths) {
+      let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let resp = await fetch(url);
+      let data = await resp.json();
       if(!data.feed) throw new Error("No sentiment data from server.");
-
-      let startDate= new Date();
-      startDate.setMonth(startDate.getMonth()- periodMonths);
-      let byHour= {};
-      for(let article of data.feed){
-        let dt= parseAlphaDate(article.time_published);
-        if(isNaN(dt)|| dt< startDate)continue;
-        if(!article.ticker_sentiment)continue;
-        let tItem= article.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
-        if(!tItem)continue;
-        let raw= parseFloat(tItem.ticker_sentiment_score);
-        if(isNaN(raw))continue;
-        let norm= ((raw+1)/2)*100;
-        let hourKey= dt.toISOString().substring(0,13);
-        if(!byHour[hourKey])byHour[hourKey]= [];
+      let startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let byHour = {};
+      for(let article of data.feed) {
+        let dt = parseAlphaDate(article.time_published);
+        if(isNaN(dt) || dt < startDate) continue;
+        if(!article.ticker_sentiment) continue;
+        let tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
+        if(!tItem) continue;
+        let raw = parseFloat(tItem.ticker_sentiment_score);
+        if(isNaN(raw)) continue;
+        let norm = ((raw + 1) / 2) * 100;
+        let hourKey = dt.toISOString().substring(0,13);
+        if(!byHour[hourKey]) byHour[hourKey] = [];
         byHour[hourKey].push(norm);
       }
-      let sentiments= [];
-      for(let hStr in byHour){
-        let vals= byHour[hStr];
-        let avg= vals.reduce((a,b)=> a+b,0)/ vals.length;
-        let dt= new Date(`${hStr}:00:00Z`);
-        sentiments.push({ date:dt, sentiment: avg});
+      let sentiments = [];
+      for(let hStr in byHour) {
+        let vals = byHour[hStr];
+        let avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        let dt = new Date(`${hStr}:00:00Z`);
+        sentiments.push({ date: dt, sentiment: avg });
       }
-      sentiments.sort((a,b)=> a.date-b.date);
+      sentiments.sort((a, b) => a.date - b.date);
       return sentiments;
     }
-    function updateSentimentChart(sentiments){
-      let traceRaw= {
-        x: sentiments.map(s=> s.date),
-        y: sentiments.map(s=> s.sentiment),
-        mode:'markers+lines',
-        name:'Sentiment'
+    function updateSentimentChart(sentiments) {
+      let traceRaw = {
+        x: sentiments.map(s => s.date),
+        y: sentiments.map(s => s.sentiment),
+        mode: 'markers+lines',
+        name: 'Sentiment'
       };
-      if(sentiments.length<2){
+      if(sentiments.length < 2) {
         Plotly.newPlot("sentChart", [traceRaw], {
-          title:"Sentiment Analysis",
-          xaxis:{ title:"Date"},
-          yaxis:{ title:"Sentiment (0..100)"}
+          title: "Sentiment Analysis",
+          xaxis: { title: "Date" },
+          yaxis: { title: "Sentiment (0..100)" }
         });
-        document.getElementById('sentDetails').innerText= "Insufficient data => 50.";
+        document.getElementById('sentDetails').innerText = "Insufficient data => 50.";
         return 50;
       }
-      let firstDate= sentiments[0].date;
-      let xs= sentiments.map(s=> (s.date- firstDate)/(1000*60*60*24));
-      let ys= sentiments.map(s=> s.sentiment);
-      let n= xs.length;
-      let sumX= xs.reduce((a,b)=> a+b,0);
-      let sumY= ys.reduce((a,b)=> a+b,0);
-      let sumXY= xs.reduce((acc, x,i)=> acc+ x* ys[i],0);
-      let sumX2= xs.reduce((acc,x)=> acc+ x*x,0);
-      let slope= (n* sumXY- sumX* sumY)/(n* sumX2- sumX* sumX);
-      let intercept= (sumY- slope* sumX)/ n;
-
-      let minDate= sentiments[0].date;
-      let maxDate= sentiments[sentiments.length-1].date;
-      let trendYstart= intercept+ slope* xs[0];
-      let trendYend= intercept+ slope* xs[xs.length-1];
-
-      let traceTrend= {
-        x:[minDate, maxDate],
-        y:[trendYstart, trendYend],
-        mode:'lines',
-        line:{ dash:'dash', color:'red'},
-        name:'Trend'
+      let firstDate = sentiments[0].date;
+      let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24));
+      let ys = sentiments.map(s => s.sentiment);
+      let n = xs.length;
+      let sumX = xs.reduce((a, b) => a + b, 0);
+      let sumY = ys.reduce((a, b) => a + b, 0);
+      let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+      let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+      let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      let intercept = (sumY - slope * sumX) / n;
+      let minDate = sentiments[0].date;
+      let maxDate = sentiments[sentiments.length - 1].date;
+      let trendYstart = intercept + slope * xs[0];
+      let trendYend = intercept + slope * xs[xs.length - 1];
+      let traceTrend = {
+        x: [minDate, maxDate],
+        y: [trendYstart, trendYend],
+        mode: 'lines',
+        line: { dash: 'dash', color: 'red' },
+        name: 'Trend'
       };
-      let layout= {
-        title:"Sentiment Analysis",
-        xaxis:{ title:"Date"},
-        yaxis:{ title:"Sentiment (0..100)"}
+      let layout = {
+        title: "Sentiment Analysis",
+        xaxis: { title: "Date" },
+        yaxis: { title: "Sentiment (0..100)" }
       };
-      Plotly.newPlot("sentChart",[traceRaw, traceTrend],layout);
-
-      let slopeBull= logisticBullish(slope);
-      let avgSentiment= sumY/ n;
-      let finalBullishScore= 0.5* slopeBull+ 0.5* avgSentiment;
-      document.getElementById('sentDetails').innerText=
+      Plotly.newPlot("sentChart", [traceRaw, traceTrend], layout);
+      let slopeBull = logisticBullish(slope);
+      let avgSentiment = sumY / n;
+      let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
+      document.getElementById('sentDetails').innerText =
         `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
       return finalBullishScore;
     }
-
-    /* Insider */
-    async function fetchInsiderData(ticker, periodMonths, currentPrice){
-      const url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-      const resp= await fetch(url);
-      const data= await resp.json();
-      if(!data.data|| !Array.isArray(data.data)) throw new Error("No insider data array found.");
-
-      const cutoff= new Date();
-      cutoff.setMonth(cutoff.getMonth()- periodMonths);
-      let totalBuys=0, totalSells=0;
-
-      data.data.forEach(item=>{
-        if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares)return;
-        if(!item.share_price|| parseFloat(item.share_price)===0) return;
-        const tradePrice= parseFloat(item.share_price);
-        const lb= currentPrice*0.5, ub= currentPrice*1.5;
-        if(tradePrice< lb|| tradePrice> ub)return;
-        const dt= new Date(item.transaction_date);
-        if(dt>= cutoff && !isNaN(dt)){
-          const shares= parseFloat(item.shares);
-          if(item.acquisition_or_disposal==="A") totalBuys+= shares;
-          else if(item.acquisition_or_disposal==="D") totalSells+= shares;
+    async function fetchInsiderData(ticker, periodMonths, currentPrice) {
+      const url = `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if(!data.data || !Array.isArray(data.data)) throw new Error("No insider data array found.");
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - periodMonths);
+      let totalBuys = 0, totalSells = 0;
+      data.data.forEach(item => {
+        if(!item.transaction_date || !item.acquisition_or_disposal || !item.shares) return;
+        if(!item.share_price || parseFloat(item.share_price) === 0) return;
+        const tradePrice = parseFloat(item.share_price);
+        const lb = currentPrice * 0.5, ub = currentPrice * 1.5;
+        if(tradePrice < lb || tradePrice > ub) return;
+        const dt = new Date(item.transaction_date);
+        if(dt >= cutoff && !isNaN(dt)){
+          const shares = parseFloat(item.shares);
+          if(item.acquisition_or_disposal === "A") totalBuys += shares;
+          else if(item.acquisition_or_disposal === "D") totalSells += shares;
         }
       });
       return { totalBuys, totalSells };
     }
-    function updateInsiderChart(totalBuys, totalSells){
-      const trace= {
-        x:["Bought","Sold"],
-        y:[totalBuys, totalSells],
-        type:'bar',
-        marker:{ color:["green","red"]}
+    function updateInsiderChart(totalBuys, totalSells) {
+      const trace = {
+        x: ["Bought", "Sold"],
+        y: [totalBuys, totalSells],
+        type: 'bar',
+        marker: { color: ["green", "red"] }
       };
-      const layout= { title:"Insider Activity (Shares Bought vs. Sold)"};
-      Plotly.newPlot("insiderChart",[trace], layout);
-
-      let sum= totalBuys+ totalSells;
-      let insiderBull= 50;
-      if(sum>0){
-        insiderBull= ((totalBuys- totalSells)/ sum)* 50+ 50;
+      const layout = { title: "Insider Activity (Shares Bought vs. Sold)" };
+      Plotly.newPlot("insiderChart", [trace], layout);
+      let sum = totalBuys + totalSells;
+      let insiderBull = 50;
+      if(sum > 0){
+        insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
       }
-      document.getElementById("insiderDetails").innerText=
+      document.getElementById("insiderDetails").innerText =
         `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
       return insiderBull;
     }
-
-    /* Congress */
-    async function fetchCongressData(ticker, periodMonths){
-      const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-      const resp= await fetch(url);
-      const j= await resp.json();
-      if(!j.data|| !Array.isArray(j.data)){
+    async function fetchCongressData(ticker, periodMonths) {
+      const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+      const resp = await fetch(url);
+      const j = await resp.json();
+      if(!j.data || !Array.isArray(j.data)){
         throw new Error("Invalid congress data format.");
       }
-      const rawData= j.data;
-      const cutoff= new Date();
-      cutoff.setMonth(cutoff.getMonth()- periodMonths);
-
-      let totalPurchase=0, totalSale=0;
+      const rawData = j.data;
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - periodMonths);
+      let totalPurchase = 0, totalSale = 0;
       for(let item of rawData){
-        if(!item.TransactionDate|| !item.Transaction)continue;
-        let dt= new Date(item.TransactionDate);
-        if(isNaN(dt)|| dt< cutoff) continue;
-        let amt= parseFloat(item.Amount)||0;
-        if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
-        if(/sale/i.test(item.Transaction)) totalSale+= amt;
+        if(!item.TransactionDate || !item.Transaction) continue;
+        let dt = new Date(item.TransactionDate);
+        if(isNaN(dt) || dt < cutoff) continue;
+        let amt = parseFloat(item.Amount) || 0;
+        if(/purchase/i.test(item.Transaction)) totalPurchase += amt;
+        if(/sale/i.test(item.Transaction)) totalSale += amt;
       }
       return { totalPurchase, totalSale };
     }
-    function updateCongressChart(totalPurchase, totalSale){
-      const trace= {
-        x:["Purchase Amount","Sale Amount"],
-        y:[totalPurchase, totalSale],
-        type:'bar',
-        marker:{ color:["green","red"]}
+    function updateCongressChart(totalPurchase, totalSale) {
+      const trace = {
+        x: ["Purchase Amount", "Sale Amount"],
+        y: [totalPurchase, totalSale],
+        type: 'bar',
+        marker: { color: ["green", "red"] }
       };
-      const layout= { title:"Congress Trading (Monetary Amounts)"};
-      Plotly.newPlot("congressChart",[trace], layout);
-
-      let sum= totalPurchase+ totalSale;
-      let congressBull= 50;
-      if(sum>0){
-        congressBull= ((totalPurchase- totalSale)/ sum)* 50+ 50;
+      const layout = { title: "Congress Trading (Monetary Amounts)" };
+      Plotly.newPlot("congressChart", [trace], layout);
+      let sum = totalPurchase + totalSale;
+      let congressBull = 50;
+      if(sum > 0){
+        congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
       }
-      document.getElementById("congressDetails").innerText=
+      document.getElementById("congressDetails").innerText =
         `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
       return congressBull;
     }
-
-    /* DETERMINE SPY MARKET REGIME (like multi-ticker aggregator) */
-    function computeSMAforRegime(priceArray, period){
-      if(!priceArray|| priceArray.length< period)return null;
-      let slice= priceArray.slice(-period);
-      let sum=0;
-      for(let p of slice){ sum+= p.close; }
-      return sum/ period;
+    function computeSMAforRegime(priceArray, period) {
+      if(!priceArray || priceArray.length < period) return null;
+      let slice = priceArray.slice(-period);
+      let sum = 0;
+      for(let p of slice){ sum += p.close; }
+      return sum / period;
     }
-    function computeSlope(prices){
-      let n= prices.length;
-      if(n<2) return 0;
-      let sumX=0, sumY=0, sumXY=0, sumX2=0;
-      for(let i=0;i<n;i++){
-        sumX+= i;
-        sumY+= prices[i].close;
-        sumXY+= i* prices[i].close;
-        sumX2+= i*i;
+    function computeSlope(prices) {
+      let n = prices.length;
+      if(n < 2) return 0;
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+      for(let i = 0; i < n; i++){
+        sumX += i;
+        sumY += prices[i].close;
+        sumXY += i * prices[i].close;
+        sumX2 += i * i;
       }
-      let numerator= n* sumXY - sumX* sumY;
-      let denominator= n* sumX2 - sumX* sumX;
-      if(denominator===0)return 0;
-      return numerator/ denominator;
+      let numerator = n * sumXY - sumX * sumY;
+      let denominator = n * sumX2 - sumX * sumX;
+      if(denominator === 0) return 0;
+      return numerator / denominator;
     }
-    function classifyBySMAshortLong(shortSMA, longSMA){
-      if(!shortSMA|| !longSMA)return "Neutral";
-      let ratio= shortSMA/ longSMA;
-      if(ratio>1.01)return "Bull";
-      if(ratio<0.99)return "Bear";
+    function classifyBySMAshortLong(shortSMA, longSMA) {
+      if(!shortSMA || !longSMA) return "Neutral";
+      let ratio = shortSMA / longSMA;
+      if(ratio > 1.01) return "Bull";
+      if(ratio < 0.99) return "Bear";
       return "Neutral";
     }
-    function classifyBySlopeVal(slopeVal){
-      let bullThr= 0.2, bearThr=-0.2;
-      if(slopeVal> bullThr)return "Bull";
-      if(slopeVal< bearThr)return "Bear";
+    function classifyBySlopeVal(slopeVal) {
+      let bullThr = 0.2, bearThr = -0.2;
+      if(slopeVal > bullThr) return "Bull";
+      if(slopeVal < bearThr) return "Bear";
       return "Neutral";
     }
-    async function determineSPYMarketRegime(periodMonths=4){
+    async function determineSPYMarketRegime(periodMonths = 4) {
       try {
-        let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-        let resp=await fetch(url);
-        let j=await resp.json();
+        let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+        let resp = await fetch(url);
+        let j = await resp.json();
         if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
-
-        let shortWindow= periodMonths*5;
-        let longWindow= periodMonths*15;
-        let totalDays= periodMonths*30;
-
-        let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-        let arr=[];
+        let shortWindow = periodMonths * 5;
+        let longWindow = periodMonths * 15;
+        let totalDays = periodMonths * 30;
+        let allKeys = Object.keys(j["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
+        let arr = [];
         for(let d of allKeys){
-          let dt=new Date(d);
-          let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-          arr.push({ date:dt, close:c });
+          let dt = new Date(d);
+          let c = parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+          arr.push({ date: dt, close: c });
         }
-        let end= arr[arr.length-1].date;
-        let start= new Date(end);
-        start.setDate(start.getDate()- totalDays);
-        let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-        if(filtered.length< Math.max(shortWindow, longWindow)){
+        let end = arr[arr.length - 1].date;
+        let start = new Date(end);
+        start.setDate(start.getDate() - totalDays);
+        let filtered = arr.filter(pt => pt.date >= start && pt.date <= end);
+        if(filtered.length < Math.max(shortWindow, longWindow)){
           console.log("Not enough SPY data => Neutral");
           return "Neutral";
         }
-
-        let shortSMA= computeSMAforRegime(filtered, shortWindow);
-        let longSMA= computeSMAforRegime(filtered, longWindow);
-        let smaSig= classifyBySMAshortLong(shortSMA, longSMA);
-
-        let slopeVal= computeSlope(filtered);
-        let slopeSig= classifyBySlopeVal(slopeVal);
-
-        let votes=0;
-        if(smaSig==="Bull")votes++;
-        if(smaSig==="Bear")votes--;
-        if(slopeSig==="Bull")votes++;
-        if(slopeSig==="Bear")votes--;
-
-        if(votes>=2)return "Bull";
-        if(votes<=-2)return "Bear";
+        let shortSMA = computeSMAforRegime(filtered, shortWindow);
+        let longSMA = computeSMAforRegime(filtered, longWindow);
+        let smaSig = classifyBySMAshortLong(shortSMA, longSMA);
+        let slopeVal = computeSlope(filtered);
+        let slopeSig = classifyBySlopeVal(slopeVal);
+        let votes = 0;
+        if(smaSig === "Bull") votes++;
+        if(smaSig === "Bear") votes--;
+        if(slopeSig === "Bull") votes++;
+        if(slopeSig === "Bear") votes--;
+        if(votes >= 2) return "Bull";
+        if(votes <= -2) return "Bear";
         return "Neutral";
-      } catch(e){
+      } catch(e) {
         console.log("Error in determineSPYMarketRegime =>", e.message);
         return "Neutral";
       }
     }
-
-    /* getAutoWeightsForRegime => same distribution as multi aggregator */
-    function getAutoWeightsForRegime(regime){
-      if(regime==="Bear"){
-        return {
-          wMC:0.05, wTech:0.05, wSent:0.10, wIns:0.30, wFund:0.30, wCong:0.20, scale:0.25
-        };
-      } else if(regime==="Bull"){
-        return {
-          wMC:0.20, wTech:0.25, wSent:0.15, wIns:0.15, wFund:0.15, wCong:0.10, scale:1.00
-        };
+    function getAutoWeightsForRegime(regime) {
+      if(regime === "Bear"){
+        return { wMC: 0.05, wTech: 0.05, wSent: 0.10, wIns: 0.30, wFund: 0.30, wCong: 0.20, scale: 0.25 };
+      } else if(regime === "Bull"){
+        return { wMC: 0.20, wTech: 0.25, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.10, scale: 1.00 };
       } else {
-        // Neutral
-        return {
-          wMC:0.15, wTech:0.20, wSent:0.15, wIns:0.15, wFund:0.20, wCong:0.15, scale:0.50
-        };
+        return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
       }
     }
-
-    /* aggregatorFinal => auto or manual with fallback if invalid manual */
-    function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
-      const manual= document.getElementById("useManualWeightsCheckbox").checked;
+    function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
+      const manual = document.getElementById("useManualWeightsCheckbox").checked;
       if(!manual){
-        // auto approach
-        let auto= getAutoWeightsForRegime(regime);
-        let raw= auto.wMC* mc + auto.wTech* tech + auto.wSent* sent + auto.wIns* ins + auto.wFund* fund + auto.wCong* cong;
-        return (raw- 50)* auto.scale + 50;
+        let auto = getAutoWeightsForRegime(regime);
+        let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+        return (raw - 50) * auto.scale + 50;
       } else {
-        // manual approach
-        const wMC= parseFloat(document.getElementById("wMC").value)||0;
-        const wTech= parseFloat(document.getElementById("wTech").value)||0;
-        const wSent= parseFloat(document.getElementById("wSent").value)||0;
-        const wIns= parseFloat(document.getElementById("wIns").value)||0;
-        const wFund= parseFloat(document.getElementById("wFund").value)||0;
-        const wCong= parseFloat(document.getElementById("wCong").value)||0;
-        let sc= parseFloat(document.getElementById("manualScale").value)||1.0;
-
-        let sumW= wMC+ wTech+ wSent+ wIns+ wFund+ wCong;
-        let invalidWeights= (Math.abs(sumW-1)>1e-9);
-        let invalidScale= (sc<0 || sc>2);
-
+        const wMC = parseFloat(document.getElementById("wMC").value) || 0;
+        const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+        const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+        const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+        const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+        const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+        let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+        let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+        let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+        let invalidScale = (sc < 0 || sc > 2);
         if(invalidWeights || invalidScale){
           console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
-          let eq= (mc+ tech+ sent+ ins+ fund+ cong)/6;
+          let eq = (mc + tech + sent + ins + fund + cong) / 6;
           return eq;
         } else {
-          let raw= wMC* mc + wTech* tech + wSent* sent + wIns* ins + wFund* fund + wCong* cong;
-          return (raw - 50)* sc + 50;
+          let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+          return (raw - 50) * sc + 50;
         }
       }
     }
 
-    document.getElementById("simulateButton").addEventListener("click", async () => {
+    // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
+    function showBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "flex";
+  const loadingText = document.getElementById("loadingText");
+  let dotCount = 0;
+  loadingText.innerText = "Running 10,000 simulation";
+  bufferDotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    loadingText.innerText = "Running 10,000 simulation" + ".".repeat(dotCount);
+  }, 500);
+}
+
+function hideBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "none";
+  clearInterval(bufferDotInterval);
+}
+
+    // Run simulation immediately while showing the overlay.
+    async function runSimulation() {
       document.getElementById('loading').style.display = 'block';
-      // Hide sections
       document.getElementById('aggregateSection').style.display = 'none';
       document.getElementById('descriptionSection').style.display = 'none';
       document.getElementById('fundamentalSection').style.display = 'none';
@@ -1222,108 +1204,78 @@
         document.getElementById('loading').style.display = 'none';
         return;
       }
-      let futureDate= new Date(futureDateStr);
-
-      let currentDate= new Date();
-      let diffInMonths= (futureDate.getFullYear()- currentDate.getFullYear())* 12 +
-                       (futureDate.getMonth()- currentDate.getMonth());
-      if(diffInMonths<1) diffInMonths=1;
-      let recommendedPeriod= diffInMonths*4;
-
+      let futureDate = new Date(futureDateStr);
+      let currentDate = new Date();
+      let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
+                         (futureDate.getMonth() - currentDate.getMonth());
+      if(diffInMonths < 1) diffInMonths = 1;
+      let recommendedPeriod = diffInMonths * 4;
       let periodMonths;
       if(document.getElementById('manualOverrideCheckbox').checked){
-        periodMonths= parseInt(document.getElementById('manualPeriod').value);
-        if(isNaN(periodMonths) || periodMonths< recommendedPeriod){
+        periodMonths = parseInt(document.getElementById('manualPeriod').value);
+        if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
           alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
-          periodMonths= recommendedPeriod;
+          periodMonths = recommendedPeriod;
         }
       } else {
-        periodMonths= recommendedPeriod;
+        periodMonths = recommendedPeriod;
       }
-
       try {
-        // DETECT SPY Regime
-        let regime= await determineSPYMarketRegime(4);
+        let regime = await determineSPYMarketRegime(4);
         console.log("Detected SPY Market Regime => ", regime);
-
-        // 1) fundamental data
-        let fundUrl= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-        let fundResp= await fetch(fundUrl);
-        let fundamentalData= await fundResp.json();
-        let companyDesc= fundamentalData.Description || "No description available.";
-
-        // 2) fundamental scores
-        let fundBull= 50;
-        let categories= null;
+        let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+        let fundResp = await fetch(fundUrl);
+        let fundamentalData = await fundResp.json();
+        let companyDesc = fundamentalData.Description || "No description available.";
+        let fundBull = 50;
+        let categories = null;
         if(fundamentalData.Symbol){
-          categories= computeFundScores(fundamentalData);
-          let catSum=0, nCats=0;
-          for(let k in categories){ catSum+= categories[k]; nCats++; }
-          fundBull= catSum/ nCats;
+          categories = computeFundScores(fundamentalData);
+          let catSum = 0, nCats = 0;
+          for(let k in categories){ catSum += categories[k]; nCats++; }
+          fundBull = catSum / nCats;
         }
-
-        // 3) historical
-        let histUrl= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        let resp= await fetch(histUrl);
-        let data= await resp.json();
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+        let resp = await fetch(histUrl);
+        let data = await resp.json();
         if(!data["Time Series (Daily)"]){
           throw new Error("Unable to retrieve valid historical data.");
         }
-        let prices= processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if(prices.length<2){
+        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+        if(prices.length < 2){
           alert("Not enough historical data.");
-          document.getElementById('loading').style.display='none';
+          document.getElementById('loading').style.display = 'none';
           return;
         }
-
-        // aggregator section
-        document.getElementById('aggregateSection').style.display='block';
-        // description
-        document.getElementById('descriptionSection').style.display='block';
-        document.getElementById('companyDescription').innerText= companyDesc;
-
-        // fundamental
+        document.getElementById('aggregateSection').style.display = 'block';
+        document.getElementById('descriptionSection').style.display = 'block';
+        document.getElementById('companyDescription').innerText = companyDesc;
         if(categories){
-          document.getElementById('fundamentalSection').style.display='block';
+          document.getElementById('fundamentalSection').style.display = 'block';
           plotFundamentalCategories(categories);
-          document.getElementById('fundamentalText').innerText=
+          document.getElementById('fundamentalText').innerText =
             `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
         }
-
-        // 7) Tech
-        document.getElementById('techSection').style.display='block';
-        let techBull= updateTechChart(prices);
-
-        // 8) MC
-        let mcStats= computeStats(prices);
-        let T= (futureDate- prices[prices.length-1].date)/(365*24*60*60*1000);
-        let mcFinals= runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-        document.getElementById('mcSection').style.display='block';
-        let mcBull= updateMCChart(mcFinals, mcStats.lastPrice);
-
-        // 9) Sent
-        let sentiments= await fetchSentimentData(ticker, periodMonths);
-        document.getElementById('sentSection').style.display='block';
-        let sentBull= updateSentimentChart(sentiments);
-
-        // 10) Insider
-        let insiderObj= await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
-        document.getElementById('insiderSection').style.display='block';
-        let insiderBull= updateInsiderChart(insiderObj.totalBuys, insiderObj.totalSells);
-
-        // 11) Congress
-        let congressObj= await fetchCongressData(ticker, periodMonths);
-        document.getElementById('congressSection').style.display='block';
-        let congressBull= updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
-
-        // 12) Weighted aggregator
-        let aggregatedBull= aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
-
-        document.getElementById('aggregateMarker').style.left= aggregatedBull + '%';
-        document.getElementById('aggregateScoreText').innerText= aggregatedBull.toFixed(2)+ '%';
-
-        // save final
-        simulationReport= {
+        document.getElementById('techSection').style.display = 'block';
+        let techBull = updateTechChart(prices);
+        let mcStats = computeStats(prices);
+        let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
+        let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+        document.getElementById('mcSection').style.display = 'block';
+        let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+        let sentiments = await fetchSentimentData(ticker, periodMonths);
+        document.getElementById('sentSection').style.display = 'block';
+        let sentBull = updateSentimentChart(sentiments);
+        let insiderObj = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
+        document.getElementById('insiderSection').style.display = 'block';
+        let insiderBull = updateInsiderChart(insiderObj.totalBuys, insiderObj.totalSells);
+        let congressObj = await fetchCongressData(ticker, periodMonths);
+        document.getElementById('congressSection').style.display = 'block';
+        let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+        let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+        document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
+        document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+        simulationReport = {
           ticker,
           periodMonths,
           futureDate: futureDate.toDateString(),
@@ -1338,61 +1290,102 @@
           description: companyDesc,
           regime
         };
-      } catch(err){
-        alert("Error: "+ err.message);
+      } catch(err) {
+        alert("Error: " + err.message);
       }
-      document.getElementById('loading').style.display='none';
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    // NEW: When the simulation button is clicked, show the buffer overlay immediately and start simulation concurrently.
+    document.getElementById("simulateButton").addEventListener("click", () => {
+      showBufferOverlay();
+      runSimulation().then(() => {
+        hideBufferOverlay();
+      }).catch(() => {
+        hideBufferOverlay();
+      });
     });
 
-    // Link Buttons
-    document.getElementById("sentimentLinkButton").addEventListener("click", () => {
-      let ticker= document.getElementById("ticker").value.trim();
+    // Update link button texts dynamically based on ticker input.
+    function updateLinkButtonTexts(){
+      const ticker = document.getElementById('ticker').value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/sentiment?symbol="+ encodeURIComponent(ticker),"_blank");
+        document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
+        document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
+        document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
+        document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
+        document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
+      } else {
+        document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
+        document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
+        document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
+        document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
+        document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
+      }
+    }
+    document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
+    updateLinkButtonTexts();
+
+    // Link Buttons Event Listeners
+    document.getElementById("sentimentLinkButton").addEventListener("click", () => {
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/sentiment?symbol=" + encodeURIComponent(ticker), "_blank");
       } else {
         alert("Enter a ticker first.");
       }
     });
     document.getElementById("technicalLinkButton").addEventListener("click", () => {
-      let ticker= document.getElementById("ticker").value.trim();
+      let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/technical/?symbol="+ encodeURIComponent(ticker),"_blank");
+        window.open("https://www.intuitiontrades.com/technical/?symbol=" + encodeURIComponent(ticker), "_blank");
       } else {
         alert("Enter a ticker first.");
       }
     });
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
-      let ticker= document.getElementById("ticker").value.trim();
+      let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/insider/?symbol="+ encodeURIComponent(ticker)+"&days=30","_blank");
+        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=30", "_blank");
       } else {
         alert("Enter a ticker first.");
       }
     });
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-      window.open("https://www.intuitiontrades.com/congress/","_blank");
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/congress/?symbol=" + encodeURIComponent(ticker), "_blank");
+      } else {
+        alert("Enter a ticker first.");
+      }
     });
     document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
-      let ticker= document.getElementById("ticker").value.trim();
+      let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/fundamental/?symbol="+ encodeURIComponent(ticker),"_blank");
+        window.open("https://www.intuitiontrades.com/fundamental/?symbol=" + encodeURIComponent(ticker), "_blank");
       } else {
         alert("Enter a ticker.");
       }
     });
-
+    document.getElementById("topCongressLinkButton").addEventListener("click", () => {
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/topcongress?symbol=" + encodeURIComponent(ticker), "_blank");
+      } else {
+        window.open("https://www.intuitiontrades.com/topcongress", "_blank");
+      }
+    });
     document.getElementById("explanationButton").addEventListener("click", () => {
-  if (!simulationReport) {
-    alert("Please run a simulation first.");
-    return;
-  }
-  let win = window.open("", "_blank");
-  if (!win) {
-    alert("Please allow popups.");
-    return;
-  }
-
-  let html = `<!DOCTYPE html>
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      let win = window.open("", "_blank");
+      if (!win) {
+        alert("Please allow popups.");
+        return;
+      }
+      let html = `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
@@ -1803,29 +1796,57 @@ Weighted Score = ( w_MC × MC_Bull
   win.document.close();
 });
 
+    document.addEventListener("DOMContentLoaded", () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tickerParam = urlParams.get('ticker');
+      if (tickerParam) {
+        const tickerInput = document.getElementById('ticker');
+        if (tickerInput) {
+          tickerInput.value = tickerParam;
+          updateLinkButtonTexts();
+        }
+        const simulateBtn = document.getElementById('simulateButton');
+        if (simulateBtn) {
+          setTimeout(() => {
+            simulateBtn.click();
+          }, 100);
+        }
+      }
+    });
   </script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-    // Check for the 'ticker' parameter in the URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const tickerParam = urlParams.get('ticker');
-    if (tickerParam) {
-      // Set the ticker input field's value (input ID is "ticker")
-      const tickerInput = document.getElementById('ticker');
-      if (tickerInput) {
-        tickerInput.value = tickerParam;
+      const urlParams = new URLSearchParams(window.location.search);
+      const tickerParam = urlParams.get('ticker');
+      if (tickerParam) {
+        const tickerInput = document.getElementById('ticker');
+        if (tickerInput) {
+          tickerInput.value = tickerParam;
+          updateLinkButtonTexts();
+        }
+        const simulateBtn = document.getElementById('simulateButton');
+        if (simulateBtn) {
+          setTimeout(() => {
+            simulateBtn.click();
+          }, 100);
+        }
       }
-      // Automatically click the simulation button (button ID is "simulateButton")
-      const simulateBtn = document.getElementById('simulateButton');
-      if (simulateBtn) {
-        // Adding a short delay can help ensure any related scripts are ready
-        setTimeout(() => {
-          simulateBtn.click();
-        }, 100);
-      }
-    }
-  });
-</script>
+    });
+    // When simulation starts, also set a maximum timeout:
+const maxBufferTime = 10000; // 10 seconds
+const bufferTimeout = setTimeout(() => {
+  hideBufferOverlay();
+  console.warn("Buffer overlay hidden after max time reached");
+}, maxBufferTime);
 
+runSimulation().then(() => {
+  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
+  hideBufferOverlay();
+}).catch(() => {
+  clearTimeout(bufferTimeout);
+  hideBufferOverlay();
+});
+
+  </script>
 </body>
 </html>
