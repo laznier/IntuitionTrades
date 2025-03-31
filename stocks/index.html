@@ -314,6 +314,7 @@
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
       <button id="congressLinkButton">More Congress Analysis</button>
+      <button id="topCongressLinkButton">Top 5 Congress Picks</button>
     </div>
   </div>
 
@@ -329,18 +330,6 @@
   </div>
 
   <script>
-    // --- NEW PATCH: Override fetch to check response status ---
-    const originalFetch = window.fetch;
-    window.fetch = async function(url, options) {
-      const response = await originalFetch(url, options);
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`HTTP error ${response.status}: ${text}`);
-      }
-      return response;
-    };
-    // --- End Patch ---
-
     let simulationReport = null;
     let globalFinalPrices = [];
     let bufferDotInterval;
@@ -1179,22 +1168,22 @@
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "flex";
-      const loadingText = document.getElementById("loadingText");
-      let dotCount = 0;
-      loadingText.innerText = "Analysing data and running 10,000 simulations";
-      bufferDotInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4;
-        loadingText.innerText = "Analysing data and running 10,000 simulations" + ".".repeat(dotCount);
-      }, 500);
-    }
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "flex";
+  const loadingText = document.getElementById("loadingText");
+  let dotCount = 0;
+  loadingText.innerText = "Running 10,000 simulation";
+  bufferDotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    loadingText.innerText = "Running 10,000 simulation" + ".".repeat(dotCount);
+  }, 500);
+}
 
-    function hideBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "none";
-      clearInterval(bufferDotInterval);
-    }
+function hideBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "none";
+  clearInterval(bufferDotInterval);
+}
 
     // Run simulation immediately while showing the overlay.
     async function runSimulation() {
@@ -1357,7 +1346,7 @@
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=120", "_blank");
+        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=30", "_blank");
       } else {
         alert("Enter a ticker first.");
       }
@@ -1532,7 +1521,7 @@ Scaling     = 1.00
         we fall back to a simple equal average of all six factors (with no shift).
       </p>
     </section>
-    
+
     <!-- Monte Carlo Section -->
     <section>
       <h2>Monte Carlo Simulation using Geometric Brownian Motion (GBM)</h2>
@@ -1730,7 +1719,7 @@ Aggregated Fundamental Score
       </pre>
       <p>A higher score implies stronger fundamentals relative to these generic thresholds, but always consider industry context and do your own research.</p>
     </section>
-    
+
     <!-- Aggregated Score -->
     <section>
       <h2>Aggregated Bullish Score</h2>
@@ -1746,7 +1735,7 @@ Aggregated Fundamental Score
 Aggregated = WeightedSum - 50 all scaled, + 50
       </pre>
     </section>
-    
+
     <!-- Weighted Averages -->
     <section>
       <h2>Optional: Weighted Averages</h2>
@@ -1766,7 +1755,7 @@ Weighted Score = ( w_MC × MC_Bull
       reflecting the overall confidence in the signals. In a strongly bullish environment, scale might be 1.0; 
       in a shaky or bear environment, scale might be 0.25, dampening the final reading closer to neutral.</p>
     </section>
-    
+
     <!-- Disclaimers -->
     <section>
       <h2>Disclaimers</h2>
@@ -1774,7 +1763,7 @@ Weighted Score = ( w_MC × MC_Bull
       <p><strong>Simulation Disclaimer:</strong> The Monte Carlo simulation assumes that future stock prices follow a lognormal distribution as described by Geometric Brownian Motion. Past performance is not necessarily indicative of future results.</p>
       <p><strong>Analytical Disclaimer:</strong> These techniques and metrics are for informational purposes only and should not be construed as financial advice. Users should perform their own due diligence before making any investment decisions.</p>
     </section>
-    
+
     <!-- Conclusion -->
     <section>
       <h2>Conclusion</h2>
@@ -1802,12 +1791,11 @@ Weighted Score = ( w_MC × MC_Bull
   </body>
   </html>`;
 
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
-    });
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+});
 
-    // Two duplicate DOMContentLoaded event listeners that set ticker from URL param and simulate a click.
     document.addEventListener("DOMContentLoaded", () => {
       const urlParams = new URLSearchParams(window.location.search);
       const tickerParam = urlParams.get('ticker');
@@ -1825,7 +1813,8 @@ Weighted Score = ( w_MC × MC_Bull
         }
       }
     });
- 
+  </script>
+  <script>
     document.addEventListener("DOMContentLoaded", () => {
       const urlParams = new URLSearchParams(window.location.search);
       const tickerParam = urlParams.get('ticker');
@@ -1843,24 +1832,20 @@ Weighted Score = ( w_MC × MC_Bull
         }
       }
     });
+    // When simulation starts, also set a maximum timeout:
+const maxBufferTime = 10000; // 10 seconds
+const bufferTimeout = setTimeout(() => {
+  hideBufferOverlay();
+  console.warn("Buffer overlay hidden after max time reached");
+}, maxBufferTime);
 
-    // --- NEW PATCH: Only run simulation immediately if no ticker parameter is provided ---
-    if (!new URLSearchParams(window.location.search).has('ticker')) {
-      const maxBufferTime = 15000; // 15 seconds
-      const bufferTimeout = setTimeout(() => {
-        hideBufferOverlay();
-        console.warn("Buffer overlay hidden after max time reached");
-      }, maxBufferTime);
-
-      runSimulation().then(() => {
-        clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
-        hideBufferOverlay();
-      }).catch(() => {
-        clearTimeout(bufferTimeout);
-        hideBufferOverlay();
-      });
-    }
-    // --- End NEW PATCH ---
+runSimulation().then(() => {
+  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
+  hideBufferOverlay();
+}).catch(() => {
+  clearTimeout(bufferTimeout);
+  hideBufferOverlay();
+});
 
   </script>
 </body>
