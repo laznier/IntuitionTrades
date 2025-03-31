@@ -1810,41 +1810,24 @@ Weighted Score = ( w_MC × MC_Bull
   win.document.write(html);
   win.document.close();
 });
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tickerParam = urlParams.get('ticker');
-      if (tickerParam) {
-        const tickerInput = document.getElementById('ticker');
-        if (tickerInput) {
-          tickerInput.value = tickerParam;
-          updateLinkButtonTexts();
-        }
-        const simulateBtn = document.getElementById('simulateButton');
-        if (simulateBtn) {
-          setTimeout(() => {
-            simulateBtn.click();
-          }, 100);
-        }
-      }
-    });
-  </script>
-
-    // When simulation starts, also set a maximum timeout:
-const maxBufferTime = 15000; // 15 seconds
-const bufferTimeout = setTimeout(() => {
-  hideBufferOverlay();
-  console.warn("Buffer overlay hidden after max time reached");
-}, maxBufferTime);
-
-runSimulation().then(() => {
-  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
-  hideBufferOverlay();
-}).catch(() => {
-  clearTimeout(bufferTimeout);
-  hideBufferOverlay();
+document.addEventListener("DOMContentLoaded", () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('ticker')) {
+    const tickerInput = document.getElementById('ticker');
+    if (tickerInput) {
+      tickerInput.value = urlParams.get('ticker');
+      updateLinkButtonTexts();
+    }
+    const simulateBtn = document.getElementById('simulateButton');
+    if (simulateBtn) {
+      setTimeout(() => {
+        simulateBtn.click();
+      }, 100);
+    }
+  }
 });
 
   </script>
+  
 </body>
 </html>
