@@ -314,7 +314,6 @@
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
       <button id="congressLinkButton">More Congress Analysis</button>
-      <button id="topCongressLinkButton">Top 5 Congress Picks</button>
     </div>
   </div>
 
@@ -1172,10 +1171,10 @@
   overlay.style.display = "flex";
   const loadingText = document.getElementById("loadingText");
   let dotCount = 0;
-  loadingText.innerText = "Running 10,000 simulation";
+  loadingText.innerText = "Running 10,000 simulations";
   bufferDotInterval = setInterval(() => {
     dotCount = (dotCount + 1) % 4;
-    loadingText.innerText = "Running 10,000 simulation" + ".".repeat(dotCount);
+    loadingText.innerText = "Running 10,000 simulations" + ".".repeat(dotCount);
   }, 500);
 }
 
@@ -1352,13 +1351,23 @@ function hideBufferOverlay() {
       }
     });
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/congress/?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        alert("Enter a ticker first.");
-      }
-    });
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  // Use the ticker and period from the simulation report
+  let ticker = simulationReport.ticker;
+  let periodMonths = simulationReport.periodMonths;
+  // Convert period in months to days (approximate)
+  let days = periodMonths * 30;
+  // Construct the URL with query parameters: symbol, days, and autoFetch flag
+  let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+            + encodeURIComponent(ticker) 
+            + "&days=" + days 
+            + "&autoFetch=true";
+  window.open(url, "_blank");
+});
+
     document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
@@ -1367,14 +1376,7 @@ function hideBufferOverlay() {
         alert("Enter a ticker.");
       }
     });
-    document.getElementById("topCongressLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/topcongress?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        window.open("https://www.intuitiontrades.com/topcongress", "_blank");
-      }
-    });
+
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!simulationReport) {
         alert("Please run a simulation first.");
