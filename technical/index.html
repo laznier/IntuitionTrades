@@ -1019,5 +1019,27 @@ Overall Score = (Score_RSI + Score_BB + Score_MACD + Score_WMA + Overall_Ichimok
       win.document.close();
     });
   </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const period = params.get('period');
+      
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+      }
+      if (period) {
+        document.getElementById('period').value = period;
+      }
+      
+      if (params.get('autoFetch') === 'true') {
+        // Delay to ensure the fields are populated
+        setTimeout(() => {
+          document.getElementById('runAnalysis').click();
+        }, 500);
+      }
+    });
+  </script>
+  
 </body>
 </html>
