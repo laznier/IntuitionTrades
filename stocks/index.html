@@ -1829,26 +1829,9 @@ Weighted Score = ( w_MC × MC_Bull
       }
     });
   </script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tickerParam = urlParams.get('ticker');
-      if (tickerParam) {
-        const tickerInput = document.getElementById('ticker');
-        if (tickerInput) {
-          tickerInput.value = tickerParam;
-          updateLinkButtonTexts();
-        }
-        const simulateBtn = document.getElementById('simulateButton');
-        if (simulateBtn) {
-          setTimeout(() => {
-            simulateBtn.click();
-          }, 100);
-        }
-      }
-    });
+
     // When simulation starts, also set a maximum timeout:
-const maxBufferTime = 10000; // 10 seconds
+const maxBufferTime = 15000; // 15 seconds
 const bufferTimeout = setTimeout(() => {
   hideBufferOverlay();
   console.warn("Buffer overlay hidden after max time reached");
