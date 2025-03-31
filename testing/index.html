@@ -314,7 +314,6 @@
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
       <button id="congressLinkButton">More Congress Analysis</button>
-      <button id="topCongressLinkButton">Top 5 Congress Picks</button>
     </div>
   </div>
 
@@ -1346,7 +1345,7 @@ function hideBufferOverlay() {
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
-        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=30", "_blank");
+        window.open("https://www.intuitiontrades.com/insider/?symbol=" + encodeURIComponent(ticker) + "&days=120", "_blank");
       } else {
         alert("Enter a ticker first.");
       }
@@ -1367,14 +1366,7 @@ function hideBufferOverlay() {
         alert("Enter a ticker.");
       }
     });
-    document.getElementById("topCongressLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/topcongress?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        window.open("https://www.intuitiontrades.com/topcongress", "_blank");
-      }
-    });
+
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!simulationReport) {
         alert("Please run a simulation first.");
