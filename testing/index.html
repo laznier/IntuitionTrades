@@ -195,7 +195,7 @@
   Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.</p>
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-  <input type="text" id="ticker" value="">
+  <input type="text" id="ticker" value="AAPL">
   
   <label for="futureDate">Future Date:</label>
   <input type="date" id="futureDate">
@@ -266,6 +266,78 @@
     <h2>Company Overview</h2>
     <p id="companyDescription"></p>
   </div>
+
+  <!-- Place this new container below your company overview section -->
+<div id="candlestickChart" class="section" style="margin-top:20px;"></div>
+
+function plotCandlestickChart(prices) {
+  // prices should be an array of objects with: date, open, high, low, close.
+  // Example: { date: new Date("2023-09-01"), open: 150, high: 155, low: 149, close: 154 }
+
+  // Prepare the trace for the candlestick chart.
+  var trace = {
+    x: prices.map(p => p.date),
+    open: prices.map(p => p.open),
+    high: prices.map(p => p.high),
+    low: prices.map(p => p.low),
+    close: prices.map(p => p.close),
+    type: 'candlestick',
+    name: 'Price'
+  };
+
+  // For demonstration, compute support/resistance based on the last day's data.
+  var last = prices[prices.length - 1];
+  var pivot = (last.high + last.low + last.close) / 3;
+  var r1 = 2 * pivot - last.low;
+  var s1 = 2 * pivot - last.high;
+
+  // Create horizontal lines for pivot, resistance, and support.
+  var shapes = [
+    {
+      type: 'line',
+      xref: 'x',
+      yref: 'y',
+      x0: prices[0].date,
+      x1: prices[prices.length - 1].date,
+      y0: pivot,
+      y1: pivot,
+      line: { dash: 'dash', color: 'blue' }
+    },
+    {
+      type: 'line',
+      xref: 'x',
+      yref: 'y',
+      x0: prices[0].date,
+      x1: prices[prices.length - 1].date,
+      y0: r1,
+      y1: r1,
+      line: { dash: 'dash', color: 'green' }
+    },
+    {
+      type: 'line',
+      xref: 'x',
+      yref: 'y',
+      x0: prices[0].date,
+      x1: prices[prices.length - 1].date,
+      y0: s1,
+      y1: s1,
+      line: { dash: 'dash', color: 'red' }
+    }
+  ];
+
+  var layout = {
+    title: "Candlestick Chart with Support & Resistance",
+    shapes: shapes,
+    xaxis: { title: "Date" },
+    yaxis: { title: "Price" }
+  };
+
+  Plotly.newPlot("candlestickChart", [trace], layout);
+}
+// Assuming `prices` now includes OHLC data:
+if (prices && prices.length > 0) {
+  plotCandlestickChart(prices);
+}
 
   <!-- Fundamental Section -->
   <div id="fundamentalSection">
@@ -1810,58 +1882,24 @@ Weighted Score = ( w_MC × MC_Bull
   win.document.write(html);
   win.document.close();
 });
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tickerParam = urlParams.get('ticker');
-      if (tickerParam) {
-        const tickerInput = document.getElementById('ticker');
-        if (tickerInput) {
-          tickerInput.value = tickerParam;
-          updateLinkButtonTexts();
-        }
-        const simulateBtn = document.getElementById('simulateButton');
-        if (simulateBtn) {
-          setTimeout(() => {
-            simulateBtn.click();
-          }, 100);
-        }
-      }
-    });
-  </script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tickerParam = urlParams.get('ticker');
-      if (tickerParam) {
-        const tickerInput = document.getElementById('ticker');
-        if (tickerInput) {
-          tickerInput.value = tickerParam;
-          updateLinkButtonTexts();
-        }
-        const simulateBtn = document.getElementById('simulateButton');
-        if (simulateBtn) {
-          setTimeout(() => {
-            simulateBtn.click();
-          }, 100);
-        }
-      }
-    });
-    // When simulation starts, also set a maximum timeout:
-const maxBufferTime = 10000; // 10 seconds
-const bufferTimeout = setTimeout(() => {
-  hideBufferOverlay();
-  console.warn("Buffer overlay hidden after max time reached");
-}, maxBufferTime);
-
-runSimulation().then(() => {
-  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
-  hideBufferOverlay();
-}).catch(() => {
-  clearTimeout(bufferTimeout);
-  hideBufferOverlay();
+document.addEventListener("DOMContentLoaded", () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('ticker')) {
+    const tickerInput = document.getElementById('ticker');
+    if (tickerInput) {
+      tickerInput.value = urlParams.get('ticker');
+      updateLinkButtonTexts();
+    }
+    const simulateBtn = document.getElementById('simulateButton');
+    if (simulateBtn) {
+      setTimeout(() => {
+        simulateBtn.click();
+      }, 100);
+    }
+  }
 });
 
   </script>
+  
 </body>
 </html>
