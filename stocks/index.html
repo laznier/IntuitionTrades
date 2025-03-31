@@ -1335,13 +1335,19 @@ function hideBufferOverlay() {
       }
     });
     document.getElementById("technicalLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/technical/?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        alert("Enter a ticker first.");
-      }
-    });
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  const ticker = simulationReport.ticker;
+  const periodMonths = simulationReport.periodMonths;
+  const url = "https://www.intuitiontrades.com/technical/?symbol=" 
+              + encodeURIComponent(ticker) 
+              + "&period=" + periodMonths
+              + "&autoFetch=true";
+  window.open(url, "_blank");
+});
+
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
   if (!simulationReport) {
     alert("Please run a simulation first.");
