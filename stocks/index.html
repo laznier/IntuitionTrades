@@ -329,6 +329,18 @@
   </div>
 
   <script>
+    // --- NEW PATCH: Override fetch to check response status ---
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options) {
+      const response = await originalFetch(url, options);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP error ${response.status}: ${text}`);
+      }
+      return response;
+    };
+    // --- End Patch ---
+
     let simulationReport = null;
     let globalFinalPrices = [];
     let bufferDotInterval;
@@ -1167,22 +1179,22 @@
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
-  const overlay = document.getElementById("countdownOverlay");
-  overlay.style.display = "flex";
-  const loadingText = document.getElementById("loadingText");
-  let dotCount = 0;
-  loadingText.innerText = "Analysing data and running 10,000 simulations";
-  bufferDotInterval = setInterval(() => {
-    dotCount = (dotCount + 1) % 4;
-    loadingText.innerText = "Analysing data and running 10,000 simulations" + ".".repeat(dotCount);
-  }, 500);
-}
+      const overlay = document.getElementById("countdownOverlay");
+      overlay.style.display = "flex";
+      const loadingText = document.getElementById("loadingText");
+      let dotCount = 0;
+      loadingText.innerText = "Analysing data and running 10,000 simulations";
+      bufferDotInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4;
+        loadingText.innerText = "Analysing data and running 10,000 simulations" + ".".repeat(dotCount);
+      }, 500);
+    }
 
-function hideBufferOverlay() {
-  const overlay = document.getElementById("countdownOverlay");
-  overlay.style.display = "none";
-  clearInterval(bufferDotInterval);
-}
+    function hideBufferOverlay() {
+      const overlay = document.getElementById("countdownOverlay");
+      overlay.style.display = "none";
+      clearInterval(bufferDotInterval);
+    }
 
     // Run simulation immediately while showing the overlay.
     async function runSimulation() {
@@ -1790,10 +1802,10 @@ Weighted Score = ( w_MC × MC_Bull
   </body>
   </html>`;
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-});
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    });
 
     document.addEventListener("DOMContentLoaded", () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -1831,19 +1843,19 @@ Weighted Score = ( w_MC × MC_Bull
       }
     });
     // When simulation starts, also set a maximum timeout:
-const maxBufferTime = 15000; // 15 seconds
-const bufferTimeout = setTimeout(() => {
-  hideBufferOverlay();
-  console.warn("Buffer overlay hidden after max time reached");
-}, maxBufferTime);
+    const maxBufferTime = 15000; // 15 seconds
+    const bufferTimeout = setTimeout(() => {
+      hideBufferOverlay();
+      console.warn("Buffer overlay hidden after max time reached");
+    }, maxBufferTime);
 
-runSimulation().then(() => {
-  clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
-  hideBufferOverlay();
-}).catch(() => {
-  clearTimeout(bufferTimeout);
-  hideBufferOverlay();
-});
+    runSimulation().then(() => {
+      clearTimeout(bufferTimeout); // Clear the fallback if simulation finishes normally.
+      hideBufferOverlay();
+    }).catch(() => {
+      clearTimeout(bufferTimeout);
+      hideBufferOverlay();
+    });
 
   </script>
 </body>
