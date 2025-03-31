@@ -278,6 +278,26 @@
       summaryEl.innerHTML = html;
       summaryEl.scrollIntoView({ behavior: 'smooth' });
     }
+    
+  document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get('symbol');
+    const days = params.get('days');
+    if (symbol) {
+      document.getElementById('ticker').value = symbol;
+    }
+    if (days) {
+      document.getElementById('days').value = days;
+    }
+    if (params.get('autoFetch') === 'true') {
+      // Delay slightly to ensure inputs are populated before triggering click
+      setTimeout(() => {
+        document.getElementById('fetchButton').click();
+      }, 500);
+    }
+  });
+
+
   </script>
 </body>
 </html>

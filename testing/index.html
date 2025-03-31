@@ -1351,13 +1351,23 @@ function hideBufferOverlay() {
       }
     });
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/congress/?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        alert("Enter a ticker first.");
-      }
-    });
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  // Use the ticker and period from the simulation report
+  let ticker = simulationReport.ticker;
+  let periodMonths = simulationReport.periodMonths;
+  // Convert period in months to days (approximate)
+  let days = periodMonths * 30;
+  // Construct the URL with query parameters: symbol, days, and autoFetch flag
+  let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+            + encodeURIComponent(ticker) 
+            + "&days=" + days 
+            + "&autoFetch=true";
+  window.open(url, "_blank");
+});
+
     document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
