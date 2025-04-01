@@ -1065,7 +1065,14 @@
         }]
       });
     }
-    
+    exporting: {
+  buttons: {
+    contextButton: {
+      enabled: false
+    }
+  }
+}
+
     // Initial call and set interval to update every minute
     document.addEventListener("DOMContentLoaded", () => {
       plotHeroChart();
