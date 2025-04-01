@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta name="google-site-verification" content="..." />
@@ -192,6 +192,7 @@
       border-radius: 8px;
       width: 300px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
     }
     .stock-pick h3 {
       margin-top: 0;
@@ -407,6 +408,28 @@
     }
     .performance-red {
       background-color: #dc3545 !important;
+    }
+    
+    /* ============================================================
+       New CSS for Centering Stocks & Performance Buttons
+    ============================================================ */
+    /* Center the entire box content */
+    .stock-pick {
+      text-align: center; /* Ensures headings and labels are centered */
+    }
+    /* Remove default OL styles and center each list item horizontally */
+    .stock-pick ol {
+      list-style: none; 
+      margin: 0 auto;
+      padding: 0;
+    }
+    /* Use flexbox on each list item to space out the ticker and button */
+    .stock-pick ol li {
+      display: flex;
+      justify-content: center;  /* Centers horizontally */
+      align-items: center;      /* Centers vertically */
+      gap: 0.75rem;             /* Spacing between ticker and button */
+      margin: 0.5rem 0;         /* Vertical spacing between list items */
     }
   </style>
 </head>
