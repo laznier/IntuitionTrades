@@ -131,7 +131,7 @@
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
-    <input type="text" id="ticker" value="OXY" />
+    <input type="text" id="ticker" value="SPY" />
     <button id="loadBtn">Load Chart</button>
   </div>
 
@@ -144,7 +144,7 @@
   
   <!-- Caution Note -->
   <div id="caution">
-    Data from Alpha Vantage is delayed by 15 minutes (Free Version).
+    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
   </div>
 
   <!-- Range Tabs -->
@@ -180,6 +180,7 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
+    // For intraday data, we store both the parsed Date and the original API timestamp.
     function parseIntradayData(data, interval) {
       const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
@@ -196,13 +197,13 @@
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
           volume: parseInt(rec["5. volume"], 10),
-          original: timestamp // store the raw timestamp
+          original: timestamp
         });
       }
       points.sort((a, b) => a.x - b.x);
       return points;
     }
-
+    // For historical data.
     function parseHistoricalData(data) {
       const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
       const raw = data[seriesKey];
@@ -219,7 +220,7 @@
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
           volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
-          original: dateStr // store the raw date string
+          original: dateStr
         });
       }
       points.sort((a, b) => a.x - b.x);
@@ -279,6 +280,7 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
+      // Use the API's original timestamp and append " US/Eastern"
       document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
     }
 
@@ -289,27 +291,23 @@
       let seriesData, chartType, seriesOptions = {};
 
       if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
-        // line chart
         seriesData = points.map(p => [p.x, p.y]);
         chartType = 'line';
-
         const firstClose = points[0].close;
         const lastClose = points[points.length - 1].close;
         let color = 'blue';
         if (lastClose > firstClose) color = 'green';
         else if (lastClose < firstClose) color = 'red';
-
         seriesOptions = {
           color: color,
           fillColor: Highcharts.color(color).setOpacity(0.15).get()
         };
       } else {
-        // candlestick
         seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
         seriesOptions = {
-          color: 'red',    // falling
-          upColor: 'green' // rising
+          color: 'red',
+          upColor: 'green'
         };
       }
 
@@ -320,24 +318,22 @@
           events: {
             load: function () {
               const chart = this;
+              const yAxis = chart.yAxis[0];
               const series = chart.series[0];
-              if (!series.points.length) return;
-
-              // For candlestick, lastPoint is series.points[...].
-              // For line, lastPoint is also series.points but plotY is used differently.
-              const lastPoint = series.points[series.points.length - 1];
+              // Use series.points for both line and candlestick charts.
+              const pts = series.points;
+              if (!pts || pts.length === 0) return;
+              const lastPoint = pts[pts.length - 1];
               const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
-              // use the point's plotClose or plotY
               let lineY;
               if (series.type === 'candlestick') {
-                // candlestick: lastPoint.plotClose
+                // For candlestick charts, use plotClose.
                 lineY = chart.plotTop + lastPoint.plotClose;
               } else {
-                // line chart: lastPoint.plotY
+                // For line charts, use plotY.
                 lineY = chart.plotTop + lastPoint.plotY;
               }
-
-              // Draw the fixed dashed line
+              // Draw the fixed dashed line at the exact pixel of the last data point.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lineY,
                 'L', chart.plotLeft + chart.plotWidth, lineY
@@ -346,14 +342,12 @@
                 stroke: 'gray',
                 dashstyle: 'Dash'
               }).add();
-
-              // Label on the right
+              // Draw the fixed last-price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lineY + 4
               ).css({ color: 'gray' }).add();
-
-              // Crosshair line & label
+              // Create dynamic crosshair line and label.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -363,11 +357,11 @@
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
               ).css({ color: 'black' }).add();
-
-              // Mousemove to update crosshair
+              // Update crosshair on mousemove using unrounded conversion.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 const event = chart.pointer.normalize(e);
-                const yVal = chart.yAxis[0].toValue(event.chartY);
+                // Use false to avoid rounding discrepancies.
+                const yVal = chart.yAxis[0].toValue(event.chartY, false);
                 const yPix = chart.yAxis[0].toPixels(yVal, true);
                 chart.crosshairLine.attr({
                   d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
@@ -378,8 +372,6 @@
                   y: yPix + 4
                 });
               });
-
-              // Remove crosshair on mouse leave
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -408,7 +400,8 @@
         },
         tooltip: {
           split: false,
-          shared: true
+          shared: true,
+          xDateFormat: '%Y-%m-%d %H:%M:%S'
         },
         series: [{
           name: symbol.toUpperCase(),
@@ -427,10 +420,9 @@
      * 6) MAIN LOAD FUNCTION
      ***************************************/
     async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "OXY";
+      const symbol = document.getElementById('ticker').value.trim() || "SPY";
       const range = currentRange;
       document.getElementById('loading').style.display = 'block';
-
       try {
         let rawData, points;
         if (range === "1D" || range === "5D") {
@@ -470,9 +462,7 @@
         loadChart();
       });
     });
-
     document.getElementById('loadBtn').addEventListener('click', loadChart);
-
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
