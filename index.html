@@ -20,6 +20,7 @@
       font-family: Arial, sans-serif;
       color: #fff; /* All text white */
       margin: 0;
+      /* No background image on body; we'll use a fixed background element below */
     }
     a {
       text-decoration: none;
@@ -38,7 +39,7 @@
       background: url('/images/hero-background.png') no-repeat center center;
       background-size: cover;
       z-index: -9999;
-      transform: translateZ(0);
+      transform: translateZ(0); /* May help on iOS */
     }
     @media (max-width: 768px) {
       .background-fixed {
@@ -69,6 +70,7 @@
     
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
+       (Based on provided .topnav CSS)
     ============================================================ */
     .topnav {
       background-color: #333;
@@ -193,6 +195,7 @@
     
     /* ============================================================
        Countdown Section
+       (Dark semi-transparent background)
     ============================================================ */
     .countdown-section {
       text-align: center;
@@ -257,6 +260,7 @@
     
     /* ============================================================
        Weekly Stock Picks Section
+       (Dark semi-transparent background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
@@ -322,6 +326,7 @@
     
     /* ============================================================
        Tools Section
+       (Dark semi-transparent background)
     ============================================================ */
     #tools {
       padding: 2rem 1rem;
@@ -375,6 +380,7 @@
     
     /* ============================================================
        Newsletter Signup Section
+       (Dark semi-transparent background)
     ============================================================ */
     #newsletter-signup {
       padding: 2rem 1rem;
@@ -413,6 +419,7 @@
     
     /* ============================================================
        Feedback Section
+       (Dark semi-transparent background)
     ============================================================ */
     #feedback-section {
       text-align: center;
@@ -456,6 +463,7 @@
     
     /* ============================================================
        Footer
+       (Dark semi-transparent background)
     ============================================================ */
     footer {
       text-align: center;
@@ -488,7 +496,7 @@
       border: none;
       border-radius: 4px;
       font-weight: bold;
-      cursor: pointer;
+      cursor: default;
     }
     .performance-green {
       background-color: #28a745 !important;
@@ -663,7 +671,8 @@
   <section id="newsletter-signup">
     <!-- MailerLite Universal Embed Code -->
     <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
       n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
       (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
       ml('account', '1422635');
@@ -847,57 +856,51 @@
     });
   </script>
   <script>
-    // Updated performance script using intraday API, updating every minute, and clickable performance buttons.
+    const initialDate = "2025-03-28";
+    const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
     document.addEventListener('DOMContentLoaded', () => {
-      const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-      
-      function updatePerformance() {
-        tickers.forEach(ticker => {
-          let intradayUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
-          fetch(intradayUrl)
-            .then(response => response.json())
-            .then(data => {
-              if (!data || !data["Time Series (Intraday)"]) {
-                console.log("No Intraday Time Series data returned for " + ticker);
-                return;
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
+      tickers.forEach(ticker => {
+        let histUrl = `https://www.intuitiontrades.com/api/?symbol=${ticker}`;
+        fetch(histUrl)
+          .then(response => response.json())
+          .then(data => {
+            if (!data || !data["Time Series (Daily)"]) {
+              console.log("No Time Series data returned for " + ticker);
+              return;
+            }
+            const timeSeries = data["Time Series (Daily)"];
+            const initialRecord = timeSeries[initialDate];
+            if (!initialRecord) {
+              console.log("No record found for " + ticker + " on date " + initialDate);
+              return;
+            }
+            const initialPrice = parseFloat(initialRecord["4. close"]);
+            const meta = data["Meta Data"];
+            const lastRefreshed = meta["3. Last Refreshed"];
+            const mostRecent = timeSeries[lastRefreshed];
+            const currentPrice = parseFloat(mostRecent["4. close"]);
+            const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+            const diffFormatted = diff.toFixed(2) + '%';
+            const perfEl = document.getElementById(`performance-${ticker}`);
+            if (perfEl) {
+              perfEl.textContent = diffFormatted;
+              if (diff >= 0) { 
+                perfEl.classList.add('performance-green'); 
               }
-              const timeSeries = data["Time Series (Intraday)"];
-              // Get sorted timestamps (assumes keys sort chronologically)
-              const times = Object.keys(timeSeries).sort();
-              const initialRecord = timeSeries[times[0]];
-              if (!initialRecord) {
-                console.log("No initial record found for " + ticker);
-                return;
+              else { 
+                perfEl.classList.add('performance-red'); 
               }
-              const initialPrice = parseFloat(initialRecord["4. close"]);
-              const latestTime = times[times.length - 1];
-              const mostRecent = timeSeries[latestTime];
-              const currentPrice = parseFloat(mostRecent["4. close"]);
-              const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-              const diffFormatted = diff.toFixed(2) + '%';
-              const perfEl = document.getElementById(`performance-${ticker}`);
-              if (perfEl) {
-                perfEl.textContent = diffFormatted;
-                if (diff >= 0) {
-                  perfEl.classList.remove('performance-red');
-                  perfEl.classList.add('performance-green');
-                } else {
-                  perfEl.classList.remove('performance-green');
-                  perfEl.classList.add('performance-red');
-                }
-                // Redirect to the corresponding intraday page on click
-                perfEl.onclick = () => {
-                  window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-                };
-              }
-            })
-            .catch(error => console.log(error));
-        });
-      }
-      
-      // Initial update and then update every minute (60000 ms)
-      updatePerformance();
-      setInterval(updatePerformance, 60000);
+              // Add onclick redirection to the corresponding intraday page
+              perfEl.onclick = () => {
+                window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+              };
+            }
+          })
+          .catch(error => console.log(error));
+      });
     });
   </script>
   <script>
