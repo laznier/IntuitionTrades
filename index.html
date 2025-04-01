@@ -246,12 +246,12 @@
     .newsletter-btn {
       font-size: 0.9rem;
       padding: 0.5rem 1rem;
-      background-color: #444;
+      background-color: #000;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s;
-      color: #ddd;
+      color: white; /* Added white text */
     }
     .newsletter-btn:hover {
       background-color: #ddd;
@@ -863,7 +863,7 @@
         header.textContent = "Performance Since " + initialDate;
       });
       tickers.forEach(ticker => {
-        let histUrl = https://www.intuitiontrades.com/api/?symbol=${ticker};
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         fetch(histUrl)
           .then(response => response.json())
           .then(data => {
@@ -884,7 +884,7 @@
             const currentPrice = parseFloat(mostRecent["4. close"]);
             const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
             const diffFormatted = diff.toFixed(2) + '%';
-            const perfEl = document.getElementById(performance-${ticker});
+            const perfEl = document.getElementById(`performance-${ticker}`);
             if (perfEl) {
               perfEl.textContent = diffFormatted;
               if (diff >= 0) { perfEl.classList.add('performance-green'); }
