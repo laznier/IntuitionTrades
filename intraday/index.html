@@ -7,6 +7,8 @@
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  <!-- Option A: Include accessibility module to remove warning -->
+  <!-- <script src="https://code.highcharts.com/stock/modules/accessibility.js"></script> -->
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -250,14 +252,21 @@
 
     /***************************************
      * 4) TOP BAR UPDATE
+     *    - Show difference from first to last in the *filtered* range
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
+      
+      // Compare first data point in the range to the last data point in the range
+      const first = points[0];
       const last = points[points.length - 1];
-      const prev = points[points.length - 2];
-      const diff = last.close - prev.close;
-      const pct = (diff / prev.close) * 100;
+
+      const diff = last.close - first.close;
+      const pct = (diff / first.close) * 100;
+
+      // Display last close price
       document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
+
       const changeEl = document.getElementById('changeInfo');
       if (diff >= 0) {
         changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
@@ -266,7 +275,8 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display time in NYSE time (America/New_York)
+
+      // Display "As of" time in NYSE time
       document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
     }
 
@@ -295,8 +305,12 @@
         time: {
           timezone: 'America/New_York'
         },
+        // Option B: disable accessibility to remove the console warning
+        accessibility: {
+          enabled: false
+        },
         rangeSelector: {
-          enabled: false  // Using our own range tabs
+          enabled: false  // We have our own custom range tabs
         },
         title: {
           text: `${symbol.toUpperCase()} Price`
@@ -360,7 +374,9 @@
           alert("No data found for this symbol and range.");
           return;
         }
+        // Plot chart
         plotChart(points, symbol, range);
+        // Update top bar with difference from first to last in the range
         updateTopBar(points, symbol);
       } catch (err) {
         console.error("Error loading data:", err);
