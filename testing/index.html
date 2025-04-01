@@ -426,8 +426,8 @@
       try {
         let rawData, points;
         if (range === "1D") {
-          // For 1D: 1 minute intervals with compact output
-          rawData = await fetchIntradayData(symbol, "1min", "compact");
+          // For 1D: 1 minute intervals with full output to capture a full day
+          rawData = await fetchIntradayData(symbol, "1min", "full");
           points = parseIntradayData(rawData, "1min");
         } else if (range === "5D") {
           // For 5D: 5 minute intervals with full output to cover more data
