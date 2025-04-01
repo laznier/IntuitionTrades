@@ -847,11 +847,13 @@
     });
   </script>
   <script>
-    // Updated performance script using intraday API, updating every minute, and clickable performance buttons.
+    // Updated performance script using intraday API,
+    // comparing the latest price to the closing price on 28 Mar 2025.
     document.addEventListener('DOMContentLoaded', () => {
       const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
       const interval = "5min";
       const timeSeriesKey = `Time Series (${interval})`;
+      const initialDate = "2025-03-28";
 
       function updatePerformance() {
         tickers.forEach(ticker => {
@@ -864,18 +866,23 @@
                 return;
               }
               const timeSeries = data[timeSeriesKey];
-              // Get sorted timestamps (assumes keys sort chronologically)
               const times = Object.keys(timeSeries).sort();
-              const initialRecord = timeSeries[times[0]];
-              if (!initialRecord) {
-                console.log("No initial record found for " + ticker);
+
+              // Filter for records on the initial date ("2025-03-28")
+              const initialRecords = times.filter(t => t.startsWith(initialDate));
+              if (initialRecords.length === 0) {
+                console.log("No record found for initial date " + initialDate + " for " + ticker);
                 return;
               }
-              const initialPrice = parseFloat(initialRecord["4. close"]);
+              // Use the last timestamp for the initial date as the closing price of that day.
+              const initialRecordTime = initialRecords[initialRecords.length - 1];
+              const initialPrice = parseFloat(timeSeries[initialRecordTime]["4. close"]);
+
+              // Use the latest available record overall.
               const latestTime = times[times.length - 1];
-              const mostRecent = timeSeries[latestTime];
-              const currentPrice = parseFloat(mostRecent["4. close"]);
-              const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+              const latestPrice = parseFloat(timeSeries[latestTime]["4. close"]);
+
+              const diff = ((latestPrice - initialPrice) / initialPrice) * 100;
               const diffFormatted = diff.toFixed(2) + '%';
               const perfEl = document.getElementById(`performance-${ticker}`);
               if (perfEl) {
@@ -887,7 +894,7 @@
                   perfEl.classList.remove('performance-green');
                   perfEl.classList.add('performance-red');
                 }
-                // Redirect to the corresponding intraday page on click
+                // On click, redirect to the intraday page for the ticker.
                 perfEl.onclick = () => {
                   window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
                 };
