@@ -170,7 +170,7 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    // Modified fetchIntradayData to accept an optional outputsize parameter.
+    // For intraday data, we pass an interval and an optional outputsize.
     async function fetchIntradayData(symbol, interval, outputsize = "compact") {
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
       return response.json();
@@ -294,7 +294,7 @@
       let chartType;
       let seriesOptions = {};
       
-      if (range === "1D" || range === "5D" || range === "1M") {
+      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
         
@@ -312,6 +312,7 @@
           fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
         };
       } else {
+        // For 6M, 1Y, 5Y use historical candlestick data.
         seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
         seriesOptions = {
@@ -329,14 +330,18 @@
               const chart = this;
               const yAxis = chart.yAxis[0];
               const series = chart.series[0];
-              const data = series.data;
-              if (!data || data.length === 0) return;
+              // For candlestick charts, use series.points instead of series.data.
+              const pointsArray = (series.type === 'candlestick') ? series.points : series.data;
+              if (!pointsArray || pointsArray.length === 0) return;
               
-              const lastPoint = data[data.length - 1];
+              const lastPoint = pointsArray[pointsArray.length - 1];
+              // For candlestick, use lastPoint.close; for line, use lastPoint.y.
               const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
-              const lastY = yAxis.toPixels(lastPrice, true);
+              // For candlestick, adjust by 3 pixels so the line aligns with the actual last datapoint.
+              const adjustment = (series.type === 'candlestick') ? 3 : 0;
+              const lastY = yAxis.toPixels(lastPrice, true) + adjustment;
               
-              // Fixed dashed line at last price.
+              // Draw fixed dashed line at the last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -346,13 +351,13 @@
                 dashstyle: 'Dash'
               }).add();
               
-              // Fixed last price label on the right.
+              // Draw fixed last price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
               ).css({ color: 'gray' }).add();
               
-              // Crosshair line and label.
+              // Create dynamic crosshair line and label.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -436,11 +441,11 @@
           rawData = await fetchIntradayData(symbol, "1min");
           points = parseIntradayData(rawData, "1min");
         } else if (range === "1M") {
-          // For 1M, use intraday data with a 60-minute interval and full outputsize.
+          // For 1M, use intraday data with a 60-minute interval and force full outputsize.
           rawData = await fetchIntradayData(symbol, "60min", "full");
           points = parseIntradayData(rawData, "60min");
         } else {
-          // For all other ranges, use historical data.
+          // For 6M, 1Y, 5Y, use historical data (candlestick).
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
