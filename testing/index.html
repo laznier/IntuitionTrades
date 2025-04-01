@@ -1,16 +1,15 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
   <meta name="google-site-verification" content="..." />
   <meta charset="UTF-8">
   <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
   <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Highcharts Stock Scripts for the SPY chart -->
-  <script src="https://code.highcharts.com/stock/highstock.js"></script>
-  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
-  
   <style>
     /* ============================================================
        Global Reset & Base Styles
@@ -24,6 +23,7 @@
       font-family: Arial, sans-serif;
       color: #fff; /* All text white */
       margin: 0;
+      /* No background image on body; we'll use a fixed background element below */
     }
     a {
       text-decoration: none;
@@ -31,7 +31,7 @@
     }
     
     /* ============================================================
-       Fixed Background Element (Hero & Mobile Backgrounds)
+       Fixed Background Element
     ============================================================ */
     .background-fixed {
       position: fixed;
@@ -58,9 +58,7 @@
       position: relative;
       padding: 3rem 1rem;
       text-align: center;
-      overflow: hidden;
     }
-    /* Original dark transparent overlay */
     .hero::before {
       content: "";
       position: absolute;
@@ -68,16 +66,19 @@
       background: rgba(0, 0, 0, 0.8);
       z-index: 0;
     }
-    /* New SPY chart container added on top of the dark overlay */
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
     #heroChart {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 1;
+      z-index: 1; /* Behind the hero content but above the dark overlay */
     }
-    /* Overlay for SPY Price (remains in the hero section) */
+
     #heroPrice {
       position: absolute;
       top: 20px;
@@ -88,14 +89,10 @@
       color: #fff;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     }
-    /* Hero content appears above all backgrounds */
-    .hero-content {
-      position: relative;
-      z-index: 4;
-    }
-    
+
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
+       (Based on provided .topnav CSS)
     ============================================================ */
     .topnav {
       background-color: #333;
@@ -108,6 +105,7 @@
       list-style: none;
     }
     .topnav ul li {
+      position: relative;
       flex: none;
     }
     .topnav ul li a {
@@ -117,6 +115,32 @@
       transition: background-color 0.3s, color 0.3s;
     }
     .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      display: none;
+      background-color: #333;
+      min-width: 150px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .dropdown-menu li a {
+      display: block;
+      position: relative;
+      width: 100%;
+      margin: 0;
+      padding: 14px 20px;
+      line-height: 1.0;
+      color: #fff;
+      background-color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .dropdown-menu li a:hover {
       background-color: #ddd;
       color: #333;
     }
@@ -193,6 +217,7 @@
     
     /* ============================================================
        Countdown Section
+       (Dark semi-transparent background)
     ============================================================ */
     .countdown-section {
       text-align: center;
@@ -248,7 +273,7 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s;
-      color: white;
+      color: white; /* Added white text */
     }
     .newsletter-btn:hover {
       background-color: #ddd;
@@ -257,6 +282,7 @@
     
     /* ============================================================
        Weekly Stock Picks Section
+       (Dark semi-transparent background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
@@ -322,6 +348,7 @@
     
     /* ============================================================
        Tools Section
+       (Dark semi-transparent background)
     ============================================================ */
     #tools {
       padding: 2rem 1rem;
@@ -375,6 +402,7 @@
     
     /* ============================================================
        Newsletter Signup Section
+       (Dark semi-transparent background)
     ============================================================ */
     #newsletter-signup {
       padding: 2rem 1rem;
@@ -413,6 +441,7 @@
     
     /* ============================================================
        Feedback Section
+       (Dark semi-transparent background)
     ============================================================ */
     #feedback-section {
       text-align: center;
@@ -456,6 +485,7 @@
     
     /* ============================================================
        Footer
+       (Dark semi-transparent background)
     ============================================================ */
     footer {
       text-align: center;
@@ -483,13 +513,14 @@
        Performance Button Styles
     ============================================================ */
     .performance-button {
-      margin-left: 10px;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+  margin-left: 10px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer; /* New: shows a pointer on hover */
+}
+
     .performance-green {
       background-color: #28a745 !important;
     }
@@ -574,17 +605,18 @@
     </nav>
   </header>
 
-  <!-- Hero Section (with dark overlay and added SPY chart) -->
+  <!-- Hero Section -->
   <header class="hero">
-    <!-- SPY Chart Container: added on top of the dark transparent background -->
+    <!-- Add this new chart container; it will serve as an extra background layer -->
     <div id="heroChart"></div>
-    <!-- SPY Price Overlay -->
+    <!-- Add this overlay for the SPY price -->
     <div id="heroPrice"></div>
     <div class="hero-content">
       <h1>Intuition Trades</h1>
       <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
   </header>
+  
 
   <!-- Countdown Section -->
   <section class="countdown-section">
@@ -664,15 +696,17 @@
   </section>
 
   <!-- Newsletter Signup Section -->
-  <section id="newsletter-signup">
-    <!-- MailerLite Universal Embed Code -->
-    <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},l=d.createElement(e),l.async=1,l.src=u,n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-      ml('account', '1422635');
-    </script>
-    <div class="ml-embedded" data-form="N78gvr"></div>
-  </section>
+<section id="newsletter-signup">
+  <!-- MailerLite Universal Embed Code -->
+  <script>
+    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+    ml('account', '1422635');
+  </script>
+  <div class="ml-embedded" data-form="N78gvr"></div>
+</section>
   
   <main>
     <!-- Tools Section -->
@@ -762,7 +796,8 @@
   </footer>
 
   <!-- ============================================================
-       JavaScript Section for Menus, Dropdowns, and Mobile Toggle
+       JavaScript Section
+       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -773,6 +808,7 @@
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
+            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -826,7 +862,8 @@
         });
       }
     });
-    
+  </script>
+  <script>
     const openMenuBtn = document.getElementById("openMenu");
     const closeMenuBtn = document.getElementById("closeMenu");
     const mobileMenu = document.getElementById("mobileMenu");
@@ -846,12 +883,102 @@
       });
     });
   </script>
+<script>
+  const initialDate = "2025-03-28";
+  const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
-  <!-- ============================================================
-       SPY Chart Background in Hero Section (Updates every minute)
-  ============================================================ -->
+  document.addEventListener('DOMContentLoaded', () => {
+    // Update the small header text
+    document.querySelectorAll('.performance-header').forEach(header => {
+      header.textContent = "Performance Since " + initialDate;
+    });
+
+    // Fetch performance for each ticker
+    tickers.forEach(ticker => {
+      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+
+      fetch(histUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (Daily)"]) return;
+
+          const timeSeries = data["Time Series (Daily)"];
+          const initialRecord = timeSeries[initialDate];
+          if (!initialRecord) return;
+
+          const initialPrice = parseFloat(initialRecord["4. close"]);
+          const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
+          const mostRecent = timeSeries[lastRefreshed];
+          const currentPrice = parseFloat(mostRecent["4. close"]);
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          const diffFormatted = diff.toFixed(2) + '%';
+
+          // Grab the performance button by ID
+          const perfEl = document.getElementById(`performance-${ticker}`);
+          if (perfEl) {
+            perfEl.textContent = diffFormatted;
+            
+            // Apply green or red background
+            if (diff >= 0) {
+              perfEl.classList.add('performance-green');
+            } else {
+              perfEl.classList.add('performance-red');
+            }
+
+            // **New**: Add a click listener to navigate
+            perfEl.addEventListener('click', () => {
+              window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+            });
+          }
+        })
+        .catch(error => console.log(error));
+    });
+  });
+</script>
+
   <script>
-    async function fetchSPYData() {
+    document.addEventListener('DOMContentLoaded', () => {
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay();
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
+        } else {
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
+        }
+      }
+      function updateCountdown() {
+        const now = new Date();
+        const target = getNextMondayTarget();
+        const diff = target - now;
+        if (diff <= 0) {
+          document.getElementById('days').textContent = '00';
+          document.getElementById('hours').textContent = '00';
+          document.getElementById('minutes').textContent = '00';
+          document.getElementById('seconds').textContent = '00';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        document.getElementById('days').textContent = days.toString().padStart(2, '0');
+        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+    <script>async function fetchSPYData() {
       try {
         const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
         const data = await response.json();
@@ -872,8 +999,7 @@
         const date = new Date(timestamp.replace(" ", "T"));
         points.push({
           x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          original: timestamp
+          y: parseFloat(rec["4. close"])
         });
       }
       points.sort((a, b) => a.x - b.x);
@@ -884,16 +1010,19 @@
       const rawData = await fetchSPYData();
       if (!rawData) return;
       const points = parseSPYData(rawData);
+      
+      // Filter today's data
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const todayPoints = points.filter(p => p.x >= startOfDay.getTime());
       if (todayPoints.length === 0) return;
       
+      // Determine line color based on performance
       const firstPrice = todayPoints[0].y;
       const lastPrice = todayPoints[todayPoints.length - 1].y;
-      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc2626';
+      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
       
-      // Update the SPY price overlay in the hero section
+      // Update price overlay
       document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
       
       Highcharts.stockChart('heroChart', {
@@ -908,32 +1037,13 @@
         rangeSelector: {
           enabled: false
         },
-        title: {
-          text: null
-        },
-        xAxis: {
-          type: 'datetime',
-          labels: {
-            style: { color: '#fff' }
-          },
-          lineColor: 'transparent',
-          tickColor: 'transparent'
-        },
-        yAxis: {
-          visible: false
-        },
-        tooltip: {
-          enabled: false
-        },
-        credits: {
-          enabled: false
-        },
-        navigator: {
-          enabled: false
-        },
-        scrollbar: {
-          enabled: false
-        },
+        title: { text: null },
+        xAxis: { visible: false },  // Hide time labels
+        yAxis: { visible: false },
+        tooltip: { enabled: false },
+        credits: { enabled: false },
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
         series: [{
           name: 'SPY',
           data: todayPoints.map(p => [p.x, p.y]),
@@ -946,10 +1056,12 @@
       });
     }
     
+    // Initial call and set interval to update every minute
     document.addEventListener("DOMContentLoaded", () => {
       plotHeroChart();
       setInterval(plotHeroChart, 60000);
     });
-  </script>
+    </script>
+    
 </body>
 </html>
