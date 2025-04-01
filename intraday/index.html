@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Yahoo‑Style Full Chart with Highcharts Stock</title>
+  <title>Live Stock Chart</title>
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
@@ -52,7 +52,7 @@
     }
     #topBar {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
     #priceInfo {
       font-size: 1.8rem;
@@ -66,6 +66,12 @@
     #timeInfo {
       font-size: 1rem;
       color: #666;
+    }
+    #caution {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #dc2626;
+      margin-bottom: 10px;
     }
     /* Tabs for range selection */
     #rangeTabs {
@@ -123,7 +129,7 @@
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
   
-  <h1>Yahoo‑Style Full Chart</h1>
+  <h1>Live Stock Chart</h1>
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
@@ -136,6 +142,11 @@
     <span id="priceInfo"></span>
     <span id="changeInfo"></span>
     <span id="timeInfo"></span>
+  </div>
+  
+  <!-- Caution Note -->
+  <div id="caution">
+    Data from Alpha Vantage is delayed by 15 minutes (Free Version).
   </div>
 
   <!-- Range Tabs -->
@@ -257,7 +268,6 @@
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
       
-      // Compare first data point in the range to the last data point in the range
       const first = points[0];
       const last = points[points.length - 1];
       const diff = last.close - first.close;
@@ -283,13 +293,10 @@
       let seriesData;
       let chartType;
       
-      // For intraday data, use a line/area chart; for historical data, use candlestick
       if (range === "1D" || range === "5D") {
-        // Format: [timestamp, close]
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
       } else {
-        // Format for candlestick: [timestamp, open, high, low, close]
         seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
       }
@@ -305,7 +312,7 @@
               var data = series.data;
               if (!data || data.length === 0) return;
               
-              // Get last price from the data. For candlestick, use .close; for line, use .y.
+              // Get last price from the data.
               var lastPoint = data[data.length - 1];
               var lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
               var lastY = yAxis.toPixels(lastPrice, true);
@@ -369,18 +376,18 @@
         time: {
           timezone: 'America/New_York'
         },
-        // Optionally disable accessibility to remove console warnings
         accessibility: {
           enabled: false
         },
         rangeSelector: {
-          enabled: false  // Using our own custom range tabs
+          enabled: false
         },
         title: {
           text: `${symbol.toUpperCase()} Price`
         },
         xAxis: {
-          type: 'datetime'
+          type: 'datetime',
+          maxPadding: 0.1
         },
         yAxis: {
           title: {
@@ -419,12 +426,11 @@
      ***************************************/
     async function loadChart() {
       const symbol = document.getElementById('ticker').value.trim() || "OXY";
-      const range = currentRange;  // global variable from range tab selection
+      const range = currentRange;
       document.getElementById('loading').style.display = 'block';
 
       try {
         let rawData, points;
-        // For 1D and 5D use intraday API; else use historical API
         if (range === "1D" || range === "5D") {
           rawData = await fetchIntradayData(symbol);
           points = parseIntradayData(rawData);
@@ -432,13 +438,11 @@
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
-        // Filter data based on selected range
         points = filterDataForRange(points, range);
         if (points.length === 0) {
           alert("No data found for this symbol and range.");
           return;
         }
-        // Plot chart and update the top bar with range-based change
         plotChart(points, symbol, range);
         updateTopBar(points, symbol);
       } catch (err) {
@@ -450,9 +454,9 @@
     }
 
     /***************************************
-     * 7) RANGE TABS & EVENT LISTENERS
+     * 7) RANGE TABS & AUTO UPDATE
      ***************************************/
-    let currentRange = "1D"; // Default range
+    let currentRange = "1D";
     document.querySelectorAll(".rangeTab").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
@@ -464,7 +468,6 @@
 
     document.getElementById('loadBtn').addEventListener('click', loadChart);
 
-    // Auto-load ticker from URL parameter if provided (e.g. ?ticker=OXY)
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
@@ -472,6 +475,8 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
+      // Auto-update every one minute (60000 milliseconds)
+      setInterval(loadChart, 60000);
     });
   </script>
 </body>
