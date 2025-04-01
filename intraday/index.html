@@ -170,13 +170,12 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    // For intraday, accept an interval parameter.
+    // For intraday data, we pass an interval parameter.
     async function fetchIntradayData(symbol, interval) {
-      // Call our backend intraday endpoint.
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}`);
       return response.json();
     }
-    // (Assumes you have a similar endpoint for historical data.)
+    // For historical data.
     async function fetchHistoricalData(symbol) {
       const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
       return response.json();
@@ -185,7 +184,7 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
-    // For intraday data, the API returns data under "Time Series (interval)".
+    // Parse intraday data based on the returned key (e.g. "Time Series (1min)" or "Time Series (60min)")
     function parseIntradayData(data, interval) {
       const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
@@ -193,8 +192,7 @@
       let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Assume the API timestamps are in US/Eastern. Use your helper if needed.
-        // For simplicity, here we create a Date directly; you may add your conversion if desired.
+        // Convert timestamp string to Date.
         const date = new Date(timestamp.replace(" ", "T"));
         points.push({
           date: date,
@@ -209,8 +207,9 @@
       return points;
     }
 
+    // Parse historical (daily) data.
     function parseHistoricalData(data) {
-      const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
+      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
       const raw = data[seriesKey];
       if (!raw) return [];
       let points = [];
@@ -284,20 +283,20 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display "As of" time in UTC with " UTC" appended.
+      // Display "As of" time in UTC.
       document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'UTC' })} UTC`;
     }
 
     /***************************************
      * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
-     *     - Always draws a fixed dashed line at the last price and a dynamic crosshair with label.
+     *     - Draws a fixed dashed line at the last price and a dynamic crosshair with label.
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
       let chartType;
       let seriesOptions = {};
       
-      if (range === "1D" || range === "5D") {
+      if (range === "1D" || range === "5D" || range === "1M") {
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
         
@@ -335,12 +334,11 @@
               const data = series.data;
               if (!data || data.length === 0) return;
               
-              // Get the last price (different for candlestick vs. line chart)
               const lastPoint = data[data.length - 1];
               const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
               const lastY = yAxis.toPixels(lastPrice, true);
               
-              // Draw fixed dashed line at last price.
+              // Fixed dashed line at last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -350,13 +348,13 @@
                 dashstyle: 'Dash'
               }).add();
               
-              // Draw fixed last price label on the right side.
+              // Fixed last price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
               ).css({ color: 'gray' }).add();
               
-              // Create crosshair line and label for the moving cursor.
+              // Crosshair line and label.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -367,7 +365,6 @@
                 chart.plotTop
               ).css({ color: 'black' }).add();
               
-              // Update crosshair on mousemove.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 const event = chart.pointer.normalize(e);
                 const yValue = yAxis.toValue(event.chartY);
@@ -382,7 +379,6 @@
                 });
               });
               
-              // Remove crosshair when mouse leaves the chart.
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -437,11 +433,16 @@
 
       try {
         let rawData, points;
-        // For 1D and 5D, use intraday data with 1-minute interval.
         if (range === "1D" || range === "5D") {
+          // Use intraday data with 1-minute interval.
           rawData = await fetchIntradayData(symbol, "1min");
           points = parseIntradayData(rawData, "1min");
+        } else if (range === "1M") {
+          // For 1M, use intraday data with a 60-minute interval.
+          rawData = await fetchIntradayData(symbol, "60min");
+          points = parseIntradayData(rawData, "60min");
         } else {
+          // For all other ranges, use historical data.
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
