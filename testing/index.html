@@ -499,7 +499,7 @@
       <!-- Top 3 Buys -->
       <div class="stock-pick">
         <h3>Top 3 Buys</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Selected Date</div>
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
         <ol>
           <li>
             <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
@@ -731,11 +731,10 @@
   <!-- JavaScript to Fetch Current Price and Update Performance Buttons -->
   <script>
     /*
-      Instead of manually entering base prices, simply set the date (in YYYY-MM-DD format)
-      when the "initial" prices were recorded. The script will then look up the price on that date
-      for all tickers.
+      Instead of manually entering base prices, set the initial date (YYYY-MM-DD)
+      when the initial prices were recorded. The script will look up that date for each ticker.
     */
-    const initialDate = "2025-03-29";  // <-- Update this date as needed
+    const initialDate = "2025-03-28";  // <-- Update this date as needed
     const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -746,27 +745,30 @@
         fetch(histUrl)
           .then(response => response.json())
           .then(data => {
-            if (!data || !Array.isArray(data) || data.length === 0) {
-              console.log("No data returned for " + ticker);
+            if (!data || !data["Time Series (Daily)"]) {
+              console.log("No Time Series data returned for " + ticker);
               return;
             }
-            // Look for the record matching the initialDate.
-            // Assumes each record has a 'date' property in 'YYYY-MM-DD' format.
-            let initialRecord = data.find(record => record.date === initialDate);
+            const timeSeries = data["Time Series (Daily)"];
+            // Get initial record for the selected date.
+            const initialRecord = timeSeries[initialDate];
             if (!initialRecord) {
               console.log("No record found for " + ticker + " on date " + initialDate);
               return;
             }
-            let initialPrice = initialRecord.close;
-            // Assuming the last element is the most recent record.
-            let mostRecent = data[data.length - 1];
-            let currentPrice = mostRecent.close;
+            // Parse the initial price.
+            const initialPrice = parseFloat(initialRecord["4. close"]);
+            // Use Meta Data to get the most recent date.
+            const meta = data["Meta Data"];
+            const lastRefreshed = meta["3. Last Refreshed"];
+            const mostRecent = timeSeries[lastRefreshed];
+            const currentPrice = parseFloat(mostRecent["4. close"]);
 
             // Calculate performance percentage.
-            let diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-            let diffFormatted = diff.toFixed(2) + '%';
+            const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+            const diffFormatted = diff.toFixed(2) + '%';
 
-            let perfEl = document.getElementById(`performance-${ticker}`);
+            const perfEl = document.getElementById(`performance-${ticker}`);
             if (perfEl) {
               perfEl.textContent = diffFormatted;
               // Color coding: green if positive, red if negative.
