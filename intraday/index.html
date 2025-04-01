@@ -170,12 +170,10 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    // For intraday data, we pass an interval and an optional outputsize.
     async function fetchIntradayData(symbol, interval, outputsize = "compact") {
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
       return response.json();
     }
-    // For historical data.
     async function fetchHistoricalData(symbol) {
       const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
       return response.json();
@@ -191,7 +189,7 @@
       let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Convert timestamp string to Date.
+        // No time zone conversion. The API says "US/Eastern," so we just parse as local.
         const date = new Date(timestamp.replace(" ", "T"));
         points.push({
           date: date,
@@ -213,6 +211,7 @@
       let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
+        // Again, treat the data as local "US/Eastern" with no offset.
         const date = new Date(dateStr);
         points.push({
           date: date,
@@ -262,11 +261,10 @@
     }
 
     /***************************************
-     * 4) TOP BAR UPDATE (Display time in UTC)
+     * 4) TOP BAR UPDATE (Use the API's Eastern time, no conversion)
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
-      
       const first = points[0];
       const last = points[points.length - 1];
       const diff = last.close - first.close;
@@ -281,13 +279,16 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display "As of" time in UTC.
-      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'UTC' })} UTC`;
+      // Display "As of hh:mm:ss AM/PM US/Eastern" with no offset.
+      // The user is effectively seeing local time unless they are also in Eastern.
+      // If you want to forcibly show the Eastern time from the data, store the original string.
+      const localTimeString = last.date.toLocaleTimeString('en-US');
+      document.getElementById('timeInfo').textContent = `As of ${localTimeString} US/Eastern`;
     }
 
     /***************************************
      * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
-     *     - Draws a fixed dashed line at the last price and a dynamic crosshair with label.
+     *    - No extra offset, lines match exactly.
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
@@ -295,9 +296,10 @@
       let seriesOptions = {};
       
       if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
+        // Use line chart
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
-        
+
         const firstClose = points[0].close;
         const lastClose = points[points.length - 1].close;
         let seriesColor = 'blue';
@@ -306,18 +308,18 @@
         } else if (lastClose < firstClose) {
           seriesColor = 'red';
         }
-        
+
         seriesOptions = {
           color: seriesColor,
           fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
         };
       } else {
-        // For 6M, 1Y, 5Y use historical candlestick data.
+        // For 6M, 1Y, 5Y use candlestick
         seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
         seriesOptions = {
-          color: 'red',    // falling days
-          upColor: 'green' // rising days
+          color: 'red',     // falling days
+          upColor: 'green'  // rising days
         };
       }
       
@@ -325,23 +327,24 @@
         chart: {
           backgroundColor: '#fff',
           marginRight: 80, // extra margin for right-side labels
+          // Turn off UTC so we see the raw timestamps from the API.
+          // If you want to forcibly interpret them as Eastern, see below note.
           events: {
             load: function () {
               const chart = this;
               const yAxis = chart.yAxis[0];
               const series = chart.series[0];
-              // For candlestick charts, use series.points instead of series.data.
+              // For candlestick charts, use series.points instead of series.data
               const pointsArray = (series.type === 'candlestick') ? series.points : series.data;
               if (!pointsArray || pointsArray.length === 0) return;
-              
+
               const lastPoint = pointsArray[pointsArray.length - 1];
-              // For candlestick, use lastPoint.close; for line, use lastPoint.y.
+              // For candlestick, use lastPoint.close; for line, use lastPoint.y
               const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
-              // For candlestick, adjust by 3 pixels so the line aligns with the actual last datapoint.
-              const adjustment = (series.type === 'candlestick') ? 3 : 0;
-              const lastY = yAxis.toPixels(lastPrice, true) + adjustment;
-              
-              // Draw fixed dashed line at the last price.
+              // No pixel offset
+              const lastY = yAxis.toPixels(lastPrice, true);
+
+              // Fixed dashed line at last price
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -350,14 +353,14 @@
                 stroke: 'gray',
                 dashstyle: 'Dash'
               }).add();
-              
-              // Draw fixed last price label on the right.
+
+              // Fixed last price label on the right
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
               ).css({ color: 'gray' }).add();
-              
-              // Create dynamic crosshair line and label.
+
+              // Crosshair line + label
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -367,7 +370,8 @@
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
               ).css({ color: 'black' }).add();
-              
+
+              // Update crosshair on mouse move
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 const event = chart.pointer.normalize(e);
                 const yValue = yAxis.toValue(event.chartY);
@@ -381,7 +385,8 @@
                   y: yPixel + 4
                 });
               });
-              
+
+              // Remove crosshair on mouse leave
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -389,21 +394,23 @@
             }
           }
         },
+        // Use local time. If you want to interpret times as Eastern, do:
+        // time: { timezone: 'America/New_York' }
         time: {
-          timezone: 'UTC'
+          useUTC: false
         },
         accessibility: {
           enabled: false
         },
         rangeSelector: {
-          enabled: false // Using custom range tabs
+          enabled: false
         },
         title: {
           text: `${symbol.toUpperCase()} Price`
         },
         xAxis: {
           type: 'datetime',
-          maxPadding: 0.15 // extra right-side space
+          maxPadding: 0.15
         },
         yAxis: {
           title: { text: 'Price' }
@@ -437,15 +444,12 @@
       try {
         let rawData, points;
         if (range === "1D" || range === "5D") {
-          // Use intraday data with 1-minute interval.
           rawData = await fetchIntradayData(symbol, "1min");
           points = parseIntradayData(rawData, "1min");
         } else if (range === "1M") {
-          // For 1M, use intraday data with a 60-minute interval and force full outputsize.
           rawData = await fetchIntradayData(symbol, "60min", "full");
           points = parseIntradayData(rawData, "60min");
         } else {
-          // For 6M, 1Y, 5Y, use historical data (candlestick).
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
@@ -486,7 +490,7 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
-      // Auto-update every minute (60000 ms)
+      // Auto-update every minute
       setInterval(loadChart, 60000);
     });
   </script>
