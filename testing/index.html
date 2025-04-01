@@ -1,940 +1,481 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="google-site-verification" content="..." />
-  <meta charset="UTF-8">
-  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
-  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Stock Chart</title>
+  <!-- Highcharts Stock Scripts -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
   <style>
-    /* ============================================================
-       Global Reset & Base Styles
-    ============================================================ */
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
-      font-family: Arial, sans-serif;
-      color: #fff; /* All text white */
-      margin: 0;
-      /* No background image on body; we'll use a fixed background element below */
-    }
-    a {
-      text-decoration: none;
-      color: inherit;
-    }
-    
-    /* ============================================================
-       Fixed Background Element
-    ============================================================ */
-    .background-fixed {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('/images/hero-background.png') no-repeat center center;
-      background-size: cover;
-      z-index: -9999;
-      transform: translateZ(0); /* May help on iOS */
-    }
-    @media (max-width: 768px) {
-      .background-fixed {
-        background: url('/images/mobile-background.png') no-repeat center center;
-        background-size: cover;
-      }
-    }
-    
-    /* ============================================================
-       Hero Section
-    ============================================================ */
-    .hero {
-      position: relative;
-      padding: 3rem 1rem;
-      text-align: center;
-    }
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 0;
-    }
-    .hero-content {
-      position: relative;
-      z-index: 1;
-    }
-    
-    /* ============================================================
-       Top Navigation (Horizontal Scrolling)
-       (Based on provided .topnav CSS)
-    ============================================================ */
-    .topnav {
-      background-color: #333;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-    }
-    .topnav ul {
-      display: flex;
-      list-style: none;
-    }
-    .topnav ul li {
-      position: relative;
-      flex: none;
-    }
-    .topnav ul li a {
-      display: block;
-      padding: 14px 20px;
-      color: #fff;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    .topnav ul li a:hover {
-      background-color: #ddd;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f3f4f6;
       color: #333;
-    }
-    .dropdown-menu {
-      position: absolute;
-      top: -9999px;
-      left: -9999px;
-      display: none;
-      background-color: #333;
-      min-width: 150px;
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .dropdown-menu li a {
-      display: block;
-      position: relative;
-      width: 100%;
-      margin: 0;
-      padding: 14px 20px;
-      line-height: 1.0;
-      color: #fff;
-      background-color: #333;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    .dropdown-menu li a:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-    
-    /* ============================================================
-       Mobile Menu: Sliding Sidebar
-    ============================================================ */
-    .mobile-menu-toggle {
-      background: none;
-      border: none;
-      padding: 14px 20px;
-      cursor: pointer;
-      background-color: #333;
-      color: #fff;
-      display: block;
-    }
-    .mobile-menu-toggle svg {
-      vertical-align: middle;
-    }
-    .mobile-menu {
-      position: fixed;
-      top: 0;
-      left: -100%;
-      width: 80%;
-      max-width: 300px;
-      height: 100%;
-      background-color: #333;
-      color: #fff;
-      overflow-y: auto;
-      transition: left 0.3s ease;
-      z-index: 1500;
-      padding-top: 1rem;
-    }
-    .mobile-menu.open {
-      left: 0;
-    }
-    .mobile-menu nav ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .mobile-menu nav ul li {
-      border-bottom: 1px solid #444;
-    }
-    .mobile-menu nav ul li a,
-    .mobile-menu nav ul li .submenu-toggle {
-      display: block;
-      padding: 10px 20px;
-      color: #fff;
-      cursor: pointer;
-    }
-    .mobile-menu nav ul li a:hover,
-    .mobile-menu nav ul li .submenu-toggle:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-    .mobile-menu nav ul li ul.submenu {
-      display: none;
-      background-color: #444;
-    }
-    .mobile-menu nav ul li ul.submenu li a {
-      padding-left: 40px;
-    }
-    .mobile-menu .close-menu {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 1.5rem;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      cursor: pointer;
-    }
-    
-    /* ============================================================
-       Countdown Section
-       (Dark semi-transparent background)
-    ============================================================ */
-    .countdown-section {
-      text-align: center;
-      padding: 1rem;
-      background-color: rgba(17, 17, 17, 0.33);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .countdown-title {
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-    }
-    .flip-clock {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #222;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-    }
-    .flip-unit {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0 0.5rem;
-    }
-    .flip-number {
-      font-size: 2rem;
-      background: #333;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      margin-bottom: 0.25rem;
-      min-width: 2ch;
-      text-align: center;
-      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3);
-    }
-    .flip-label {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-    }
-    .flip-separator {
-      font-size: 2rem;
-      margin: 0 0.5rem;
-      user-select: none;
-    }
-    .newsletter-btn {
-      font-size: 0.9rem;
-      padding: 0.5rem 1rem;
-      background-color: #444;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      color: white; /* Added white text */
-    }
-    .newsletter-btn:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-    
-    /* ============================================================
-       Weekly Stock Picks Section
-       (Dark semi-transparent background)
-    ============================================================ */
-    #weekly-stock-picks {
-      padding: 2rem 1rem;
-      background-color: rgba(0, 0, 0, 0.33);
-      text-align: center;
-    }
-    #weekly-stock-picks h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    .stock-picks-container {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      flex-wrap: wrap;
-    }
-    .stock-pick {
-      background: #000;
-      padding: 1rem;
-      border: 1px solid #444;
-      border-radius: 8px;
-      width: 300px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-    }
-    .stock-pick h3 {
-      margin-top: 0;
-    }
-    .stock-pick ol {
-      text-align: left;
-      padding-left: 1.5rem;
-    }
-    
-    /* ============================================================
-       Buy & Sell Tickers
-    ============================================================ */
-    .buy-ticker,
-    .sell-ticker {
-      display: inline-block;
-      padding: 10px 20px;
-      border-radius: 4px;
-      font-weight: bold;
-      transition: background-color 0.3s, transform 0.2s;
-      margin-bottom: 0.5rem;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .buy-ticker {
-      background-color: #28a745;
-      border: none;
-    }
-    .buy-ticker:hover {
-      background-color: #218838;
-      transform: translateY(-2px);
-    }
-    .sell-ticker {
-      background-color: #dc3545;
-      border: none;
-    }
-    .sell-ticker:hover {
-      background-color: #c82333;
-      transform: translateY(-2px);
-    }
-    
-    /* ============================================================
-       Tools Section
-       (Dark semi-transparent background)
-    ============================================================ */
-    #tools {
-      padding: 2rem 1rem;
-      background-color: rgba(0, 0, 0, 0.33);
-    }
-    #tools h2 {
-      text-align: center;
-      margin-bottom: 1.5rem;
-      font-size: 2rem;
-    }
-    .tool-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      padding: 0 2rem;
-    }
-    .tool-card {
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-      text-align: center;
-      padding-bottom: 1rem;
-      transition: transform 0.2s;
-    }
-    .tool-card:hover {
-      transform: translateY(-2px);
-    }
-    .tool-card img {
-      width: 100%;
-      height: 150px;
-      object-fit: cover;
-    }
-    .tool-card h2 {
-      margin: 1rem 0 0.5rem;
-      font-size: 1.25rem;
-    }
-    .tool-card p {
-      margin: 0 1rem 1rem;
-    }
-    .tool-button {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      background: #000;
-      border-radius: 4px;
-      transition: background 0.2s;
-    }
-    .tool-button:hover {
-      background: #005fa3;
-    }
-    
-    /* ============================================================
-       Newsletter Signup Section
-       (Dark semi-transparent background)
-    ============================================================ */
-    #newsletter-signup {
-      padding: 2rem 1rem;
-      background-color: rgba(0, 0, 0, 0.33);
-      text-align: center;
-    }
-    #newsletter-signup h2 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-    #newsletter-signup form {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-      max-width: 400px;
+      max-width: 1200px;
       margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
     }
-    #newsletter-signup input {
-      padding: 0.75rem;
-      width: 100%;
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    #tickerForm {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    #ticker {
+      padding: 8px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      width: 150px;
+      text-align: center;
+    }
+    button {
+      padding: 8px 16px;
+      margin-left: 5px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    #topBar {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+    #priceInfo {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    #changeInfo {
+      font-size: 1.4rem;
+      margin-right: 10px;
+    }
+    #timeInfo {
+      font-size: 1rem;
+      color: #666;
+    }
+    #caution {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #dc2626;
+      margin-bottom: 10px;
+    }
+    /* Tabs for range selection */
+    #rangeTabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .rangeTab {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0 4px;
       border: 1px solid #ccc;
       border-radius: 4px;
-      color: #000;
-    }
-    #newsletter-signup button {
-      padding: 0.75rem 1.5rem;
-      background-color: #333;
-      border-radius: 4px;
-      transition: background-color 0.3s;
-    }
-    #newsletter-signup button:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-    
-    /* ============================================================
-       Feedback Section
-       (Dark semi-transparent background)
-    ============================================================ */
-    #feedback-section {
-      text-align: center;
-      padding: 3rem 1rem;
-      background-color: rgba(0, 0, 0, 0.33);
-      margin-top: 2rem;
-    }
-    #feedback-section h2 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-    #feedback-section p {
-      margin-bottom: 1.5rem;
-    }
-    #feedback-section a {
-      padding: 0.75rem 1.5rem;
-      background-color: #333;
-      border-radius: 5px;
-      transition: background-color 0.3s;
-    }
-    #feedback-section a:hover {
-      background-color: #555;
-    }
-    
-    /* ============================================================
-       Back Button
-    ============================================================ */
-    .back-button {
-      display: inline-block;
-      margin: 1rem 0;
-      padding: 0.75rem 1.5rem;
-      background-color: #333;
-      border-radius: 4px;
-      transition: background-color 0.3s;
       cursor: pointer;
+      background: #fff;
+      transition: background 0.3s ease;
     }
-    .back-button:hover {
-      background-color: #ddd;
-      color: #333;
+    .rangeTab.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #1e3a8a;
     }
-    
-    /* ============================================================
-       Footer
-       (Dark semi-transparent background)
-    ============================================================ */
-    footer {
-      text-align: center;
-      padding: 1rem;
-      background-color: rgba(0, 0, 0, 0.33);
-      margin-top: 2rem;
-    }
-    
-    /* ============================================================
-       Responsive Adjustments
-    ============================================================ */
-    @media (min-width: 768px) {
-      .mobile-menu-toggle { display: none; }
-      .mobile-menu { display: none; }
-      nav.header__inline-menu { display: block; }
-    }
-    @media (max-width: 767px) {
-      nav.header__inline-menu { display: none; }
-    }
-    @media (max-width: 768px) {
-      .tool-card { width: 90%; }
-    }
-    
-    /* ============================================================
-       Performance Button Styles
-    ============================================================ */
-    .performance-button {
-      margin-left: 10px;
-      padding: 5px 10px;
-      border: none;
+    .chartContainer {
+      padding: 10px;
+      border: 1px solid #e5e7eb;
       border-radius: 4px;
-      font-weight: bold;
-      cursor: default;
+      background: #fff;
     }
-    .performance-green {
-      background-color: #28a745 !important;
+    #chart {
+      width: 100%;
+      height: 600px;
     }
-    .performance-red {
-      background-color: #dc3545 !important;
+    #loading {
+      text-align: center;
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+    }
+    #backHome {
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      #chart {
+        height: 400px;
+      }
+      #priceInfo {
+        font-size: 1.4rem;
+      }
+      #changeInfo {
+        font-size: 1.2rem;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Fixed Background Element -->
-  <div class="background-fixed"></div>
-
-  <!-- Mobile Header: Hamburger Toggle -->
-  <header>
-    <button class="mobile-menu-toggle" id="openMenu" aria-label="Open Menu">
-      <svg viewBox="0 0 18 16" width="24" height="24">
-        <rect y="2" width="18" height="2" fill="white"></rect>
-        <rect y="7" width="18" height="2" fill="white"></rect>
-        <rect y="12" width="18" height="2" fill="white"></rect>
-      </svg>
-    </button>
-  </header>
-
-  <!-- Mobile Sidebar Menu -->
-  <div class="mobile-menu" id="mobileMenu">
-    <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
-    <nav>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li>
-          <span class="submenu-toggle">Tools &#9662;</span>
-          <ul class="submenu">
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-            <li><a href="congress/">Congress Trades</a></li>
-            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
-            <li><a href="analyst/">Combined Analyst Ratings</a></li>
-            <li><a href="sentiment">Market Sentiment</a></li>
-            <li><a href="insider/">Insider Tracker</a></li>
-            <li><a href="technical/">Combined Technical Analysis</a></li>
-            <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
-          </ul>
-        </li>
-        <li>
-          <span class="submenu-toggle">Tutorials &#9662;</span>
-          <ul class="submenu">
-            <li><a href="/tutorials/">Go to Tutorials</a></li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
+  <!-- Back to Home Button -->
+  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  
+  <h1>Live Stock Chart</h1>
+  
+  <!-- Ticker Input Form -->
+  <div id="tickerForm">
+    <input type="text" id="ticker" value="SPY" />
+    <button id="loadBtn">Load Chart</button>
   </div>
 
-  <!-- Desktop Inline Menu for larger screens -->
-  <header>
-    <nav class="header__inline-menu topnav">
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li class="dropdown">
-          <a href="#tools" class="parent-link">Tools</a>
-          <ul class="dropdown-menu">
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-            <li><a href="congress/">Congress Trades</a></li>
-            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
-            <li><a href="analyst/">Combined Analyst Ratings</a></li>
-            <li><a href="sentiment">Market Sentiment</a></li>
-            <li><a href="insider/">Insider Tracker</a></li>
-            <li><a href="technical/">Combined Technical Analysis</a></li>
-            <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
-          </ul>
-        </li>
-        <li class="dropdown">
-          <a href="/tutorials/" class="parent-link">Tutorials</a>
-          <ul class="dropdown-menu"></ul>
-        </li>
-      </ul>
-    </nav>
-  </header>
-
-  <!-- Hero Section -->
-  <header class="hero">
-    <div class="hero-content">
-      <h1>Intuition Trades</h1>
-      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
-    </div>
-  </header>
-
-  <!-- Countdown Section -->
-  <section class="countdown-section">
-    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
-    <div class="flip-clock" id="flipClock">
-      <div class="flip-unit">
-        <span class="flip-number" id="days">00</span>
-        <span class="flip-label">Days</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="hours">00</span>
-        <span class="flip-label">Hours</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="minutes">00</span>
-        <span class="flip-label">Minutes</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="seconds">00</span>
-        <span class="flip-label">Seconds</span>
-      </div>
-    </div>
-    <button class="newsletter-btn" id="scrollToSignup">
-      Receive Top Picks Earlier
-    </button>
-  </section>
-
-  <!-- Weekly Stock Picks Section -->
-  <section id="weekly-stock-picks">
-    <h2>Weekly Stock Picks</h2>
-    <div class="stock-picks-container">
-      <!-- Top 3 Buys -->
-      <div class="stock-pick">
-        <h3>Top 3 Buys</h3>
-        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
-        <ol>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
-            <button class="performance-button" id="performance-OXY">Loading...</button>
-          </li>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a>
-            <button class="performance-button" id="performance-VRSN">Loading...</button>
-          </li>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MMM">MMM</a>
-            <button class="performance-button" id="performance-MMM">Loading...</button>
-          </li>
-        </ol>
-      </div>
-      <!-- Top 3 Shorts -->
-      <div class="stock-pick">
-        <h3>Top 3 Shorts</h3>
-        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
-        <ol>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
-            <button class="performance-button" id="performance-AOS">Loading...</button>
-          </li>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a>
-            <button class="performance-button" id="performance-ALB">Loading...</button>
-          </li>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=RPD">RPD</a>
-            <button class="performance-button" id="performance-RPD">Loading...</button>
-          </li>
-        </ol>
-      </div>
-    </div>
-    <div style="text-align: center; margin-top: 1rem;">
-      <a href="explanation.html" class="back-button">How We Select Weekly Stock Picks</a>
-    </div>
-  </section>
-
-  <!-- Newsletter Signup Section -->
-<section id="newsletter-signup">
-  <!-- MailerLite Universal Embed Code -->
-  <script>
-    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-    ml('account', '1422635');
-  </script>
-  <div class="ml-embedded" data-form="N78gvr"></div>
-</section>
+  <!-- Top Bar: Price, Change, Time -->
+  <div id="topBar">
+    <span id="priceInfo"></span>
+    <span id="changeInfo"></span>
+    <span id="timeInfo"></span>
+  </div>
   
-  <main>
-    <!-- Tools Section -->
-    <section id="tools">
-      <h2>Tools</h2>
-      <div class="tool-grid">
-        <div class="tool-card">
-          <img src="images/intraday.PNG" alt="Live Stock Chart" />
-          <h2>Live Stock Chart</h2>
-          <p>View current stock price and historical charts.</p>
-          <a href="intraday/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
-          <h2>Stock Trend Forecast</h2>
-          <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
-          <a href="stocks/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/fundamental.PNG" alt="Combined Fundamental Analysis" />
-          <h2>Combined Fundamental Analysis</h2>
-          <p>Combine the top 5 fundamental categories to assess overall financial strength.</p>
-          <a href="fundamental/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/congress.PNG" alt="Congress Trades" />
-          <h2>Congress Trades</h2>
-          <p>Discover if politicians are trading your favorite stocks.</p>
-          <a href="congress/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/topcongress.PNG" alt="Top 5 Congress Stocks" />
-          <h2>Top 5 Congress Stocks</h2>
-          <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
-          <a href="topcongress/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/analyst.PNG" alt="Combined Analyst Ratings" />
-          <h2>Combined Analyst Ratings</h2>
-          <p>View current analyst ratings and target price.</p>
-          <a href="analyst/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/insider.PNG" alt="Insider Tracker" />
-          <h2>Insider Tracker</h2>
-          <p>Uncover insider activity on your favorite stocks.</p>
-          <a href="insider/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
-          <h2>Market Sentiment Viewer</h2>
-          <p>Analyze the latest news articles on your favorite stocks.</p>
-          <a href="sentiment/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/technical.PNG" alt="Combined Technical Analysis" />
-          <h2>Combined Technical Analysis</h2>
-          <p>Analyze the top 5 technicals to generate a combined bullish or bearish signal.</p>
-          <a href="technical/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/MACD.PNG" alt="MACD Analysis" />
-          <h2>MACD Analysis</h2>
-          <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
-          <a href="MACD/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card">
-          <img src="images/imchimoku.PNG" alt="Ichimoku Cloud Analysis" />
-          <h2>Ichimoku Cloud Analysis</h2>
-          <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
-          <a href="ichimoku/" class="tool-button">Open Tool</a>
-        </div>
-      </div>
-    </section>
-  
-    <!-- Feedback Section -->
-    <section id="feedback-section">
-      <h2>Your Feedback</h2>
-      <p>Help us improve our site. Share your requests or ideas.</p>
-      <a href="feedback.html">Leave Feedback</a>
-    </section>
-  </main>
+  <!-- Caution Note -->
+  <div id="caution">
+    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
+  </div>
 
-  <!-- Footer -->
-  <footer>
-    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
-  </footer>
+  <!-- Range Tabs -->
+  <div id="rangeTabs">
+    <div class="rangeTab active" data-range="1D">1D</div>
+    <div class="rangeTab" data-range="5D">5D</div>
+    <div class="rangeTab" data-range="1M">1M</div>
+    <div class="rangeTab" data-range="6M">6M</div>
+    <div class="rangeTab" data-range="YTD">YTD</div>
+    <div class="rangeTab" data-range="1Y">1Y</div>
+    <div class="rangeTab" data-range="5Y">5Y</div>
+  </div>
 
-  <!-- ============================================================
-       JavaScript Section
-       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
-  ============================================================ -->
+  <!-- Chart Container -->
+  <div class="chartContainer">
+    <div id="chart"></div>
+    <div id="loading" style="display:none;">Loading data...</div>
+  </div>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const canHover = window.matchMedia('(hover: hover)').matches;
-      const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
-      if (canHover) {
-        desktopDropdowns.forEach(drop => {
-          const dropdownMenu = drop.querySelector('.dropdown-menu');
-          drop.addEventListener('mouseenter', () => {
-            const rect = drop.getBoundingClientRect();
-            // Append dropdown to body and set its fixed position
-            document.body.appendChild(dropdownMenu);
-            dropdownMenu.style.position = 'fixed';
-            dropdownMenu.style.top = rect.bottom + 'px';
-            dropdownMenu.style.left = rect.left + 'px';
-            dropdownMenu.style.display = 'block';
-            dropdownMenu.style.zIndex = '10000';
-          });
-          drop.addEventListener('mouseleave', () => {
-            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
-          dropdownMenu.addEventListener('mouseleave', () => {
-            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
+    /***************************************
+     * 1) DATA FETCH FUNCTIONS
+     ***************************************/
+    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
+      return response.json();
+    }
+    async function fetchHistoricalData(symbol) {
+      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
+      return response.json();
+    }
+
+    /***************************************
+     * 2) DATA PARSE FUNCTIONS
+     ***************************************/
+    // For intraday data, we store both the parsed Date and the original API timestamp.
+    function parseIntradayData(data, interval) {
+      const seriesKey = `Time Series (${interval})`;
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
+          open: parseFloat(rec["1. open"]),
+          high: parseFloat(rec["2. high"]),
+          low: parseFloat(rec["3. low"]),
+          close: parseFloat(rec["4. close"]),
+          volume: parseInt(rec["5. volume"], 10),
+          original: timestamp
         });
-        window.addEventListener('scroll', () => {
-          desktopDropdowns.forEach(drop => {
-            const dropdownMenu = drop.querySelector('.dropdown-menu');
-            if (dropdownMenu.style.position === 'fixed') {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    // For historical data.
+    function parseHistoricalData(data) {
+      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const dateStr in raw) {
+        const rec = raw[dateStr];
+        const date = new Date(dateStr);
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
+          open: parseFloat(rec["1. open"]),
+          high: parseFloat(rec["2. high"]),
+          low: parseFloat(rec["3. low"]),
+          close: parseFloat(rec["4. close"]),
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
+          original: dateStr
         });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+
+    /***************************************
+     * 3) FILTERING DATA BY RANGE
+     ***************************************/
+    function filterDataForRange(points, range) {
+      const now = new Date();
+      let fromDate;
+      switch (range) {
+        case "1D":
+          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+          break;
+        case "5D":
+          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          break;
+        case "1M":
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "6M":
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
+        case "YTD":
+          fromDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case "1Y":
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        case "5Y":
+          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+      }
+      return points.filter(p => p.x >= fromDate.getTime());
+    }
+
+    /***************************************
+     * 4) TOP BAR UPDATE
+     ***************************************/
+    function updateTopBar(points, symbol) {
+      if (points.length < 2) return;
+      const first = points[0];
+      const last = points[points.length - 1];
+      const diff = last.close - first.close;
+      const pct = (diff / first.close) * 100;
+
+      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
+      const changeEl = document.getElementById('changeInfo');
+      if (diff >= 0) {
+        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#16a34a";
       } else {
-        desktopDropdowns.forEach(drop => {
-          const parentLink = drop.querySelector('.parent-link');
-          const dropdownMenu = drop.querySelector('.dropdown-menu');
-          dropdownMenu.style.display = 'none';
-          parentLink.addEventListener('click', e => {
-            e.preventDefault();
-            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
-          });
-        });
+        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#dc2626";
       }
-    });
-  </script>
-  <script>
-    const openMenuBtn = document.getElementById("openMenu");
-    const closeMenuBtn = document.getElementById("closeMenu");
-    const mobileMenu = document.getElementById("mobileMenu");
-    openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
-    closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
-    const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
-    submenuToggles.forEach(toggle => {
-      toggle.addEventListener("click", () => {
-        const submenu = toggle.nextElementSibling;
-        if (submenu.style.display === "block") {
-          submenu.style.display = "none";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
-        } else {
-          submenu.style.display = "block";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
-        }
-      });
-    });
-  </script>
-  <script>
-    const initialDate = "2025-03-28";
-    const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.performance-header').forEach(header => {
-        header.textContent = "Performance Since " + initialDate;
-      });
-      tickers.forEach(ticker => {
-        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        fetch(histUrl)
-          .then(response => response.json())
-          .then(data => {
-            if (!data || !data["Time Series (Daily)"]) {
-              console.log("No Time Series data returned for " + ticker);
-              return;
-            }
-            const timeSeries = data["Time Series (Daily)"];
-            const initialRecord = timeSeries[initialDate];
-            if (!initialRecord) {
-              console.log("No record found for " + ticker + " on date " + initialDate);
-              return;
-            }
-            const initialPrice = parseFloat(initialRecord["4. close"]);
-            const meta = data["Meta Data"];
-            const lastRefreshed = meta["3. Last Refreshed"];
-            const mostRecent = timeSeries[lastRefreshed];
-            const currentPrice = parseFloat(mostRecent["4. close"]);
-            const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-            const diffFormatted = diff.toFixed(2) + '%';
-            const perfEl = document.getElementById(`performance-${ticker}`);
-            if (perfEl) {
-              perfEl.textContent = diffFormatted;
-              if (diff >= 0) { perfEl.classList.add('performance-green'); }
-              else { perfEl.classList.add('performance-red'); }
-            }
-          })
-          .catch(error => console.log(error));
-      });
-    });
-  </script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      function getNextMondayTarget() {
-        const now = new Date();
-        const currentUTCDay = now.getUTCDay();
-        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) { 
-          return target; 
-        } else {
-          let daysUntilMonday = (8 - currentUTCDay) % 7;
-          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
-          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
-          return target;
-        }
+      // Use the API's original timestamp and append " US/Eastern"
+      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
+    }
+
+    /***************************************
+     * 5) CHART PLOTTING FUNCTION
+     ***************************************/
+    function plotChart(points, symbol, range) {
+      let seriesData, chartType, seriesOptions = {};
+
+      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
+        seriesData = points.map(p => [p.x, p.y]);
+        chartType = 'line';
+        const firstClose = points[0].close;
+        const lastClose = points[points.length - 1].close;
+        let color = 'blue';
+        if (lastClose > firstClose) color = 'green';
+        else if (lastClose < firstClose) color = 'red';
+        seriesOptions = {
+          color: color,
+          fillColor: Highcharts.color(color).setOpacity(0.15).get()
+        };
+      } else {
+        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
+        chartType = 'candlestick';
+        seriesOptions = {
+          color: 'red',
+          upColor: 'green'
+        };
       }
-      function updateCountdown() {
-        const now = new Date();
-        const target = getNextMondayTarget();
-        const diff = target - now;
-        if (diff <= 0) {
-          document.getElementById('days').textContent = '00';
-          document.getElementById('hours').textContent = '00';
-          document.getElementById('minutes').textContent = '00';
-          document.getElementById('seconds').textContent = '00';
+
+      Highcharts.stockChart('chart', {
+        chart: {
+          backgroundColor: '#fff',
+          marginRight: 80,
+          events: {
+            load: function () {
+              const chart = this;
+              const yAxis = chart.yAxis[0];
+              const series = chart.series[0];
+              // Use series.points for both line and candlestick charts.
+              const pts = series.points;
+              if (!pts || pts.length === 0) return;
+              const lastPoint = pts[pts.length - 1];
+              const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
+              let lineY;
+              if (series.type === 'candlestick') {
+                // For candlestick charts, use plotClose.
+                lineY = chart.plotTop + lastPoint.plotClose;
+              } else {
+                // For line charts, use plotY.
+                lineY = chart.plotTop + lastPoint.plotY;
+              }
+              // Draw the fixed dashed line at the exact pixel of the last data point.
+              chart.lastPriceLine = chart.renderer.path([
+                'M', chart.plotLeft, lineY,
+                'L', chart.plotLeft + chart.plotWidth, lineY
+              ]).attr({
+                'stroke-width': 1,
+                stroke: 'gray',
+                dashstyle: 'Dash'
+              }).add();
+              // Draw the fixed last-price label on the right.
+              chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
+                chart.plotLeft + chart.plotWidth + 5,
+                lineY + 4
+              ).css({ color: 'gray' }).add();
+              // Create dynamic crosshair line and label.
+              chart.crosshairLine = chart.renderer.path().attr({
+                'stroke-width': 1,
+                stroke: 'black',
+                dashstyle: 'Solid'
+              }).add();
+              chart.crosshairLabel = chart.renderer.text('',
+                chart.plotLeft + chart.plotWidth + 5,
+                chart.plotTop
+              ).css({ color: 'black' }).add();
+              // Update crosshair on mousemove using unrounded conversion.
+              Highcharts.addEvent(chart.container, 'mousemove', function(e) {
+                const event = chart.pointer.normalize(e);
+                // Use false to avoid rounding discrepancies.
+                const yVal = chart.yAxis[0].toValue(event.chartY, false);
+                const yPix = chart.yAxis[0].toPixels(yVal, true);
+                chart.crosshairLine.attr({
+                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
+                });
+                chart.crosshairLabel.attr({
+                  text: yVal.toFixed(2),
+                  x: chart.plotLeft + chart.plotWidth + 5,
+                  y: yPix + 4
+                });
+              });
+              Highcharts.addEvent(chart.container, 'mouseleave', function() {
+                chart.crosshairLine.attr({ d: [] });
+                chart.crosshairLabel.attr({ text: '' });
+              });
+            }
+          }
+        },
+        time: {
+          useUTC: false
+        },
+        accessibility: {
+          enabled: false
+        },
+        rangeSelector: {
+          enabled: false
+        },
+        title: {
+          text: `${symbol.toUpperCase()} Price`
+        },
+        xAxis: {
+          type: 'datetime',
+          maxPadding: 0.15
+        },
+        yAxis: {
+          title: { text: 'Price' }
+        },
+        tooltip: {
+          split: false,
+          shared: true,
+          xDateFormat: '%Y-%m-%d %H:%M:%S'
+        },
+        series: [{
+          name: symbol.toUpperCase(),
+          data: seriesData,
+          type: chartType,
+          tooltip: { valueDecimals: 2 },
+          ...seriesOptions
+        }],
+        navigator: { enabled: true },
+        scrollbar: { enabled: true },
+        credits: { enabled: false }
+      });
+    }
+
+    /***************************************
+     * 6) MAIN LOAD FUNCTION
+     ***************************************/
+    async function loadChart() {
+      const symbol = document.getElementById('ticker').value.trim() || "SPY";
+      const range = currentRange;
+      document.getElementById('loading').style.display = 'block';
+      try {
+        let rawData, points;
+        if (range === "1D") {
+          // For 1D: 1 minute intervals with compact output
+          rawData = await fetchIntradayData(symbol, "1min", "compact");
+          points = parseIntradayData(rawData, "1min");
+        } else if (range === "5D") {
+          // For 5D: 5 minute intervals with full output to cover more data
+          rawData = await fetchIntradayData(symbol, "5min", "full");
+          points = parseIntradayData(rawData, "5min");
+        } else if (range === "1M") {
+          rawData = await fetchIntradayData(symbol, "60min", "full");
+          points = parseIntradayData(rawData, "60min");
+        } else {
+          rawData = await fetchHistoricalData(symbol);
+          points = parseHistoricalData(rawData);
+        }
+        points = filterDataForRange(points, range);
+        if (points.length === 0) {
+          alert("No data found for this symbol and range.");
           return;
         }
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        document.getElementById('days').textContent = days.toString().padStart(2, '0');
-        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+        plotChart(points, symbol, range);
+        updateTopBar(points, symbol);
+      } catch (err) {
+        console.error("Error loading data:", err);
+        alert("Failed to load data.");
+      } finally {
+        document.getElementById('loading').style.display = 'none';
       }
-      updateCountdown();
-      setInterval(updateCountdown, 1000);
-      document.getElementById('scrollToSignup').addEventListener('click', () => {
-        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /***************************************
+     * 7) RANGE TABS & AUTO UPDATE
+     ***************************************/
+    let currentRange = "1D";
+    document.querySelectorAll(".rangeTab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentRange = tab.getAttribute("data-range");
+        loadChart();
       });
+    });
+    document.getElementById('loadBtn').addEventListener('click', loadChart);
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const ticker = params.get('ticker');
+      if (ticker) {
+        document.getElementById('ticker').value = ticker;
+      }
+      loadChart();
+      setInterval(loadChart, 60000);
     });
   </script>
 </body>
