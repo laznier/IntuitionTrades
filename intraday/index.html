@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Intraday Chart</title>
+  <title>Yahoo‑Style Intraday Chart</title>
   <!-- Include Plotly for Charting -->
   <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
   <style>
@@ -11,8 +11,8 @@
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background: #f3f4f6;
       color: #333;
-      margin: 0 auto;
       max-width: 1200px;
+      margin: 0 auto;
       padding: 2rem;
       line-height: 1.6;
     }
@@ -20,52 +20,6 @@
       text-align: center;
       margin-bottom: 20px;
       font-weight: 600;
-    }
-    #topBar {
-      display: flex;
-      flex-direction: row;
-      align-items: baseline;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-    #priceInfo {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-left: 10px;
-    }
-    #changeInfo {
-      margin-left: 10px;
-      font-size: 1.2rem;
-    }
-    #timeInfo {
-      margin-left: 10px;
-      font-size: 0.9rem;
-      color: #666;
-    }
-    #tabs {
-      display: flex;
-      justify-content: center;
-      margin-top: 10px;
-      margin-bottom: 20px;
-    }
-    .tab {
-      cursor: pointer;
-      padding: 8px 16px;
-      margin: 0 5px;
-      border-radius: 4px;
-      background: #fff;
-      border: 1px solid #ccc;
-      transition: background 0.3s ease;
-      user-select: none;
-    }
-    .tab:hover {
-      background: #f0f0f0;
-    }
-    .tab.active {
-      background: #2563eb;
-      color: #fff;
-      border-color: #1e3a8a;
     }
     #tickerForm {
       text-align: center;
@@ -93,21 +47,38 @@
     button:hover {
       background: #1e3a8a;
     }
+    #topBar {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #priceInfo {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    #changeInfo {
+      font-size: 1.2rem;
+      margin-right: 10px;
+    }
+    #timeInfo {
+      font-size: 0.9rem;
+      color: #666;
+    }
     .chartContainer {
       padding: 20px;
       border: 1px solid #e5e7eb;
       border-radius: 4px;
-      background-color: #fff;
+      background: #fff;
     }
     #chart {
       width: 100%;
       height: 600px;
     }
     #loading {
+      text-align: center;
       margin-top: 10px;
       font-style: italic;
       color: #f97316;
-      text-align: center;
     }
     #backHome {
       margin-bottom: 20px;
@@ -116,10 +87,6 @@
       body {
         padding: 1rem;
         font-size: 0.9rem;
-      }
-      h1 {
-        font-size: 1.3rem;
-        margin-bottom: 10px;
       }
       #chart {
         height: 400px;
@@ -136,31 +103,20 @@
 <body>
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
-
-  <h1>Yahoo-Style Intraday Chart</h1>
-
-  <!-- Ticker Symbol Input -->
+  
+  <h1>Yahoo‑Style Intraday Chart</h1>
+  
+  <!-- Ticker Input Form -->
   <div id="tickerForm">
     <input type="text" id="ticker" value="OXY" />
-    <button id="loadBtn">Load</button>
+    <button id="loadBtn">Load Chart</button>
   </div>
 
-  <!-- Price, Change, and Time Info -->
+  <!-- Top Bar for Price Info -->
   <div id="topBar">
-    <div id="priceInfo"></div>
-    <div id="changeInfo"></div>
-    <div id="timeInfo"></div>
-  </div>
-
-  <!-- Tabs for 1D, 5D, 1M, etc. -->
-  <div id="tabs">
-    <div class="tab active" data-range="1D">1D</div>
-    <div class="tab" data-range="5D">5D</div>
-    <div class="tab" data-range="1M">1M</div>
-    <div class="tab" data-range="6M">6M</div>
-    <div class="tab" data-range="YTD">YTD</div>
-    <div class="tab" data-range="1Y">1Y</div>
-    <div class="tab" data-range="5Y">5Y</div>
+    <span id="priceInfo"></span>
+    <span id="changeInfo"></span>
+    <span id="timeInfo"></span>
   </div>
 
   <div class="chartContainer">
@@ -170,107 +126,67 @@
 
   <script>
     /********************************************
-     * 1) ALPHA VANTAGE CONFIG
+     * 1) DATA FETCH & PARSE FUNCTIONS
      ********************************************/
-    const ALPHA_VANTAGE_KEY = "demo"; // Replace with your real key
-    // You may want to proxy these calls via your own /api/ route in production
-    // to hide your API key from the client.
-
-    /********************************************
-     * 2) FETCH FUNCTIONS
-     ********************************************/
-    async function fetchIntraday(symbol) {
-      // Default to 5min interval & full output to get up to ~5 days of data
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&outputsize=full&apikey=${ALPHA_VANTAGE_KEY}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
+    async function fetchIntradayData(symbol) {
+      // Call our server endpoint which proxies Alpha Vantage
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
+      const data = await response.json();
       return data;
     }
 
-    async function fetchDaily(symbol) {
-      // TIME_SERIES_DAILY_ADJUSTED for up to 20+ years
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&outputsize=full&apikey=${ALPHA_VANTAGE_KEY}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      return data;
-    }
-
-    /********************************************
-     * 3) DATA PARSING
-     ********************************************/
     function parseIntradayData(data) {
       const meta = data["Meta Data"] || {};
       const timeZone = meta["6. Time Zone"] || "US/Eastern";
-      const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
-      if (!seriesKey) return [];
+      // The key is "Time Series (5min)" for our default interval.
+      const seriesKey = `Time Series (5min)`;
       const raw = data[seriesKey];
-      const points = Object.keys(raw).map(ts => {
-        const rec = raw[ts];
-        return {
-          date: new Date(ts + " " + timeZone),
+      if (!raw) return [];
+      const points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        // Construct the Date; note that the timestamp from Alpha Vantage is in the format "YYYY-MM-DD HH:MM:SS"
+        points.push({
+          date: new Date(timestamp + " " + timeZone),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseFloat(rec["5. volume"])
-        };
-      });
-      points.sort((a, b) => a.date - b.date);
-      return points;
-    }
-
-    function parseDailyData(data) {
-      const meta = data["Meta Data"] || {};
-      const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
-      if (!seriesKey) return [];
-      const raw = data[seriesKey];
-      const points = Object.keys(raw).map(ts => {
-        const rec = raw[ts];
-        return {
-          date: new Date(ts), // daily data typically in YYYY-MM-DD
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseFloat(rec["6. volume"] || rec["5. volume"])
-        };
-      });
+          volume: parseInt(rec["5. volume"], 10)
+        });
+      }
+      // Sort by date ascending
       points.sort((a, b) => a.date - b.date);
       return points;
     }
 
     /********************************************
-     * 4) CHART PLOTTING
+     * 2) CHART PLOTTING
      ********************************************/
-    function plotAreaChart(points, symbol) {
+    function plotMountainChart(points, symbol) {
       const x = points.map(p => p.date);
       const y = points.map(p => p.close);
 
-      // We'll do a single trace line + fill to zero to mimic Yahoo "mountain"
+      // Create a line trace with area fill (mountain chart)
       const trace = {
         x: x,
         y: y,
         mode: 'lines',
         line: { color: '#0b7af3' },
         fill: 'tozeroy',
-        fillcolor: 'rgba(11,122,243,0.15)', // slightly transparent
-        hovertemplate:
-          "<b>Date</b>: %{x}<br>" +
-          "<b>Close</b>: %{y:.2f}<extra></extra>"
+        fillcolor: 'rgba(11,122,243,0.15)',
+        hovertemplate: "<b>Date</b>: %{x}<br><b>Close</b>: %{y:.2f}<extra></extra>"
       };
 
       const layout = {
-        title: "",
-        showlegend: false,
+        title: `${symbol.toUpperCase()} Intraday Price`,
         xaxis: {
-          showgrid: false,
-          type: 'date'
+          title: 'Time',
+          type: 'date',
+          rangeslider: { visible: true }
         },
-        yaxis: {
-          showgrid: true,
-          gridcolor: '#eee'
-        },
-        margin: { t: 20, r: 20, b: 40, l: 60 },
+        yaxis: { title: 'Price' },
+        margin: { t: 40, r: 20, b: 40, l: 60 },
         hovermode: 'x unified'
       };
 
@@ -278,138 +194,58 @@
     }
 
     /********************************************
-     * 5) RANGE LOGIC
+     * 3) TOP BAR UPDATE
      ********************************************/
-    function filterDataForRange(points, rangeKey) {
-      // We'll interpret:
-      // 1D => last 1 day of intraday data
-      // 5D => last 5 days of intraday data
-      // 1M => last 30 days from daily data
-      // 6M => last ~180 days
-      // YTD => from Jan 1 of current year
-      // 1Y => last 365 days
-      // 5Y => last 5 * 365 days
-      const now = new Date();
-      let fromDate;
-      rangeKey = rangeKey.toUpperCase();
-
-      if (rangeKey === "1D") {
-        fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-      } else if (rangeKey === "5D") {
-        fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-      } else if (rangeKey === "1M") {
-        fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      } else if (rangeKey === "6M") {
-        fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-      } else if (rangeKey === "YTD") {
-        fromDate = new Date(now.getFullYear(), 0, 1);
-      } else if (rangeKey === "1Y") {
-        fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      } else if (rangeKey === "5Y") {
-        fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-      } else {
-        // default 1D
-        fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-      }
-
-      return points.filter(p => p.date >= fromDate);
+    function updateTopBar(points, symbol) {
+      if (points.length < 2) return;
+      const last = points[points.length - 1];
+      const prev = points[points.length - 2];
+      const diff = last.close - prev.close;
+      const pct = (diff / prev.close) * 100;
+      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
+      document.getElementById('changeInfo').textContent = diff >= 0 
+        ? `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`
+        : `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+      document.getElementById('changeInfo').style.color = diff >= 0 ? "#16a34a" : "#dc2626";
+      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString()}`;
     }
 
     /********************************************
-     * 6) MAIN LOGIC
+     * 4) MAIN LOAD FUNCTION
      ********************************************/
-    let currentRange = "1D";
-
-    // Show/hide loading
-    function showLoading(show) {
-      document.getElementById('loading').style.display = show ? 'block' : 'none';
-    }
-
-    // Update top bar with last price, change, and time
-    function updateTopBar(points, symbol) {
-      if (points.length < 2) return;
-      const priceInfo = document.getElementById('priceInfo');
-      const changeInfo = document.getElementById('changeInfo');
-      const timeInfo = document.getElementById('timeInfo');
-
-      const lastPoint = points[points.length - 1];
-      const prevPoint = points[points.length - 2];
-      const lastPrice = lastPoint.close;
-      const prevPrice = prevPoint.close;
-      const diff = lastPrice - prevPrice;
-      const pct = (diff / prevPrice) * 100;
-
-      priceInfo.textContent = `${symbol.toUpperCase()} ${lastPrice.toFixed(2)}`;
-      // color green if positive, red if negative
-      if (diff >= 0) {
-        changeInfo.style.color = "#16a34a"; // green
-        changeInfo.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
-      } else {
-        changeInfo.style.color = "#dc2626"; // red
-        changeInfo.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+    async function loadChart() {
+      const symbol = document.getElementById('ticker').value.trim() || "OXY";
+      document.getElementById('loading').style.display = 'block';
+      try {
+        const rawData = await fetchIntradayData(symbol);
+        const points = parseIntradayData(rawData);
+        if (points.length === 0) {
+          alert("No data found for this symbol.");
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+        plotMountainChart(points, symbol);
+        updateTopBar(points, symbol);
+      } catch (err) {
+        console.error("Error loading data:", err);
+        alert("Failed to load data.");
+      } finally {
+        document.getElementById('loading').style.display = 'none';
       }
-      // Time
-      timeInfo.textContent = `As of ${lastPoint.date.toLocaleTimeString()} (Local Time)`;
     }
 
-    async function loadDataAndPlot(symbol, range) {
-      showLoading(true);
-
-      // Decide if we fetch intraday or daily based on range
-      let rawPoints = [];
-      if (range === "1D" || range === "5D") {
-        // intraday
-        const intradayData = await fetchIntraday(symbol);
-        rawPoints = parseIntradayData(intradayData);
-      } else {
-        // daily
-        const dailyData = await fetchDaily(symbol);
-        rawPoints = parseDailyData(dailyData);
-      }
-
-      // Filter to the requested range
-      const rangePoints = filterDataForRange(rawPoints, range);
-
-      // If there's no data, show a quick alert
-      if (rangePoints.length === 0) {
-        alert("No data found for this range.");
-        showLoading(false);
-        return;
-      }
-
-      plotAreaChart(rangePoints, symbol);
-      updateTopBar(rangePoints, symbol);
-      showLoading(false);
-    }
-
-    // Switch tabs
-    function switchTab(e) {
-      document.querySelectorAll(".tab").forEach(tab => {
-        tab.classList.remove("active");
-      });
-      e.target.classList.add("active");
-      currentRange = e.target.getAttribute("data-range");
-      const symbol = document.getElementById("ticker").value.trim() || "OXY";
-      loadDataAndPlot(symbol, currentRange);
-    }
-
-    document.getElementById("loadBtn").addEventListener("click", () => {
-      const symbol = document.getElementById("ticker").value.trim() || "OXY";
-      loadDataAndPlot(symbol, currentRange);
-    });
-
-    document.querySelectorAll(".tab").forEach(tab => {
-      tab.addEventListener("click", switchTab);
-    });
-
-    // Auto-load from URL param
+    /********************************************
+     * 5) EVENT LISTENERS & AUTO-LOAD
+     ********************************************/
+    document.getElementById('loadBtn').addEventListener('click', loadChart);
+    // Auto-load ticker from URL (e.g. ?ticker=OXY)
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
       if (ticker) {
         document.getElementById('ticker').value = ticker;
       }
-      loadDataAndPlot(document.getElementById('ticker').value.trim() || "OXY", currentRange);
+      loadChart();
     });
   </script>
 </body>
