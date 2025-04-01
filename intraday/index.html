@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Intraday Stock Chart</title>
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .chartContainer {
+      margin-top: 20px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    #backHome {
+      margin-bottom: 20px;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+      }
+      .chartContainer {
+        padding: 10px;
+        margin-top: 15px;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+      #chart {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to Home Button -->
+  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  <h1>Intraday Stock Chart</h1>
+  <p>View intraday data for your chosen stock. Specify the ticker, interval, output size, optional month, date range, and chart type.</p>
+
+  <label for="ticker">Ticker Symbol:</label>
+  <input type="text" id="ticker" value="OXY">
+
+  <label for="interval">Interval:</label>
+  <select id="interval">
+    <option value="1min">1min</option>
+    <option value="5min" selected>5min</option>
+    <option value="15min">15min</option>
+    <option value="30min">30min</option>
+    <option value="60min">60min</option>
+  </select>
+
+  <label for="outputsize">Output Size:</label>
+  <select id="outputsize">
+    <option value="compact" selected>Compact (Latest 100 points)</option>
+    <option value="full">Full (30 days or month‑specific)</option>
+  </select>
+
+  <label for="month">Specific Month (YYYY‑MM, optional):</label>
+  <input type="text" id="month" placeholder="e.g. 2009-01">
+
+  <label for="startDate">Start Date:</label>
+  <input type="date" id="startDate">
+
+  <label for="endDate">End Date:</label>
+  <input type="date" id="endDate">
+
+  <label for="chartType">Chart Type:</label>
+  <select id="chartType">
+    <option value="line" selected>Line Chart</option>
+    <option value="candlestick">Candlestick Chart</option>
+  </select>
+
+  <button id="runChart">Run Chart</button>
+  <div id="loading" style="display:none;">Loading intraday data...</div>
+
+  <div class="chartContainer" id="chartContainer" style="display:none;">
+    <div id="chart"></div>
+  </div>
+
+  <script>
+    // Parse the intraday data from the API response into an array of points.
+    function parseIntradayData(data, interval) {
+      const timeSeriesKey = `Time Series (${interval})`;
+      const tsData = data[timeSeriesKey];
+      if (!tsData) return [];
+      const points = [];
+      for (const timestamp in tsData) {
+        const point = tsData[timestamp];
+        points.push({
+          date: new Date(timestamp),
+          open: parseFloat(point["1. open"]),
+          high: parseFloat(point["2. high"]),
+          low: parseFloat(point["3. low"]),
+          close: parseFloat(point["4. close"]),
+          volume: parseInt(point["5. volume"], 10)
+        });
+      }
+      // Sort the points in ascending order of time.
+      points.sort((a, b) => a.date - b.date);
+      return points;
+    }
+
+    // Fetch intraday data using our API endpoint.
+    async function fetchIntradayData(params) {
+      document.getElementById('loading').style.display = 'block';
+      try {
+        let query = `?symbol=${params.symbol}&interval=${params.interval}`;
+        if (params.month) {
+          query += `&month=${params.month}&outputsize=full`;
+        } else {
+          query += `&outputsize=${params.outputsize}`;
+        }
+        const response = await fetch(`/api/intraday${query}`);
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Error fetching intraday data:", error);
+        return null;
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    // Filter data points by the selected date range.
+    function filterDataByDate(points, startDate, endDate) {
+      return points.filter(p => {
+        return (!startDate || p.date >= new Date(startDate)) &&
+               (!endDate || p.date <= new Date(endDate));
+      });
+    }
+
+    // Plot a line chart of the close price.
+    function plotLineChart(points) {
+      const trace = {
+        x: points.map(p => p.date),
+        y: points.map(p => p.close),
+        mode: 'lines',
+        name: 'Close Price',
+        line: { color: 'blue' }
+      };
+      const layout = {
+        title: 'Intraday Line Chart',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Price' },
+        dragmode: 'zoom'
+      };
+      Plotly.newPlot('chart', [trace], layout);
+    }
+
+    // Plot a candlestick chart.
+    function plotCandlestickChart(points) {
+      const trace = {
+        x: points.map(p => p.date),
+        open: points.map(p => p.open),
+        high: points.map(p => p.high),
+        low: points.map(p => p.low),
+        close: points.map(p => p.close),
+        type: 'candlestick',
+        name: 'Price'
+      };
+      const layout = {
+        title: 'Intraday Candlestick Chart',
+        xaxis: { title: 'Time' },
+        yaxis: { title: 'Price' },
+        dragmode: 'zoom'
+      };
+      Plotly.newPlot('chart', [trace], layout);
+    }
+
+    // Main function to run the chart.
+    async function runChart() {
+      const symbol = document.getElementById('ticker').value.trim() || "OXY";
+      const interval = document.getElementById('interval').value;
+      const outputsize = document.getElementById('outputsize').value;
+      const month = document.getElementById('month').value.trim();
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      const chartType = document.getElementById('chartType').value;
+      const params = { symbol, interval, outputsize, month };
+      const data = await fetchIntradayData(params);
+      if (!data) {
+        alert("Failed to fetch intraday data.");
+        return;
+      }
+      const points = parseIntradayData(data, interval);
+      let filteredPoints = points;
+      if (startDate || endDate) {
+        filteredPoints = filterDataByDate(points, startDate, endDate);
+      } else {
+        // If no date range is provided, default to the last 5 days.
+        const defaultEnd = new Date();
+        const defaultStart = new Date();
+        defaultStart.setDate(defaultEnd.getDate() - 5);
+        filteredPoints = filterDataByDate(points, defaultStart.toISOString().split('T')[0], defaultEnd.toISOString().split('T')[0]);
+      }
+      if (filteredPoints.length === 0) {
+        alert("No data available for the selected date range.");
+        return;
+      }
+      document.getElementById('chartContainer').style.display = 'block';
+      if (chartType === 'line') {
+        plotLineChart(filteredPoints);
+      } else if (chartType === 'candlestick') {
+        plotCandlestickChart(filteredPoints);
+      }
+    }
+
+    document.getElementById('runChart').addEventListener('click', runChart);
+
+    // Auto-load parameters from the URL (e.g. ?ticker=OXY&interval=5min)
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const ticker = params.get('ticker');
+      if (ticker) {
+        document.getElementById('ticker').value = ticker;
+      }
+      const interval = params.get('interval');
+      if (interval) {
+        document.getElementById('interval').value = interval;
+      }
+      const outputsize = params.get('outputsize');
+      if (outputsize) {
+        document.getElementById('outputsize').value = outputsize;
+      }
+      const month = params.get('month');
+      if (month) {
+        document.getElementById('month').value = month;
+      }
+      const startDate = params.get('startDate');
+      if (startDate) {
+        document.getElementById('startDate').value = startDate;
+      }
+      const endDate = params.get('endDate');
+      if (endDate) {
+        document.getElementById('endDate').value = endDate;
+      }
+      const chartType = params.get('chartType');
+      if (chartType) {
+        document.getElementById('chartType').value = chartType;
+      }
+      // If autoFetch=true is provided in the URL, run the chart after a short delay.
+      if (params.get('autoFetch') === 'true') {
+        setTimeout(runChart, 500);
+      } else {
+        // Set default date range to the last 5 days if not provided.
+        if (!document.getElementById('startDate').value) {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(end.getDate() - 5);
+          document.getElementById('startDate').value = start.toISOString().split('T')[0];
+          document.getElementById('endDate').value = end.toISOString().split('T')[0];
+        }
+      }
+    });
+  </script>
+</body>
+</html>
