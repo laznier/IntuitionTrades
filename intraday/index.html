@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Yahoo-Style Minimal Chart</title>
+  <title>Yahoo‑Style Full Chart</title>
   <!-- Include Plotly for Charting -->
   <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
   <style>
@@ -18,7 +18,7 @@
     }
     h1 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       font-weight: 600;
     }
     #tickerForm {
@@ -49,23 +49,43 @@
     }
     #topBar {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     #priceInfo {
-      font-size: 1.5rem;
+      font-size: 1.8rem;
       font-weight: 600;
       margin-right: 10px;
     }
     #changeInfo {
-      font-size: 1.2rem;
+      font-size: 1.4rem;
       margin-right: 10px;
     }
     #timeInfo {
-      font-size: 0.9rem;
+      font-size: 1rem;
       color: #666;
     }
+    /* Tabs for range selection */
+    #rangeTabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .rangeTab {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #fff;
+      transition: background 0.3s ease;
+    }
+    .rangeTab.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #1e3a8a;
+    }
     .chartContainer {
-      padding: 20px;
+      padding: 10px;
       border: 1px solid #e5e7eb;
       border-radius: 4px;
       background: #fff;
@@ -84,18 +104,14 @@
       margin-bottom: 20px;
     }
     @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-        font-size: 0.9rem;
-      }
       #chart {
         height: 400px;
       }
       #priceInfo {
-        font-size: 1.2rem;
+        font-size: 1.4rem;
       }
       #changeInfo {
-        font-size: 1rem;
+        font-size: 1.2rem;
       }
     }
   </style>
@@ -104,7 +120,7 @@
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
   
-  <h1>Yahoo‑Style Minimal Chart</h1>
+  <h1>Yahoo‑Style Full Chart</h1>
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
@@ -112,29 +128,49 @@
     <button id="loadBtn">Load Chart</button>
   </div>
 
-  <!-- Top Bar for Price Info -->
+  <!-- Top Bar: Price, Change, Time -->
   <div id="topBar">
     <span id="priceInfo"></span>
     <span id="changeInfo"></span>
     <span id="timeInfo"></span>
   </div>
 
+  <!-- Range Tabs -->
+  <div id="rangeTabs">
+    <div class="rangeTab active" data-range="1D">1D</div>
+    <div class="rangeTab" data-range="5D">5D</div>
+    <div class="rangeTab" data-range="1M">1M</div>
+    <div class="rangeTab" data-range="6M">6M</div>
+    <div class="rangeTab" data-range="YTD">YTD</div>
+    <div class="rangeTab" data-range="1Y">1Y</div>
+    <div class="rangeTab" data-range="5Y">5Y</div>
+  </div>
+
+  <!-- Chart Container -->
   <div class="chartContainer">
     <div id="chart"></div>
     <div id="loading" style="display:none;">Loading data...</div>
   </div>
 
   <script>
-    /********************************************
-     * 1) DATA FETCH & PARSE FUNCTIONS
-     ********************************************/
+    /***************************************
+     * 1) DATA FETCH FUNCTIONS
+     ***************************************/
     async function fetchIntradayData(symbol) {
-      // Make sure /api/intraday is returning valid JSON from Alpha Vantage
+      // Fetch intraday data (for 1D and 5D ranges)
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
-      const data = await response.json();
-      return data;
+      return await response.json();
     }
 
+    async function fetchHistoricalData(symbol) {
+      // Fetch daily adjusted data (for ranges 1M and longer)
+      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
+      return await response.json();
+    }
+
+    /***************************************
+     * 2) DATA PARSE FUNCTIONS
+     ***************************************/
     function parseIntradayData(data) {
       const seriesKey = "Time Series (5min)";
       const raw = data[seriesKey];
@@ -142,7 +178,7 @@
       const points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Convert "YYYY-MM-DD HH:MM:SS" to "YYYY-MM-DDTHH:MM:SS" for ISO parsing
+        // Convert to ISO format (replace space with "T")
         const isoTimestamp = timestamp.replace(" ", "T");
         points.push({
           date: new Date(isoTimestamp),
@@ -157,52 +193,131 @@
       return points;
     }
 
-    /********************************************
-     * 2) CHART PLOTTING
-     ********************************************/
-    function plotMountainChart(points, symbol) {
+    function parseHistoricalData(data) {
+      // Daily data key is typically "Time Series (Daily)" or similar.
+      const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      const points = [];
+      for (const dateStr in raw) {
+        const rec = raw[dateStr];
+        points.push({
+          date: new Date(dateStr),
+          open: parseFloat(rec["1. open"]),
+          high: parseFloat(rec["2. high"]),
+          low: parseFloat(rec["3. low"]),
+          close: parseFloat(rec["4. close"]),
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10)
+        });
+      }
+      points.sort((a, b) => a.date - b.date);
+      return points;
+    }
+
+    /***************************************
+     * 3) FILTERING DATA BY RANGE
+     ***************************************/
+    function filterDataForRange(points, range) {
+      const now = new Date();
+      let fromDate;
+      switch (range) {
+        case "1D":
+          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+          break;
+        case "5D":
+          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          break;
+        case "1M":
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "6M":
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
+        case "YTD":
+          fromDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case "1Y":
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        case "5Y":
+          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+      }
+      return points.filter(p => p.date >= fromDate);
+    }
+
+    /***************************************
+     * 4) CHART PLOTTING FUNCTION
+     ***************************************/
+    function plotChart(points, symbol, range) {
+      // Build x and y arrays from points
       const x = points.map(p => p.date);
       const y = points.map(p => p.close);
 
-      // Red line & fill to replicate Yahoo "mountain" style
-      const trace = {
-        x: x,
-        y: y,
-        mode: 'lines',
-        line: { color: '#d62828', width: 2 },
-        fill: 'tozeroy',
-        fillcolor: 'rgba(214,40,40,0.1)',
-        hovertemplate: "<b>Date</b>: %{x}<br><b>Close</b>: %{y:.2f}<extra></extra>"
-      };
-
+      // Use Plotly's built-in range selector and slider to mimic Yahoo Finance
       const layout = {
-        title: "",
-        showlegend: false,
+        title: `${symbol.toUpperCase()} Price`,
         xaxis: {
-          showgrid: false,
-          showline: false,
-          zeroline: false,
+          title: 'Time',
           type: 'date',
-          // Hide the range slider to replicate Yahoo's minimal style
-          rangeslider: { visible: false }
+          rangeslider: { visible: true },
+          rangeselector: {
+            buttons: [
+              { count: 1, label: '1D', step: 'day', stepmode: 'backward' },
+              { count: 5, label: '5D', step: 'day', stepmode: 'backward' },
+              { count: 1, label: '1M', step: 'month', stepmode: 'backward' },
+              { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
+              { count: 1, label: 'YTD', step: 'year', stepmode: 'todate' },
+              { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
+              { count: 5, label: '5Y', step: 'year', stepmode: 'backward' },
+              { step: 'all' }
+            ]
+          }
         },
-        yaxis: {
-          showgrid: false,
-          showline: false,
-          zeroline: false
-        },
-        margin: { t: 20, r: 20, b: 40, l: 50 },
+        yaxis: { title: 'Price' },
+        margin: { t: 40, r: 20, b: 40, l: 60 },
         hovermode: 'x unified',
         plot_bgcolor: '#fff',
         paper_bgcolor: '#fff'
       };
 
+      // Choose chart type: here we use a candlestick if daily, or mountain (area) for intraday
+      let trace;
+      if (range === "1D" || range === "5D") {
+        // For intraday, we'll use a mountain (area) chart style:
+        trace = {
+          x: x,
+          y: y,
+          mode: 'lines',
+          line: { color: '#2563eb', width: 2 },
+          fill: 'tozeroy',
+          fillcolor: 'rgba(37,99,235,0.15)',
+          hovertemplate: "<b>Date</b>: %{x}<br><b>Close</b>: %{y:.2f}<extra></extra>"
+        };
+      } else {
+        // For longer ranges, a candlestick chart may be more appropriate.
+        // For simplicity, if points lack OHLC details, fallback to a line chart.
+        // (Assumes points have open, high, low, close.)
+        trace = {
+          x: points.map(p => p.date),
+          open: points.map(p => p.open),
+          high: points.map(p => p.high),
+          low: points.map(p => p.low),
+          close: points.map(p => p.close),
+          type: 'candlestick',
+          name: symbol.toUpperCase(),
+          hovertemplate: "<b>Date</b>: %{x}<br><b>Open</b>: %{open:.2f}<br><b>High</b>: %{high:.2f}<br><b>Low</b>: %{low:.2f}<br><b>Close</b>: %{close:.2f}<extra></extra>"
+        };
+      }
+
       Plotly.newPlot('chart', [trace], layout, { responsive: true });
     }
 
-    /********************************************
-     * 3) TOP BAR UPDATE
-     ********************************************/
+    /***************************************
+     * 5) TOP BAR UPDATE
+     ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
       const last = points[points.length - 1];
@@ -210,7 +325,6 @@
       const diff = last.close - prev.close;
       const pct = (diff / prev.close) * 100;
       document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-      // Color code the change: green if up, red if down
       const changeEl = document.getElementById('changeInfo');
       if (diff >= 0) {
         changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
@@ -222,20 +336,31 @@
       document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString()}`;
     }
 
-    /********************************************
-     * 4) MAIN LOAD FUNCTION
-     ********************************************/
+    /***************************************
+     * 6) MAIN LOAD FUNCTION
+     ***************************************/
     async function loadChart() {
       const symbol = document.getElementById('ticker').value.trim() || "OXY";
+      const range = currentRange;  // global variable set by range tab selection
       document.getElementById('loading').style.display = 'block';
+
       try {
-        const rawData = await fetchIntradayData(symbol);
-        const points = parseIntradayData(rawData);
+        let rawData, points;
+        // For 1D and 5D, use intraday; else use daily.
+        if (range === "1D" || range === "5D") {
+          rawData = await fetchIntradayData(symbol);
+          points = parseIntradayData(rawData);
+        } else {
+          rawData = await fetchHistoricalData(symbol);
+          points = parseHistoricalData(rawData);
+        }
+        // Filter points to the selected range.
+        points = filterDataForRange(points, range);
         if (points.length === 0) {
-          alert("No data found for this symbol.");
+          alert("No data found for this symbol and range.");
           return;
         }
-        plotMountainChart(points, symbol);
+        plotChart(points, symbol, range);
         updateTopBar(points, symbol);
       } catch (err) {
         console.error("Error loading data:", err);
@@ -245,12 +370,22 @@
       }
     }
 
-    /********************************************
-     * 5) EVENT LISTENERS & AUTO-LOAD
-     ********************************************/
+    /***************************************
+     * 7) RANGE TABS & EVENT LISTENERS
+     ***************************************/
+    let currentRange = "1D"; // Default range
+    document.querySelectorAll(".rangeTab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentRange = tab.getAttribute("data-range");
+        loadChart();
+      });
+    });
+
     document.getElementById('loadBtn').addEventListener('click', loadChart);
 
-    // On page load, check if a ticker is provided via URL (e.g. ?ticker=TSLA)
+    // Auto-load ticker from URL parameter if provided (e.g. ?ticker=OXY)
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
