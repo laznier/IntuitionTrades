@@ -20,38 +20,41 @@
       font-family: Arial, sans-serif;
       color: #fff; /* All text white */
       margin: 0;
-      /* Background is handled by a pseudo-element */
-    }
-    /* Full-page background for desktop */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('/images/hero-background.png') no-repeat center center fixed;
-      background-size: cover;
-      z-index: -1;
-    }
-    /* Mobile background override */
-    @media (max-width: 768px) {
-      body::before {
-        background: url('/images/mobile-background.png') no-repeat center center fixed;
-        background-size: cover;
-      }
+      /* Remove any direct background so we use our fixed element below */
     }
     a {
       text-decoration: none;
       color: inherit;
     }
-    
+
+    /* ============================================================
+       Fixed Background Element
+    ============================================================ */
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('/images/hero-background.png') no-repeat center center;
+      background-size: cover;
+      z-index: -9999;
+      /* Force hardware acceleration (may help on iOS) */
+      transform: translateZ(0);
+    }
+    @media (max-width: 768px) {
+      .background-fixed {
+        background: url('/images/mobile-background.png') no-repeat center center;
+        background-size: cover;
+      }
+    }
+
     /* ============================================================
        Hero Section
     ============================================================ */
     .hero {
       position: relative;
-      background: url('images/hero-background.jpg') center/cover no-repeat;
+      background: url('/images/hero-background.jpg') center/cover no-repeat;
       padding: 3rem 1rem;
       text-align: center;
     }
@@ -69,7 +72,6 @@
     
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
-       (Based on provided .topnav CSS)
     ============================================================ */
     .topnav {
       background-color: #333;
@@ -189,7 +191,7 @@
     
     /* ============================================================
        Countdown Section
-       (Using dark semi-transparent backgrounds)
+       (Dark semi-transparent background)
     ============================================================ */
     .countdown-section {
       text-align: center;
@@ -253,7 +255,7 @@
     
     /* ============================================================
        Weekly Stock Picks Section
-       (Using a dark, semi-transparent background)
+       (Dark semi-transparent background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
@@ -397,7 +399,7 @@
       width: 100%;
       border: 1px solid #ccc;
       border-radius: 4px;
-      color: #000; /* For readability in form fields */
+      color: #000;
     }
     #newsletter-signup button {
       padding: 0.75rem 1.5rem;
@@ -500,6 +502,9 @@
   </style>
 </head>
 <body>
+
+  <!-- Fixed Background Element -->
+  <div class="background-fixed"></div>
 
   <!-- Mobile Header: Hamburger Toggle -->
   <header>
@@ -741,7 +746,7 @@
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
-      <p>Help us improve our tools. Share your ideas or user stories.</p>
+      <p>Help us improve our website. Share your requests or ideas.</p>
       <a href="feedback.html">Leave Feedback</a>
     </section>
   </main>
@@ -752,8 +757,8 @@
   </footer>
 
   <!-- ============================================================
-       JavaScript
-       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
+       JavaScript Section
+       (Dropdowns, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -836,7 +841,7 @@
     });
   </script>
   <script>
-    const initialDate = "2025-03-28";  
+    const initialDate = "2025-03-28";
     const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.performance-header').forEach(header => {
@@ -867,11 +872,8 @@
             const perfEl = document.getElementById(`performance-${ticker}`);
             if (perfEl) {
               perfEl.textContent = diffFormatted;
-              if (diff >= 0) {
-                perfEl.classList.add('performance-green');
-              } else {
-                perfEl.classList.add('performance-red');
-              }
+              if (diff >= 0) { perfEl.classList.add('performance-green'); }
+              else { perfEl.classList.add('performance-red'); }
             }
           })
           .catch(error => console.log(error));
@@ -884,9 +886,8 @@
         const now = new Date();
         const currentUTCDay = now.getUTCDay();
         let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) {
-          return target;
-        } else {
+        if (currentUTCDay === 1 && now < target) { return target; }
+        else {
           let daysUntilMonday = (8 - currentUTCDay) % 7;
           if (daysUntilMonday === 0) { daysUntilMonday = 7; }
           target.setUTCDate(target.getUTCDate() + daysUntilMonday);
