@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Yahoo‑Style Full Chart with Highcharts Stock</title>
+  <title>Live Stock Chart</title>
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
-  <!-- Option A: Include accessibility module to remove warning -->
-  <!-- <script src="https://code.highcharts.com/stock/modules/accessibility.js"></script> -->
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -52,7 +50,7 @@
     }
     #topBar {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
     #priceInfo {
       font-size: 1.8rem;
@@ -66,6 +64,12 @@
     #timeInfo {
       font-size: 1rem;
       color: #666;
+    }
+    #caution {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #dc2626;
+      margin-bottom: 10px;
     }
     /* Tabs for range selection */
     #rangeTabs {
@@ -123,7 +127,7 @@
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
   
-  <h1>Yahoo‑Style Full Chart</h1>
+  <h1>Live Stock Chart</h1>
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
@@ -136,6 +140,11 @@
     <span id="priceInfo"></span>
     <span id="changeInfo"></span>
     <span id="timeInfo"></span>
+  </div>
+  
+  <!-- Caution Note -->
+  <div id="caution">
+    Data from Alpha Vantage is delayed by 15 minutes (Free Version).
   </div>
 
   <!-- Range Tabs -->
@@ -159,11 +168,10 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    async function fetchIntradayData(symbol) {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
+    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
       return response.json();
     }
-
     async function fetchHistoricalData(symbol) {
       const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
       return response.json();
@@ -172,47 +180,54 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
-    function parseIntradayData(data) {
-      const seriesKey = "Time Series (5min)";
+    // For intraday data, store both the parsed Date (for chart x-axis) and the original API timestamp.
+    function parseIntradayData(data, interval) {
+      const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
       if (!raw) return [];
       let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Convert timestamp to ISO format (assumes "YYYY-MM-DD HH:MM:SS")
-        const isoTimestamp = timestamp.replace(" ", "T");
-        const date = new Date(isoTimestamp);
+        // Keep the original string as provided (assumed format "YYYY-MM-DD HH:mm:ss")
+        const original = timestamp;
+        // Create a Date object directly from the string without forcing UTC conversion.
+        const date = new Date(timestamp.replace(" ", "T"));
         points.push({
-          date: date,
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"], 10)
+          volume: parseInt(rec["5. volume"], 10),
+          original: original
         });
       }
-      points.sort((a, b) => a.date - b.date);
+      points.sort((a, b) => a.x - b.x);
       return points;
     }
-
+    // For historical data, similarly store the original timestamp.
     function parseHistoricalData(data) {
-      const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
+      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
       const raw = data[seriesKey];
       if (!raw) return [];
       let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
+        const original = dateStr;
         const date = new Date(dateStr);
         points.push({
-          date: date,
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10)
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
+          original: original
         });
       }
-      points.sort((a, b) => a.date - b.date);
+      points.sort((a, b) => a.x - b.x);
       return points;
     }
 
@@ -247,26 +262,20 @@
         default:
           fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       }
-      return points.filter(p => p.date >= fromDate);
+      return points.filter(p => p.x >= fromDate.getTime());
     }
 
     /***************************************
-     * 4) TOP BAR UPDATE
-     *    - Show difference from first to last in the *filtered* range
+     * 4) TOP BAR UPDATE (Display the API's original timestamp)
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
-      
-      // Compare first data point in the range to the last data point in the range
       const first = points[0];
       const last = points[points.length - 1];
-
       const diff = last.close - first.close;
       const pct = (diff / first.close) * 100;
 
-      // Display last close price
       document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-
       const changeEl = document.getElementById('changeInfo');
       if (diff >= 0) {
         changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
@@ -275,78 +284,158 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-
-      // Display "As of" time in NYSE time
-      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
+      // Use the original timestamp from the last data point.
+      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
     }
 
     /***************************************
      * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
+     *    - Draws a fixed dashed last-price line and a dynamic crosshair.
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
       let chartType;
-      
-      // For intraday data, use a line/area chart; for historical data, use candlestick
-      if (range === "1D" || range === "5D") {
-        // Format: [timestamp, close]
-        seriesData = points.map(p => [p.date.getTime(), p.close]);
+      let seriesOptions = {};
+
+      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
+        // For line charts, our seriesData is our points (x and y)
+        seriesData = points.map(p => [p.x, p.y]);
         chartType = 'line';
+        const firstClose = points[0].close;
+        const lastClose = points[points.length - 1].close;
+        let seriesColor = 'blue';
+        if (lastClose > firstClose) seriesColor = 'green';
+        else if (lastClose < firstClose) seriesColor = 'red';
+        seriesOptions = {
+          color: seriesColor,
+          fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
+        };
       } else {
-        // Format for candlestick: [timestamp, open, high, low, close]
-        seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+        // For historical ranges, use candlestick data.
+        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
+        seriesOptions = {
+          color: 'red',    // falling
+          upColor: 'green' // rising
+        };
       }
-      
+
       Highcharts.stockChart('chart', {
         chart: {
-          backgroundColor: '#fff'
+          backgroundColor: '#fff',
+          marginRight: 80, // extra margin for right-side labels
+          events: {
+            load: function () {
+              const chart = this;
+              const yAxis = chart.yAxis[0];
+              const series = chart.series[0];
+              // For candlestick, use series.points; for line, series.data.
+              const pts = (series.type === 'candlestick') ? series.points : series.data;
+              if (!pts || pts.length === 0) return;
+
+              const lastPoint = pts[pts.length - 1];
+              const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
+              const lastY = yAxis.toPixels(lastPrice, true);
+
+              // Fixed dashed line at last price.
+              chart.lastPriceLine = chart.renderer.path([
+                'M', chart.plotLeft, lastY,
+                'L', chart.plotLeft + chart.plotWidth, lastY
+              ]).attr({
+                'stroke-width': 1,
+                stroke: 'gray',
+                dashstyle: 'Dash'
+              }).add();
+
+              // Fixed last price label on the right.
+              chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
+                chart.plotLeft + chart.plotWidth + 5,
+                lastY + 4
+              ).css({ color: 'gray' }).add();
+
+              // Create dynamic crosshair and label.
+              chart.crosshairLine = chart.renderer.path().attr({
+                'stroke-width': 1,
+                stroke: 'black',
+                dashstyle: 'Solid'
+              }).add();
+              chart.crosshairLabel = chart.renderer.text('',
+                chart.plotLeft + chart.plotWidth + 5,
+                chart.plotTop
+              ).css({ color: 'black' }).add();
+
+              // Override tooltip formatter for line charts to show original time.
+              if (series.type === 'line') {
+                chart.update({
+                  tooltip: {
+                    formatter: function () {
+                      // Find the point with the matching x value
+                      const pt = this.point;
+                      // Use the original timestamp from our point data.
+                      return `<b>${this.series.name}</b><br/>
+                              Time: ${pt.original} US/Eastern<br/>
+                              Price: ${pt.y.toFixed(2)}`;
+                    }
+                  }
+                });
+              }
+
+              Highcharts.addEvent(chart.container, 'mousemove', function(e) {
+                const event = chart.pointer.normalize(e);
+                const yVal = yAxis.toValue(event.chartY);
+                const yPix = yAxis.toPixels(yVal, true);
+                chart.crosshairLine.attr({
+                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
+                });
+                chart.crosshairLabel.attr({
+                  text: yVal.toFixed(2),
+                  x: chart.plotLeft + chart.plotWidth + 5,
+                  y: yPix + 4
+                });
+              });
+
+              Highcharts.addEvent(chart.container, 'mouseleave', function() {
+                chart.crosshairLine.attr({ d: [] });
+                chart.crosshairLabel.attr({ text: '' });
+              });
+            }
+          }
         },
+        // Do not use UTC conversion; use the timestamps as provided.
         time: {
-          timezone: 'America/New_York'
+          useUTC: false
         },
-        // Option B: disable accessibility to remove the console warning
         accessibility: {
           enabled: false
         },
         rangeSelector: {
-          enabled: false  // We have our own custom range tabs
+          enabled: false
         },
         title: {
           text: `${symbol.toUpperCase()} Price`
         },
         xAxis: {
-          type: 'datetime'
+          type: 'datetime',
+          maxPadding: 0.15
         },
         yAxis: {
-          title: {
-            text: 'Price'
-          }
+          title: { text: 'Price' }
         },
         tooltip: {
           split: false,
           shared: true,
-          xDateFormat: '%Y-%m-%d %H:%M'
+          xDateFormat: '%Y-%m-%d %H:%M:%S'
         },
         series: [{
           name: symbol.toUpperCase(),
           data: seriesData,
           type: chartType,
-          tooltip: {
-            valueDecimals: 2
-          },
-          color: '#2563eb',
-          fillColor: 'rgba(37,99,235,0.15)'
+          tooltip: { valueDecimals: 2 },
+          ...seriesOptions
         }],
-        navigator: {
-          enabled: true
-        },
-        scrollbar: {
-          enabled: true
-        },
-        credits: {
-          enabled: false
-        }
+        navigator: { enabled: true },
+        scrollbar: { enabled: true },
+        credits: { enabled: false }
       });
     }
 
@@ -355,28 +444,26 @@
      ***************************************/
     async function loadChart() {
       const symbol = document.getElementById('ticker').value.trim() || "OXY";
-      const range = currentRange;  // global variable from range tab selection
+      const range = currentRange;
       document.getElementById('loading').style.display = 'block';
-
       try {
         let rawData, points;
-        // For 1D and 5D use intraday API; else use historical API
         if (range === "1D" || range === "5D") {
-          rawData = await fetchIntradayData(symbol);
-          points = parseIntradayData(rawData);
+          rawData = await fetchIntradayData(symbol, "1min");
+          points = parseIntradayData(rawData, "1min");
+        } else if (range === "1M") {
+          rawData = await fetchIntradayData(symbol, "60min", "full");
+          points = parseIntradayData(rawData, "60min");
         } else {
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
-        // Filter data based on selected range
         points = filterDataForRange(points, range);
         if (points.length === 0) {
           alert("No data found for this symbol and range.");
           return;
         }
-        // Plot chart
         plotChart(points, symbol, range);
-        // Update top bar with difference from first to last in the range
         updateTopBar(points, symbol);
       } catch (err) {
         console.error("Error loading data:", err);
@@ -387,9 +474,9 @@
     }
 
     /***************************************
-     * 7) RANGE TABS & EVENT LISTENERS
+     * 7) RANGE TABS & AUTO UPDATE
      ***************************************/
-    let currentRange = "1D"; // Default range
+    let currentRange = "1D";
     document.querySelectorAll(".rangeTab").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
@@ -401,7 +488,6 @@
 
     document.getElementById('loadBtn').addEventListener('click', loadChart);
 
-    // Auto-load ticker from URL parameter if provided (e.g. ?ticker=OXY)
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
@@ -409,6 +495,7 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
+      setInterval(loadChart, 60000);
     });
   </script>
 </body>
