@@ -129,25 +129,28 @@
      * 1) DATA FETCH & PARSE FUNCTIONS
      ********************************************/
     async function fetchIntradayData(symbol) {
-      // Call our server endpoint which proxies Alpha Vantage
+      // Call our server endpoint that proxies Alpha Vantage.
+      // Ensure that /api/intraday is properly deployed.
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
       const data = await response.json();
       return data;
     }
 
     function parseIntradayData(data) {
+      // Get the meta information and time zone.
       const meta = data["Meta Data"] || {};
-      const timeZone = meta["6. Time Zone"] || "US/Eastern";
-      // The key is "Time Series (5min)" for our default interval.
-      const seriesKey = `Time Series (5min)`;
+      // Note: Alpha Vantage returns the time zone as a string like "US/Eastern" which
+      // may not be directly parseable. For our purposes, we simply reformat the timestamp.
+      const seriesKey = "Time Series (5min)";
       const raw = data[seriesKey];
       if (!raw) return [];
       const points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Construct the Date; note that the timestamp from Alpha Vantage is in the format "YYYY-MM-DD HH:MM:SS"
+        // Replace the space with "T" so that the string becomes ISO‑like.
+        const isoTimestamp = timestamp.replace(" ", "T");
         points.push({
-          date: new Date(timestamp + " " + timeZone),
+          date: new Date(isoTimestamp),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
@@ -155,7 +158,7 @@
           volume: parseInt(rec["5. volume"], 10)
         });
       }
-      // Sort by date ascending
+      // Sort the points in ascending order by date.
       points.sort((a, b) => a.date - b.date);
       return points;
     }
@@ -167,7 +170,7 @@
       const x = points.map(p => p.date);
       const y = points.map(p => p.close);
 
-      // Create a line trace with area fill (mountain chart)
+      // Create a line trace with fill to zero (mountain/area chart style).
       const trace = {
         x: x,
         y: y,
@@ -221,7 +224,6 @@
         const points = parseIntradayData(rawData);
         if (points.length === 0) {
           alert("No data found for this symbol.");
-          document.getElementById('loading').style.display = 'none';
           return;
         }
         plotMountainChart(points, symbol);
@@ -233,14 +235,12 @@
         document.getElementById('loading').style.display = 'none';
       }
     }
-    const rawData = await fetchIntradayData(symbol);
-      console.log("Raw intraday data:", rawData);
 
     /********************************************
      * 5) EVENT LISTENERS & AUTO-LOAD
      ********************************************/
     document.getElementById('loadBtn').addEventListener('click', loadChart);
-    // Auto-load ticker from URL (e.g. ?ticker=OXY)
+    // Auto-load ticker from URL parameter (e.g., ?ticker=OXY)
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const ticker = params.get('ticker');
