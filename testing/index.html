@@ -518,7 +518,7 @@
       <!-- Top 3 Shorts -->
       <div class="stock-pick">
         <h3>Top 3 Shorts</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Selected Date</div>
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
         <ol>
           <li>
             <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
@@ -750,7 +750,7 @@
               return;
             }
             const timeSeries = data["Time Series (Daily)"];
-            // Get initial record for the selected date.
+            // Get initial record for the recommended date.
             const initialRecord = timeSeries[initialDate];
             if (!initialRecord) {
               console.log("No record found for " + ticker + " on date " + initialDate);
