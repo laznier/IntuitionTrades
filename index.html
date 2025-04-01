@@ -759,7 +759,8 @@
   </footer>
 
   <!-- ============================================================
-       JavaScript Section (Menus, Countdown, Smooth Scroll)
+       JavaScript Section
+       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -770,6 +771,7 @@
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
+            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -844,74 +846,60 @@
       });
     });
   </script>
-  <!-- Updated Performance Script -->
   <script>
-    // For each ticker, fetch the historical closing price from 2025-03-28
-    // then fetch the latest intraday price. Calculate percent change.
+    // Updated performance script using intraday API, updating every minute, and clickable performance buttons.
     document.addEventListener('DOMContentLoaded', () => {
       const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-      const initialDate = "2025-03-28"; // Use this date from historical data
-      const interval = "5min";
-      const intraTimeSeriesKey = `Time Series (${interval})`;
-
+      
       function updatePerformance() {
         tickers.forEach(ticker => {
-          const histUrl = `https://www.intuitiontrades.com/api/?symbol=${ticker}`;
-          const intraUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
-
-          Promise.all([
-            fetch(histUrl).then(res => res.json()),
-            fetch(intraUrl).then(res => res.json())
-          ]).then(([histData, intraData]) => {
-            if (!histData || !histData["Time Series (Daily)"]) {
-              console.log("No historical data for " + ticker);
-              return;
-            }
-            const histTimeSeries = histData["Time Series (Daily)"];
-            const initialRecord = histTimeSeries[initialDate];
-            if (!initialRecord) {
-              console.log("No historical record for " + ticker + " on " + initialDate);
-              return;
-            }
-            const initialPrice = parseFloat(initialRecord["4. close"]);
-
-            if (!intraData || !intraData[intraTimeSeriesKey]) {
-              console.log("No intraday data for " + ticker);
-              return;
-            }
-            const intraTimeSeries = intraData[intraTimeSeriesKey];
-            const intraTimes = Object.keys(intraTimeSeries).sort();
-            const latestTime = intraTimes[intraTimes.length - 1];
-            const latestPrice = parseFloat(intraTimeSeries[latestTime]["4. close"]);
-
-            const diff = ((latestPrice - initialPrice) / initialPrice) * 100;
-            const diffFormatted = diff.toFixed(2) + '%';
-
-            const perfEl = document.getElementById(`performance-${ticker}`);
-            if (perfEl) {
-              perfEl.textContent = diffFormatted;
-              if (diff >= 0) {
-                perfEl.classList.remove('performance-red');
-                perfEl.classList.add('performance-green');
-              } else {
-                perfEl.classList.remove('performance-green');
-                perfEl.classList.add('performance-red');
+          let intradayUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
+          fetch(intradayUrl)
+            .then(response => response.json())
+            .then(data => {
+              if (!data || !data["Time Series (Intraday)"]) {
+                console.log("No Intraday Time Series data returned for " + ticker);
+                return;
               }
-              perfEl.onclick = () => {
-                window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-              };
-            }
-          }).catch(error => {
-            console.log("Error for " + ticker, error);
-          });
+              const timeSeries = data["Time Series (Intraday)"];
+              // Get sorted timestamps (assumes keys sort chronologically)
+              const times = Object.keys(timeSeries).sort();
+              const initialRecord = timeSeries[times[0]];
+              if (!initialRecord) {
+                console.log("No initial record found for " + ticker);
+                return;
+              }
+              const initialPrice = parseFloat(initialRecord["4. close"]);
+              const latestTime = times[times.length - 1];
+              const mostRecent = timeSeries[latestTime];
+              const currentPrice = parseFloat(mostRecent["4. close"]);
+              const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+              const diffFormatted = diff.toFixed(2) + '%';
+              const perfEl = document.getElementById(`performance-${ticker}`);
+              if (perfEl) {
+                perfEl.textContent = diffFormatted;
+                if (diff >= 0) {
+                  perfEl.classList.remove('performance-red');
+                  perfEl.classList.add('performance-green');
+                } else {
+                  perfEl.classList.remove('performance-green');
+                  perfEl.classList.add('performance-red');
+                }
+                // Redirect to the corresponding intraday page on click
+                perfEl.onclick = () => {
+                  window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+                };
+              }
+            })
+            .catch(error => console.log(error));
         });
       }
       
+      // Initial update and then update every minute (60000 ms)
       updatePerformance();
       setInterval(updatePerformance, 60000);
     });
   </script>
-  <!-- Countdown and Smooth Scroll Script -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       function getNextMondayTarget() {
