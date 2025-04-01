@@ -12,6 +12,27 @@
 
   <style>
     /* ============================================================
+      Timer Styles
+    ============================================================ */
+    .countdown-timer {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-align: center;
+  z-index: 2;
+}
+
+.countdown-text {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+    /* ============================================================
        Shared Styles
     ============================================================ */
     body {
@@ -526,6 +547,14 @@
     </div>
   </header>
 
+
+  <div class="countdown-timer">
+    <div id="countdown">Loading countdown...</div>
+    <div class="countdown-text">
+      Get next week's top picks two days earlier by signing up to our newsletter.
+    </div>
+  </div>
+  
   <!-- Weekly Stock Picks Section -->
   <section id="weekly-stock-picks">
     <h2>Weekly Stock Picks</h2>
@@ -821,6 +850,58 @@
           .catch(error => console.log(error));
       });
     });
+  
+  // Returns the next target date: Monday at 21:00 UTC.
+  function getNextMondayTarget() {
+    const now = new Date();
+    const currentUTCDay = now.getUTCDay(); // Sunday = 0, Monday = 1, etc.
+    
+    // Create a target for today at 21:00 UTC.
+    let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+
+    // If today is Monday and the current UTC time is before 21:00, then target is today at 21:00.
+    if (currentUTCDay === 1 && now < target) {
+      return target;
+    } else {
+      // Calculate days until next Monday.
+      // (8 - currentUTCDay) % 7 gives the remaining days until Monday (if today is Monday and it's past 21:00, returns 0).
+      let daysUntilMonday = (8 - currentUTCDay) % 7;
+      if (daysUntilMonday === 0) {
+        daysUntilMonday = 7;
+      }
+      target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+      return target;
+    }
+  }
+
+  // Updates the countdown every second.
+  function updateCountdown() {
+    const now = new Date();
+    const target = getNextMondayTarget();
+    const diff = target - now;
+
+    if (diff <= 0) {
+      document.getElementById("countdown").textContent = "00d 00h 00m 00s";
+      return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    document.getElementById("countdown").textContent =
+      (days < 10 ? "0" + days : days) + "d " +
+      (hours < 10 ? "0" + hours : hours) + "h " +
+      (minutes < 10 ? "0" + minutes : minutes) + "m " +
+      (seconds < 10 ? "0" + seconds : seconds) + "s";
+  }
+
+  // Initialize and update the countdown every second.
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+
   </script>
 
 </body>
