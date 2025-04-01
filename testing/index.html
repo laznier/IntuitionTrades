@@ -1,188 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Stock Chart</title>
+  <meta name="google-site-verification" content="..." />
+  <meta charset="UTF-8">
+  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
+  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  
   <style>
+    /* Global Reset & Base Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: #f3f4f6;
-      color: #333;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 2rem;
-      line-height: 1.6;
+      font-family: Arial, sans-serif;
+      color: #fff; /* All text white */
+      margin: 0;
     }
-    h1 {
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    
+    /* ============================================================
+       Hero Section with Chart Background
+    ============================================================ */
+    .hero {
+      position: relative;
+      padding: 3rem 1rem;
       text-align: center;
-      margin-bottom: 10px;
-      font-weight: 600;
+      overflow: hidden;
+      min-height: 400px;
     }
-    #tickerForm {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    #ticker {
-      padding: 8px;
-      font-size: 1rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      width: 150px;
-      text-align: center;
-    }
-    button {
-      padding: 8px 16px;
-      margin-left: 5px;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
-    #topBar {
-      text-align: center;
-      margin-bottom: 5px;
-    }
-    #priceInfo {
-      font-size: 1.8rem;
-      font-weight: 600;
-      margin-right: 10px;
-    }
-    #changeInfo {
-      font-size: 1.4rem;
-      margin-right: 10px;
-    }
-    #timeInfo {
-      font-size: 1rem;
-      color: #666;
-    }
-    #caution {
-      text-align: center;
-      font-size: 0.9rem;
-      color: #dc2626;
-      margin-bottom: 10px;
-    }
-    /* Tabs for range selection */
-    #rangeTabs {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .rangeTab {
-      display: inline-block;
-      padding: 8px 16px;
-      margin: 0 4px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-      background: #fff;
-      transition: background 0.3s ease;
-    }
-    .rangeTab.active {
-      background: #2563eb;
-      color: #fff;
-      border-color: #1e3a8a;
-    }
-    .chartContainer {
-      padding: 10px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      background: #fff;
-    }
-    #chart {
+    /* The chart container fills the hero section */
+    #heroChart {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
-      height: 600px;
+      height: 100%;
+      z-index: 0;
     }
-    #loading {
+    /* Overlay for hero text */
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+    /* Price overlay on the right */
+    #heroPrice {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 3;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    /* Time overlay at the bottom */
+    #heroTime {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+      font-size: 1rem;
+    }
+    
+    /* ============================================================
+       Other styles (Navigation, Footer, etc.)
+    ============================================================ */
+    .topnav {
+      background-color: #333;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+    .topnav ul {
+      display: flex;
+      list-style: none;
+    }
+    .topnav ul li {
+      flex: none;
+    }
+    .topnav ul li a {
+      display: block;
+      padding: 14px 20px;
+      color: #fff;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    /* (Other CSS sections remain unchanged...) */
+    
+    /* Example: Footer */
+    footer {
       text-align: center;
-      margin-top: 10px;
-      font-style: italic;
-      color: #f97316;
-    }
-    #backHome {
-      margin-bottom: 20px;
-    }
-    @media (max-width: 600px) {
-      #chart {
-        height: 400px;
-      }
-      #priceInfo {
-        font-size: 1.4rem;
-      }
-      #changeInfo {
-        font-size: 1.2rem;
-      }
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      margin-top: 2rem;
     }
   </style>
 </head>
 <body>
-  <!-- Back to Home Button -->
-  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  <!-- Mobile Header & Navigation sections remain the same... -->
   
-  <h1>Live Stock Chart</h1>
+  <!-- Desktop Inline Menu for larger screens -->
+  <header>
+    <nav class="header__inline-menu topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="dropdown">
+          <a href="#tools" class="parent-link">Tools</a>
+          <ul class="dropdown-menu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+            <li><a href="congress/">Congress Trades</a></li>
+            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+            <li><a href="analyst/">Combined Analyst Ratings</a></li>
+            <li><a href="sentiment">Market Sentiment</a></li>
+            <li><a href="insider/">Insider Tracker</a></li>
+            <li><a href="technical/">Combined Technical Analysis</a></li>
+            <li><a href="MACD/">MACD Analysis</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="/tutorials/" class="parent-link">Tutorials</a>
+          <ul class="dropdown-menu"></ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
   
-  <!-- Ticker Input Form -->
-  <div id="tickerForm">
-    <input type="text" id="ticker" value="SPY" />
-    <button id="loadBtn">Load Chart</button>
-  </div>
-
-  <!-- Top Bar: Price, Change, Time -->
-  <div id="topBar">
-    <span id="priceInfo"></span>
-    <span id="changeInfo"></span>
-    <span id="timeInfo"></span>
-  </div>
+  <!-- Hero Section with Embedded SPY Chart Background -->
+  <header class="hero">
+    <!-- Chart Container -->
+    <div id="heroChart"></div>
+    
+    <!-- Overlayed Price and Time -->
+    <div id="heroPrice"></div>
+    <div id="heroTime"></div>
+    
+    <div class="hero-content">
+      <h1>Intuition Trades</h1>
+      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
+    </div>
+  </header>
   
-  <!-- Caution Note -->
-  <div id="caution">
-    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
-  </div>
-
-  <!-- Range Tabs -->
-  <div id="rangeTabs">
-    <div class="rangeTab active" data-range="1D">1D</div>
-    <div class="rangeTab" data-range="5D">5D</div>
-    <div class="rangeTab" data-range="1M">1M</div>
-    <div class="rangeTab" data-range="6M">6M</div>
-    <div class="rangeTab" data-range="YTD">YTD</div>
-    <div class="rangeTab" data-range="1Y">1Y</div>
-    <div class="rangeTab" data-range="5Y">5Y</div>
-  </div>
-
-  <!-- Chart Container -->
-  <div class="chartContainer">
-    <div id="chart"></div>
-    <div id="loading" style="display:none;">Loading data...</div>
-  </div>
-
+  <!-- Countdown, Weekly Stock Picks, Tools, Newsletter, Feedback, Footer... (rest of your homepage remains unchanged) -->
+  <!-- For brevity, these sections are omitted here but would follow as in your original homepage code. -->
+  
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+  </footer>
+  
+  <!-- ============================================================
+       JavaScript Section for Desktop Dropdown, Mobile Menu Toggle, etc.
+       (Your other scripts remain here.)
+  ============================================================ -->
   <script>
-    /***************************************
-     * 1) DATA FETCH FUNCTIONS
-     ***************************************/
-    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
-      return response.json();
+    // Your existing dropdown and mobile menu scripts go here...
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      // Existing initialization code for desktop dropdowns and mobile menu.
+    });
+  </script>
+  
+  <!-- ============================================================
+       SPY Chart Background in Hero Section
+  ============================================================ -->
+  <script>
+    // Function to fetch SPY intraday data and update the hero chart.
+    async function fetchSPYData() {
+      try {
+        // Using 1-minute interval to get full day data for SPY
+        const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        console.error("Error fetching SPY data:", err);
+        return null;
+      }
     }
-    async function fetchHistoricalData(symbol) {
-      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
-      return response.json();
-    }
-
-    /***************************************
-     * 2) DATA PARSE FUNCTIONS
-     ***************************************/
-    // For intraday data, we store both the parsed Date and the original API timestamp.
-    function parseIntradayData(data, interval) {
-      const seriesKey = `Time Series (${interval})`;
+    
+    function parseSPYData(data) {
+      const seriesKey = "Time Series (1min)";
       const raw = data[seriesKey];
       if (!raw) return [];
       let points = [];
@@ -196,286 +207,91 @@
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"], 10),
           original: timestamp
         });
       }
       points.sort((a, b) => a.x - b.x);
       return points;
     }
-    // For historical data.
-    function parseHistoricalData(data) {
-      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const dateStr in raw) {
-        const rec = raw[dateStr];
-        const date = new Date(dateStr);
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
-          original: dateStr
-        });
-      }
-      points.sort((a, b) => a.x - b.x);
-      return points;
-    }
-
-    /***************************************
-     * 3) FILTERING DATA BY RANGE
-     ***************************************/
-    function filterDataForRange(points, range) {
+    
+    // Plot the hero chart using Highcharts
+    async function plotHeroChart() {
+      const rawData = await fetchSPYData();
+      if (!rawData) return;
+      const points = parseSPYData(rawData);
+      // Filter data to only today's points
       const now = new Date();
-      let fromDate;
-      switch (range) {
-        case "1D":
-          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case "5D":
-          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-          break;
-        case "1M":
-          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "6M":
-          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-          break;
-        case "YTD":
-          fromDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        case "1Y":
-          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-          break;
-        case "5Y":
-          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-      }
-      return points.filter(p => p.x >= fromDate.getTime());
-    }
-
-    /***************************************
-     * 4) TOP BAR UPDATE
-     ***************************************/
-    function updateTopBar(points, symbol) {
-      if (points.length < 2) return;
-      const first = points[0];
-      const last = points[points.length - 1];
-      const diff = last.close - first.close;
-      const pct = (diff / first.close) * 100;
-
-      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-      const changeEl = document.getElementById('changeInfo');
-      if (diff >= 0) {
-        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#16a34a";
-      } else {
-        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#dc2626";
-      }
-      // Use the API's original timestamp and append " US/Eastern"
-      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
-    }
-
-    /***************************************
-     * 5) CHART PLOTTING FUNCTION
-     ***************************************/
-    function plotChart(points, symbol, range) {
-      let seriesData, chartType, seriesOptions = {};
-
-      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
-        seriesData = points.map(p => [p.x, p.y]);
-        chartType = 'line';
-        const firstClose = points[0].close;
-        const lastClose = points[points.length - 1].close;
-        let color = 'blue';
-        if (lastClose > firstClose) color = 'green';
-        else if (lastClose < firstClose) color = 'red';
-        seriesOptions = {
-          color: color,
-          fillColor: Highcharts.color(color).setOpacity(0.15).get()
-        };
-      } else {
-        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
-        chartType = 'candlestick';
-        seriesOptions = {
-          color: 'red',
-          upColor: 'green'
-        };
-      }
-
-      Highcharts.stockChart('chart', {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayPoints = points.filter(p => p.x >= startOfDay.getTime());
+      if (todayPoints.length === 0) return;
+      
+      // Determine line color based on performance of the day
+      const firstPrice = todayPoints[0].close;
+      const lastPrice = todayPoints[todayPoints.length - 1].close;
+      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc2626'; // green if up, red if down
+      
+      // Update overlay price and time
+      document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
+      document.getElementById('heroTime').textContent = `As of ${todayPoints[todayPoints.length - 1].original} US/Eastern`;
+      
+      Highcharts.stockChart('heroChart', {
         chart: {
-          backgroundColor: '#fff',
-          marginRight: 80,
+          backgroundColor: 'transparent',
+          margin: [0, 0, 0, 0],
+          spacing: [0, 0, 0, 0],
           events: {
-            load: function () {
-              const chart = this;
-              const yAxis = chart.yAxis[0];
-              const series = chart.series[0];
-              // Use series.points for both line and candlestick charts.
-              const pts = series.points;
-              if (!pts || pts.length === 0) return;
-              const lastPoint = pts[pts.length - 1];
-              const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
-              let lineY;
-              if (series.type === 'candlestick') {
-                // For candlestick charts, use plotClose.
-                lineY = chart.plotTop + lastPoint.plotClose;
-              } else {
-                // For line charts, use plotY.
-                lineY = chart.plotTop + lastPoint.plotY;
-              }
-              // Draw the fixed dashed line at the exact pixel of the last data point.
-              chart.lastPriceLine = chart.renderer.path([
-                'M', chart.plotLeft, lineY,
-                'L', chart.plotLeft + chart.plotWidth, lineY
-              ]).attr({
-                'stroke-width': 1,
-                stroke: 'gray',
-                dashstyle: 'Dash'
-              }).add();
-              // Draw the fixed last-price label on the right.
-              chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
-                chart.plotLeft + chart.plotWidth + 5,
-                lineY + 4
-              ).css({ color: 'gray' }).add();
-              // Create dynamic crosshair line and label.
-              chart.crosshairLine = chart.renderer.path().attr({
-                'stroke-width': 1,
-                stroke: 'black',
-                dashstyle: 'Solid'
-              }).add();
-              chart.crosshairLabel = chart.renderer.text('',
-                chart.plotLeft + chart.plotWidth + 5,
-                chart.plotTop
-              ).css({ color: 'black' }).add();
-              // Update crosshair on mousemove using unrounded conversion.
-              Highcharts.addEvent(chart.container, 'mousemove', function(e) {
-                const event = chart.pointer.normalize(e);
-                // Use false to avoid rounding discrepancies.
-                const yVal = chart.yAxis[0].toValue(event.chartY, false);
-                const yPix = chart.yAxis[0].toPixels(yVal, true);
-                chart.crosshairLine.attr({
-                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
-                });
-                chart.crosshairLabel.attr({
-                  text: yVal.toFixed(2),
-                  x: chart.plotLeft + chart.plotWidth + 5,
-                  y: yPix + 4
-                });
-              });
-              Highcharts.addEvent(chart.container, 'mouseleave', function() {
-                chart.crosshairLine.attr({ d: [] });
-                chart.crosshairLabel.attr({ text: '' });
-              });
+            load: function() {
+              // Remove unwanted elements if needed
+              this.navigator.setVisible(false);
+              this.scrollbar.setVisible(false);
             }
           }
         },
         time: {
           useUTC: false
         },
-        accessibility: {
-          enabled: false
-        },
         rangeSelector: {
           enabled: false
         },
         title: {
-          text: `${symbol.toUpperCase()} Price`
+          text: null
         },
         xAxis: {
-          type: 'datetime',
-          maxPadding: 0.15
+          visible: false
         },
         yAxis: {
-          title: { text: 'Price' }
+          visible: false,
+          endOnTick: false,
+          startOnTick: false
         },
         tooltip: {
-          split: false,
-          shared: true,
-          xDateFormat: '%Y-%m-%d %H:%M:%S'
+          enabled: false
+        },
+        credits: {
+          enabled: false
         },
         series: [{
-          name: symbol.toUpperCase(),
-          data: seriesData,
-          type: chartType,
-          tooltip: { valueDecimals: 2 },
-          ...seriesOptions
+          name: 'SPY',
+          data: todayPoints.map(p => [p.x, p.y]),
+          type: 'line',
+          color: lineColor,
+          lineWidth: 2,
+          marker: {
+            enabled: false
+          },
+          enableMouseTracking: false,
+          showInNavigator: false
         }],
-        navigator: { enabled: true },
-        scrollbar: { enabled: true },
-        credits: { enabled: false }
+        navigator: {
+          enabled: false
+        }
       });
     }
-
-    /***************************************
-     * 6) MAIN LOAD FUNCTION
-     ***************************************/
-    async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "SPY";
-      const range = currentRange;
-      document.getElementById('loading').style.display = 'block';
-      try {
-        let rawData, points;
-        if (range === "1D") {
-          // For 1D: 1 minute intervals with full output to capture a full day
-          rawData = await fetchIntradayData(symbol, "1min", "full");
-          points = parseIntradayData(rawData, "1min");
-        } else if (range === "5D") {
-          // For 5D: 5 minute intervals with full output to cover more data
-          rawData = await fetchIntradayData(symbol, "5min", "full");
-          points = parseIntradayData(rawData, "5min");
-        } else if (range === "1M") {
-          rawData = await fetchIntradayData(symbol, "60min", "full");
-          points = parseIntradayData(rawData, "60min");
-        } else {
-          rawData = await fetchHistoricalData(symbol);
-          points = parseHistoricalData(rawData);
-        }
-        points = filterDataForRange(points, range);
-        if (points.length === 0) {
-          alert("No data found for this symbol and range.");
-          return;
-        }
-        plotChart(points, symbol, range);
-        updateTopBar(points, symbol);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        alert("Failed to load data.");
-      } finally {
-        document.getElementById('loading').style.display = 'none';
-      }
-    }
-
-    /***************************************
-     * 7) RANGE TABS & AUTO UPDATE
-     ***************************************/
-    let currentRange = "1D";
-    document.querySelectorAll(".rangeTab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        currentRange = tab.getAttribute("data-range");
-        loadChart();
-      });
-    });
-    document.getElementById('loadBtn').addEventListener('click', loadChart);
+    
+    // Initial load and update every minute
     document.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      const ticker = params.get('ticker');
-      if (ticker) {
-        document.getElementById('ticker').value = ticker;
-      }
-      loadChart();
-      setInterval(loadChart, 60000);
+      plotHeroChart();
+      setInterval(plotHeroChart, 60000);
     });
   </script>
 </body>
