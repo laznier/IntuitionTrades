@@ -759,8 +759,7 @@
   </footer>
 
   <!-- ============================================================
-       JavaScript Section
-       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
+       JavaScript Section (Menus, Countdown, Smooth Scroll)
   ============================================================ -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -771,7 +770,6 @@
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
-            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -846,82 +844,74 @@
       });
     });
   </script>
+  <!-- Updated Performance Script -->
   <script>
-    // Updated performance script:
-    // 1. Fetch the historical closing price on 28 Mar 2025 (from historical API).
-    // 2. Fetch the latest price from intraday API.
-    // 3. Calculate percent difference.
+    // For each ticker, fetch the historical closing price from 2025-03-28
+    // then fetch the latest intraday price. Calculate percent change.
     document.addEventListener('DOMContentLoaded', () => {
       const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-      const initialDate = "2025-03-28";
+      const initialDate = "2025-03-28"; // Use this date from historical data
       const interval = "5min";
       const intraTimeSeriesKey = `Time Series (${interval})`;
-      
+
       function updatePerformance() {
         tickers.forEach(ticker => {
-          // First, fetch historical data for the initial date price.
-          let histUrl = `https://www.intuitiontrades.com/api/?symbol=${ticker}`;
-          fetch(histUrl)
-            .then(response => response.json())
-            .then(histData => {
-              if (!histData || !histData["Time Series (Daily)"]) {
-                console.log("No historical data for " + ticker);
-                return;
+          const histUrl = `https://www.intuitiontrades.com/api/?symbol=${ticker}`;
+          const intraUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
+
+          Promise.all([
+            fetch(histUrl).then(res => res.json()),
+            fetch(intraUrl).then(res => res.json())
+          ]).then(([histData, intraData]) => {
+            if (!histData || !histData["Time Series (Daily)"]) {
+              console.log("No historical data for " + ticker);
+              return;
+            }
+            const histTimeSeries = histData["Time Series (Daily)"];
+            const initialRecord = histTimeSeries[initialDate];
+            if (!initialRecord) {
+              console.log("No historical record for " + ticker + " on " + initialDate);
+              return;
+            }
+            const initialPrice = parseFloat(initialRecord["4. close"]);
+
+            if (!intraData || !intraData[intraTimeSeriesKey]) {
+              console.log("No intraday data for " + ticker);
+              return;
+            }
+            const intraTimeSeries = intraData[intraTimeSeriesKey];
+            const intraTimes = Object.keys(intraTimeSeries).sort();
+            const latestTime = intraTimes[intraTimes.length - 1];
+            const latestPrice = parseFloat(intraTimeSeries[latestTime]["4. close"]);
+
+            const diff = ((latestPrice - initialPrice) / initialPrice) * 100;
+            const diffFormatted = diff.toFixed(2) + '%';
+
+            const perfEl = document.getElementById(`performance-${ticker}`);
+            if (perfEl) {
+              perfEl.textContent = diffFormatted;
+              if (diff >= 0) {
+                perfEl.classList.remove('performance-red');
+                perfEl.classList.add('performance-green');
+              } else {
+                perfEl.classList.remove('performance-green');
+                perfEl.classList.add('performance-red');
               }
-              const histTimeSeries = histData["Time Series (Daily)"];
-              const initialRecord = histTimeSeries[initialDate];
-              if (!initialRecord) {
-                console.log("No record for " + ticker + " on " + initialDate);
-                return;
-              }
-              const initialPrice = parseFloat(initialRecord["4. close"]);
-              
-              // Then, fetch intraday data for the latest price.
-              let intraUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
-              fetch(intraUrl)
-                .then(response => response.json())
-                .then(intraData => {
-                  if (!intraData || !intraData[intraTimeSeriesKey]) {
-                    console.log("No intraday data for " + ticker);
-                    return;
-                  }
-                  const intraTimeSeries = intraData[intraTimeSeriesKey];
-                  const times = Object.keys(intraTimeSeries).sort();
-                  const latestTime = times[times.length - 1];
-                  const latestPrice = parseFloat(intraTimeSeries[latestTime]["4. close"]);
-                  
-                  // Calculate percentage difference.
-                  const diff = ((latestPrice - initialPrice) / initialPrice) * 100;
-                  const diffFormatted = diff.toFixed(2) + '%';
-                  
-                  // Update the performance button.
-                  const perfEl = document.getElementById(`performance-${ticker}`);
-                  if (perfEl) {
-                    perfEl.textContent = diffFormatted;
-                    if (diff >= 0) {
-                      perfEl.classList.remove('performance-red');
-                      perfEl.classList.add('performance-green');
-                    } else {
-                      perfEl.classList.remove('performance-green');
-                      perfEl.classList.add('performance-red');
-                    }
-                    // Redirect to intraday page on click.
-                    perfEl.onclick = () => {
-                      window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-                    };
-                  }
-                })
-                .catch(err => console.log("Intraday error for " + ticker + ": ", err));
-            })
-            .catch(err => console.log("Historical error for " + ticker + ": ", err));
+              perfEl.onclick = () => {
+                window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+              };
+            }
+          }).catch(error => {
+            console.log("Error for " + ticker, error);
+          });
         });
       }
       
-      // Initial update and refresh every minute.
       updatePerformance();
       setInterval(updatePerformance, 60000);
     });
   </script>
+  <!-- Countdown and Smooth Scroll Script -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       function getNextMondayTarget() {
