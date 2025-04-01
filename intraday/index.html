@@ -133,7 +133,7 @@
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
-    <input type="text" id="ticker" value="OXY" />
+    <input type="text" id="ticker" value="SPY" />
     <button id="loadBtn">Load Chart</button>
   </div>
 
@@ -447,7 +447,7 @@
      * 6) MAIN LOAD FUNCTION
      ***************************************/
     async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "OXY";
+      const symbol = document.getElementById('ticker').value.trim() || "SPY";
       const range = currentRange;
       document.getElementById('loading').style.display = 'block';
 
