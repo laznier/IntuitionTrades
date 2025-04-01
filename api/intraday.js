@@ -14,15 +14,9 @@ export default async function handler(req, res) {
         .status(400)
         .json({ error: "Please provide a stock symbol (e.g. ?symbol=IBM)" });
     }
+    // Default to 5min interval and compact output.
     const interval = req.query.interval || "5min";
-    // If the user provides a month (format: YYYY-MM), then use full output.
-    const month = req.query.month;
-    let outputsize = req.query.outputsize;
-    if (month) {
-      outputsize = "full";
-    } else {
-      outputsize = outputsize || "compact";
-    }
+    const outputsize = req.query.outputsize || "compact";
     
     // 2. Get your API key from the environment
     const apiKey = process.env.ALPHA_VANTAGE_KEY;
@@ -31,12 +25,7 @@ export default async function handler(req, res) {
     }
     
     // 3. Build the Alpha Vantage URL
-    let url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&apikey=${apiKey}`;
-    if (month) {
-      url += `&month=${month}&outputsize=full`;
-    } else {
-      url += `&outputsize=${outputsize}`;
-    }
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${apiKey}`;
     
     // 4. Fetch data from Alpha Vantage
     const response = await fetch(url);
