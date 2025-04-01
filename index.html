@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta name="google-site-verification" content="..." />
@@ -499,7 +499,7 @@
       <!-- Top 3 Buys -->
       <div class="stock-pick">
         <h3>Top 3 Buys</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
             <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
@@ -518,7 +518,7 @@
       <!-- Top 3 Shorts -->
       <div class="stock-pick">
         <h3>Top 3 Shorts</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
             <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
@@ -623,7 +623,6 @@
       </div>
     </section>
   
-
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
@@ -728,16 +727,22 @@
     });
   </script>
 
-  <!-- JavaScript to Fetch Current Price and Update Performance Buttons -->
+  <!-- JavaScript to Fetch Current Price, Update Performance Buttons, and Set the Header -->
   <script>
     /*
       Instead of manually entering base prices, set the initial date (YYYY-MM-DD)
-      when the initial prices were recorded. The script will look up that date for each ticker.
+      when the initial prices were recorded. The script will use that date for both
+      the performance header and each ticker’s performance calculation.
     */
     const initialDate = "2025-03-28";  // <-- Update this date as needed
     const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Update performance headers to include the initial date.
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
+
       tickers.forEach(ticker => {
         // Example API URL. Adjust as needed.
         let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
@@ -750,7 +755,7 @@
               return;
             }
             const timeSeries = data["Time Series (Daily)"];
-            // Get initial record for the recommended date.
+            // Get initial record for the set date.
             const initialRecord = timeSeries[initialDate];
             if (!initialRecord) {
               console.log("No record found for " + ticker + " on date " + initialDate);

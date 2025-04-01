@@ -192,7 +192,6 @@
       border-radius: 8px;
       width: 300px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      text-align: center;
     }
     .stock-pick h3 {
       margin-top: 0;
@@ -409,28 +408,6 @@
     .performance-red {
       background-color: #dc3545 !important;
     }
-    
-    /* ============================================================
-       New CSS for Centering Stocks & Performance Buttons
-    ============================================================ */
-    /* Center the entire box content */
-    .stock-pick {
-      text-align: center; /* Ensures headings and labels are centered */
-    }
-    /* Remove default OL styles and center each list item horizontally */
-    .stock-pick ol {
-      list-style: none; 
-      margin: 0 auto;
-      padding: 0;
-    }
-    /* Use flexbox on each list item to space out the ticker and button */
-    .stock-pick ol li {
-      display: flex;
-      justify-content: center;  /* Centers horizontally */
-      align-items: center;      /* Centers vertically */
-      gap: 0.75rem;             /* Spacing between ticker and button */
-      margin: 0.5rem 0;         /* Vertical spacing between list items */
-    }
   </style>
 </head>
 <body>
@@ -522,7 +499,7 @@
       <!-- Top 3 Buys -->
       <div class="stock-pick">
         <h3>Top 3 Buys</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
             <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
@@ -541,7 +518,7 @@
       <!-- Top 3 Shorts -->
       <div class="stock-pick">
         <h3>Top 3 Shorts</h3>
-        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
             <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
@@ -646,7 +623,6 @@
       </div>
     </section>
   
-
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
@@ -751,16 +727,22 @@
     });
   </script>
 
-  <!-- JavaScript to Fetch Current Price and Update Performance Buttons -->
+  <!-- JavaScript to Fetch Current Price, Update Performance Buttons, and Set the Header -->
   <script>
     /*
       Instead of manually entering base prices, set the initial date (YYYY-MM-DD)
-      when the initial prices were recorded. The script will look up that date for each ticker.
+      when the initial prices were recorded. The script will use that date for both
+      the performance header and each ticker’s performance calculation.
     */
     const initialDate = "2025-03-28";  // <-- Update this date as needed
     const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Update performance headers to include the initial date.
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
+
       tickers.forEach(ticker => {
         // Example API URL. Adjust as needed.
         let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
@@ -773,7 +755,7 @@
               return;
             }
             const timeSeries = data["Time Series (Daily)"];
-            // Get initial record for the recommended date.
+            // Get initial record for the set date.
             const initialRecord = timeSeries[initialDate];
             if (!initialRecord) {
               console.log("No record found for " + ticker + " on date " + initialDate);
