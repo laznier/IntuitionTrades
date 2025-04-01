@@ -224,6 +224,40 @@
     .sell-ticker:hover {
       background-color: #c82333;
     }
+    .buy-ticker,
+.sell-ticker {
+  display: inline-block;
+  padding: 10px 20px; /* Increased padding for a button feel */
+  border-radius: 4px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background-color 0.3s, transform 0.2s;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  cursor: pointer; /* Indicates it's clickable */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Adds a subtle shadow */
+}
+
+.buy-ticker {
+  background-color: #28a745;
+  border: none;
+}
+
+.buy-ticker:hover {
+  background-color: #218838;
+  transform: translateY(-2px);
+}
+
+.sell-ticker {
+  background-color: #dc3545;
+  border: none;
+}
+
+.sell-ticker:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+}
+
     /* ============================================================
        Tools Section
     ============================================================ */
