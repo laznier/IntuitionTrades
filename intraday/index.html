@@ -282,7 +282,6 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display "As of" time in NYSE time from the last data point
       document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
     }
 
@@ -292,18 +291,42 @@
     function plotChart(points, symbol, range) {
       let seriesData;
       let chartType;
+      let seriesOptions = {};
       
+      // For intraday data use a line/area chart; for historical data use candlestick.
       if (range === "1D" || range === "5D") {
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
+        
+        // Calculate overall change for selected timeframe to determine color.
+        const firstClose = points[0].close;
+        const lastClose = points[points.length - 1].close;
+        let seriesColor = 'blue';
+        if (lastClose > firstClose) {
+          seriesColor = 'green';
+        } else if (lastClose < firstClose) {
+          seriesColor = 'red';
+        }
+        
+        // For a line chart, set line color and fillColor (with opacity).
+        seriesOptions = {
+          color: seriesColor,
+          fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
+        };
       } else {
         seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
+        // Set candlestick colors: falling days red, rising days green.
+        seriesOptions = {
+          color: 'red',    // falling
+          upColor: 'green' // rising
+        };
       }
       
       Highcharts.stockChart('chart', {
         chart: {
           backgroundColor: '#fff',
+          marginRight: 80, // extra margin for right side labels
           events: {
             load: function () {
               var chart = this;
@@ -312,12 +335,12 @@
               var data = series.data;
               if (!data || data.length === 0) return;
               
-              // Get last price from the data.
+              // Determine last price based on chart type.
               var lastPoint = data[data.length - 1];
               var lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
               var lastY = yAxis.toPixels(lastPrice, true);
               
-              // Draw fixed dashed line at the last price
+              // Draw fixed dashed line at last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -327,7 +350,7 @@
                 dashstyle: 'Dash'
               }).add();
               
-              // Draw last price label on the right side
+              // Draw fixed last price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
@@ -335,14 +358,14 @@
                 color: 'gray'
               }).add();
               
-              // Create crosshair line that follows the cursor
+              // Create crosshair line following cursor.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
                 dashstyle: 'Solid'
               }).add();
               
-              // Create crosshair label for the moving price
+              // Create crosshair label for moving price.
               chart.crosshairLabel = chart.renderer.text('',
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
@@ -350,7 +373,7 @@
                 color: 'black'
               }).add();
               
-              // Attach mousemove event to update the crosshair line and label
+              // Update crosshair on mouse move.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 var event = chart.pointer.normalize(e);
                 var yValue = yAxis.toValue(event.chartY);
@@ -365,7 +388,7 @@
                 });
               });
               
-              // Remove crosshair when mouse leaves the chart area
+              // Remove crosshair when mouse leaves chart.
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -387,7 +410,7 @@
         },
         xAxis: {
           type: 'datetime',
-          maxPadding: 0.1
+          maxPadding: 0.15 // increased padding for extra right-side space
         },
         yAxis: {
           title: {
@@ -406,8 +429,7 @@
           tooltip: {
             valueDecimals: 2
           },
-          color: '#2563eb',
-          fillColor: 'rgba(37,99,235,0.15)'
+          ...seriesOptions
         }],
         navigator: {
           enabled: true
@@ -475,7 +497,7 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
-      // Auto-update every one minute (60000 milliseconds)
+      // Auto-update every minute (60,000 ms)
       setInterval(loadChart, 60000);
     });
   </script>
