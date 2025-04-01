@@ -133,7 +133,7 @@
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
-    <input type="text" id="ticker" value="SPY" />
+    <input type="text" id="ticker" value="OXY" />
     <button id="loadBtn">Load Chart</button>
   </div>
 
@@ -192,7 +192,7 @@
         const rec = raw[timestamp];
         // Convert timestamp to ISO format (assumes "YYYY-MM-DD HH:MM:SS")
         const isoTimestamp = timestamp.replace(" ", "T");
-        const date = new Date(isoTimestamp);
+        const date = new Date(isoTimestamp); // data is in UTC
         points.push({
           date: date,
           open: parseFloat(rec["1. open"]),
@@ -213,7 +213,7 @@
       let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
-        const date = new Date(dateStr);
+        const date = new Date(dateStr); // data is in UTC
         points.push({
           date: date,
           open: parseFloat(rec["1. open"]),
@@ -262,9 +262,7 @@
     }
 
     /***************************************
-     * 4) TOP BAR UPDATE
-     *    - Show difference from first to last in the *filtered* range,
-     *      and display times in Eastern Time.
+     * 4) TOP BAR UPDATE (Using UTC)
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
@@ -283,24 +281,22 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display "As of" time in Eastern Time.
-      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
+      // Display "As of" time in UTC with " UTC" appended.
+      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'UTC' })} UTC`;
     }
 
     /***************************************
-     * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
+     * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK (UTC)
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
       let chartType;
       let seriesOptions = {};
       
-      // For intraday data, use a line/area chart; for historical, use candlestick.
       if (range === "1D" || range === "5D") {
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
         
-        // Determine color based on timeframe change.
         const firstClose = points[0].close;
         const lastClose = points[points.length - 1].close;
         let seriesColor = 'blue';
@@ -326,7 +322,7 @@
       Highcharts.stockChart('chart', {
         chart: {
           backgroundColor: '#fff',
-          marginRight: 80, // extra margin for right-side labels
+          marginRight: 80,
           events: {
             load: function () {
               var chart = this;
@@ -335,12 +331,10 @@
               var data = series.data;
               if (!data || data.length === 0) return;
               
-              // Determine last price.
               var lastPoint = data[data.length - 1];
               var lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
               var lastY = yAxis.toPixels(lastPrice, true);
               
-              // Draw fixed dashed line at last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -350,7 +344,6 @@
                 dashstyle: 'Dash'
               }).add();
               
-              // Draw fixed last price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
@@ -358,14 +351,12 @@
                 color: 'gray'
               }).add();
               
-              // Create crosshair line following the cursor.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
                 dashstyle: 'Solid'
               }).add();
               
-              // Create crosshair label for moving price.
               chart.crosshairLabel = chart.renderer.text('',
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
@@ -373,7 +364,6 @@
                 color: 'black'
               }).add();
               
-              // Update crosshair on mouse move.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 var event = chart.pointer.normalize(e);
                 var yValue = yAxis.toValue(event.chartY);
@@ -388,7 +378,6 @@
                 });
               });
               
-              // Remove crosshair on mouse leave.
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -397,7 +386,7 @@
           }
         },
         time: {
-          timezone: 'America/New_York'
+          timezone: 'UTC'
         },
         accessibility: {
           enabled: false
@@ -410,7 +399,7 @@
         },
         xAxis: {
           type: 'datetime',
-          maxPadding: 0.15 // extra right-side space
+          maxPadding: 0.15
         },
         yAxis: {
           title: {
@@ -447,7 +436,7 @@
      * 6) MAIN LOAD FUNCTION
      ***************************************/
     async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "SPY";
+      const symbol = document.getElementById('ticker').value.trim() || "OXY";
       const range = currentRange;
       document.getElementById('loading').style.display = 'block';
 
@@ -497,7 +486,6 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
-      // Auto-update every minute (60000 ms)
       setInterval(loadChart, 60000);
     });
   </script>
