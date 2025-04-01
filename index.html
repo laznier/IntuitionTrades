@@ -22,7 +22,6 @@
       text-decoration: none;
       color: inherit;
     }
-
     /* ============================================================
        Header & Navigation (Desktop)
     ============================================================ */
@@ -75,7 +74,6 @@
       background-color: #ddd;
       color: #333;
     }
-
     /* ============================================================
        Mobile Menu: Sliding Sidebar
     ============================================================ */
@@ -148,7 +146,6 @@
       right: 10px;
       cursor: pointer;
     }
-
     /* ============================================================
        Hero Section
     ============================================================ */
@@ -170,7 +167,6 @@
       position: relative;
       z-index: 1;
     }
-
     /* ============================================================
        Weekly Stock Picks Section
     ============================================================ */
@@ -204,7 +200,6 @@
       text-align: left;
       padding-left: 1.5rem;
     }
-    
     /* Styling for buy and sell tickers */
     .buy-ticker,
     .sell-ticker {
@@ -215,22 +210,20 @@
       text-decoration: none;
       transition: background-color 0.3s;
       margin-bottom: 0.5rem;
+      color: #fff;
     }
     .buy-ticker {
       background-color: #28a745;
-      color: white;
     }
     .buy-ticker:hover {
       background-color: #218838;
     }
     .sell-ticker {
       background-color: #dc3545;
-      color: white;
     }
     .sell-ticker:hover {
       background-color: #c82333;
     }
-
     /* ============================================================
        Tools Section
     ============================================================ */
@@ -281,12 +274,12 @@
       color: #fff;
       border-radius: 4px;
       transition: background-color 0.3s ease, color 0.3s ease;
+      text-decoration: none;
     }
     .tool-button:hover {
       background-color: #ddd;
       color: #333;
     }
-
     /* ============================================================
        Newsletter Signup Section
     ============================================================ */
@@ -326,7 +319,6 @@
       background-color: #ddd;
       color: #333;
     }
-
     /* ============================================================
        Feedback Section
     ============================================================ */
@@ -351,11 +343,11 @@
       color: #fff;
       border-radius: 5px;
       transition: background-color 0.3s;
+      text-decoration: none;
     }
     #feedback-section a:hover {
       background-color: #555;
     }
-
     /* ============================================================
        Back Button Style
     ============================================================ */
@@ -375,7 +367,6 @@
       background-color: #ddd;
       color: #333;
     }
-
     /* ============================================================
        Footer
     ============================================================ */
@@ -385,7 +376,6 @@
       background-color: #eee;
       margin-top: 2rem;
     }
-
     /* ============================================================
        Responsive Adjustments
     ============================================================ */
@@ -399,6 +389,24 @@
     }
     @media (max-width: 768px) {
       .tool-card { width: 90%; }
+    }
+    /* ============================================================
+       Performance Button Styles
+    ============================================================ */
+    .performance-button {
+      margin-left: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: bold;
+      cursor: default;
+    }
+    .performance-green {
+      background-color: #28a745 !important;
+    }
+    .performance-red {
+      background-color: #dc3545 !important;
     }
   </style>
 </head>
@@ -488,24 +496,46 @@
   <section id="weekly-stock-picks">
     <h2>Weekly Stock Picks</h2>
     <div class="stock-picks-container">
+      <!-- Top 3 Buys -->
       <div class="stock-pick">
         <h3>Top 3 Buys</h3>
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
         <ol>
-          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a></li>
-          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a></li>
-          <li><a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MMM">MMM</a></li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
+            <button class="performance-button" id="performance-OXY">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a>
+            <button class="performance-button" id="performance-VRSN">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MMM">MMM</a>
+            <button class="performance-button" id="performance-MMM">Loading...</button>
+          </li>
         </ol>
       </div>
+      <!-- Top 3 Shorts -->
       <div class="stock-pick">
         <h3>Top 3 Shorts</h3>
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">Performance Since Recommended</div>
         <ol>
-          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a></li>
-          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a></li>
-          <li><a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=RPD">RPD</a></li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
+            <button class="performance-button" id="performance-AOS">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a>
+            <button class="performance-button" id="performance-ALB">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=RPD">RPD</a>
+            <button class="performance-button" id="performance-RPD">Loading...</button>
+          </li>
         </ol>
       </div>
     </div>
-    <!-- New link to explanation.html -->
+    <!-- Link to explanation.html -->
     <div style="text-align: center; margin-top: 1rem;">
       <a href="explanation.html" class="back-button">How We Select Weekly Stock Picks</a>
     </div>
@@ -694,6 +724,62 @@
           submenu.style.display = "block";
           toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
         }
+      });
+    });
+  </script>
+
+  <!-- JavaScript to Fetch Current Price and Update Performance Buttons -->
+  <script>
+    /*
+      Instead of manually entering base prices, set the initial date (YYYY-MM-DD)
+      when the initial prices were recorded. The script will look up that date for each ticker.
+    */
+    const initialDate = "2025-03-28";  // <-- Update this date as needed
+    const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      tickers.forEach(ticker => {
+        // Example API URL. Adjust as needed.
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+
+        fetch(histUrl)
+          .then(response => response.json())
+          .then(data => {
+            if (!data || !data["Time Series (Daily)"]) {
+              console.log("No Time Series data returned for " + ticker);
+              return;
+            }
+            const timeSeries = data["Time Series (Daily)"];
+            // Get initial record for the recommended date.
+            const initialRecord = timeSeries[initialDate];
+            if (!initialRecord) {
+              console.log("No record found for " + ticker + " on date " + initialDate);
+              return;
+            }
+            // Parse the initial price.
+            const initialPrice = parseFloat(initialRecord["4. close"]);
+            // Use Meta Data to get the most recent date.
+            const meta = data["Meta Data"];
+            const lastRefreshed = meta["3. Last Refreshed"];
+            const mostRecent = timeSeries[lastRefreshed];
+            const currentPrice = parseFloat(mostRecent["4. close"]);
+
+            // Calculate performance percentage.
+            const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+            const diffFormatted = diff.toFixed(2) + '%';
+
+            const perfEl = document.getElementById(`performance-${ticker}`);
+            if (perfEl) {
+              perfEl.textContent = diffFormatted;
+              // Color coding: green if positive, red if negative.
+              if (diff >= 0) {
+                perfEl.classList.add('performance-green');
+              } else {
+                perfEl.classList.add('performance-red');
+              }
+            }
+          })
+          .catch(error => console.log(error));
       });
     });
   </script>
