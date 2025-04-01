@@ -850,18 +850,20 @@
     // Updated performance script using intraday API, updating every minute, and clickable performance buttons.
     document.addEventListener('DOMContentLoaded', () => {
       const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-      
+      const interval = "5min";
+      const timeSeriesKey = `Time Series (${interval})`;
+
       function updatePerformance() {
         tickers.forEach(ticker => {
           let intradayUrl = `https://www.intuitiontrades.com/api/intraday/?symbol=${ticker}`;
           fetch(intradayUrl)
             .then(response => response.json())
             .then(data => {
-              if (!data || !data["Time Series (Intraday)"]) {
+              if (!data || !data[timeSeriesKey]) {
                 console.log("No Intraday Time Series data returned for " + ticker);
                 return;
               }
-              const timeSeries = data["Time Series (Intraday)"];
+              const timeSeries = data[timeSeriesKey];
               // Get sorted timestamps (assumes keys sort chronologically)
               const times = Object.keys(timeSeries).sort();
               const initialRecord = timeSeries[times[0]];
