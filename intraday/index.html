@@ -170,11 +170,13 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    async function fetchIntradayData(symbol) {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
+    // For intraday, accept an interval parameter.
+    async function fetchIntradayData(symbol, interval) {
+      // Call our backend intraday endpoint.
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}`);
       return response.json();
     }
-
+    // (Assumes you have a similar endpoint for historical data.)
     async function fetchHistoricalData(symbol) {
       const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
       return response.json();
@@ -183,16 +185,17 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
-    function parseIntradayData(data) {
-      const seriesKey = "Time Series (5min)";
+    // For intraday data, the API returns data under "Time Series (interval)".
+    function parseIntradayData(data, interval) {
+      const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
       if (!raw) return [];
       let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Convert timestamp to ISO format (assumes "YYYY-MM-DD HH:MM:SS")
-        const isoTimestamp = timestamp.replace(" ", "T");
-        const date = new Date(isoTimestamp); // data is in UTC
+        // Assume the API timestamps are in US/Eastern. Use your helper if needed.
+        // For simplicity, here we create a Date directly; you may add your conversion if desired.
+        const date = new Date(timestamp.replace(" ", "T"));
         points.push({
           date: date,
           open: parseFloat(rec["1. open"]),
@@ -213,7 +216,7 @@
       let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
-        const date = new Date(dateStr); // data is in UTC
+        const date = new Date(dateStr);
         points.push({
           date: date,
           open: parseFloat(rec["1. open"]),
@@ -262,7 +265,7 @@
     }
 
     /***************************************
-     * 4) TOP BAR UPDATE (Using UTC)
+     * 4) TOP BAR UPDATE (Display time in UTC)
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
@@ -286,7 +289,8 @@
     }
 
     /***************************************
-     * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK (UTC)
+     * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
+     *     - Always draws a fixed dashed line at the last price and a dynamic crosshair with label.
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
@@ -322,19 +326,21 @@
       Highcharts.stockChart('chart', {
         chart: {
           backgroundColor: '#fff',
-          marginRight: 80,
+          marginRight: 80, // extra margin for right-side labels
           events: {
             load: function () {
-              var chart = this;
-              var yAxis = chart.yAxis[0];
-              var series = chart.series[0];
-              var data = series.data;
+              const chart = this;
+              const yAxis = chart.yAxis[0];
+              const series = chart.series[0];
+              const data = series.data;
               if (!data || data.length === 0) return;
               
-              var lastPoint = data[data.length - 1];
-              var lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
-              var lastY = yAxis.toPixels(lastPrice, true);
+              // Get the last price (different for candlestick vs. line chart)
+              const lastPoint = data[data.length - 1];
+              const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
+              const lastY = yAxis.toPixels(lastPrice, true);
               
+              // Draw fixed dashed line at last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -344,30 +350,28 @@
                 dashstyle: 'Dash'
               }).add();
               
+              // Draw fixed last price label on the right side.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
-              ).css({
-                color: 'gray'
-              }).add();
+              ).css({ color: 'gray' }).add();
               
+              // Create crosshair line and label for the moving cursor.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
                 dashstyle: 'Solid'
               }).add();
-              
               chart.crosshairLabel = chart.renderer.text('',
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
-              ).css({
-                color: 'black'
-              }).add();
+              ).css({ color: 'black' }).add();
               
+              // Update crosshair on mousemove.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
-                var event = chart.pointer.normalize(e);
-                var yValue = yAxis.toValue(event.chartY);
-                var yPixel = yAxis.toPixels(yValue, true);
+                const event = chart.pointer.normalize(e);
+                const yValue = yAxis.toValue(event.chartY);
+                const yPixel = yAxis.toPixels(yValue, true);
                 chart.crosshairLine.attr({
                   d: ['M', chart.plotLeft, yPixel, 'L', chart.plotLeft + chart.plotWidth, yPixel]
                 });
@@ -378,6 +382,7 @@
                 });
               });
               
+              // Remove crosshair when mouse leaves the chart.
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -392,19 +397,17 @@
           enabled: false
         },
         rangeSelector: {
-          enabled: false
+          enabled: false // Using custom range tabs
         },
         title: {
           text: `${symbol.toUpperCase()} Price`
         },
         xAxis: {
           type: 'datetime',
-          maxPadding: 0.15
+          maxPadding: 0.15 // extra right-side space
         },
         yAxis: {
-          title: {
-            text: 'Price'
-          }
+          title: { text: 'Price' }
         },
         tooltip: {
           split: false,
@@ -415,20 +418,12 @@
           name: symbol.toUpperCase(),
           data: seriesData,
           type: chartType,
-          tooltip: {
-            valueDecimals: 2
-          },
+          tooltip: { valueDecimals: 2 },
           ...seriesOptions
         }],
-        navigator: {
-          enabled: true
-        },
-        scrollbar: {
-          enabled: true
-        },
-        credits: {
-          enabled: false
-        }
+        navigator: { enabled: true },
+        scrollbar: { enabled: true },
+        credits: { enabled: false }
       });
     }
 
@@ -442,9 +437,10 @@
 
       try {
         let rawData, points;
+        // For 1D and 5D, use intraday data with 1-minute interval.
         if (range === "1D" || range === "5D") {
-          rawData = await fetchIntradayData(symbol);
-          points = parseIntradayData(rawData);
+          rawData = await fetchIntradayData(symbol, "1min");
+          points = parseIntradayData(rawData, "1min");
         } else {
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
@@ -486,6 +482,7 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
+      // Auto-update every minute (60000 ms)
       setInterval(loadChart, 60000);
     });
   </script>

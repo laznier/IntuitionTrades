@@ -1,8 +1,8 @@
-// api/intraday.js
+// /api/intraday.js
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  // Optionally add:
+  // Optionally set additional CORS headers:
   // res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   // res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -12,8 +12,9 @@ export default async function handler(req, res) {
     if (!symbol) {
       return res.status(400).json({ error: "Please provide a stock symbol (e.g. ?symbol=IBM)" });
     }
-    // Default parameters: 5min interval and compact output (latest 100 bars)
+    // Use the provided interval or default to "5min"
     const interval = req.query.interval || "5min";
+    // Use provided outputsize or default to "compact"
     const outputsize = req.query.outputsize || "compact";
 
     // Get your Alpha Vantage API key from env vars
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
     }
 
     // Build the URL. If a "month" parameter is provided, include it and force outputsize=full.
-    let url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&apikey=${apiKey}`;
+    let url = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=${interval}&apikey=${apiKey}&entitlement=delayed`;
     if (req.query.month) {
       url += `&month=${req.query.month}&outputsize=full`;
     } else {
