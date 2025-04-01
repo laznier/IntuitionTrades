@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Yahoo‑Style Full Chart</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <title>Yahoo‑Style Full Chart with Highcharts Stock</title>
+  <!-- Highcharts Stock Scripts -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -157,15 +158,13 @@
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
     async function fetchIntradayData(symbol) {
-      // Fetch intraday data (for 1D and 5D ranges)
       const response = await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
-      return await response.json();
+      return response.json();
     }
 
     async function fetchHistoricalData(symbol) {
-      // Fetch daily adjusted data (for ranges 1M and longer)
       const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
-      return await response.json();
+      return response.json();
     }
 
     /***************************************
@@ -175,13 +174,14 @@
       const seriesKey = "Time Series (5min)";
       const raw = data[seriesKey];
       if (!raw) return [];
-      const points = [];
+      let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // Convert to ISO format (replace space with "T")
+        // Convert timestamp to ISO format (assumes "YYYY-MM-DD HH:MM:SS")
         const isoTimestamp = timestamp.replace(" ", "T");
+        const date = new Date(isoTimestamp);
         points.push({
-          date: new Date(isoTimestamp),
+          date: date,
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
@@ -194,15 +194,15 @@
     }
 
     function parseHistoricalData(data) {
-      // Daily data key is typically "Time Series (Daily)" or similar.
       const seriesKey = Object.keys(data).find(k => k.startsWith("Time Series"));
       const raw = data[seriesKey];
       if (!raw) return [];
-      const points = [];
+      let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
+        const date = new Date(dateStr);
         points.push({
-          date: new Date(dateStr),
+          date: date,
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
@@ -249,74 +249,7 @@
     }
 
     /***************************************
-     * 4) CHART PLOTTING FUNCTION
-     ***************************************/
-    function plotChart(points, symbol, range) {
-      // Build x and y arrays from points
-      const x = points.map(p => p.date);
-      const y = points.map(p => p.close);
-
-      // Use Plotly's built-in range selector and slider to mimic Yahoo Finance
-      const layout = {
-        title: `${symbol.toUpperCase()} Price`,
-        xaxis: {
-          title: 'Time',
-          type: 'date',
-          rangeslider: { visible: true },
-          rangeselector: {
-            buttons: [
-              { count: 1, label: '1D', step: 'day', stepmode: 'backward' },
-              { count: 5, label: '5D', step: 'day', stepmode: 'backward' },
-              { count: 1, label: '1M', step: 'month', stepmode: 'backward' },
-              { count: 6, label: '6M', step: 'month', stepmode: 'backward' },
-              { count: 1, label: 'YTD', step: 'year', stepmode: 'todate' },
-              { count: 1, label: '1Y', step: 'year', stepmode: 'backward' },
-              { count: 5, label: '5Y', step: 'year', stepmode: 'backward' },
-              { step: 'all' }
-            ]
-          }
-        },
-        yaxis: { title: 'Price' },
-        margin: { t: 40, r: 20, b: 40, l: 60 },
-        hovermode: 'x unified',
-        plot_bgcolor: '#fff',
-        paper_bgcolor: '#fff'
-      };
-
-      // Choose chart type: here we use a candlestick if daily, or mountain (area) for intraday
-      let trace;
-      if (range === "1D" || range === "5D") {
-        // For intraday, we'll use a mountain (area) chart style:
-        trace = {
-          x: x,
-          y: y,
-          mode: 'lines',
-          line: { color: '#2563eb', width: 2 },
-          fill: 'tozeroy',
-          fillcolor: 'rgba(37,99,235,0.15)',
-          hovertemplate: "<b>Date</b>: %{x}<br><b>Close</b>: %{y:.2f}<extra></extra>"
-        };
-      } else {
-        // For longer ranges, a candlestick chart may be more appropriate.
-        // For simplicity, if points lack OHLC details, fallback to a line chart.
-        // (Assumes points have open, high, low, close.)
-        trace = {
-          x: points.map(p => p.date),
-          open: points.map(p => p.open),
-          high: points.map(p => p.high),
-          low: points.map(p => p.low),
-          close: points.map(p => p.close),
-          type: 'candlestick',
-          name: symbol.toUpperCase(),
-          hovertemplate: "<b>Date</b>: %{x}<br><b>Open</b>: %{open:.2f}<br><b>High</b>: %{high:.2f}<br><b>Low</b>: %{low:.2f}<br><b>Close</b>: %{close:.2f}<extra></extra>"
-        };
-      }
-
-      Plotly.newPlot('chart', [trace], layout, { responsive: true });
-    }
-
-    /***************************************
-     * 5) TOP BAR UPDATE
+     * 4) TOP BAR UPDATE
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
@@ -333,7 +266,74 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString()}`;
+      // Display time in NYSE time (America/New_York)
+      document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
+    }
+
+    /***************************************
+     * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
+     ***************************************/
+    function plotChart(points, symbol, range) {
+      let seriesData;
+      let chartType;
+      
+      // For intraday data, use a line/area chart; for historical data, use candlestick
+      if (range === "1D" || range === "5D") {
+        // Format: [timestamp, close]
+        seriesData = points.map(p => [p.date.getTime(), p.close]);
+        chartType = 'line';
+      } else {
+        // Format for candlestick: [timestamp, open, high, low, close]
+        seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+        chartType = 'candlestick';
+      }
+      
+      Highcharts.stockChart('chart', {
+        chart: {
+          backgroundColor: '#fff'
+        },
+        time: {
+          timezone: 'America/New_York'
+        },
+        rangeSelector: {
+          enabled: false  // Using our own range tabs
+        },
+        title: {
+          text: `${symbol.toUpperCase()} Price`
+        },
+        xAxis: {
+          type: 'datetime'
+        },
+        yAxis: {
+          title: {
+            text: 'Price'
+          }
+        },
+        tooltip: {
+          split: false,
+          shared: true,
+          xDateFormat: '%Y-%m-%d %H:%M'
+        },
+        series: [{
+          name: symbol.toUpperCase(),
+          data: seriesData,
+          type: chartType,
+          tooltip: {
+            valueDecimals: 2
+          },
+          color: '#2563eb',
+          fillColor: 'rgba(37,99,235,0.15)'
+        }],
+        navigator: {
+          enabled: true
+        },
+        scrollbar: {
+          enabled: true
+        },
+        credits: {
+          enabled: false
+        }
+      });
     }
 
     /***************************************
@@ -341,12 +341,12 @@
      ***************************************/
     async function loadChart() {
       const symbol = document.getElementById('ticker').value.trim() || "OXY";
-      const range = currentRange;  // global variable set by range tab selection
+      const range = currentRange;  // global variable from range tab selection
       document.getElementById('loading').style.display = 'block';
 
       try {
         let rawData, points;
-        // For 1D and 5D, use intraday; else use daily.
+        // For 1D and 5D use intraday API; else use historical API
         if (range === "1D" || range === "5D") {
           rawData = await fetchIntradayData(symbol);
           points = parseIntradayData(rawData);
@@ -354,7 +354,7 @@
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
-        // Filter points to the selected range.
+        // Filter data based on selected range
         points = filterDataForRange(points, range);
         if (points.length === 0) {
           alert("No data found for this symbol and range.");
