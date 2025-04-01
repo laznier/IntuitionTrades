@@ -170,9 +170,9 @@
     /***************************************
      * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    // For intraday data, we pass an interval parameter.
-    async function fetchIntradayData(symbol, interval) {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}`);
+    // Modified fetchIntradayData to accept an optional outputsize parameter.
+    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
       return response.json();
     }
     // For historical data.
@@ -184,7 +184,6 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
-    // Parse intraday data based on the returned key (e.g. "Time Series (1min)" or "Time Series (60min)")
     function parseIntradayData(data, interval) {
       const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
@@ -207,7 +206,6 @@
       return points;
     }
 
-    // Parse historical (daily) data.
     function parseHistoricalData(data) {
       const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
       const raw = data[seriesKey];
@@ -438,8 +436,8 @@
           rawData = await fetchIntradayData(symbol, "1min");
           points = parseIntradayData(rawData, "1min");
         } else if (range === "1M") {
-          // For 1M, use intraday data with a 60-minute interval.
-          rawData = await fetchIntradayData(symbol, "60min");
+          // For 1M, use intraday data with a 60-minute interval and full outputsize.
+          rawData = await fetchIntradayData(symbol, "60min", "full");
           points = parseIntradayData(rawData, "60min");
         } else {
           // For all other ranges, use historical data.
