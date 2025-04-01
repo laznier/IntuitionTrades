@@ -251,7 +251,7 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s;
-      color: #ddd;
+      color: white; /* Added white text */
     }
     .newsletter-btn:hover {
       background-color: #ddd;
@@ -863,7 +863,7 @@
         header.textContent = "Performance Since " + initialDate;
       });
       tickers.forEach(ticker => {
-        let histUrl = `https://www.intuitiontrades.com/api/?symbol=${ticker}`;
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         fetch(histUrl)
           .then(response => response.json())
           .then(data => {

@@ -491,13 +491,14 @@
        Performance Button Styles
     ============================================================ */
     .performance-button {
-      margin-left: 10px;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      cursor: default;
-    }
+  margin-left: 10px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer; /* New: shows a pointer on hover */
+}
+
     .performance-green {
       background-color: #28a745 !important;
     }
@@ -855,46 +856,59 @@
       });
     });
   </script>
-  <script>
-    const initialDate = "2025-03-28";
-    const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-    document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.performance-header').forEach(header => {
-        header.textContent = "Performance Since " + initialDate;
-      });
-      tickers.forEach(ticker => {
-        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        fetch(histUrl)
-          .then(response => response.json())
-          .then(data => {
-            if (!data || !data["Time Series (Daily)"]) {
-              console.log("No Time Series data returned for " + ticker);
-              return;
-            }
-            const timeSeries = data["Time Series (Daily)"];
-            const initialRecord = timeSeries[initialDate];
-            if (!initialRecord) {
-              console.log("No record found for " + ticker + " on date " + initialDate);
-              return;
-            }
-            const initialPrice = parseFloat(initialRecord["4. close"]);
-            const meta = data["Meta Data"];
-            const lastRefreshed = meta["3. Last Refreshed"];
-            const mostRecent = timeSeries[lastRefreshed];
-            const currentPrice = parseFloat(mostRecent["4. close"]);
-            const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-            const diffFormatted = diff.toFixed(2) + '%';
-            const perfEl = document.getElementById(`performance-${ticker}`);
-            if (perfEl) {
-              perfEl.textContent = diffFormatted;
-              if (diff >= 0) { perfEl.classList.add('performance-green'); }
-              else { perfEl.classList.add('performance-red'); }
-            }
-          })
-          .catch(error => console.log(error));
-      });
+<script>
+  const initialDate = "2025-03-28";
+  const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Update the small header text
+    document.querySelectorAll('.performance-header').forEach(header => {
+      header.textContent = "Performance Since " + initialDate;
     });
-  </script>
+
+    // Fetch performance for each ticker
+    tickers.forEach(ticker => {
+      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+
+      fetch(histUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (Daily)"]) return;
+
+          const timeSeries = data["Time Series (Daily)"];
+          const initialRecord = timeSeries[initialDate];
+          if (!initialRecord) return;
+
+          const initialPrice = parseFloat(initialRecord["4. close"]);
+          const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
+          const mostRecent = timeSeries[lastRefreshed];
+          const currentPrice = parseFloat(mostRecent["4. close"]);
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          const diffFormatted = diff.toFixed(2) + '%';
+
+          // Grab the performance button by ID
+          const perfEl = document.getElementById(`performance-${ticker}`);
+          if (perfEl) {
+            perfEl.textContent = diffFormatted;
+            
+            // Apply green or red background
+            if (diff >= 0) {
+              perfEl.classList.add('performance-green');
+            } else {
+              perfEl.classList.add('performance-red');
+            }
+
+            // **New**: Add a click listener to navigate
+            perfEl.addEventListener('click', () => {
+              window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+            });
+          }
+        })
+        .catch(error => console.log(error));
+    });
+  });
+</script>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       function getNextMondayTarget() {
