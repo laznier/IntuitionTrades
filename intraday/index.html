@@ -233,6 +233,8 @@
         document.getElementById('loading').style.display = 'none';
       }
     }
+    const rawData = await fetchIntradayData(symbol);
+      console.log("Raw intraday data:", rawData);
 
     /********************************************
      * 5) EVENT LISTENERS & AUTO-LOAD
