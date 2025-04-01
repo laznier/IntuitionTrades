@@ -235,7 +235,8 @@
       let fromDate;
       switch (range) {
         case "1D":
-          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+          // Use start of the current day (midnight) to capture full day's data.
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
         case "5D":
           fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
@@ -256,7 +257,7 @@
           fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
           break;
         default:
-          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       }
       return points.filter(p => p.x >= fromDate.getTime());
     }
@@ -318,22 +319,17 @@
           events: {
             load: function () {
               const chart = this;
-              const yAxis = chart.yAxis[0];
               const series = chart.series[0];
-              // Use series.points for both line and candlestick charts.
               const pts = series.points;
               if (!pts || pts.length === 0) return;
               const lastPoint = pts[pts.length - 1];
               const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
               let lineY;
               if (series.type === 'candlestick') {
-                // For candlestick charts, use plotClose.
                 lineY = chart.plotTop + lastPoint.plotClose;
               } else {
-                // For line charts, use plotY.
                 lineY = chart.plotTop + lastPoint.plotY;
               }
-              // Draw the fixed dashed line at the exact pixel of the last data point.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lineY,
                 'L', chart.plotLeft + chart.plotWidth, lineY
@@ -342,12 +338,10 @@
                 stroke: 'gray',
                 dashstyle: 'Dash'
               }).add();
-              // Draw the fixed last-price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lineY + 4
               ).css({ color: 'gray' }).add();
-              // Create dynamic crosshair line and label.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -357,10 +351,8 @@
                 chart.plotLeft + chart.plotWidth + 5,
                 chart.plotTop
               ).css({ color: 'black' }).add();
-              // Update crosshair on mousemove using unrounded conversion.
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 const event = chart.pointer.normalize(e);
-                // Use false to avoid rounding discrepancies.
                 const yVal = chart.yAxis[0].toValue(event.chartY, false);
                 const yPix = chart.yAxis[0].toPixels(yVal, true);
                 chart.crosshairLine.attr({
@@ -426,7 +418,7 @@
       try {
         let rawData, points;
         if (range === "1D") {
-          // For 1D: 1 minute intervals with full output to capture a full day
+          // For 1D: 1 minute intervals with full output to capture full day's data
           rawData = await fetchIntradayData(symbol, "1min", "full");
           points = parseIntradayData(rawData, "1min");
         } else if (range === "5D") {
