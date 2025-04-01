@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="google-site-verification" content="..." />
@@ -12,16 +12,21 @@
 
   <style>
     /* ============================================================
-       Shared Styles
+       Shared Styles & Full-Page Background
     ============================================================ */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
+      color: #fff; /* All text inside the body will be white */
+      background: url('images/hero-background.png') no-repeat center center fixed;
+      background-size: cover;
     }
     a {
       text-decoration: none;
       color: inherit;
     }
+
+
     /* ============================================================
        Header & Navigation (Desktop)
     ============================================================ */
@@ -74,6 +79,7 @@
       background-color: #ddd;
       color: #333;
     }
+
     /* ============================================================
        Mobile Menu: Sliding Sidebar
     ============================================================ */
@@ -146,12 +152,12 @@
       right: 10px;
       cursor: pointer;
     }
+
     /* ============================================================
        Hero Section
     ============================================================ */
     .hero {
       position: relative;
-      background: url('images/hero-background.jpg') center/cover no-repeat;
       color: #fff;
       padding: 3rem 1rem;
       text-align: center;
@@ -167,12 +173,79 @@
       position: relative;
       z-index: 1;
     }
+
     /* ============================================================
-       Weekly Stock Picks Section
+       Countdown Section (Updated Layout)
+       (Background color with 33% opacity)
+    ============================================================ */
+    .countdown-section {
+      text-align: center;
+      padding: 1rem;
+      background-color: rgba(17, 17, 17, 0.33);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .countdown-title {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .flip-clock {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .flip-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 0.5rem;
+    }
+    .flip-number {
+      font-size: 2rem;
+      background: #333;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.25rem;
+      min-width: 2ch;
+      text-align: center;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3);
+    }
+    .flip-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .flip-separator {
+      font-size: 2rem;
+      margin: 0 0.5rem;
+      user-select: none;
+    }
+    .newsletter-btn {
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .newsletter-btn:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+
+    /* ============================================================
+       Weekly Stock Picks Section (33% opacity background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
-      background-color: #f0f0f0;
+      background-color: rgba(240, 240, 240, 0.33);
       text-align: center;
     }
     #weekly-stock-picks h2 {
@@ -200,69 +273,46 @@
       text-align: left;
       padding-left: 1.5rem;
     }
-    /* Styling for buy and sell tickers */
+
+    /* ============================================================
+       Styling for Buy and Sell Tickers
+    ============================================================ */
     .buy-ticker,
     .sell-ticker {
       display: inline-block;
-      padding: 5px 10px;
+      padding: 10px 20px;
       border-radius: 4px;
       font-weight: bold;
       text-decoration: none;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, transform 0.2s;
       margin-bottom: 0.5rem;
       color: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
     .buy-ticker {
       background-color: #28a745;
+      border: none;
     }
     .buy-ticker:hover {
       background-color: #218838;
+      transform: translateY(-2px);
     }
     .sell-ticker {
       background-color: #dc3545;
+      border: none;
     }
     .sell-ticker:hover {
       background-color: #c82333;
+      transform: translateY(-2px);
     }
-    .buy-ticker,
-.sell-ticker {
-  display: inline-block;
-  padding: 10px 20px; /* Increased padding for a button feel */
-  border-radius: 4px;
-  font-weight: bold;
-  text-decoration: none;
-  transition: background-color 0.3s, transform 0.2s;
-  margin-bottom: 0.5rem;
-  color: #fff;
-  cursor: pointer; /* Indicates it's clickable */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Adds a subtle shadow */
-}
-
-.buy-ticker {
-  background-color: #28a745;
-  border: none;
-}
-
-.buy-ticker:hover {
-  background-color: #218838;
-  transform: translateY(-2px);
-}
-
-.sell-ticker {
-  background-color: #dc3545;
-  border: none;
-}
-
-.sell-ticker:hover {
-  background-color: #c82333;
-  transform: translateY(-2px);
-}
 
     /* ============================================================
-       Tools Section
+       Tools Section (33% opacity background)
     ============================================================ */
     #tools {
       padding: 2rem 1rem;
+      background-color: rgba(255, 255, 255, 0.33);
     }
     #tools h2 {
       text-align: center;
@@ -314,12 +364,13 @@
       background-color: #ddd;
       color: #333;
     }
+
     /* ============================================================
-       Newsletter Signup Section
+       Newsletter Signup Section (33% opacity background)
     ============================================================ */
     #newsletter-signup {
       padding: 2rem 1rem;
-      background-color: #fff;
+      background-color: rgba(255, 255, 255, 0.33);
       text-align: center;
     }
     #newsletter-signup h2 {
@@ -353,13 +404,14 @@
       background-color: #ddd;
       color: #333;
     }
+
     /* ============================================================
-       Feedback Section
+       Feedback Section (33% opacity background)
     ============================================================ */
     #feedback-section {
       text-align: center;
       padding: 3rem 1rem;
-      background-color: #f8f8f8;
+      background-color: rgba(248, 248, 248, 0.33);
       margin-top: 2rem;
     }
     #feedback-section h2 {
@@ -382,6 +434,7 @@
     #feedback-section a:hover {
       background-color: #555;
     }
+
     /* ============================================================
        Back Button Style
     ============================================================ */
@@ -401,15 +454,17 @@
       background-color: #ddd;
       color: #333;
     }
+
     /* ============================================================
-       Footer
+       Footer (33% opacity background)
     ============================================================ */
     footer {
       text-align: center;
       padding: 1rem;
-      background-color: #eee;
+      background-color: rgba(238, 238, 238, 0.33);
       margin-top: 2rem;
     }
+
     /* ============================================================
        Responsive Adjustments
     ============================================================ */
@@ -424,6 +479,7 @@
     @media (max-width: 768px) {
       .tool-card { width: 90%; }
     }
+
     /* ============================================================
        Performance Button Styles
     ============================================================ */
@@ -463,7 +519,6 @@
     <nav>
       <ul>
         <li><a href="/">Home</a></li>
-        <!-- Removed PM Tools and Templates menus -->
         <li>
           <span class="submenu-toggle">Tools &#9662;</span>
           <ul class="submenu">
@@ -494,7 +549,6 @@
     <nav class="header__inline-menu topnav">
       <ul>
         <li><a href="/">Home</a></li>
-        <!-- Removed PM Tools and Templates menus -->
         <li class="dropdown">
           <a href="#tools" class="parent-link">Tools</a>
           <ul class="dropdown-menu">
@@ -525,6 +579,35 @@
       <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
   </header>
+
+  <!-- Countdown Section -->
+  <section class="countdown-section">
+    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
+    <div class="flip-clock" id="flipClock">
+      <div class="flip-unit">
+        <span class="flip-number" id="days">00</span>
+        <span class="flip-label">Days</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="hours">00</span>
+        <span class="flip-label">Hours</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="minutes">00</span>
+        <span class="flip-label">Minutes</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="seconds">00</span>
+        <span class="flip-label">Seconds</span>
+      </div>
+    </div>
+    <button class="newsletter-btn" id="scrollToSignup">
+      Receive Top Picks Earlier
+    </button>
+  </section>
 
   <!-- Weekly Stock Picks Section -->
   <section id="weekly-stock-picks">
@@ -569,7 +652,6 @@
         </ol>
       </div>
     </div>
-    <!-- Link to explanation.html -->
     <div style="text-align: center; margin-top: 1rem;">
       <a href="explanation.html" class="back-button">How We Select Weekly Stock Picks</a>
     </div>
@@ -660,7 +742,7 @@
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
-      <p>Help us improve our tools. Share your ideas or user stories.</p>
+      <p>Help us improve our tools. Share your feedback.</p>
       <a href="feedback.html">Leave Feedback</a>
     </section>
   </main>
@@ -763,24 +845,16 @@
 
   <!-- JavaScript to Fetch Current Price, Update Performance Buttons, and Set the Header -->
   <script>
-    /*
-      Instead of manually entering base prices, set the initial date (YYYY-MM-DD)
-      when the initial prices were recorded. The script will use that date for both
-      the performance header and each ticker’s performance calculation.
-    */
-    const initialDate = "2025-03-28";  // <-- Update this date as needed
+    const initialDate = "2025-03-28";  // Update this date as needed
     const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Update performance headers to include the initial date.
       document.querySelectorAll('.performance-header').forEach(header => {
         header.textContent = "Performance Since " + initialDate;
       });
 
       tickers.forEach(ticker => {
-        // Example API URL. Adjust as needed.
         let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-
         fetch(histUrl)
           .then(response => response.json())
           .then(data => {
@@ -789,28 +863,22 @@
               return;
             }
             const timeSeries = data["Time Series (Daily)"];
-            // Get initial record for the set date.
             const initialRecord = timeSeries[initialDate];
             if (!initialRecord) {
               console.log("No record found for " + ticker + " on date " + initialDate);
               return;
             }
-            // Parse the initial price.
             const initialPrice = parseFloat(initialRecord["4. close"]);
-            // Use Meta Data to get the most recent date.
             const meta = data["Meta Data"];
             const lastRefreshed = meta["3. Last Refreshed"];
             const mostRecent = timeSeries[lastRefreshed];
             const currentPrice = parseFloat(mostRecent["4. close"]);
-
-            // Calculate performance percentage.
             const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
             const diffFormatted = diff.toFixed(2) + '%';
 
             const perfEl = document.getElementById(`performance-${ticker}`);
             if (perfEl) {
               perfEl.textContent = diffFormatted;
-              // Color coding: green if positive, red if negative.
               if (diff >= 0) {
                 perfEl.classList.add('performance-green');
               } else {
@@ -819,6 +887,56 @@
             }
           })
           .catch(error => console.log(error));
+      });
+    });
+  </script>
+
+  <!-- JavaScript for Countdown and Smooth Scroll -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay(); // Sunday = 0, Monday = 1, etc.
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) {
+          return target;
+        } else {
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) {
+            daysUntilMonday = 7;
+          }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
+        }
+      }
+
+      function updateCountdown() {
+        const now = new Date();
+        const target = getNextMondayTarget();
+        const diff = target - now;
+        if (diff <= 0) {
+          document.getElementById('days').textContent = '00';
+          document.getElementById('hours').textContent = '00';
+          document.getElementById('minutes').textContent = '00';
+          document.getElementById('seconds').textContent = '00';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        document.getElementById('days').textContent = days.toString().padStart(2, '0');
+        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+      }
+
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
       });
     });
   </script>
