@@ -7,8 +7,6 @@
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
-  <!-- Optionally include accessibility module if desired -->
-  <!-- <script src="https://code.highcharts.com/stock/modules/accessibility.js"></script> -->
   <style>
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -182,6 +180,7 @@
     /***************************************
      * 2) DATA PARSE FUNCTIONS
      ***************************************/
+    // For intraday data, store both the parsed Date (for chart x-axis) and the original API timestamp.
     function parseIntradayData(data, interval) {
       const seriesKey = `Time Series (${interval})`;
       const raw = data[seriesKey];
@@ -189,21 +188,25 @@
       let points = [];
       for (const timestamp in raw) {
         const rec = raw[timestamp];
-        // No time zone conversion. The API says "US/Eastern," so we just parse as local.
+        // Keep the original string as provided (assumed format "YYYY-MM-DD HH:mm:ss")
+        const original = timestamp;
+        // Create a Date object directly from the string without forcing UTC conversion.
         const date = new Date(timestamp.replace(" ", "T"));
         points.push({
-          date: date,
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"], 10)
+          volume: parseInt(rec["5. volume"], 10),
+          original: original
         });
       }
-      points.sort((a, b) => a.date - b.date);
+      points.sort((a, b) => a.x - b.x);
       return points;
     }
-
+    // For historical data, similarly store the original timestamp.
     function parseHistoricalData(data) {
       const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
       const raw = data[seriesKey];
@@ -211,18 +214,20 @@
       let points = [];
       for (const dateStr in raw) {
         const rec = raw[dateStr];
-        // Again, treat the data as local "US/Eastern" with no offset.
+        const original = dateStr;
         const date = new Date(dateStr);
         points.push({
-          date: date,
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10)
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
+          original: original
         });
       }
-      points.sort((a, b) => a.date - b.date);
+      points.sort((a, b) => a.x - b.x);
       return points;
     }
 
@@ -257,11 +262,11 @@
         default:
           fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       }
-      return points.filter(p => p.date >= fromDate);
+      return points.filter(p => p.x >= fromDate.getTime());
     }
 
     /***************************************
-     * 4) TOP BAR UPDATE (Use the API's Eastern time, no conversion)
+     * 4) TOP BAR UPDATE (Display the API's original timestamp)
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
@@ -279,72 +284,60 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
-      // Display "As of hh:mm:ss AM/PM US/Eastern" with no offset.
-      // The user is effectively seeing local time unless they are also in Eastern.
-      // If you want to forcibly show the Eastern time from the data, store the original string.
-      const localTimeString = last.date.toLocaleTimeString('en-US');
-      document.getElementById('timeInfo').textContent = `As of ${localTimeString} US/Eastern`;
+      // Use the original timestamp from the last data point.
+      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
     }
 
     /***************************************
      * 5) CHART PLOTTING FUNCTION USING HIGHCHARTS STOCK
-     *    - No extra offset, lines match exactly.
+     *    - Draws a fixed dashed last-price line and a dynamic crosshair.
      ***************************************/
     function plotChart(points, symbol, range) {
       let seriesData;
       let chartType;
       let seriesOptions = {};
-      
-      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
-        // Use line chart
-        seriesData = points.map(p => [p.date.getTime(), p.close]);
-        chartType = 'line';
 
+      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
+        // For line charts, our seriesData is our points (x and y)
+        seriesData = points.map(p => [p.x, p.y]);
+        chartType = 'line';
         const firstClose = points[0].close;
         const lastClose = points[points.length - 1].close;
         let seriesColor = 'blue';
-        if (lastClose > firstClose) {
-          seriesColor = 'green';
-        } else if (lastClose < firstClose) {
-          seriesColor = 'red';
-        }
-
+        if (lastClose > firstClose) seriesColor = 'green';
+        else if (lastClose < firstClose) seriesColor = 'red';
         seriesOptions = {
           color: seriesColor,
           fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
         };
       } else {
-        // For 6M, 1Y, 5Y use candlestick
-        seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+        // For historical ranges, use candlestick data.
+        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
         seriesOptions = {
-          color: 'red',     // falling days
-          upColor: 'green'  // rising days
+          color: 'red',    // falling
+          upColor: 'green' // rising
         };
       }
-      
+
       Highcharts.stockChart('chart', {
         chart: {
           backgroundColor: '#fff',
           marginRight: 80, // extra margin for right-side labels
-          // Turn off UTC so we see the raw timestamps from the API.
-          // If you want to forcibly interpret them as Eastern, see below note.
           events: {
             load: function () {
               const chart = this;
               const yAxis = chart.yAxis[0];
               const series = chart.series[0];
-              // For candlestick charts, use series.points instead of series.data
-              const pointsArray = (series.type === 'candlestick') ? series.points : series.data;
-              if (!pointsArray || pointsArray.length === 0) return;
+              // For candlestick, use series.points; for line, series.data.
+              const pts = (series.type === 'candlestick') ? series.points : series.data;
+              if (!pts || pts.length === 0) return;
 
-              const lastPoint = pointsArray[pointsArray.length - 1];
-              // For candlestick, use lastPoint.close; for line, use lastPoint.y
+              const lastPoint = pts[pts.length - 1];
               const lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
-              // No pixel offset
               const lastY = yAxis.toPixels(lastPrice, true);
 
-              // Fixed dashed line at last price
+              // Fixed dashed line at last price.
               chart.lastPriceLine = chart.renderer.path([
                 'M', chart.plotLeft, lastY,
                 'L', chart.plotLeft + chart.plotWidth, lastY
@@ -354,13 +347,13 @@
                 dashstyle: 'Dash'
               }).add();
 
-              // Fixed last price label on the right
+              // Fixed last price label on the right.
               chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
                 chart.plotLeft + chart.plotWidth + 5,
                 lastY + 4
               ).css({ color: 'gray' }).add();
 
-              // Crosshair line + label
+              // Create dynamic crosshair and label.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -371,22 +364,36 @@
                 chart.plotTop
               ).css({ color: 'black' }).add();
 
-              // Update crosshair on mouse move
+              // Override tooltip formatter for line charts to show original time.
+              if (series.type === 'line') {
+                chart.update({
+                  tooltip: {
+                    formatter: function () {
+                      // Find the point with the matching x value
+                      const pt = this.point;
+                      // Use the original timestamp from our point data.
+                      return `<b>${this.series.name}</b><br/>
+                              Time: ${pt.original} US/Eastern<br/>
+                              Price: ${pt.y.toFixed(2)}`;
+                    }
+                  }
+                });
+              }
+
               Highcharts.addEvent(chart.container, 'mousemove', function(e) {
                 const event = chart.pointer.normalize(e);
-                const yValue = yAxis.toValue(event.chartY);
-                const yPixel = yAxis.toPixels(yValue, true);
+                const yVal = yAxis.toValue(event.chartY);
+                const yPix = yAxis.toPixels(yVal, true);
                 chart.crosshairLine.attr({
-                  d: ['M', chart.plotLeft, yPixel, 'L', chart.plotLeft + chart.plotWidth, yPixel]
+                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
                 });
                 chart.crosshairLabel.attr({
-                  text: yValue.toFixed(2),
+                  text: yVal.toFixed(2),
                   x: chart.plotLeft + chart.plotWidth + 5,
-                  y: yPixel + 4
+                  y: yPix + 4
                 });
               });
 
-              // Remove crosshair on mouse leave
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -394,8 +401,7 @@
             }
           }
         },
-        // Use local time. If you want to interpret times as Eastern, do:
-        // time: { timezone: 'America/New_York' }
+        // Do not use UTC conversion; use the timestamps as provided.
         time: {
           useUTC: false
         },
@@ -418,7 +424,7 @@
         tooltip: {
           split: false,
           shared: true,
-          xDateFormat: '%Y-%m-%d %H:%M'
+          xDateFormat: '%Y-%m-%d %H:%M:%S'
         },
         series: [{
           name: symbol.toUpperCase(),
@@ -440,7 +446,6 @@
       const symbol = document.getElementById('ticker').value.trim() || "OXY";
       const range = currentRange;
       document.getElementById('loading').style.display = 'block';
-
       try {
         let rawData, points;
         if (range === "1D" || range === "5D") {
@@ -490,7 +495,6 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
-      // Auto-update every minute
       setInterval(loadChart, 60000);
     });
   </script>
