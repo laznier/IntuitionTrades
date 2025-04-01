@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
   <meta name="google-site-verification" content="..." />
   <meta charset="UTF-8">
   <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
@@ -67,7 +70,36 @@
       position: relative;
       z-index: 1;
     }
-    
+    #heroChart {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1; /* Behind the hero content but above the dark overlay */
+    }
+
+    #heroPrice {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 3;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    }
+    #heroPrice {
+  font-size: 2vw;
+}
+
+@media (max-width: 600px) {
+  #heroPrice {
+    font-size: 3vw;
+  }
+}
+
+
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
        (Based on provided .topnav CSS)
@@ -585,11 +617,16 @@
 
   <!-- Hero Section -->
   <header class="hero">
+    <!-- Add this new chart container; it will serve as an extra background layer -->
+    <div id="heroChart"></div>
+    <!-- Add this overlay for the SPY price -->
+    <div id="heroPrice"></div>
     <div class="hero-content">
       <h1>Intuition Trades</h1>
       <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
   </header>
+  
 
   <!-- Countdown Section -->
   <section class="countdown-section">
@@ -951,5 +988,94 @@
       });
     });
   </script>
+    <script>async function fetchSPYData() {
+      try {
+        const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        console.error("Error fetching SPY data:", err);
+        return null;
+      }
+    }
+    
+    function parseSPYData(data) {
+      const seriesKey = "Time Series (1min)";
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"])
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    
+    async function plotHeroChart() {
+      const rawData = await fetchSPYData();
+      if (!rawData) return;
+      const points = parseSPYData(rawData);
+      
+      // Filter today's data
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayPoints = points.filter(p => p.x >= startOfDay.getTime());
+      if (todayPoints.length === 0) return;
+      
+      // Determine line color based on performance
+      const firstPrice = todayPoints[0].y;
+      const lastPrice = todayPoints[todayPoints.length - 1].y;
+      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+      
+      // Update price overlay
+      document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
+      
+      Highcharts.stockChart('heroChart', {
+        chart: {
+          backgroundColor: 'transparent',
+          margin: [20, 20, 40, 20],
+          spacing: [0, 0, 0, 0]
+        },
+        time: {
+          useUTC: false
+        },
+        rangeSelector: {
+          enabled: false
+        },
+        title: { text: null },
+        xAxis: { visible: false },  // Hide time labels
+        yAxis: { visible: false },
+        tooltip: { enabled: false },
+        credits: { enabled: false },
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
+        series: [{
+          name: 'SPY',
+          data: todayPoints.map(p => [p.x, p.y]),
+          type: 'line',
+          color: lineColor,
+          lineWidth: 2,
+          marker: { enabled: false },
+          enableMouseTracking: false
+        }]
+      });
+    }
+    
+    // Initial call and set interval to update every minute
+    document.addEventListener("DOMContentLoaded", () => {
+      plotHeroChart();
+      setInterval(plotHeroChart, 60000);
+    });
+    exporting: {
+  enabled: false
+}
+
+    </script>
+    
 </body>
 </html>
