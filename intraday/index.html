@@ -133,7 +133,7 @@
   
   <!-- Ticker Input Form -->
   <div id="tickerForm">
-    <input type="text" id="ticker" value="SPY" />
+    <input type="text" id="ticker" value="OXY" />
     <button id="loadBtn">Load Chart</button>
   </div>
 
@@ -263,7 +263,8 @@
 
     /***************************************
      * 4) TOP BAR UPDATE
-     *    - Show difference from first to last in the *filtered* range
+     *    - Show difference from first to last in the *filtered* range,
+     *      and display times in Eastern Time.
      ***************************************/
     function updateTopBar(points, symbol) {
       if (points.length < 2) return;
@@ -282,6 +283,7 @@
         changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
         changeEl.style.color = "#dc2626";
       }
+      // Display "As of" time in Eastern Time.
       document.getElementById('timeInfo').textContent = `As of ${last.date.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`;
     }
 
@@ -293,12 +295,12 @@
       let chartType;
       let seriesOptions = {};
       
-      // For intraday data use a line/area chart; for historical data use candlestick.
+      // For intraday data, use a line/area chart; for historical, use candlestick.
       if (range === "1D" || range === "5D") {
         seriesData = points.map(p => [p.date.getTime(), p.close]);
         chartType = 'line';
         
-        // Calculate overall change for selected timeframe to determine color.
+        // Determine color based on timeframe change.
         const firstClose = points[0].close;
         const lastClose = points[points.length - 1].close;
         let seriesColor = 'blue';
@@ -308,7 +310,6 @@
           seriesColor = 'red';
         }
         
-        // For a line chart, set line color and fillColor (with opacity).
         seriesOptions = {
           color: seriesColor,
           fillColor: Highcharts.color(seriesColor).setOpacity(0.15).get()
@@ -316,17 +317,16 @@
       } else {
         seriesData = points.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
         chartType = 'candlestick';
-        // Set candlestick colors: falling days red, rising days green.
         seriesOptions = {
-          color: 'red',    // falling
-          upColor: 'green' // rising
+          color: 'red',    // falling days
+          upColor: 'green' // rising days
         };
       }
       
       Highcharts.stockChart('chart', {
         chart: {
           backgroundColor: '#fff',
-          marginRight: 80, // extra margin for right side labels
+          marginRight: 80, // extra margin for right-side labels
           events: {
             load: function () {
               var chart = this;
@@ -335,7 +335,7 @@
               var data = series.data;
               if (!data || data.length === 0) return;
               
-              // Determine last price based on chart type.
+              // Determine last price.
               var lastPoint = data[data.length - 1];
               var lastPrice = (series.type === 'candlestick' ? lastPoint.close : lastPoint.y);
               var lastY = yAxis.toPixels(lastPrice, true);
@@ -358,7 +358,7 @@
                 color: 'gray'
               }).add();
               
-              // Create crosshair line following cursor.
+              // Create crosshair line following the cursor.
               chart.crosshairLine = chart.renderer.path().attr({
                 'stroke-width': 1,
                 stroke: 'black',
@@ -388,7 +388,7 @@
                 });
               });
               
-              // Remove crosshair when mouse leaves chart.
+              // Remove crosshair on mouse leave.
               Highcharts.addEvent(chart.container, 'mouseleave', function() {
                 chart.crosshairLine.attr({ d: [] });
                 chart.crosshairLabel.attr({ text: '' });
@@ -410,7 +410,7 @@
         },
         xAxis: {
           type: 'datetime',
-          maxPadding: 0.15 // increased padding for extra right-side space
+          maxPadding: 0.15 // extra right-side space
         },
         yAxis: {
           title: {
@@ -497,7 +497,7 @@
         document.getElementById('ticker').value = ticker;
       }
       loadChart();
-      // Auto-update every minute (60,000 ms)
+      // Auto-update every minute (60000 ms)
       setInterval(loadChart, 60000);
     });
   </script>
