@@ -20,13 +20,13 @@
       font-family: Arial, sans-serif;
       color: #fff; /* All text white */
       margin: 0;
-      /* Remove any direct background so we use our fixed element below */
+      /* No background image on body; we'll use a fixed background element below */
     }
     a {
       text-decoration: none;
       color: inherit;
     }
-
+    
     /* ============================================================
        Fixed Background Element
     ============================================================ */
@@ -36,11 +36,10 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: url('/images/hero-background.png') no-repeat center center;
+      background: url('/images/mobile-background.png') no-repeat center center;
       background-size: cover;
       z-index: -9999;
-      /* Force hardware acceleration (may help on iOS) */
-      transform: translateZ(0);
+      transform: translateZ(0); /* May help on iOS */
     }
     @media (max-width: 768px) {
       .background-fixed {
@@ -48,7 +47,7 @@
         background-size: cover;
       }
     }
-
+    
     /* ============================================================
        Hero Section
     ============================================================ */
@@ -72,6 +71,7 @@
     
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
+       (Based on provided .topnav CSS)
     ============================================================ */
     .topnav {
       background-color: #333;
@@ -109,7 +109,12 @@
       margin: 0;
     }
     .dropdown-menu li a {
+      display: block;
+      position: relative;
+      width: 100%;
+      margin: 0;
       padding: 14px 20px;
+      line-height: 1.0;
       color: #fff;
       background-color: #333;
       transition: background-color 0.3s, color 0.3s;
@@ -502,7 +507,6 @@
   </style>
 </head>
 <body>
-
   <!-- Fixed Background Element -->
   <div class="background-fixed"></div>
 
@@ -746,7 +750,7 @@
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
-      <p>Help us improve our website. Share your requests or ideas.</p>
+      <p>Help us improve our site. Share your requests or ideas.</p>
       <a href="feedback.html">Leave Feedback</a>
     </section>
   </main>
@@ -758,7 +762,7 @@
 
   <!-- ============================================================
        JavaScript Section
-       (Dropdowns, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
+       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -769,6 +773,7 @@
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
+            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -782,6 +787,7 @@
               dropdownMenu.style.position = '';
               dropdownMenu.style.top = '';
               dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
               dropdownMenu.style.display = 'none';
             }
           });
@@ -791,6 +797,7 @@
               dropdownMenu.style.position = '';
               dropdownMenu.style.top = '';
               dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
               dropdownMenu.style.display = 'none';
             }
           });
@@ -803,6 +810,7 @@
               dropdownMenu.style.position = '';
               dropdownMenu.style.top = '';
               dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
               dropdownMenu.style.display = 'none';
             }
           });
@@ -886,8 +894,9 @@
         const now = new Date();
         const currentUTCDay = now.getUTCDay();
         let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) { return target; }
-        else {
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
+        } else {
           let daysUntilMonday = (8 - currentUTCDay) % 7;
           if (daysUntilMonday === 0) { daysUntilMonday = 7; }
           target.setUTCDate(target.getUTCDate() + daysUntilMonday);
