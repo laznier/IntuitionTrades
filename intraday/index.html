@@ -235,7 +235,7 @@
       let fromDate;
       switch (range) {
         case "1D":
-          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
         case "5D":
           fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
@@ -425,9 +425,14 @@
       document.getElementById('loading').style.display = 'block';
       try {
         let rawData, points;
-        if (range === "1D" || range === "5D") {
-          rawData = await fetchIntradayData(symbol, "1min");
+        if (range === "1D") {
+          // For 1D: 1 minute intervals with full output to capture a full day
+          rawData = await fetchIntradayData(symbol, "1min", "full");
           points = parseIntradayData(rawData, "1min");
+        } else if (range === "5D") {
+          // For 5D: 5 minute intervals with full output to cover more data
+          rawData = await fetchIntradayData(symbol, "5min", "full");
+          points = parseIntradayData(rawData, "5min");
         } else if (range === "1M") {
           rawData = await fetchIntradayData(symbol, "60min", "full");
           points = parseIntradayData(rawData, "60min");
