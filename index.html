@@ -12,20 +12,30 @@
 
   <style>
     /* ============================================================
-       Shared Styles & Full-Page Background
+       Global & Background Styles
     ============================================================ */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      color: #fff; /* All text inside the body will be white */
-      background: url('images/hero-background.png') no-repeat center center fixed;
+      color: #fff; /* All text will be white */
+      /* Remove background from body—using a pseudo-element instead */
+    }
+    /* Fixed background pseudo-element */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('background.png') no-repeat center center fixed;
       background-size: cover;
+      z-index: -1;
     }
     a {
       text-decoration: none;
       color: inherit;
     }
-
 
     /* ============================================================
        Header & Navigation (Desktop)
@@ -158,6 +168,7 @@
     ============================================================ */
     .hero {
       position: relative;
+      background: url('images/hero-background.png') center/cover no-repeat;
       color: #fff;
       padding: 3rem 1rem;
       text-align: center;
@@ -176,7 +187,7 @@
 
     /* ============================================================
        Countdown Section (Updated Layout)
-       (Background color with 33% opacity)
+       (Background with 33% opacity)
     ============================================================ */
     .countdown-section {
       text-align: center;
@@ -742,7 +753,7 @@
     <!-- Feedback Section -->
     <section id="feedback-section">
       <h2>Your Feedback</h2>
-      <p>Help us improve our tools. Share your feedback.</p>
+      <p>Help us improve our tools. Share your ideas or user stories.</p>
       <a href="feedback.html">Leave Feedback</a>
     </section>
   </main>

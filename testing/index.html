@@ -12,16 +12,20 @@
 
   <style>
     /* ============================================================
-       Shared Styles
+       Shared Styles & Full-Page Background
     ============================================================ */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
+      color: #fff; /* All text inside the body will be white */
+      background: url('images/hero-background.png') no-repeat center center fixed;
+      background-size: cover;
     }
     a {
       text-decoration: none;
       color: inherit;
     }
+
 
     /* ============================================================
        Header & Navigation (Desktop)
@@ -154,7 +158,6 @@
     ============================================================ */
     .hero {
       position: relative;
-      background: url('images/hero-background.png') center/cover no-repeat;
       color: #fff;
       padding: 3rem 1rem;
       text-align: center;
@@ -173,11 +176,12 @@
 
     /* ============================================================
        Countdown Section (Updated Layout)
+       (Background color with 33% opacity)
     ============================================================ */
     .countdown-section {
       text-align: center;
       padding: 1rem;
-      background-color: #111;
+      background-color: rgba(17, 17, 17, 0.33);
       color: #fff;
       display: flex;
       flex-direction: column;
@@ -237,11 +241,11 @@
     }
 
     /* ============================================================
-       Weekly Stock Picks Section
+       Weekly Stock Picks Section (33% opacity background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
-      background-color: #f0f0f0;
+      background-color: rgba(240, 240, 240, 0.33);
       text-align: center;
     }
     #weekly-stock-picks h2 {
@@ -270,7 +274,9 @@
       padding-left: 1.5rem;
     }
 
-    /* Styling for buy and sell tickers */
+    /* ============================================================
+       Styling for Buy and Sell Tickers
+    ============================================================ */
     .buy-ticker,
     .sell-ticker {
       display: inline-block;
@@ -302,10 +308,11 @@
     }
 
     /* ============================================================
-       Tools Section
+       Tools Section (33% opacity background)
     ============================================================ */
     #tools {
       padding: 2rem 1rem;
+      background-color: rgba(255, 255, 255, 0.33);
     }
     #tools h2 {
       text-align: center;
@@ -359,11 +366,11 @@
     }
 
     /* ============================================================
-       Newsletter Signup Section
+       Newsletter Signup Section (33% opacity background)
     ============================================================ */
     #newsletter-signup {
       padding: 2rem 1rem;
-      background-color: #fff;
+      background-color: rgba(255, 255, 255, 0.33);
       text-align: center;
     }
     #newsletter-signup h2 {
@@ -399,12 +406,12 @@
     }
 
     /* ============================================================
-       Feedback Section
+       Feedback Section (33% opacity background)
     ============================================================ */
     #feedback-section {
       text-align: center;
       padding: 3rem 1rem;
-      background-color: #f8f8f8;
+      background-color: rgba(248, 248, 248, 0.33);
       margin-top: 2rem;
     }
     #feedback-section h2 {
@@ -449,12 +456,12 @@
     }
 
     /* ============================================================
-       Footer
+       Footer (33% opacity background)
     ============================================================ */
     footer {
       text-align: center;
       padding: 1rem;
-      background-color: #eee;
+      background-color: rgba(238, 238, 238, 0.33);
       margin-top: 2rem;
     }
 
@@ -734,8 +741,6 @@
   
     <!-- Feedback Section -->
     <section id="feedback-section">
-      <h2>Your Feedback</h2>
-      <p>Help us improve our tools. Share your ideas or user stories.</p>
       <a href="feedback.html">Leave Feedback</a>
     </section>
   </main>
