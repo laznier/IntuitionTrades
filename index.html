@@ -1036,43 +1036,48 @@
       document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
       
       Highcharts.stockChart('heroChart', {
-        chart: {
-          backgroundColor: 'transparent',
-          margin: [20, 20, 40, 20],
-          spacing: [0, 0, 0, 0]
-        },
-        time: {
-          useUTC: false
-        },
-        rangeSelector: {
-          enabled: false
-        },
-        title: { text: null },
-        xAxis: { visible: false },  // Hide time labels
-        yAxis: { visible: false },
-        tooltip: { enabled: false },
-        credits: { enabled: false },
-        navigator: { enabled: false },
-        scrollbar: { enabled: false },
-        series: [{
-          name: 'SPY',
-          data: todayPoints.map(p => [p.x, p.y]),
-          type: 'line',
-          color: lineColor,
-          lineWidth: 2,
-          marker: { enabled: false },
-          enableMouseTracking: false
-        }]
-      });
+  chart: {
+    backgroundColor: 'transparent',
+    margin: [20, 20, 40, 20],
+    spacing: [0, 0, 0, 0],
+    events: {
+      contextmenu: function (e) {
+        e.preventDefault();
+      }
     }
-    exporting: {
-  buttons: {
-    contextButton: {
-      enabled: false
+  },
+  exporting: {
+    enabled: false, // disables the context button entirely
+    buttons: {
+      contextButton: {
+        enabled: false
+      }
     }
-  }
-}
+  },
+  time: {
+    useUTC: false
+  },
+  rangeSelector: { enabled: false },
+  title: { text: null },
+  xAxis: { visible: false },
+  yAxis: { visible: false },
+  tooltip: { enabled: false },
+  credits: { enabled: false },
+  navigator: { enabled: false },
+  scrollbar: { enabled: false },
+  series: [{
+    name: 'SPY',
+    data: todayPoints.map(p => [p.x, p.y]),
+    type: 'line',
+    color: lineColor,
+    lineWidth: 2,
+    marker: { enabled: false },
+    enableMouseTracking: false
+  }]
+});
 
+    }
+      
     // Initial call and set interval to update every minute
     document.addEventListener("DOMContentLoaded", () => {
       plotHeroChart();
