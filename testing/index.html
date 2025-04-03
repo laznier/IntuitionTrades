@@ -21,9 +21,8 @@
     }
     body {
       font-family: Arial, sans-serif;
-      color: #fff; /* All text white */
+      color: #fff;
       margin: 0;
-      /* No background image on body; we'll use a fixed background element below */
     }
     a {
       text-decoration: none;
@@ -42,7 +41,7 @@
       background: url('/images/hero-background.png') no-repeat center center;
       background-size: cover;
       z-index: -9999;
-      transform: translateZ(0); /* May help on iOS */
+      transform: translateZ(0);
     }
     @media (max-width: 768px) {
       .background-fixed {
@@ -76,9 +75,8 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 1; /* Behind the hero content but above the dark overlay */
+      z-index: 1;
     }
-
     #heroPrice {
       position: absolute;
       top: 20px;
@@ -90,19 +88,16 @@
       text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
     }
     #heroPrice {
-  font-size: 2vw;
-}
-
-@media (max-width: 600px) {
-  #heroPrice {
-    font-size: 3vw;
-  }
-}
-
+      font-size: 2vw;
+    }
+    @media (max-width: 600px) {
+      #heroPrice {
+        font-size: 3vw;
+      }
+    }
 
     /* ============================================================
        Top Navigation (Horizontal Scrolling)
-       (Based on provided .topnav CSS)
     ============================================================ */
     .topnav {
       background-color: #333;
@@ -227,7 +222,6 @@
     
     /* ============================================================
        Countdown Section
-       (Dark semi-transparent background)
     ============================================================ */
     .countdown-section {
       text-align: center;
@@ -283,7 +277,7 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s;
-      color: white; /* Added white text */
+      color: white;
     }
     .newsletter-btn:hover {
       background-color: #ddd;
@@ -292,7 +286,6 @@
     
     /* ============================================================
        Weekly Stock Picks Section
-       (Dark semi-transparent background)
     ============================================================ */
     #weekly-stock-picks {
       padding: 2rem 1rem;
@@ -358,7 +351,6 @@
     
     /* ============================================================
        Tools Section
-       (Dark semi-transparent background)
     ============================================================ */
     #tools {
       padding: 2rem 1rem;
@@ -412,7 +404,6 @@
     
     /* ============================================================
        Newsletter Signup Section
-       (Dark semi-transparent background)
     ============================================================ */
     #newsletter-signup {
       padding: 2rem 1rem;
@@ -451,7 +442,6 @@
     
     /* ============================================================
        Feedback Section
-       (Dark semi-transparent background)
     ============================================================ */
     #feedback-section {
       text-align: center;
@@ -495,7 +485,6 @@
     
     /* ============================================================
        Footer
-       (Dark semi-transparent background)
     ============================================================ */
     footer {
       text-align: center;
@@ -520,89 +509,75 @@
     }
     
     /* ============================================================
-       Performance Button Styles
+       Performance Button & Summary Styles
     ============================================================ */
     .performance-button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer; /* New: shows a pointer on hover */
-}
-
+      margin-left: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
     .performance-green {
       background-color: #28a745 !important;
     }
     .performance-red {
       background-color: #dc3545 !important;
     }
-
-/* ============================================================
-   Performance Summary Section Styles
-============================================================ */
-#performance-summary {
-  padding: 2rem 1rem;
-  background-color: rgba(0, 0, 0, 0.33);
-  text-align: center;
-}
-
-#performance-summary .performance-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap; /* Allows wrapping on smaller screens */
-}
-
-#performance-summary button {
-  padding: 10px 20px;
-  font-size: 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  color: #fff;
-}
-
-#performance-summary button:hover {
-  opacity: 0.9;
-}
-
-.positive-performance {
-  background-color: #28a745;
-}
-
-.negative-performance {
-  background-color: #dc3545;
-}
-
-/* Explanation Box Styling */
-.explanation-box {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: rgba(0, 0, 0, 0.7);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 0.9rem;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.4;
-}
-
-/* Additional media query for narrow screens */
-@media (max-width: 600px) {
-  #performance-summary button {
-    font-size: 0.9rem;
-    padding: 8px 12px;
-  }
-  .explanation-box {
-    font-size: 0.85rem;
-    padding: 0.8rem;
-  }
-}
-</style>
+    #performance-summary {
+      padding: 2rem 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      text-align: center;
+    }
+    #performance-summary .performance-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    #performance-summary button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      color: #fff;
+    }
+    #performance-summary button:hover {
+      opacity: 0.9;
+    }
+    .positive-performance {
+      background-color: #28a745;
+    }
+    .negative-performance {
+      background-color: #dc3545;
+    }
+    .explanation-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.4;
+    }
+    @media (max-width: 600px) {
+      #performance-summary button {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+      .explanation-box {
+        font-size: 0.85rem;
+        padding: 0.8rem;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Fixed Background Element -->
@@ -682,9 +657,7 @@
 
   <!-- Hero Section -->
   <header class="hero">
-    <!-- Add this new chart container; it will serve as an extra background layer -->
     <div id="heroChart"></div>
-    <!-- Add this overlay for the SPY price -->
     <div id="heroPrice"></div>
     <div class="hero-content">
       <h1>Intuition Trades</h1>
@@ -692,7 +665,6 @@
     </div>
   </header>
   
-
   <!-- Countdown Section -->
   <section class="countdown-section">
     <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
@@ -770,33 +742,34 @@
     </div>
   </section>
 
-<!-- Performance Summary Section -->
-<section id="performance-summary">
-  <h2>Performance Summary</h2>
-  <div class="performance-buttons">
-    <button id="weeklyPicksButton">
-      Weekly Picks Performance
-    </button>
-    <button id="spyButton">SPY Performance</button>
-    <button id="dowButton">Dow Jones Performance</button>
-  </div>
-  <!-- Explanation Box (hidden by default) -->
-  <div id="weeklyExplanationBox" class="explanation-box" style="display: none;">
-    <!-- Explanation text will be inserted dynamically -->
-  </div>
-</section>
+  <!-- Performance Summary Section -->
+  <section id="performance-summary">
+    <h2>Performance Summary</h2>
+    <div class="performance-buttons">
+      <button id="weeklyPicksButton">
+        Weekly Picks Performance
+      </button>
+      <button id="spyButton">SPY Performance</button>
+      <button id="dowButton">Dow Jones Performance</button>
+    </div>
+    <!-- Explanation Box (hidden by default) -->
+    <div id="weeklyExplanationBox" class="explanation-box" style="display: none;">
+      <!-- Explanation text will be inserted dynamically -->
+    </div>
+  </section>
+  
   <!-- Newsletter Signup Section -->
-<section id="newsletter-signup">
-  <!-- MailerLite Universal Embed Code -->
-  <script>
-    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-    ml('account', '1422635');
-  </script>
-  <div class="ml-embedded" data-form="N78gvr"></div>
-</section>
+  <section id="newsletter-signup">
+    <!-- MailerLite Universal Embed Code -->
+    <script>
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+      ml('account', '1422635');
+    </script>
+    <div class="ml-embedded" data-form="N78gvr"></div>
+  </section>
   
   <main>
     <!-- Tools Section -->
@@ -887,9 +860,9 @@
 
   <!-- ============================================================
        JavaScript Section
-       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
+    // Desktop Dropdown & Mobile Menu Toggle
     document.addEventListener("DOMContentLoaded", () => {
       const canHover = window.matchMedia('(hover: hover)').matches;
       const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
@@ -898,7 +871,6 @@
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
-            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -952,8 +924,7 @@
         });
       }
     });
-  </script>
-  <script>
+    
     const openMenuBtn = document.getElementById("openMenu");
     const closeMenuBtn = document.getElementById("closeMenu");
     const mobileMenu = document.getElementById("mobileMenu");
@@ -973,102 +944,152 @@
       });
     });
   </script>
-<script>
-  const initialDate = "2025-03-28";
-  const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
-  document.addEventListener('DOMContentLoaded', () => {
-    // Update the small header text
-    document.querySelectorAll('.performance-header').forEach(header => {
-      header.textContent = "Performance Since " + initialDate;
-    });
-
-    // Fetch performance for each ticker
-    tickers.forEach(ticker => {
-      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-
-      fetch(histUrl)
+  <!-- Updated Performance Data Scripts: Using 5-minute Intraday Data -->
+  <script>
+    // This function fetches intraday data for a given ticker using 5min interval,
+    // finds the first available price on the initial date and the most recent price,
+    // then calculates and displays the percentage difference.
+    function updateTickerPerformanceIntraday(ticker, buttonElement) {
+      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(intradayUrl)
         .then(response => response.json())
         .then(data => {
-          if (!data || !data["Time Series (Daily)"]) return;
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
 
-          const timeSeries = data["Time Series (Daily)"];
-          const initialRecord = timeSeries[initialDate];
-          if (!initialRecord) return;
+          // Set initial date and get the earliest record for that day.
+          const initialDate = "2025-03-28";
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
 
-          const initialPrice = parseFloat(initialRecord["4. close"]);
-          const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
-          const mostRecent = timeSeries[lastRefreshed];
-          const currentPrice = parseFloat(mostRecent["4. close"]);
+          // Get the most recent timestamp (<= current time)
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+
+          // Calculate percentage difference.
           const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
           const diffFormatted = diff.toFixed(2) + '%';
 
-          // Grab the performance button by ID
-          const perfEl = document.getElementById(`performance-${ticker}`);
-          if (perfEl) {
-            perfEl.textContent = diffFormatted;
-            
-            // Apply green or red background
-            if (diff >= 0) {
-              perfEl.classList.add('performance-green');
-            } else {
-              perfEl.classList.add('performance-red');
-            }
-
-            // **New**: Add a click listener to navigate
-            perfEl.addEventListener('click', () => {
-              window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-            });
+          // Update button text and styling.
+          buttonElement.textContent = diffFormatted;
+          if (diff >= 0) {
+            buttonElement.classList.add('performance-green');
+            buttonElement.classList.remove('performance-red');
+          } else {
+            buttonElement.classList.add('performance-red');
+            buttonElement.classList.remove('performance-green');
           }
+          
+          // Add a click listener to navigate to the intraday view.
+          buttonElement.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
         })
-        .catch(error => console.log(error));
-    });
-  });
-</script>
+        .catch(error => console.error("Error fetching intraday data for", ticker, error));
+    }
 
-  <script>
+    // For the 6 stocks in the Weekly Picks section.
     document.addEventListener('DOMContentLoaded', () => {
-      function getNextMondayTarget() {
-        const now = new Date();
-        const currentUTCDay = now.getUTCDay();
-        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) { 
-          return target; 
+      const initialDate = "2025-03-28";
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
+
+      const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
+      tickers.forEach(ticker => {
+        const perfEl = document.getElementById(`performance-${ticker}`);
+        if (perfEl) {
+          updateTickerPerformanceIntraday(ticker, perfEl);
+        }
+      });
+    });
+
+    // For SPY and DOW performance in the Performance Summary section.
+    document.addEventListener("DOMContentLoaded", function() {
+      // Update performance for SPY and DOW using the intraday endpoint.
+      updateTickerPerformanceIntraday("SPY", document.getElementById("spyButton"));
+      updateTickerPerformanceIntraday("DOW", document.getElementById("dowButton"));
+
+      const topBuys = ["OXY", "VRSN", "MMM"];
+      const bottomShorts = ["AOS", "ALB", "RPD"];
+
+      // Function to generate explanation text dynamically.
+      function generateExplanation() {
+        return "This number represents the average profit percentage you would have earned if you had bought our top three recommended stocks (" +
+               topBuys.join(", ") +
+               ") and shorted our bottom three picks (" +
+               bottomShorts.join(", ") +
+               ") as of the last market data on " +
+               "2025-03-28" +
+               ". This value updates in real time based on the latest intraday market data.";
+      }
+
+      // Calculate Weekly Picks performance from the updated buttons.
+      function calculateWeeklyPicksPerformance() {
+        let total = 0;
+        let count = 0;
+        topBuys.forEach(ticker => {
+          const el = document.getElementById("performance-" + ticker);
+          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+            const val = parseFloat(el.textContent.replace('%', ''));
+            if (!isNaN(val)) {
+              total += val;
+              count++;
+            }
+          }
+        });
+        bottomShorts.forEach(ticker => {
+          const el = document.getElementById("performance-" + ticker);
+          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+            const val = parseFloat(el.textContent.replace('%', ''));
+            if (!isNaN(val)) {
+              total += (-val); // Invert for shorts.
+              count++;
+            }
+          }
+        });
+        return count ? total / count : 0;
+      }
+
+      // Update the Weekly Picks Performance button.
+      function updateWeeklyPicksButton() {
+        const performance = calculateWeeklyPicksPerformance();
+        const performanceText = performance.toFixed(2) + '%';
+        const btn = document.getElementById("weeklyPicksButton");
+        btn.textContent = "Weekly Picks Performance: " + performanceText;
+        if (performance >= 0) {
+          btn.classList.add("positive-performance");
+          btn.classList.remove("negative-performance");
         } else {
-          let daysUntilMonday = (8 - currentUTCDay) % 7;
-          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
-          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
-          return target;
+          btn.classList.add("negative-performance");
+          btn.classList.remove("positive-performance");
         }
       }
-      function updateCountdown() {
-        const now = new Date();
-        const target = getNextMondayTarget();
-        const diff = target - now;
-        if (diff <= 0) {
-          document.getElementById('days').textContent = '00';
-          document.getElementById('hours').textContent = '00';
-          document.getElementById('minutes').textContent = '00';
-          document.getElementById('seconds').textContent = '00';
-          return;
-        }
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        document.getElementById('days').textContent = days.toString().padStart(2, '0');
-        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
-      }
-      updateCountdown();
-      setInterval(updateCountdown, 1000);
-      document.getElementById('scrollToSignup').addEventListener('click', () => {
-        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+
+      // Delay initial update and then refresh periodically.
+      setTimeout(updateWeeklyPicksButton, 3000);
+      setInterval(updateWeeklyPicksButton, 60000);
+
+      // Toggle explanation box on Weekly Picks button click.
+      const weeklyPicksButton = document.getElementById("weeklyPicksButton");
+      const explanationBox = document.getElementById("weeklyExplanationBox");
+      weeklyPicksButton.addEventListener("click", function() {
+        explanationBox.textContent = generateExplanation();
+        explanationBox.style.display = (explanationBox.style.display === "none" || explanationBox.style.display === "") ? "block" : "none";
       });
     });
   </script>
-    <script>async function fetchSPYData() {
+
+  <!-- SPY Chart (Hero Section) -->
+  <script>
+    async function fetchSPYData() {
       try {
         const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
         const data = await response.json();
@@ -1101,186 +1122,62 @@
       if (!rawData) return;
       const points = parseSPYData(rawData);
       
-      // Filter today's data
+      // Filter today's data.
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const todayPoints = points.filter(p => p.x >= startOfDay.getTime());
       if (todayPoints.length === 0) return;
       
-      // Determine line color based on performance
+      // Determine line color based on performance.
       const firstPrice = todayPoints[0].y;
       const lastPrice = todayPoints[todayPoints.length - 1].y;
       const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
       
-      // Update price overlay
+      // Update price overlay.
       document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
       
       Highcharts.stockChart('heroChart', {
-  chart: {
-    backgroundColor: 'transparent',
-    margin: [20, 20, 40, 20],
-    spacing: [0, 0, 0, 0],
-    events: {
-      contextmenu: function (e) {
-        e.preventDefault();
-      }
+        chart: {
+          backgroundColor: 'transparent',
+          margin: [20, 20, 40, 20],
+          spacing: [0, 0, 0, 0],
+          events: {
+            contextmenu: function (e) {
+              e.preventDefault();
+            }
+          }
+        },
+        exporting: {
+          enabled: false,
+          buttons: {
+            contextButton: { enabled: false }
+          }
+        },
+        time: { useUTC: false },
+        rangeSelector: { enabled: false },
+        title: { text: null },
+        xAxis: { visible: false },
+        yAxis: { visible: false },
+        tooltip: { enabled: false },
+        credits: { enabled: false },
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
+        series: [{
+          name: 'SPY',
+          data: todayPoints.map(p => [p.x, p.y]),
+          type: 'line',
+          color: lineColor,
+          lineWidth: 2,
+          marker: { enabled: false },
+          enableMouseTracking: false
+        }]
+      });
     }
-  },
-  exporting: {
-    enabled: false, // disables the context button entirely
-    buttons: {
-      contextButton: {
-        enabled: false
-      }
-    }
-  },
-  time: {
-    useUTC: false
-  },
-  rangeSelector: { enabled: false },
-  title: { text: null },
-  xAxis: { visible: false },
-  yAxis: { visible: false },
-  tooltip: { enabled: false },
-  credits: { enabled: false },
-  navigator: { enabled: false },
-  scrollbar: { enabled: false },
-  series: [{
-    name: 'SPY',
-    data: todayPoints.map(p => [p.x, p.y]),
-    type: 'line',
-    color: lineColor,
-    lineWidth: 2,
-    marker: { enabled: false },
-    enableMouseTracking: false
-  }]
-});
-
-    }
-      
-    // Initial call and set interval to update every minute
+    
     document.addEventListener("DOMContentLoaded", () => {
       plotHeroChart();
       setInterval(plotHeroChart, 60000);
     });
-    exporting: {
-  enabled: false
-}
-    </script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  const initialDate = "2025-03-28";
-  const topBuys = ["OXY", "VRSN", "MMM"];
-  const bottomShorts = ["AOS", "ALB", "RPD"];
-
-  // Function to generate the explanation text dynamically
-  function generateExplanation() {
-    return "This number represents the average profit percentage you would have earned if you had bought our top three recommended stocks (" +
-           topBuys.join(", ") +
-           ") and shorted our bottom three picks (" +
-           bottomShorts.join(", ") +
-           ") as of the last market close on " +
-           initialDate +
-           ". This value updates daily based on the most recent market data.";
-  }
-
-  // Function to fetch and update performance for a given ticker (used for SPY and DOW)
-  function updateTickerPerformance(ticker, buttonElement) {
-    const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-    fetch(histUrl)
-      .then(response => response.json())
-      .then(data => {
-        if (!data || !data["Time Series (Daily)"]) return;
-        const timeSeries = data["Time Series (Daily)"];
-        const initialRecord = timeSeries[initialDate];
-        if (!initialRecord) return;
-        const initialPrice = parseFloat(initialRecord["4. close"]);
-        const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
-        const mostRecent = timeSeries[lastRefreshed];
-        const currentPrice = parseFloat(mostRecent["4. close"]);
-        const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-        const diffFormatted = diff.toFixed(2) + '%';
-        buttonElement.textContent = `${ticker} Performance: ${diffFormatted}`;
-        if (diff >= 0) {
-          buttonElement.classList.add("positive-performance");
-          buttonElement.classList.remove("negative-performance");
-        } else {
-          buttonElement.classList.add("negative-performance");
-          buttonElement.classList.remove("positive-performance");
-        }
-        buttonElement.addEventListener('click', () => {
-          window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-        });
-      })
-      .catch(error => console.error(error));
-  }
-
-  // Function to calculate Weekly Picks performance based on the topBuys and bottomShorts.
-  // This function reads performance values from existing elements with IDs like "performance-OXY", etc.
-  function calculateWeeklyPicksPerformance() {
-    let total = 0;
-    let count = 0;
-    topBuys.forEach(ticker => {
-      const el = document.getElementById("performance-" + ticker);
-      if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-        const val = parseFloat(el.textContent.replace('%', ''));
-        if (!isNaN(val)) {
-          total += val;
-          count++;
-        }
-      }
-    });
-    bottomShorts.forEach(ticker => {
-      const el = document.getElementById("performance-" + ticker);
-      if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-        const val = parseFloat(el.textContent.replace('%', ''));
-        if (!isNaN(val)) {
-          total += (-val); // invert the value for shorts.
-          count++;
-        }
-      }
-    });
-    return count ? total / count : 0;
-  }
-
-  // Update the Weekly Picks Performance button.
-  function updateWeeklyPicksButton() {
-    const performance = calculateWeeklyPicksPerformance();
-    const performanceText = performance.toFixed(2) + '%';
-    const btn = document.getElementById("weeklyPicksButton");
-    btn.textContent = "Weekly Picks Performance: " + performanceText;
-    if (performance >= 0) {
-      btn.classList.add("positive-performance");
-      btn.classList.remove("negative-performance");
-    } else {
-      btn.classList.add("negative-performance");
-      btn.classList.remove("positive-performance");
-    }
-  }
-
-  // Fetch and update SPY and DOW performance on page load.
-  updateTickerPerformance("SPY", document.getElementById("spyButton"));
-  updateTickerPerformance("DOW", document.getElementById("dowButton"));
-
-  // Delay updating Weekly Picks so that performance elements for top picks have time to load.
-  setTimeout(updateWeeklyPicksButton, 3000);
-  setInterval(updateWeeklyPicksButton, 60000);
-
-  // Toggle the explanation box when clicking the Weekly Picks button.
-  const weeklyPicksButton = document.getElementById("weeklyPicksButton");
-  const explanationBox = document.getElementById("weeklyExplanationBox");
-  weeklyPicksButton.addEventListener("click", function() {
-    // Dynamically generate and set the explanation text.
-    explanationBox.textContent = generateExplanation();
-    // Toggle visibility of the explanation box.
-    if (explanationBox.style.display === "none" || explanationBox.style.display === "") {
-      explanationBox.style.display = "block";
-    } else {
-      explanationBox.style.display = "none";
-    }
-  });
-});
-</script>
+  </script>
 </body>
 </html>
