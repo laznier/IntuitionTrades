@@ -538,7 +538,7 @@
       background-color: #dc3545 !important;
     }
 
-    /* ============================================================
+  /* ============================================================
    Performance Summary Section Styles
 ============================================================ */
 #performance-summary {
@@ -560,15 +560,22 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  background-color: #333;
-  color: #fff;
   transition: background-color 0.3s;
+  color: #fff;
 }
 
 #performance-summary button:hover {
-  background-color: #555;
+  opacity: 0.9;
 }
-  </style>
+
+.positive-performance {
+  background-color: #28a745;
+}
+
+.negative-performance {
+  background-color: #dc3545;
+}
+</style>
 </head>
 <body>
   <!-- Fixed Background Element -->
@@ -739,24 +746,25 @@
 <section id="performance-summary">
   <h2>Performance Summary</h2>
   <div class="performance-buttons">
-    <button id="weeklyPicksButton">Weekly Picks Performance</button>
-    <button id="sp500Button">S&amp;P 500 Performance</button>
-    <button id="dowButton">Dow Jones Performance</button>
-  </div>
-  <!-- Hidden Explanation Section -->
-  <div id="weeklyPicksExplanation" style="display: none; margin-top: 1rem; background-color: #222; padding: 1rem; border-radius: 4px;">
-    <h3>How We Calculate Weekly Picks Performance</h3>
-    <p>
-      The weekly picks performance is calculated as the average profit percentage achieved if you bought the top 3 stocks and shorted the bottom 3 stocks since the recommendation date (<em>2025-03-28</em>).
-    </p>
-    <ul style="text-align: left;">
-      <li><strong>Buy Stocks:</strong> OXY, VRSN, MMM – profit % is calculated from the price change since the recommendation date.</li>
-      <li><strong>Short Stocks:</strong> AOS, ALB, RPD – the effective profit % for shorting is the inverse of the price change (for example, a -10% price move becomes +10% profit when shorted).</li>
-    </ul>
-    <button id="closeExplanation" style="margin-top: 1rem;">Close</button>
+    <button id="weeklyPicksButton" title="This performance is the average profit % if you bought the top 3 buys and shorted the bottom 3 shorts since 2025-03-28. A positive value indicates an overall gain, while a negative value indicates a loss.">
+      Weekly Picks Performance
+    </button>
+    <button id="spyButton">SPY Live Chart</button>
+    <button id="dowButton">Dow Jones Live Chart</button>
   </div>
 </section>
-  
+  <!-- Newsletter Signup Section -->
+<section id="newsletter-signup">
+  <!-- MailerLite Universal Embed Code -->
+  <script>
+    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+    ml('account', '1422635');
+  </script>
+  <div class="ml-embedded" data-form="N78gvr"></div>
+</section>
   
   <main>
     <!-- Tools Section -->
@@ -1130,13 +1138,13 @@
     </script>
     <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // Function to calculate the weekly picks performance
+  // Function to calculate weekly picks performance
   function calculateWeeklyPicksPerformance() {
     const buyTickers = ["OXY", "VRSN", "MMM"];
     const shortTickers = ["AOS", "ALB", "RPD"];
     let total = 0;
     let count = 0;
-    
+
     // For buy stocks, use the performance as is.
     buyTickers.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
@@ -1148,8 +1156,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
     });
-    
-    // For short stocks, invert the percentage (since shorting reverses gains/losses).
+
+    // For short stocks, invert the percentage.
     shortTickers.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
       if (el && el.textContent && el.textContent.trim() !== "Loading...") {
@@ -1160,30 +1168,36 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
     });
-    
+
     return count ? total / count : 0;
   }
 
-  // When the Weekly Picks Performance button is clicked:
-  document.getElementById("weeklyPicksButton").addEventListener("click", () => {
+  // Auto-load weekly picks performance on start and update every minute.
+  function updateWeeklyPicksButton() {
     const performance = calculateWeeklyPicksPerformance();
     const performanceText = performance.toFixed(2) + '%';
-    // Update button text to include the computed performance
-    document.getElementById("weeklyPicksButton").textContent = "Weekly Picks Performance: " + performanceText;
-    // Show the explanation section
-    document.getElementById("weeklyPicksExplanation").style.display = "block";
+    const btn = document.getElementById("weeklyPicksButton");
+    btn.textContent = "Weekly Picks Performance: " + performanceText;
+    
+    // Set background color based on performance
+    if (performance >= 0) {
+      btn.classList.add("positive-performance");
+      btn.classList.remove("negative-performance");
+    } else {
+      btn.classList.add("negative-performance");
+      btn.classList.remove("positive-performance");
+    }
+  }
+
+  updateWeeklyPicksButton();
+  setInterval(updateWeeklyPicksButton, 60000);
+
+  // Link the SPY button to the SPY live chart page.
+  document.getElementById("spyButton").addEventListener("click", () => {
+    window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
   });
 
-  // Close the explanation section when the Close button is clicked.
-  document.getElementById("closeExplanation").addEventListener("click", () => {
-    document.getElementById("weeklyPicksExplanation").style.display = "none";
-  });
-
-  // Redirect to the live chart pages for S&P 500 and Dow Jones.
-  document.getElementById("sp500Button").addEventListener("click", () => {
-    window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SP500";
-  });
-
+  // Link the Dow button to the Dow live chart page.
   document.getElementById("dowButton").addEventListener("click", () => {
     window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=DOW";
   });
