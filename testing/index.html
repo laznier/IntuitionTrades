@@ -577,11 +577,29 @@
   background-color: #dc3545;
 }
 
-/* Additional media query to shrink buttons further on narrow screens */
+/* Explanation Box Styling */
+.explanation-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.9rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+
+/* Additional media query for narrow screens */
 @media (max-width: 600px) {
   #performance-summary button {
     font-size: 0.9rem;
     padding: 8px 12px;
+  }
+  .explanation-box {
+    font-size: 0.85rem;
+    padding: 0.8rem;
   }
 }
 </style>
@@ -752,21 +770,19 @@
     </div>
   </section>
 
-  <!-- Performance Summary Section -->
+<!-- Performance Summary Section -->
 <section id="performance-summary">
   <h2>Performance Summary</h2>
   <div class="performance-buttons">
-    <!-- This button will show an alert pop-up when tapped/clicked -->
-    <button 
-      id="weeklyPicksButton" 
-      data-explanation="This is the average profit % if you bought the top 3 buys (OXY, VRSN, MMM) and shorted the bottom 3 (AOS, ALB, RPD) since 2025-03-28. A positive value indicates gain, while a negative value indicates loss."
-    >
+    <button id="weeklyPicksButton">
       Weekly Picks Performance
     </button>
-
-    <!-- These two buttons will load performance automatically and link to the live charts on click -->
     <button id="spyButton">SPY Performance</button>
     <button id="dowButton">Dow Jones Performance</button>
+  </div>
+  <!-- Explanation Box (hidden by default) -->
+  <div id="weeklyExplanationBox" class="explanation-box" style="display: none;">
+    <!-- Explanation text will be inserted dynamically -->
   </div>
 </section>
   <!-- Newsletter Signup Section -->
@@ -1152,11 +1168,24 @@
 }
     </script>
 
- <script>
+<script>
 document.addEventListener("DOMContentLoaded", function() {
   const initialDate = "2025-03-28";
+  const topBuys = ["OXY", "VRSN", "MMM"];
+  const bottomShorts = ["AOS", "ALB", "RPD"];
 
-  // Fetch and update performance for SPY or DOW
+  // Function to generate the explanation text dynamically
+  function generateExplanation() {
+    return "This number represents the average profit percentage you would have earned if you had bought our top three recommended stocks (" +
+           topBuys.join(", ") +
+           ") and shorted our bottom three picks (" +
+           bottomShorts.join(", ") +
+           ") as of the last market close on " +
+           initialDate +
+           ". This value updates daily based on the most recent market data.";
+  }
+
+  // Function to fetch and update performance for a given ticker (used for SPY and DOW)
   function updateTickerPerformance(ticker, buttonElement) {
     const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
     fetch(histUrl)
@@ -1172,11 +1201,7 @@ document.addEventListener("DOMContentLoaded", function() {
         const currentPrice = parseFloat(mostRecent["4. close"]);
         const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
         const diffFormatted = diff.toFixed(2) + '%';
-
-        // Update button text
         buttonElement.textContent = `${ticker} Performance: ${diffFormatted}`;
-
-        // Color red/green
         if (diff >= 0) {
           buttonElement.classList.add("positive-performance");
           buttonElement.classList.remove("negative-performance");
@@ -1184,8 +1209,6 @@ document.addEventListener("DOMContentLoaded", function() {
           buttonElement.classList.add("negative-performance");
           buttonElement.classList.remove("positive-performance");
         }
-
-        // Navigate to the live chart if clicked
         buttonElement.addEventListener('click', () => {
           window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
         });
@@ -1193,15 +1216,12 @@ document.addEventListener("DOMContentLoaded", function() {
       .catch(error => console.error(error));
   }
 
-  // Calculate Weekly Picks performance by reading your existing "performance-XYZ" elements
+  // Function to calculate Weekly Picks performance based on the topBuys and bottomShorts.
+  // This function reads performance values from existing elements with IDs like "performance-OXY", etc.
   function calculateWeeklyPicksPerformance() {
-    const buyTickers = ["OXY", "VRSN", "MMM"];
-    const shortTickers = ["AOS", "ALB", "RPD"];
     let total = 0;
     let count = 0;
-
-    // For buys
-    buyTickers.forEach(ticker => {
+    topBuys.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
       if (el && el.textContent && el.textContent.trim() !== "Loading...") {
         const val = parseFloat(el.textContent.replace('%', ''));
@@ -1211,30 +1231,25 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
     });
-
-    // For shorts (invert the %)
-    shortTickers.forEach(ticker => {
+    bottomShorts.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
       if (el && el.textContent && el.textContent.trim() !== "Loading...") {
         const val = parseFloat(el.textContent.replace('%', ''));
         if (!isNaN(val)) {
-          total += (-val);
+          total += (-val); // invert the value for shorts.
           count++;
         }
       }
     });
-
     return count ? total / count : 0;
   }
 
-  // Update the Weekly Picks button
+  // Update the Weekly Picks Performance button.
   function updateWeeklyPicksButton() {
     const performance = calculateWeeklyPicksPerformance();
     const performanceText = performance.toFixed(2) + '%';
     const btn = document.getElementById("weeklyPicksButton");
     btn.textContent = "Weekly Picks Performance: " + performanceText;
-
-    // Color red or green
     if (performance >= 0) {
       btn.classList.add("positive-performance");
       btn.classList.remove("negative-performance");
@@ -1244,20 +1259,28 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  // 1) Immediately fetch SPY and DOW
+  // Fetch and update SPY and DOW performance on page load.
   updateTickerPerformance("SPY", document.getElementById("spyButton"));
   updateTickerPerformance("DOW", document.getElementById("dowButton"));
 
-  // 2) Delay the weekly picks calculation slightly to allow the performance elements to load
+  // Delay updating Weekly Picks so that performance elements for top picks have time to load.
   setTimeout(updateWeeklyPicksButton, 3000);
   setInterval(updateWeeklyPicksButton, 60000);
 
-  // 3) Show a pop-up explanation when tapping/clicking Weekly Picks Performance
-  document.getElementById("weeklyPicksButton").addEventListener("click", function() {
-    const explanation = this.getAttribute("data-explanation");
-    alert(explanation);
+  // Toggle the explanation box when clicking the Weekly Picks button.
+  const weeklyPicksButton = document.getElementById("weeklyPicksButton");
+  const explanationBox = document.getElementById("weeklyExplanationBox");
+  weeklyPicksButton.addEventListener("click", function() {
+    // Dynamically generate and set the explanation text.
+    explanationBox.textContent = generateExplanation();
+    // Toggle visibility of the explanation box.
+    if (explanationBox.style.display === "none" || explanationBox.style.display === "") {
+      explanationBox.style.display = "block";
+    } else {
+      explanationBox.style.display = "none";
+    }
   });
 });
-</script> 
+</script>
 </body>
 </html>
