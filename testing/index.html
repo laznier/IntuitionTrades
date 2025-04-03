@@ -538,7 +538,7 @@
       background-color: #dc3545 !important;
     }
 
-  /* ============================================================
+/* ============================================================
    Performance Summary Section Styles
 ============================================================ */
 #performance-summary {
@@ -746,11 +746,15 @@
 <section id="performance-summary">
   <h2>Performance Summary</h2>
   <div class="performance-buttons">
-    <button id="weeklyPicksButton" title="This performance is the average profit % if you bought the top 3 buys and shorted the bottom 3 shorts since 2025-03-28. A positive value indicates an overall gain, while a negative value indicates a loss.">
+    <button id="weeklyPicksButton" title="This is the average profit % if you bought the top 3 buys (OXY, VRSN, MMM) and shorted the bottom 3 shorts (AOS, ALB, RPD) since 2025-03-28. A positive value indicates gain while a negative indicates loss.">
       Weekly Picks Performance
     </button>
-    <button id="spyButton">SPY Live Chart</button>
-    <button id="dowButton">Dow Jones Live Chart</button>
+    <button id="spyButton" title="SPY performance since 2025-03-28. Click to view the live chart.">
+      SPY Performance
+    </button>
+    <button id="dowButton" title="Dow Jones performance since 2025-03-28. Click to view the live chart.">
+      Dow Jones Performance
+    </button>
   </div>
 </section>
   <!-- Newsletter Signup Section -->
@@ -1134,18 +1138,51 @@
     exporting: {
   enabled: false
 }
-
     </script>
-    <script>
+<script>
 document.addEventListener("DOMContentLoaded", function() {
-  // Function to calculate weekly picks performance
+  const initialDate = "2025-03-28";
+
+  // Function to fetch and update a ticker's performance on a given button.
+  function updateTickerPerformance(ticker, buttonElement) {
+    const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+    fetch(histUrl)
+      .then(response => response.json())
+      .then(data => {
+        if (!data || !data["Time Series (Daily)"]) return;
+        const timeSeries = data["Time Series (Daily)"];
+        const initialRecord = timeSeries[initialDate];
+        if (!initialRecord) return;
+        const initialPrice = parseFloat(initialRecord["4. close"]);
+        const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
+        const mostRecent = timeSeries[lastRefreshed];
+        const currentPrice = parseFloat(mostRecent["4. close"]);
+        const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+        const diffFormatted = diff.toFixed(2) + '%';
+        buttonElement.textContent = `${ticker} Performance: ${diffFormatted}`;
+        if (diff >= 0) {
+          buttonElement.classList.add("positive-performance");
+          buttonElement.classList.remove("negative-performance");
+        } else {
+          buttonElement.classList.add("negative-performance");
+          buttonElement.classList.remove("positive-performance");
+        }
+        // On click, navigate to the live chart page for this ticker.
+        buttonElement.addEventListener('click', () => {
+          window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+        });
+      })
+      .catch(error => console.log(error));
+  }
+
+  // Function to calculate weekly picks performance based on the pre-loaded elements.
+  // Assumes that the individual performance elements for OXY, VRSN, MMM, AOS, ALB, and RPD have been updated by your existing code.
   function calculateWeeklyPicksPerformance() {
     const buyTickers = ["OXY", "VRSN", "MMM"];
     const shortTickers = ["AOS", "ALB", "RPD"];
     let total = 0;
     let count = 0;
 
-    // For buy stocks, use the performance as is.
     buyTickers.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
       if (el && el.textContent && el.textContent.trim() !== "Loading...") {
@@ -1157,12 +1194,12 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
-    // For short stocks, invert the percentage.
     shortTickers.forEach(ticker => {
       const el = document.getElementById("performance-" + ticker);
       if (el && el.textContent && el.textContent.trim() !== "Loading...") {
         const val = parseFloat(el.textContent.replace('%', ''));
         if (!isNaN(val)) {
+          // Invert percentage for shorts.
           total += (-val);
           count++;
         }
@@ -1172,14 +1209,11 @@ document.addEventListener("DOMContentLoaded", function() {
     return count ? total / count : 0;
   }
 
-  // Auto-load weekly picks performance on start and update every minute.
   function updateWeeklyPicksButton() {
     const performance = calculateWeeklyPicksPerformance();
     const performanceText = performance.toFixed(2) + '%';
     const btn = document.getElementById("weeklyPicksButton");
     btn.textContent = "Weekly Picks Performance: " + performanceText;
-    
-    // Set background color based on performance
     if (performance >= 0) {
       btn.classList.add("positive-performance");
       btn.classList.remove("negative-performance");
@@ -1189,19 +1223,16 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  updateWeeklyPicksButton();
+  // Update SPY and Dow performance on page load.
+  updateTickerPerformance("SPY", document.getElementById("spyButton"));
+  updateTickerPerformance("DOW", document.getElementById("dowButton"));
+
+  // Delay the weekly picks update to allow individual ticker elements to load.
+  setTimeout(updateWeeklyPicksButton, 3000);
+  // Then update weekly picks performance every minute.
   setInterval(updateWeeklyPicksButton, 60000);
-
-  // Link the SPY button to the SPY live chart page.
-  document.getElementById("spyButton").addEventListener("click", () => {
-    window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
-  });
-
-  // Link the Dow button to the Dow live chart page.
-  document.getElementById("dowButton").addEventListener("click", () => {
-    window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=DOW";
-  });
 });
 </script>
+  
 </body>
 </html>
