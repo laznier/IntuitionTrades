@@ -505,6 +505,64 @@
       return finalScore;
     }
 
+    function computeFundScores(data) {
+  // Normalize a value between min and max to a 0–100 scale.
+  const norm = (val, min, max) => {
+    if (!val || isNaN(val)) return 50;
+    let ratio = (val - min) / (max - min);
+    let scaled = ratio * 100;
+    return Math.max(0, Math.min(100, scaled));
+  };
+
+  let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
+  let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
+  let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
+  let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
+  let profitability = (margin + opMarg + roa + roe) / 4;
+
+  let pe = parseFloat(data.PERatio);
+  let peScore = 100 - norm(pe, 5, 40);
+  let peg = parseFloat(data.PEGRatio);
+  let pegScore = 100 - norm(peg, 0.5, 2.5);
+  let ps = parseFloat(data.PriceToSalesRatioTTM);
+  let psScore = 100 - norm(ps, 1, 10);
+  let pb = parseFloat(data.PriceToBookRatio);
+  let pbScore = 100 - norm(pb, 1, 10);
+  let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+
+  let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+  let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+  let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
+  let ratio = 0;
+  if (pRef > 0 && data.AnalystTargetPrice) {
+    ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
+  }
+  let tgtScore = norm(ratio, 0, 0.5);
+  let growth = (rg + eg + tgtScore) / 3;
+
+  let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
+  let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
+  let eps = norm(parseFloat(data.EPS), 0, 12);
+  let dividends = (dy + dps + eps) / 3;
+
+  let ebitda = parseFloat(data.EBITDA);
+  let revTTM = parseFloat(data.RevenueTTM);
+  let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+  let evEbitda = parseFloat(data.EVToEBITDA);
+  let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+  let beta = parseFloat(data.Beta);
+  let betaScore = isNaN(beta) ? 50 : 100 - norm(beta, 0, 2);
+  let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+
+  return {
+    profitability,
+    valuation,
+    growth,
+    dividends,
+    financial
+  };
+}
+
     // Statistical functions for Monte Carlo simulation
     function computeStats(prices) {
       let logReturns = [];
