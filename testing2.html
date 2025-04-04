@@ -465,35 +465,51 @@
       };
     }
     function plotFundamentalCategories(categories) {
-      const container = document.getElementById('fundamentalCharts');
-      container.innerHTML = '';
-      const xLabels = [];
-      const yValues = [];
-      for (const [key, value] of Object.entries(categories)) {
-        xLabels.push(key.charAt(0).toUpperCase() + key.slice(1));
-        yValues.push(value);
+  // Extract the category names and their scores.
+  const catNames = [];
+  const scores = [];
+  for (const [key, value] of Object.entries(categories)) {
+    catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
+    scores.push(value);
+  }
+
+  Highcharts.chart('fundamentalCharts', {
+    chart: {
+      type: 'column',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'Fundamental Categories',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      categories: catNames,
+      title: { text: null },
+      gridLineColor: '#444',
+      labels: { style: { color: '#fff' } }
+    },
+    yAxis: {
+      min: 0,
+      max: 100,
+      title: { text: 'Score', style: { color: '#fff' } },
+      gridLineColor: '#444',
+      labels: { style: { color: '#fff' } }
+    },
+    tooltip: {
+      formatter: function() {
+        return this.x + ": " + Highcharts.numberFormat(this.y, 1);
       }
-      const data = [{
-        x: xLabels,
-        y: yValues,
-        type: 'bar',
-        marker: {
-          color: yValues,
-          cmin: 0,
-          cmax: 100,
-          colorscale: [
-            [0, 'rgba(220,20,60,0.8)'],
-            [1, 'rgba(34,139,34,0.8)']
-          ]
-        }
-      }];
-      const layout = {
-        title: 'Fundamental Categories',
-        yaxis: { range: [0, 100] },
-        margin: { t: 50 }
-      };
-      darkNewPlot('fundamentalCharts', data, layout);
-    }
+    },
+    series: [{
+      name: 'Score',
+      data: scores,
+      color: '#16a34a'
+    }],
+    credits: { enabled: false },
+    legend: { enabled: false }
+  });
+}
+
     function computeEMA(prices, period) {
       let ema = [];
       let multi = 2 / (period + 1);
