@@ -661,7 +661,7 @@
   // Helper to convert date/value pairs for Highcharts
   const toTimeSeries = (data, valueKey) =>
     data.map(item => [item.date.getTime(), item[valueKey]]);
-  
+
   // Prepare the series data for each indicator
   const priceSeries = {
     name: 'Historical',
@@ -714,19 +714,23 @@
     yAxis: 1,
     zIndex: 3
   };
-  // MACD Histogram series: computed as MACD - Signal for matching indices
+  // MACD Histogram series: now uses zones to color negative values red and positive values green
   const macdHistogram = {
     name: 'MACD Histogram',
     data: macdData.macdLine.map((m, i) => {
-      // Ensure there's a matching signal value; otherwise return null
       let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
       return [m.date.getTime(), m.macd - sig];
     }),
     type: 'column',
     yAxis: 1,
-    color: '#90ed7d',
     zIndex: 1,
-    tooltip: { valueDecimals: 2 }
+    tooltip: { valueDecimals: 2 },
+    zones: [{
+      value: 0,      // values below 0 will use this zone
+      color: 'red'
+    }, {
+      color: 'green' // values 0 and above will use green
+    }]
   };
   const rsiSeries = {
     name: 'RSI',
@@ -737,12 +741,13 @@
   };
 
   // Build the Highcharts chart with three vertical panes.
+  // To make it wider, we set a specific width on the container element (#techChart) or directly here.
   Highcharts.chart('techChart', {
     chart: {
       zoomType: 'x',
       backgroundColor: 'transparent',
-      // Ensure the chart uses the full container width
-      width: null
+      // Set a fixed width if desired (you can adjust 1200 to any value)
+      width: 1200
     },
     title: {
       text: 'Combined Technical Indicators',
@@ -759,7 +764,7 @@
       lineWidth: 2,
       gridLineColor: '#444'
     }, {
-      // MACD Pane: now includes the histogram and the two line series
+      // MACD Pane: includes histogram and line series
       title: { text: 'MACD', style: { color: '#fff' } },
       top: '45%',
       height: '25%',
@@ -801,7 +806,7 @@
       upperSeries,
       lowerSeries,
       wmaSeries,
-      macdHistogram, // add histogram first so it appears behind the lines
+      macdHistogram, // histogram with zones
       macdSeries,
       signalSeries,
       rsiSeries
@@ -812,7 +817,6 @@
         marker: { enabled: false }
       }
     },
-    // Apply a modern dark theme look
     style: {
       fontFamily: 'Arial, sans-serif'
     }
