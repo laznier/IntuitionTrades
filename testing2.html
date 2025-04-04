@@ -1227,24 +1227,59 @@ function updateMCSlider(val) {
       }
       return { totalPurchase, totalSale };
     }
+    
     function updateCongressChart(totalPurchase, totalSale) {
-      const trace = {
-        x: ["Purchase Amount", "Sale Amount"],
-        y: [totalPurchase, totalSale],
-        type: 'bar',
-        marker: { color: ["green", "red"] }
-      };
-      const layout = { title: "Congress Trading (Monetary Amounts)" };
-      darkNewPlot("congressChart", [trace], layout);
-      let sum = totalPurchase + totalSale;
-      let congressBull = 50;
-      if(sum > 0){
-        congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
+  const categories = ["Purchase Amount", "Sale Amount"];
+  const data = [totalPurchase, totalSale];
+
+  // Render the congress trading chart with Highcharts.
+  Highcharts.chart("congressChart", {
+    chart: {
+      type: "column",
+      backgroundColor: "transparent"
+    },
+    title: {
+      text: "Congress Trading (Monetary Amounts)",
+      style: { color: "#fff" }
+    },
+    xAxis: {
+      categories: categories,
+      title: { text: null },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
+    yAxis: {
+      title: { text: "Amount", style: { color: "#fff" } },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
+    tooltip: {
+      formatter: function() {
+        return this.x + ": " + this.y;
       }
-      document.getElementById("congressDetails").innerText =
-        `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
-      return congressBull;
-    }
+    },
+    series: [{
+      name: "Amount",
+      data: data,
+      // Color each column: first green, second red
+      colorByPoint: true,
+      colors: ["green", "red"]
+    }],
+    credits: { enabled: false },
+    legend: { enabled: false }
+  });
+
+  // Calculate bullish score
+  let sum = totalPurchase + totalSale;
+  let congressBull = 50;
+  if (sum > 0) {
+    congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
+  }
+  document.getElementById("congressDetails").innerText =
+    `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+  return congressBull;
+}
+
     function computeSMAforRegime(priceArray, period) {
       if(!priceArray || priceArray.length < period) return null;
       let slice = priceArray.slice(-period);
