@@ -1,1250 +1,146 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Advanced Stock Analysis</title>
-
-  <!-- Include Highcharts and its histogram module -->
-  <script src="https://code.highcharts.com/highcharts.js"></script>
-  <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
-  <!-- Include Math.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-
-  <style>
-    /* Updated dark, modern styling similar to main page */
-    :root {
-      --primary-bg: #111;
-      --secondary-bg: #333;
-      --accent-color: #16a34a;
-      --text-color: #fff;
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
-    }
-    body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      margin: 0 auto;
-      max-width: 900px;
-      padding: 2rem;
-      line-height: 1.6;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-    p, li {
-      margin-bottom: 0.75em;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 500;
-    }
-    input[type="text"],
-    input[type="number"],
-    input[type="date"] {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      font-size: 0.95rem;
-      background-color: var(--secondary-bg);
-      color: var(--text-color);
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
-    .section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    .section h2 {
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    /* Aggregated bar meter styling */
-    #aggregateSection {
-      display: none;
-      margin-top: 20px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    #aggregateBar {
-      position: relative;
-      background: linear-gradient(to right, red, var(--accent-color));
-      height: 30px;
-      border-radius: 15px;
-      margin: 10px 0;
-    }
-    #aggregateMarker {
-      position: absolute;
-      top: 0;
-      width: 2px;
-      height: 100%;
-      background: #fff;
-    }
-    #aggregateScoreText {
-      position: absolute;
-      width: 100%;
-      text-align: center;
-      line-height: 30px;
-      font-weight: bold;
-      color: var(--text-color);
-      text-shadow: 1px 1px 2px #000;
-    }
-    /* Chart container styling (Highcharts will render into these divs) */
-    .chartContainer {
-      margin-top: 20px;
-      height: 400px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    /* New overlay for simulation loading */
-    #countdownOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.85);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-    #countdownOverlay .circle {
-      border: 8px solid #444;
-      border-top: 8px solid var(--accent-color);
-      border-radius: 50%;
-      width: 100px;
-      height: 100px;
-      animation: spin 2s linear infinite;
-      margin-bottom: 20px;
-    }
-    #loadingText {
-      font-size: 1.2rem;
-      color: var(--accent-color);
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    /* Back button style */
-    button.backBtn {
-      background: var(--accent-color);
-      margin-bottom: 20px;
-    }
-  </style>
-</head>
-<body>
-  <!-- Back to Main Page button -->
-  <button class="backBtn" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
-
-  <h1>Advanced Stock Analysis</h1>
-  <p>Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution. Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.</p>
-
-  <!-- Inputs -->
-  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-  <input type="text" id="ticker" value="AAPL">
-  
-  <label for="futureDate">Future Date:</label>
-  <input type="date" id="futureDate">
-
-  <label style="margin-top:15px;">
-    <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
-  </label>
-  <div id="manualPeriodDiv" style="display:none;">
-    <label for="manualPeriod">Historical Period (months):</label>
-    <input type="number" id="manualPeriod" min="1">
-  </div>
-
-  <label style="margin-top:15px;">
-    <input type="checkbox" id="useManualWeightsCheckbox"> Use Manual Weights &amp; Scaling
-  </label>
-  <div id="manualWeightsSection" style="display:none;">
-    <label>Select Market Regime (for quick auto-fill): 
-      <select id="manualRegimeSelect">
-        <option value="Neutral">Neutral</option>
-        <option value="Bull">Bull</option>
-        <option value="Bear">Bear</option>
-      </select>
-    </label>
-    <label>Monte Carlo Weight (0..1):
-      <input type="number" id="wMC" value="0.10" min="0" max="1" step="0.01">
-    </label>
-    <label>Technical Weight (0..1):
-      <input type="number" id="wTech" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Sentiment Weight (0..1):
-      <input type="number" id="wSent" value="0.20" min="0" max="1" step="0.01">
-    </label>
-    <label>Insider Weight (0..1):
-      <input type="number" id="wIns" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Fundamental Weight (0..1):
-      <input type="number" id="wFund" value="0.25" min="0" max="1" step="0.01">
-    </label>
-    <label>Congress Weight (0..1):
-      <input type="number" id="wCong" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Scaling Factor [0..2]:
-      <input type="number" id="manualScale" value="1.00" min="0" max="2" step="0.01">
-    </label>
-  </div>
-
-  <button id="simulateButton">Run Simulation</button>
-  <div id="loading" style="display:none; color: var(--accent-color); margin-top:10px;">
-    Loading data and running simulation...
-  </div>
-
-  <!-- Aggregated Signal Bar Meter -->
-  <div id="aggregateSection" class="section">
-    <h2>Aggregated Signal</h2>
-    <div style="display: flex; align-items: center;">
-      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
-      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
-        <div id="aggregateMarker"></div>
-        <span id="aggregateScoreText"></span>
-      </div>
-      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
-    </div>
-  </div>
-
-  <!-- Company Description -->
-  <div id="descriptionSection" class="section" style="display:none;">
-    <h2>Company Overview</h2>
-    <p id="companyDescription"></p>
-  </div>
-
-  <!-- Fundamental Analysis Section -->
-  <div id="fundamentalSection" class="section" style="display:none;">
-    <h2>Fundamental Analysis Score</h2>
-    <div id="fundamentalCharts" class="chartContainer"></div>
-    <div id="fundamentalText" style="margin-top:10px; font-weight:600;"></div>
-    <button id="fundamentalLinkButton">More Fundamental Analysis</button>
-  </div>
-
-  <!-- Technical Analysis Section -->
-  <div id="techSection" class="section" style="display:none;">
-    <h2>Technical Bullish Score</h2>
-    <div id="techChart" class="chartContainer"></div>
-    <div id="techDetails" style="margin-top:10px; font-weight:600;"></div>
-    <button id="technicalLinkButton">More Technical Analysis</button>
-  </div>
-
-  <!-- Monte Carlo Simulation Section -->
-  <div id="mcSection" class="section" style="display:none;">
-    <h2>Monte Carlo Simulation (GBM)</h2>
-    <div id="mcChart" class="chartContainer"></div>
-    <div id="mcBullScore" style="margin-top:10px; font-weight:600;"></div>
-    <div id="mcSliderSection" style="margin-top: 20px;"></div>
-  </div>
-
-  <!-- Sentiment Analysis Section -->
-  <div id="sentSection" class="section" style="display:none;">
-    <h2>Sentiment Analysis</h2>
-    <div id="sentChart" class="chartContainer"></div>
-    <div id="sentDetails" style="margin-top:10px; font-weight:600;"></div>
-    <button id="sentimentLinkButton">More Sentiment Analysis</button>
-  </div>
-
-  <!-- Insider Trading Section -->
-  <div id="insiderSection" class="section" style="display:none;">
-    <h2>Insider Trading Activity</h2>
-    <div id="insiderChart" class="chartContainer"></div>
-    <div id="insiderDetails" style="margin-top:10px; font-weight:600;"></div>
-    <button id="insiderLinkButton">More Insider Analysis</button>
-  </div>
-
-  <!-- Congress Trading Section -->
-  <div id="congressSection" class="section" style="display:none;">
-    <h2>Congress Trading Activity</h2>
-    <div id="congressChart" class="chartContainer"></div>
-    <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
-    <div class="linkButtons">
-      <button id="congressLinkButton">More Congress Analysis</button>
-    </div>
-  </div>
-
-  <!-- Explanation Section -->
-  <div id="explanation" class="section" style="text-align:center;">
-    <button id="explanationButton">View Detailed Explanation</button>
-  </div>
-
-  <!-- Buffer Overlay -->
-  <div id="countdownOverlay">
-    <div class="circle"></div>
-    <div id="loadingText">Running 10,000 simulations</div>
-  </div>
-
-  <script>
-    // Helper: Get CSS variable value
-    const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const textColor = getCssVar('--text-color');
-
-    // Show/hide manual sections (only one event listener per checkbox)
-    document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
-      document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
-    });
-    document.getElementById("useManualWeightsCheckbox").addEventListener("change", function() {
-      document.getElementById("manualWeightsSection").style.display = this.checked ? "block" : "none";
-    });
-
-    // --- Chart Functions using Highcharts ---
-
-    // Fundamental Categories Chart
-    function plotFundamentalCategories(categories) {
-      const xLabels = [];
-      const yValues = [];
-      for (const [key, value] of Object.entries(categories)) {
-        xLabels.push(key.charAt(0).toUpperCase() + key.slice(1));
-        yValues.push(value);
-      }
-      Highcharts.chart('fundamentalCharts', {
-        chart: { type: 'bar', backgroundColor: 'transparent' },
-        title: { text: 'Fundamental Categories', style: { color: textColor } },
-        xAxis: {
-          categories: xLabels,
-          labels: { style: { color: textColor } }
-        },
-        yAxis: {
-          min: 0,
-          max: 100,
-          title: { text: 'Score', style: { color: textColor } },
-          labels: { style: { color: textColor } }
-        },
-        series: [{
-          name: 'Score',
-          data: yValues,
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-    }
-
-    // Technical Indicators Chart
-    function updateTechChart(prices) {
-      let bands = computeBollingerBands(prices);
-      let wmas = computeWMA(prices);
-      let rsivals = computeRSI(prices, 14);
-      let macdData = computeMACD(prices);
-
-      Highcharts.stockChart('techChart', {
-        chart: { backgroundColor: 'transparent' },
-        rangeSelector: { enabled: false },
-        title: { text: 'Combined Technical Indicators', style: { color: textColor } },
-        xAxis: [{
-          labels: { style: { color: textColor } },
-          title: { text: 'Date', style: { color: textColor } }
-        }],
-        yAxis: [{
-          title: { text: 'Price', style: { color: textColor } },
-          height: '45%',
-          lineColor: textColor,
-          labels: { style: { color: textColor } }
-        }, {
-          title: { text: 'MACD', style: { color: textColor } },
-          top: '50%',
-          height: '25%',
-          offset: 0,
-          lineColor: textColor,
-          labels: { style: { color: textColor } }
-        }, {
-          title: { text: 'RSI', style: { color: textColor } },
-          top: '78%',
-          height: '22%',
-          offset: 0,
-          lineColor: textColor,
-          labels: { style: { color: textColor } },
-          plotLines: [{
-            value: 30,
-            color: 'red',
-            dashStyle: 'Dash',
-            width: 1
-          }, {
-            value: 70,
-            color: 'red',
-            dashStyle: 'Dash',
-            width: 1
-          }]
-        }],
-        series: [{
-          name: 'Historical Price',
-          data: prices.map(p => [p.date.getTime(), p.close]),
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'Bollinger SMA',
-          data: bands.map(b => [b.date.getTime(), b.sma]),
-          dashStyle: 'Dash',
-          color: '#555',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'Upper Band',
-          data: bands.map(b => [b.date.getTime(), b.upper]),
-          color: 'red',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'Lower Band',
-          data: bands.map(b => [b.date.getTime(), b.lower]),
-          color: 'red',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'WMA',
-          data: wmas.map(w => [w.date.getTime(), w.wma]),
-          color: 'orange',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'MACD',
-          data: macdData.macdLine.map(m => [m.date.getTime(), m.macd]),
-          yAxis: 1,
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'Signal',
-          data: macdData.signalLine.map(s => [s.date.getTime(), s.signal]),
-          yAxis: 1,
-          tooltip: { valueDecimals: 2 }
-        }, {
-          name: 'RSI',
-          data: rsivals.map(r => [r.date.getTime(), r.rsi]),
-          yAxis: 2,
-          tooltip: { valueDecimals: 2 }
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-
-      if(prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2){
-        document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-        return 50;
-      }
-      let latestPrice = prices[prices.length - 1].close;
-      let prevPrice = prices[prices.length - 2].close;
-      let latestRSI = rsivals[rsivals.length - 1].rsi;
-      let prevRSI = rsivals[rsivals.length - 2].rsi;
-      let rsiScore = scoreRSI(latestRSI, prevRSI);
-      let latestBand = bands[bands.length - 1];
-      let prevBand = bands[bands.length - 2];
-      let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
-      let macdScore = computeNewMACDScore(prices);
-      let latestWMA = wmas[wmas.length - 1].wma;
-      let prevWMA = wmas[wmas.length - 2].wma;
-      let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
-      let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
-      document.getElementById('techDetails').innerText =
-        `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-      return aggregatedScore;
-    }
-
-    // Monte Carlo Chart
-    function updateMCChart(finalPrices, lastPrice) {
-      globalFinalPrices = finalPrices;
-      Highcharts.chart('mcChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Monte Carlo Distribution of Final Prices', style: { color: textColor } },
-        xAxis: { title: { text: 'Price', style: { color: textColor } } },
-        yAxis: { title: { text: 'Frequency', style: { color: textColor } } },
-        series: [{
-          name: 'Frequency',
-          data: finalPrices,
-          color: '#888'
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-      let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
-      let bullishScore = (countCurrent / finalPrices.length) * 100;
-      document.getElementById('mcBullScore').innerText =
-        `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
-      let minPrice = Math.min(...finalPrices);
-      let maxPrice = Math.max(...finalPrices);
-      let medianPrice = globalFinalPrices.sort((a, b) => a - b)[Math.floor(globalFinalPrices.length/2)];
-      let sliderHTML = `
-        <label for="priceSlider">Select Target Price:</label>
-        <input type="range" id="priceSlider" min="${minPrice.toFixed(2)}" max="${maxPrice.toFixed(2)}" step="0.01" value="${medianPrice.toFixed(2)}" oninput="updateMCSlider(this.value)">
-        <span id="sliderValue">${medianPrice.toFixed(2)}</span>
-        <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
-      `;
-      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
-      updateMCSlider(medianPrice);
-      return bullishScore;
-    }
-
-    function updateMCSlider(val) {
-      val = parseFloat(val);
-      document.getElementById('sliderValue').textContent = val.toFixed(2);
-      let countTarget = globalFinalPrices.filter(p => p >= val).length;
-      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
-      document.getElementById('mcSliderProb').innerText =
-        `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
-      // Optionally, dynamic update to the chart can be added here.
-    }
-
-    // Sentiment Chart
-    function updateSentimentChart(sentiments) {
-      Highcharts.chart('sentChart', {
-        chart: { type: 'line', backgroundColor: 'transparent' },
-        title: { text: 'Sentiment Analysis', style: { color: textColor } },
-        xAxis: {
-          type: 'datetime',
-          title: { text: 'Date', style: { color: textColor } },
-          labels: { style: { color: textColor } }
-        },
-        yAxis: {
-          title: { text: 'Sentiment (0–100)', style: { color: textColor } },
-          min: 0, max: 100,
-          labels: { style: { color: textColor } }
-        },
-        series: [{
-          name: 'Sentiment',
-          data: sentiments.map(s => [s.date.getTime(), s.sentiment])
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-      document.getElementById('sentDetails').innerText = "Sentiment Score: 50%";
-      return 50;
-    }
-
-    // Insider Chart
-    function updateInsiderChart(totalBuys, totalSells) {
-      Highcharts.chart('insiderChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Insider Activity', style: { color: textColor } },
-        xAxis: { categories: ['Bought', 'Sold'], labels: { style: { color: textColor } } },
-        yAxis: { title: { text: 'Shares', style: { color: textColor } }, labels: { style: { color: textColor } } },
-        series: [{
-          name: 'Insider Activity',
-          data: [totalBuys, totalSells],
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-      let sum = totalBuys + totalSells;
-      let insiderBull = 50;
-      if(sum > 0){
-        insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
-      }
-      document.getElementById("insiderDetails").innerText =
-        `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
-      return insiderBull;
-    }
-
-    // Congress Chart
-    function updateCongressChart(totalPurchase, totalSale) {
-      Highcharts.chart('congressChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Congress Trading', style: { color: textColor } },
-        xAxis: { categories: ['Purchase Amount', 'Sale Amount'], labels: { style: { color: textColor } } },
-        yAxis: { title: { text: 'Amount', style: { color: textColor } }, labels: { style: { color: textColor } } },
-        series: [{
-          name: 'Congress Trading',
-          data: [totalPurchase, totalSale],
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-      let sum = totalPurchase + totalSale;
-      let congressBull = 50;
-      if(sum > 0){
-        congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
-      }
-      document.getElementById("congressDetails").innerText =
-        `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
-      return congressBull;
-    }
-
-    // --- Buffer Overlay Functions ---
-    let bufferDotInterval;
-    function showBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "flex";
-      const loadingText = document.getElementById("loadingText");
-      let dotCount = 0;
-      loadingText.innerText = "Running 10,000 simulations";
-      bufferDotInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4;
-        loadingText.innerText = "Running 10,000 simulations" + ".".repeat(dotCount);
-      }, 500);
-    }
-    function hideBufferOverlay() {
-      document.getElementById("countdownOverlay").style.display = "none";
-      clearInterval(bufferDotInterval);
-    }
-
-    // --- Simulation and Utility Functions ---
-    async function runSimulation() {
-      document.getElementById('loading').style.display = 'block';
-      document.getElementById('aggregateSection').style.display = 'none';
-      document.getElementById('descriptionSection').style.display = 'none';
-      document.getElementById('fundamentalSection').style.display = 'none';
-      document.getElementById('techSection').style.display = 'none';
-      document.getElementById('mcSection').style.display = 'none';
-      document.getElementById('sentSection').style.display = 'none';
-      document.getElementById('insiderSection').style.display = 'none';
-      document.getElementById('congressSection').style.display = 'none';
-
-      let ticker = document.getElementById('ticker').value.trim();
-      let futureDateStr = document.getElementById('futureDate').value;
-      if(!ticker || !futureDateStr){
-        alert("Please enter both a ticker symbol and a future date.");
-        document.getElementById('loading').style.display = 'none';
-        return;
-      }
-      let futureDate = new Date(futureDateStr);
-      let currentDate = new Date();
-      let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
-                         (futureDate.getMonth() - currentDate.getMonth());
-      if(diffInMonths < 1) diffInMonths = 1;
-      let recommendedPeriod = diffInMonths * 4;
-      let periodMonths;
-      if(document.getElementById('manualOverrideCheckbox').checked){
-        periodMonths = parseInt(document.getElementById('manualPeriod').value);
-        if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
-          alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
-          periodMonths = recommendedPeriod;
-        }
-      } else {
-        periodMonths = recommendedPeriod;
-      }
-      try {
-        let regime = await determineSPYMarketRegime(4);
-        console.log("Detected SPY Market Regime => ", regime);
-        let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-        let fundResp = await fetch(fundUrl);
-        let fundamentalData = await fundResp.json();
-        let companyDesc = fundamentalData.Description || "No description available.";
-        let fundBull = 50;
-        let categories = null;
-        if(fundamentalData.Symbol){
-          categories = computeFundScores(fundamentalData);
-          let catSum = 0, nCats = 0;
-          for(let k in categories){ catSum += categories[k]; nCats++; }
-          fundBull = catSum / nCats;
-        }
-        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        let resp = await fetch(histUrl);
-        let data = await resp.json();
-        if(!data["Time Series (Daily)"]){
-          throw new Error("Unable to retrieve valid historical data.");
-        }
-        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if(prices.length < 2){
-          alert("Not enough historical data.");
-          document.getElementById('loading').style.display = 'none';
-          return;
-        }
-        document.getElementById('aggregateSection').style.display = 'block';
-        document.getElementById('descriptionSection').style.display = 'block';
-        document.getElementById('companyDescription').innerText = companyDesc;
-        if(categories){
-          document.getElementById('fundamentalSection').style.display = 'block';
-          plotFundamentalCategories(categories);
-          document.getElementById('fundamentalText').innerText =
-            `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
-        }
-        document.getElementById('techSection').style.display = 'block';
-        let techBull = updateTechChart(prices);
-        let mcStats = computeStats(prices);
-        let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
-        let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-        document.getElementById('mcSection').style.display = 'block';
-        let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-        let sentiments = await fetchSentimentData(ticker, periodMonths);
-        document.getElementById('sentSection').style.display = 'block';
-        let sentBull = updateSentimentChart(sentiments);
-        let insiderObj = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
-        document.getElementById('insiderSection').style.display = 'block';
-        let insiderBull = updateInsiderChart(insiderObj.totalBuys, insiderObj.totalSells);
-        let congressObj = await fetchCongressData(ticker, periodMonths);
-        document.getElementById('congressSection').style.display = 'block';
-        let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
-        let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
-        document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
-        document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
-        simulationReport = {
-          ticker,
-          periodMonths,
-          futureDate: futureDate.toDateString(),
-          mcBull,
-          techBull,
-          sentBull,
-          insiderBull,
-          congressBull,
-          fundamentalBull: fundBull,
-          aggregatedBull,
-          mcStats,
-          description: companyDesc,
-          regime
-        };
-      } catch(err) {
-        alert("Error: " + err.message);
-      }
-      document.getElementById('loading').style.display = 'none';
-    }
-
-    // Event listener for the simulate button
-    document.getElementById("simulateButton").addEventListener("click", () => {
-      showBufferOverlay();
-      runSimulation().then(() => {
-        hideBufferOverlay();
-      }).catch(() => {
-        hideBufferOverlay();
-      });
-    });
-
-    // Auto-populate futureDate input with next month's date
-    (function setDefaultFutureDate() {
-      const futureDateInput = document.getElementById('futureDate');
-      const today = new Date();
-      const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-      futureDateInput.value = nextMonthDate.toISOString().split('T')[0];
-    })();
-
-    // Update link button texts dynamically based on ticker input
-    function updateLinkButtonTexts(){
-      const ticker = document.getElementById('ticker').value.trim();
-      if(ticker){
-        document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
-        document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
-        document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
-        document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
-        document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
-      } else {
-        document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
-        document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
-        document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
-        document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
-        document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
-      }
-    }
-    document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
-    updateLinkButtonTexts();
-
-    // Link Buttons Event Listeners
-    document.getElementById("sentimentLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/sentiment?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        alert("Enter a ticker first.");
-      }
-    });
-    document.getElementById("technicalLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      const ticker = simulationReport.ticker;
-      const periodMonths = simulationReport.periodMonths;
-      const url = "https://www.intuitiontrades.com/technical/?symbol=" 
-                  + encodeURIComponent(ticker) 
-                  + "&period=" + periodMonths
-                  + "&autoFetch=true";
-      window.open(url, "_blank");
-    });
-    document.getElementById("insiderLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      const ticker = simulationReport.ticker;
-      const periodMonths = simulationReport.periodMonths;
-      const days = periodMonths * 30;
-      const url = "https://www.intuitiontrades.com/insider/?symbol=" 
-                + encodeURIComponent(ticker) 
-                + "&days=" + days
-                + "&autoFetch=true";
-      window.open(url, "_blank");
-    });
-    document.getElementById("congressLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      let ticker = simulationReport.ticker;
-      let periodMonths = simulationReport.periodMonths;
-      let days = periodMonths * 30;
-      let url = "https://www.intuitiontrades.com/congress/?symbol=" 
-                + encodeURIComponent(ticker) 
-                + "&days=" + days 
-                + "&autoFetch=true";
-      window.open(url, "_blank");
-    });
-    document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
-      let ticker = document.getElementById("ticker").value.trim();
-      if(ticker){
-        window.open("https://www.intuitiontrades.com/fundamental/?symbol=" + encodeURIComponent(ticker), "_blank");
-      } else {
-        alert("Enter a ticker.");
-      }
-    });
-  </script>
-
-    // The next line begins the explanation button event listener:
-
-    document.getElementById("explanationButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      let win = window.open("", "_blank");
-      if (!win) {
-        alert("Please allow popups.");
-        return;
-      }
-      let html = `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Detailed Simulation Report for ${simulationReport.ticker}</title>
-    <style>
-      body { 
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
-        background: #f9fafb; 
-        color: #333; 
-        margin: 0 auto; 
-        max-width: 900px; 
-        padding: 2rem; 
-        line-height: 1.6; 
-      }
-      h1, h2, h3 { text-align: center; }
-      section { margin-bottom: 2rem; }
-      pre { 
-        background: #eee; 
-        padding: 1rem; 
-        border-radius: 4px; 
-        overflow-x: auto; 
-      }
-      a { color: #2563eb; }
-      table {
-        border-collapse: collapse;
-        margin-top: 1rem;
-        width: 100%;
-      }
-      th, td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: left;
-      }
-      th { background: #f2f2f2; }
-      p { text-align: justify; }
-    </style>
-  </head>
-  <body>
-    <h1>Detailed Simulation Report for ${simulationReport.ticker}</h1>
-    
-    <!-- Input Parameters -->
-    <section>
-      <h2>Input Parameters</h2>
-      <p><strong>Ticker:</strong> ${simulationReport.ticker}</p>
-      <p><strong>Historical Period (months):</strong> ${simulationReport.periodMonths}</p>
-      <p><strong>Future Date:</strong> ${simulationReport.futureDate}</p>
-      <p><strong>Data Source:</strong> Alpha Vantage and Quiver APIs (via Project Manager Helper API)</p>
-      <p>This report uses historical daily adjusted data to generate forecasts and technical indicators, as well as fundamentals, sentiment, insider, and congress trading data.</p>
-    </section>
-    
-    <!-- Market Regime & Weighting Explanation -->
-    <section>
-      <h2>SPY Market Regime & Weight Distribution</h2>
-      <p><strong>Detected SPY Regime:</strong> ${simulationReport.regime}</p>
-      <p>
-        We automatically analyze SPY's <em>short vs. long SMA</em> plus the <em>daily closing slope</em> over the last ~4 months 
-        to classify the broader market as <strong>Bull, Bear, or Neutral.</strong> This influences how we weight each factor:
-      </p>
-
-      <h3>Bear Market</h3>
-      <p>
-        In a <strong>Bear</strong> regime, the system applies smaller weights to <em>Monte Carlo</em> and 
-        <em>Technical</em> because short-term technical patterns can be highly volatile and less reliable when 
-        the overall market is trending downward. Meanwhile, heavier weights go to <em>Insider</em> and 
-        <em>Fundamental</em> factors, as strong fundamentals and insider buying can better signal resilience 
-        in a bear phase. A smaller <em>scaling factor</em> (e.g., 0.25) is used to keep the final aggregated 
-        result more conservative, recognizing the downward pressure of a bear trend.
-      </p>
-      <pre>
-Bear Weights (example):
-Monte Carlo = 5%
-Technical   = 5%
-Sentiment   = 10%
-Insider     = 30%
-Fundamental = 30%
-Congress    = 20%
-Scaling     = 0.25
-      </pre>
-      <p>
-        Because these percentages sum to 1, each factor’s raw bullish score is first averaged according to the 
-        distribution above. Then, we shift that average around 50 and apply only a 25% scale (meaning the final 
-        aggregator is depressed toward neutrality).
-      </p>
-
-      <h3>Neutral Market</h3>
-      <p>
-        In a <strong>Neutral</strong> regime, the weighting is more balanced across all six factors. Monte Carlo, 
-        Technical, Sentiment, Insider, Fundamentals, and Congress each receive moderate allocations, and the 
-        <em>scaling factor</em> is around 0.50. This scenario recognizes that the market lacks a strong directional 
-        bias, so each factor contributes roughly equally:
-      </p>
-      <pre>
-Neutral Weights (example):
-Monte Carlo = 15%
-Technical   = 20%
-Sentiment   = 15%
-Insider     = 15%
-Fundamental = 20%
-Congress    = 15%
-Scaling     = 0.50
-      </pre>
-      <p>
-        Here, we multiply <code>(rawScore - 50)</code> by 0.5, gently nudging the final aggregator above or below 50 
-        in proportion to the combined signals.
-      </p>
-
-      <h3>Bull Market</h3>
-      <p>
-        In a <strong>Bull</strong> regime, we give higher weight to <em>Monte Carlo</em> and 
-        <em>Technical</em> signals, reflecting that short-term technical momentum is more likely to be predictive 
-        when the overall market trend is strongly upward. Meanwhile, <em>Insider</em> and <em>Fundamental</em> 
-        remain important, but they share a smaller slice if the market is aggressively bullish. The <em>scaling 
-        factor</em> often goes up to 1.0, meaning we apply the raw aggregated score with minimal damping:
-      </p>
-      <pre>
-Bull Weights (example):
-Monte Carlo = 20%
-Technical   = 25%
-Sentiment   = 15%
-Insider     = 15%
-Fundamental = 15%
-Congress    = 10%
-Scaling     = 1.00
-      </pre>
-      <p>
-        As a result, strong buy signals push the aggregator well above 50 in a bullish environment, reflecting 
-        the synergy between short-term price trends and improving sentiment.
-      </p>
-
-      <p>
-        If the user <strong>overrides</strong> these with manual weights that sum to 1.0 plus a valid scaling 
-        factor (0..2), those manual values are used instead. Otherwise, if manual input is invalid, 
-        we fall back to a simple equal average of all six factors (with no shift).
-      </p>
-    </section>
-
-    <!-- Monte Carlo Section -->
-    <section>
-      <h2>Monte Carlo Simulation using Geometric Brownian Motion (GBM)</h2>
-      <p><strong>Bullish Probability:</strong> ${simulationReport.mcBull.toFixed(2)}%</p>
-      <p><strong>Drift (μ):</strong> ${simulationReport.mcStats.mean.toFixed(4)}</p>
-      <p><strong>Volatility (σ):</strong> ${simulationReport.mcStats.stdDev.toFixed(4)}</p>
-      <pre>
-Sₜ = S₀ × exp[(μ – 0.5σ²) × T + σ × √T × Z]
-      </pre>
-      <p><strong>Explanation:</strong></p>
-      <ul>
-        <li><strong>S₀</strong>: The current stock price at the last available historical date.</li>
-        <li><strong>μ</strong>: Annualized drift, computed as mean of daily log returns × 252 (trading days/year).</li>
-        <li><strong>σ</strong>: Annualized volatility, computed as stdev of daily log returns × √252.</li>
-        <li><strong>T</strong>: Time in years from the last historical date to the future date.</li>
-        <li><strong>Z</strong>: Random draw from a standard normal distribution (Z ~ N(0,1)).</li>
-      </ul>
-      <p>
-        The simulation runs 10,000 iterations, generating a distribution of final prices. 
-        The <em>Bullish Probability</em> is the % of runs where the final price exceeds the current price. 
-        You can also choose a different target price via the slider and see the probability of exceeding it.
-      </p>
-    </section>
-    
-    <!-- Technical Indicators Section -->
-    <section>
-      <h2>Combined Technical Indicators</h2>
-      <p><strong>Technical Bullish Score:</strong> ${simulationReport.techBull.toFixed(2)}%</p>
-      <p>
-        This score is the arithmetic mean of four indicators (RSI, Bollinger Bands, MACD, and WMA), 
-        each mapped into a 0–100 bullish range. A score near 100 suggests strong technical buy signals, 
-        while near 0 suggests strong sell signals.
-      </p>
-
-      <h3>Indicator Breakdown</h3>
-      <ul>
-        <li>
-          <strong>RSI (Relative Strength Index):</strong> 
-          <br>
-          Uses a logistic-based transform around RSI=50 and accounts for daily change in RSI:
-          <pre>
-rel = 50 - RSI
-Base_RSI = 100 / (1 + exp(-0.05 × rel))
-dRSI = RSI(previous) - RSI(current)
-Score_RSI = Base_RSI × (1 + 0.01 × dRSI)
-          </pre>
-        </li>
-        <li>
-          <strong>Bollinger Bands:</strong>
-          <br>
-          We compute %B and apply:
-          <pre>
-%B = (Price - Lower Band) / (Upper Band - Lower Band)
-Base_BB = 100 / (1 + exp(3 × (%B - 0.5)))
-d%B = %B(previous) - %B(current)
-Score_BB = Base_BB × (1 + 0.1 × d%B)
-          </pre>
-        </li>
-        <li>
-          <strong>MACD (Regression-Based Scoring):</strong>
-          <br>
-          1) Position Score (logistic function on latest MACD)<br>
-          2) Gap Trend Score (polynomial regression to predict next MACD-signal gap)<br>
-          3) Momentum Score (polynomial regression on MACD histogram)
-          <p>The final MACD score is the average of these three sub-scores.</p>
-        </li>
-        <li>
-          <strong>WMA (Weighted Moving Average):</strong>
-          <pre>
-x = (Price / WMA) - 1
-Base_WMA = 100 / (1 + exp(-10 × x))
-dx = x(previous) - x(current)
-Score_WMA = Base_WMA × (1 + 0.5 × dx)
-          </pre>
-        </li>
-      </ul>
-      <p>
-        <em>Technical Bullish Score</em> = (RSI + Bollinger + MACD + WMA) / 4
-      </p>
-    </section>
-    
-    <!-- Sentiment Analysis Section -->
-    <section>
-      <h2>Sentiment Analysis (Logistic Transformation)</h2>
-      <p><strong>Sentiment Bullish Score:</strong> ${simulationReport.sentBull.toFixed(2)}%</p>
-      <p>
-        We gather news articles, convert each to a score from –1 to +1, then transform that into 0–100. 
-        We fit a simple linear trend to these hourly averages. The slope is passed through a logistic function 
-        (so extremely positive slopes approach 100, negative slopes approach 0), and the final sentiment score 
-        is an average of the slope-based score and the overall mean sentiment.
-      </p>
-      <pre>
-Score = 0.5 × (100 / [1 + e^(-k × slope)]) + 0.5 × (average sentiment)
-      </pre>
-      <p>
-        <em>k</em> is a scaling constant. This ensures that extremely steep trends yield near 0 or 100, 
-        while moderate slopes land in a mid-range.
-      </p>
-    </section>
-    
-    <!-- Insider Trading Section -->
-    <section>
-      <h2>Insider Trading Analysis</h2>
-      <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
-      <pre>
-Insider Score = ((Total Buys - Total Sells) / (Total Buys + Total Sells)) × 50 + 50
-      </pre>
-      <p>
-        The system filters insider transactions by date (within the historical period) and share price 
-        (within ±50% of the current price). Acquisitions add to "buys" and dispositions add to "sells." 
-        A net positive means more buying than selling, increasing the bullish score above 50.
-      </p>
-    </section>
-    
-    <!-- Congress Trading Section -->
-    <section>
-      <h2>Congress Trading Analysis</h2>
-      <p><strong>Congress Bullish Score:</strong> ${simulationReport.congressBull.toFixed(2)}%</p>
-      <pre>
-Congress Score = ((Total Purchase Amount - Total Sale Amount) / (Total Purchase Amount + Total Sale Amount)) × 50 + 50
-      </pre>
-      <p>
-        We collect publicly reported congressional trades over the chosen period, separate them 
-        into purchases and sales by dollar amount, and compute a net ratio. If total purchase amounts 
-        exceed sales, the Congress Bullish Score is above 50; if sales dominate, it goes below 50.
-      </p>
-    </section>
-    
-    <!-- Fundamental Analysis Section (Expanded) -->
-    <section>
-      <h2>Fundamental Analysis (Expanded Explanation)</h2>
-      <p><strong>Fundamental Score:</strong> ${simulationReport.fundamentalBull.toFixed(2)}%</p>
-
-      <p>This tool calculates five fundamental category scores for a given ticker:</p>
-      <ul>
-        <li><strong>Profitability</strong></li>
-        <li><strong>Valuation</strong></li>
-        <li><strong>Growth</strong></li>
-        <li><strong>Dividend & Return</strong></li>
-        <li><strong>Financial Health</strong></li>
-      </ul>
-
-      <p>Each category includes multiple metrics from the Alpha Vantage <code>OVERVIEW</code> API. We <em>normalize</em> each metric on a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Next, we average the metrics within each category for its score, and finally average across all five categories to get the <strong>aggregated fundamental score</strong>.</p>
-
-      <h3>Normalization Method</h3>
-      <p>We use simple linear normalization from <code>min</code> to <code>max</code>:</p>
-      <pre>
-ratio = (value - min) / (max - min)
-score = clamp(ratio × 100, 0, 100)
-      </pre>
-      <p>If a value exceeds <code>max</code>, it caps at 100. Below <code>min</code> goes to 0. Some metrics (like P/E) are inverted: <code>invertedScore = 100 - norm(value)</code>. The table below shows common ranges used:</p>
-      <table>
-        <thead>
-          <tr><th>Metric</th><th>Typical Bounds</th><th>Interpretation</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Profit Margin</td>
-            <td>0 to 25% (0.25)</td>
-            <td>Margin &gt; 25% is very high (score near 100)</td>
-          </tr>
-          <tr>
-            <td>P/E (Price-to-Earnings)</td>
-            <td>5 to 40</td>
-            <td>Lower P/E is better → invert the normalization</td>
-          </tr>
-          <tr>
-            <td>Beta</td>
-            <td>0 to 2</td>
-            <td>Beta=1 is neutral (~50); Beta=0 is stable (~100)</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Profitability</h3>
-      <p>Considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>Return on Assets</strong>, and <strong>Return on Equity</strong>. We assume typical upper ranges, then average the four normalized values for a single <strong>Profitability Score</strong>.</p>
-
-      <h3>Valuation</h3>
-      <p>Looks at <strong>P/E Ratio</strong>, <strong>PEG Ratio</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>. Since lower numbers typically suggest cheaper valuations, we do <code>100 - norm(value)</code> and average them into the <strong>Valuation Score</strong>.</p>
-
-      <h3>Growth</h3>
-      <p>Includes <strong>Quarterly Revenue Growth (YOY)</strong>, <strong>Quarterly Earnings Growth (YOY)</strong>, plus the difference between current price and <strong>Analyst Target Price</strong> (as a ratio). We normalize each and average them for the <strong>Growth Score</strong>.</p>
-
-      <h3>Dividend & Return</h3>
-      <p>Combines <strong>Dividend Yield</strong>, <strong>Dividend per Share</strong>, and <strong>Earnings per Share</strong>. We assume typical max bounds for each, normalize, then average them for the <strong>Dividend & Return Score</strong>.</p>
-
-      <h3>Financial Health</h3>
-      <p>Looks at <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (also inverted around 1). The average of these is the <strong>Financial Health Score</strong>.</p>
-
-      <h3>Final Aggregation</h3>
-      <p>After computing each category score, we simply take their average:</p>
-      <pre>
-Aggregated Fundamental Score
-= (Profitability + Valuation + Growth + Dividend & Return + Financial Health) / 5
-      </pre>
-      <p>A higher score implies stronger fundamentals relative to these generic thresholds, but always consider industry context and do your own research.</p>
-    </section>
-
-    <!-- Aggregated Score -->
-    <section>
-      <h2>Aggregated Bullish Score</h2>
-      <p><strong>Aggregated Score (all 6 factors):</strong> ${simulationReport.aggregatedBull.toFixed(2)}%</p>
-      <p>
-        We combine six distinct analyses — 
-        <em>Monte Carlo (MC), Technical Indicators, Sentiment, Insider, Congress, and Fundamentals</em> 
-        — each typically given equal weight (16.67% each). However, in this tool, the final weighting can be 
-        automatically adjusted based on the SPY market regime <em>(Bear, Neutral, or Bull)</em>, or overridden 
-        manually (if valid). This produces a single <strong>Aggregated Bullish Score</strong>.
-      </p>
-      <pre>
-Aggregated = WeightedSum - 50 all scaled, + 50
-      </pre>
-    </section>
-
-    <!-- Weighted Averages -->
-    <section>
-      <h2>Optional: Weighted Averages</h2>
-      <p>
-        By default, we rely on SPY-based or manual weighting. You may prefer a different approach if, for example, 
-        you have high conviction in Fundamentals or Insider metrics. An example weighting formula:
-      </p>
-      <pre>
-Weighted Score = ( w_MC × MC_Bull
-                 + w_Tech × Tech_Bull
-                 + w_Sent × Sent_Bull
-                 + w_Ins × Insider_Bull
-                 + w_Cong × Congress_Bull
-                 + w_Fund × Fundamental_Bull )
-</pre>
-      <p>…where all weights sum to 1. The final aggregator might also apply a “scale” factor around 50, 
-      reflecting the overall confidence in the signals. In a strongly bullish environment, scale might be 1.0; 
-      in a shaky or bear environment, scale might be 0.25, dampening the final reading closer to neutral.</p>
-    </section>
-
-    <!-- Disclaimers -->
-    <section>
-      <h2>Disclaimers</h2>
-      <p><strong>Market Data Disclaimer:</strong> The historical, fundamental, sentiment, insider trading, and congress trading data are provided by third-party APIs (Alpha Vantage, Quiver Quant) via the Project Manager Helper API and may not reflect real-time market conditions.</p>
-      <p><strong>Simulation Disclaimer:</strong> The Monte Carlo simulation assumes that future stock prices follow a lognormal distribution as described by Geometric Brownian Motion. Past performance is not necessarily indicative of future results.</p>
-      <p><strong>Analytical Disclaimer:</strong> These techniques and metrics are for informational purposes only and should not be construed as financial advice. Users should perform their own due diligence before making any investment decisions.</p>
-    </section>
-
-    <!-- Conclusion -->
-    <section>
-      <h2>Conclusion</h2>
-      <p>
-        This report integrates <em>Monte Carlo simulations, advanced technical indicators, sentiment analysis, 
-        insider trading activity, congress trading data, and fundamental metrics</em> into a single framework. 
-        Each method provides unique insights—from GBM-based probability distributions to continuous technical 
-        scores and fundamental health checks. The final aggregated bullish score merges these diverse signals 
-        to help inform your investment perspective.
-      </p>
-    </section>
-    
-    <!-- Company Description (Optional) -->
-    <section>
-      <h2>Company Description</h2>
-      <p>${simulationReport.description}</p>
-    </section>
-
-    <section style="text-align:center;">
-      <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
-    </section>
-
-  
-
-  </body>
-  </html>`;
-
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-});
-document.addEventListener("DOMContentLoaded", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has('ticker')) {
-    const tickerInput = document.getElementById('ticker');
-    if (tickerInput) {
-      tickerInput.value = urlParams.get('ticker');
-      updateLinkButtonTexts();
-    }
-    const simulateBtn = document.getElementById('simulateButton');
-    if (simulateBtn) {
-      setTimeout(() => {
-        simulateBtn.click();
-      }, 100);
-    }
+<style>
+  /* Updated dark, modern styling similar to main page */
+  :root {
+    --primary-bg: #111;
+    --secondary-bg: #333;
+    --accent-color: #16a34a;
+    --text-color: #fff;
+    --font-family: 'Arial', sans-serif;
+    --transition-speed: 0.3s;
   }
-});
-
-  </script>
-  
-</body>
-</html>
+  body {
+    font-family: var(--font-family);
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    margin: 0 auto;
+    max-width: 900px;
+    padding: 2rem;
+    line-height: 1.6;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  p, li {
+    margin-bottom: 0.75em;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 500;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: var(--accent-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--transition-speed);
+  }
+  button:hover {
+    background: #1e3a8a;
+  }
+  .section {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  .section h2 {
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  /* Aggregated bar meter styling */
+  #aggregateSection {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  #aggregateBar {
+    position: relative;
+    background: linear-gradient(to right, red, var(--accent-color));
+    height: 30px;
+    border-radius: 15px;
+    margin: 10px 0;
+  }
+  #aggregateMarker {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #fff;
+  }
+  #aggregateScoreText {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    line-height: 30px;
+    font-weight: bold;
+    color: var(--text-color);
+    text-shadow: 1px 1px 2px #000;
+  }
+  /* Chart container styling (Highcharts will render into these divs) */
+  .chartContainer {
+    margin-top: 20px;
+    height: 400px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  /* New overlay for simulation loading */
+  #countdownOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  #countdownOverlay .circle {
+    border: 8px solid #444;
+    border-top: 8px solid var(--accent-color);
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    animation: spin 2s linear infinite;
+    margin-bottom: 20px;
+  }
+  #loadingText {
+    font-size: 1.2rem;
+    color: var(--accent-color);
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  /* Back button style */
+  button.backBtn {
+    background: var(--accent-color);
+    margin-bottom: 20px;
+  }
+</style>

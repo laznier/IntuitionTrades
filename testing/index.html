@@ -5,195 +5,195 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Advanced Stock Analysis</title>
 
-  <!-- Include Highcharts and its histogram module -->
-  <script src="https://code.highcharts.com/highcharts.js"></script>
-  <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
   <!-- Include Math.js so that 'math' is defined -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
 
-  <style>
-    /* Updated dark, modern styling similar to main page */
-    :root {
-      --primary-bg: #111;
-      --secondary-bg: #333;
-      --accent-color: #16a34a;
-      --text-color: #fff;
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
-    }
-    body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      margin: 0 auto;
-      max-width: 900px;
-      padding: 2rem;
-      line-height: 1.6;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-    p, li {
-      margin-bottom: 0.75em;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 500;
-    }
-    input[type="text"],
-    input[type="number"],
-    input[type="date"] {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      font-size: 0.95rem;
-      background-color: var(--secondary-bg);
-      color: var(--text-color);
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
-    .section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    .section h2 {
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    /* Aggregated bar meter styling */
-    #aggregateSection {
-      display: none;
-      margin-top: 20px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    #aggregateBar {
-      position: relative;
-      background: linear-gradient(to right, red, var(--accent-color));
-      height: 30px;
-      border-radius: 15px;
-      margin: 10px 0;
-    }
-    #aggregateMarker {
-      position: absolute;
-      top: 0;
-      width: 2px;
-      height: 100%;
-      background: #fff;
-    }
-    #aggregateScoreText {
-      position: absolute;
-      width: 100%;
-      text-align: center;
-      line-height: 30px;
-      font-weight: bold;
-      color: var(--text-color);
-      text-shadow: 1px 1px 2px #000;
-    }
-    /* Chart container styling (Highcharts will render into these divs) */
-    .chartContainer {
-      margin-top: 20px;
-      height: 400px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    /* New overlay for simulation loading */
-    #countdownOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.85);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-    #countdownOverlay .circle {
-      border: 8px solid #444;
-      border-top: 8px solid var(--accent-color);
-      border-radius: 50%;
-      width: 100px;
-      height: 100px;
-      animation: spin 2s linear infinite;
-      margin-bottom: 20px;
-    }
-    #loadingText {
-      font-size: 1.2rem;
-      color: var(--accent-color);
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    /* Back button style */
-    button.backBtn {
-      background: var(--accent-color);
-      margin-bottom: 20px;
-    }
-  </style>
+  
 </head>
+<style>
+  /* Updated dark, modern styling similar to main page */
+  :root {
+    --primary-bg: #111;
+    --secondary-bg: #333;
+    --accent-color: #16a34a;
+    --text-color: #fff;
+    --font-family: 'Arial', sans-serif;
+    --transition-speed: 0.3s;
+  }
+  body {
+    font-family: var(--font-family);
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    margin: 0 auto;
+    max-width: 900px;
+    padding: 2rem;
+    line-height: 1.6;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  p, li {
+    margin-bottom: 0.75em;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 500;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: var(--accent-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--transition-speed);
+  }
+  button:hover {
+    background: #1e3a8a;
+  }
+  .section {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  .section h2 {
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  /* Aggregated bar meter styling */
+  #aggregateSection {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  #aggregateBar {
+    position: relative;
+    background: linear-gradient(to right, red, var(--accent-color));
+    height: 30px;
+    border-radius: 15px;
+    margin: 10px 0;
+  }
+  #aggregateMarker {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #fff;
+  }
+  #aggregateScoreText {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    line-height: 30px;
+    font-weight: bold;
+    color: var(--text-color);
+    text-shadow: 1px 1px 2px #000;
+  }
+  /* Chart container styling (Highcharts will render into these divs) */
+  .chartContainer {
+    margin-top: 20px;
+    height: 400px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  /* New overlay for simulation loading */
+  #countdownOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  #countdownOverlay .circle {
+    border: 8px solid #444;
+    border-top: 8px solid var(--accent-color);
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    animation: spin 2s linear infinite;
+    margin-bottom: 20px;
+  }
+  #loadingText {
+    font-size: 1.2rem;
+    color: var(--accent-color);
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  /* Back button style */
+  button.backBtn {
+    background: var(--accent-color);
+    margin-bottom: 20px;
+  }
+</style>
 <body>
   <!-- Back to Main Page button -->
-  <button class="backBtn" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 
   <h1>Advanced Stock Analysis</h1>
-  <p>
-    Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.
-    Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.
-  </p>
+  <p>Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
+  Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.</p>
 
-  <!-- Input Section -->
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
   
   <label for="futureDate">Future Date:</label>
   <input type="date" id="futureDate">
 
+  <!-- Manual override for historical period (optional) -->
   <label style="margin-top:15px;">
     <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
   </label>
-  <div id="manualPeriodDiv" style="display:none;">
+  <div id="manualPeriodDiv">
     <label for="manualPeriod">Historical Period (months):</label>
     <input type="number" id="manualPeriod" min="1">
   </div>
 
+  <!-- Weights & Scaling override checkbox -->
   <label style="margin-top:15px;">
     <input type="checkbox" id="useManualWeightsCheckbox"> Use Manual Weights &amp; Scaling
   </label>
-  <div id="manualWeightsSection" style="display:none;">
-    <label>Select Market Regime (for quick auto-fill):
+  <div id="manualWeightsSection">
+    <label>Select Market Regime (for quick auto-fill): 
       <select id="manualRegimeSelect">
         <option value="Neutral">Neutral</option>
         <option value="Bull">Bull</option>
         <option value="Bear">Bear</option>
       </select>
     </label>
+
     <label>Monte Carlo Weight (0..1):
       <input type="number" id="wMC" value="0.10" min="0" max="1" step="0.01">
     </label>
@@ -233,55 +233,56 @@
     </div>
   </div>
 
-  <!-- Company Description Section -->
+  <!-- Company Description -->
   <div id="descriptionSection" class="section" style="display:none;">
     <h2>Company Overview</h2>
     <p id="companyDescription"></p>
   </div>
-  <!-- Fundamental Analysis Section -->
+
+  <!-- Fundamental Section -->
   <div id="fundamentalSection">
     <h2>Fundamental Analysis Score</h2>
-    <div id="fundamentalCharts" class="chartContainer"></div>
+    <div id="fundamentalCharts" style="height:400px;"></div>
     <div id="fundamentalText" style="margin-top:10px; font-weight:600;"></div>
     <button id="fundamentalLinkButton">More Fundamental Analysis</button>
   </div>
 
-  <!-- Technical Analysis Section -->
+  <!-- Technical -->
   <div id="techSection" class="section" style="display:none;">
     <h2>Technical Bullish Score</h2>
-    <div id="techChart" class="chartContainer"></div>
+    <div id="techChart"></div>
     <div id="techDetails" style="margin-top:10px; font-weight:600;"></div>
     <button id="technicalLinkButton">More Technical Analysis</button>
   </div>
 
-  <!-- Monte Carlo Simulation Section -->
+  <!-- Monte Carlo -->
   <div id="mcSection" class="section" style="display:none;">
     <h2>Monte Carlo Simulation (GBM)</h2>
-    <div id="mcChart" class="chartContainer"></div>
+    <div id="mcChart"></div>
     <div id="mcBullScore" style="margin-top:10px; font-weight:600;"></div>
     <div id="mcSliderSection" style="margin-top: 20px;"></div>
   </div>
 
-  <!-- Sentiment Analysis Section -->
+  <!-- Sentiment -->
   <div id="sentSection" class="section" style="display:none;">
     <h2>Sentiment Analysis</h2>
-    <div id="sentChart" class="chartContainer"></div>
+    <div id="sentChart"></div>
     <div id="sentDetails" style="margin-top:10px; font-weight:600;"></div>
     <button id="sentimentLinkButton">More Sentiment Analysis</button>
   </div>
 
-  <!-- Insider Trading Section -->
+  <!-- Insider -->
   <div id="insiderSection" class="section" style="display:none;">
     <h2>Insider Trading Activity</h2>
-    <div id="insiderChart" class="chartContainer"></div>
+    <div id="insiderChart"></div>
     <div id="insiderDetails" style="margin-top:10px; font-weight:600;"></div>
     <button id="insiderLinkButton">More Insider Analysis</button>
   </div>
 
-  <!-- Congress Trading Section -->
+  <!-- Congress -->
   <div id="congressSection" class="section" style="display:none;">
     <h2>Congress Trading Activity</h2>
-    <div id="congressChart" class="chartContainer"></div>
+    <div id="congressChart"></div>
     <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
     <div class="linkButtons">
       <button id="congressLinkButton">More Congress Analysis</button>
@@ -289,14 +290,14 @@
   </div>
 
   <!-- Explanation Section -->
-  <div id="explanation" class="section" style="text-align:center;">
+  <div id="explanation">
     <button id="explanationButton">View Detailed Explanation</button>
   </div>
 
-  <!-- Buffer Overlay -->
+  <!-- NEW: Circular Buffer Overlay (Spinning Circle and Animated Text) -->
   <div id="countdownOverlay">
     <div class="circle"></div>
-    <div id="loadingText">Running 10,000 simulations</div>
+    <div id="loadingText">Analysing data and running 10,000 simulations</div>
   </div>
 
   <script>
@@ -322,12 +323,14 @@
       document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
     });
 
-    // Show/hide manual weights (only one event listener needed)
-    document.getElementById("useManualWeightsCheckbox").addEventListener("change", function() {
-      document.getElementById("manualWeightsSection").style.display = this.checked ? "block" : "none";
+    // Show/hide manual weights
+    const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
+    const manualWeightsSection = document.getElementById("manualWeightsSection");
+    useManualWeightsCheckbox.addEventListener("change", () => {
+      manualWeightsSection.style.display = useManualWeightsCheckbox.checked ? "block" : "none";
     });
 
-    // If user changes the manualRegimeSelect, auto-fill weights
+    // If user changes the manualRegimeSelect
     document.getElementById("manualRegimeSelect").addEventListener("change", function(){
       const val = this.value;
       if(val==="Bear"){
@@ -357,11 +360,12 @@
         document.getElementById("manualScale").value = 0.50;
       }
     });
+
     /***********************************************
      * UTILITY, FUNDAMENTALS, TECHNICAL, MONTE CARLO,
      * SENTIMENT, INSIDER, CONGRESS - same as user code
      ***********************************************/
-     function parseAlphaDate(str) {
+    function parseAlphaDate(str) {
       const year  = str.substring(0,4);
       const month = str.substring(4,6);
       const day   = str.substring(6,8);
@@ -391,48 +395,48 @@
     function computeFundScores(data) {
       const norm = (val, min, max) => {
         if(!val || isNaN(val)) return 50;
-        let ratio = (val - min)/(max - min);
-        let scaled = ratio*100;
+        let ratio= (val - min)/(max - min);
+        let scaled= ratio*100;
         return Math.max(0, Math.min(100, scaled));
       };
-      let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
-      let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
-      let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
-      let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
-      let profitability = (margin + opMarg + roa + roe) / 4;
-      let pe = parseFloat(data.PERatio);
-      let peScore = 100 - norm(pe, 5, 40);
-      let peg = parseFloat(data.PEGRatio);
-      let pegScore = 100 - norm(peg, 0.5, 2.5);
-      let ps = parseFloat(data.PriceToSalesRatioTTM);
-      let psScore = 100 - norm(ps, 1, 10);
-      let pb = parseFloat(data.PriceToBookRatio);
-      let pbScore = 100 - norm(pb, 1, 10);
-      let valuation = (peScore + pegScore + psScore + pbScore) / 4;
-      let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
-      let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
-      let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
-      let ratio = 0;
-      if(pRef > 0 && data.AnalystTargetPrice){
-        ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
+      let margin = norm(parseFloat(data.ProfitMargin),0,0.25);
+      let opMarg = norm(parseFloat(data.OperatingMarginTTM),0,0.3);
+      let roa    = norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
+      let roe    = norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
+      let profitability = (margin+ opMarg+ roa+ roe)/4;
+      let pe= parseFloat(data.PERatio);
+      let peScore= 100- norm(pe,5,40);
+      let peg= parseFloat(data.PEGRatio);
+      let pegScore= 100- norm(peg,0.5,2.5);
+      let ps= parseFloat(data.PriceToSalesRatioTTM);
+      let psScore= 100- norm(ps,1,10);
+      let pb= parseFloat(data.PriceToBookRatio);
+      let pbScore= 100- norm(pb,1,10);
+      let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
+      let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
+      let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
+      let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
+      let ratio=0;
+      if(pRef>0 && data.AnalystTargetPrice){
+        ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
       }
-      let tgtScore = norm(ratio, 0, 0.5);
-      let growth = (rg + eg + tgtScore) / 3;
-      let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
-      let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
-      let eps = norm(parseFloat(data.EPS), 0, 12);
-      let dividends = (dy + dps + eps) / 3;
-      let ebitda = parseFloat(data.EBITDA);
-      let revTTM = parseFloat(data.RevenueTTM);
-      let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
-      let evEbitda = parseFloat(data.EVToEBITDA);
-      let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
-      let beta = parseFloat(data.Beta);
-      let betaScore = 50;
+      let tgtScore= norm(ratio, 0, 0.5);
+      let growth= (rg+ eg+ tgtScore)/3;
+      let dy= norm(parseFloat(data.DividendYield),0,0.07);
+      let dps= norm(parseFloat(data.DividendPerShare),0,10);
+      let eps= norm(parseFloat(data.EPS),0,12);
+      let dividends= (dy+ dps+ eps)/3;
+      let ebitda= parseFloat(data.EBITDA);
+      let revTTM= parseFloat(data.RevenueTTM);
+      let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3):50;
+      let evEbitda= parseFloat(data.EVToEBITDA);
+      let evEbitdaScore= 100- norm(evEbitda,5,30);
+      let beta= parseFloat(data.Beta);
+      let betaScore= 50;
       if(!isNaN(beta)){
-        betaScore = 100 - norm(beta, 0, 2);
+        betaScore= 100- norm(beta,0,2);
       }
-      let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+      let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
       return {
         profitability,
         valuation,
@@ -450,31 +454,331 @@
         xLabels.push(key.charAt(0).toUpperCase() + key.slice(1));
         yValues.push(value);
       }
-      // Using Highcharts for fundamental categories bar chart
-      Highcharts.chart('fundamentalCharts', {
-        chart: { type: 'bar', backgroundColor: 'transparent' },
-        title: { text: 'Fundamental Categories', style: { color: textColor } },
-        xAxis: {
-          categories: xLabels,
-          labels: { style: { color: textColor } }
-        },
-        yAxis: {
-          min: 0,
-          max: 100,
-          title: { text: 'Score', style: { color: textColor } },
-          labels: { style: { color: textColor } }
-        },
-        series: [{
-          name: 'Score',
-          data: yValues,
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
+      const data = [{
+        x: xLabels,
+        y: yValues,
+        type: 'bar',
+        marker: {
+          color: yValues,
+          cmin: 0,
+          cmax: 100,
+          colorscale: [
+            [0, 'rgba(220,20,60,0.8)'],
+            [1, 'rgba(34,139,34,0.8)']
+          ]
+        }
+      }];
+      const layout = {
+        title: 'Fundamental Categories',
+        yaxis: { range: [0, 100] },
+        margin: { t: 50 }
+      };
+      Plotly.newPlot('fundamentalCharts', data, layout);
     }
-
-    // Statistical functions for Monte Carlo simulation
+    function computeEMA(prices, period) {
+      let ema = [];
+      let multi = 2 / (period + 1);
+      let sum = 0;
+      for (let i = 0; i < period; i++) {
+        sum += prices[i].close;
+      }
+      let prevEma = sum / period;
+      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+      for (let i = period; i < prices.length; i++){
+        let cur = prices[i].close;
+        let next = (cur - prevEma) * multi + prevEma;
+        ema[i] = { date: prices[i].date, ema: next };
+        prevEma = next;
+      }
+      return ema.filter(x => x !== undefined);
+    }
+    function computeMACD(prices, fast=12, slow=26, signal=9) {
+      let fastEMA = computeEMA(prices, fast);
+      let slowEMA = computeEMA(prices, slow);
+      let macdLine = [];
+      for(let i = 0; i < slowEMA.length; i++){
+        let date = slowEMA[i].date;
+        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+        if(match){
+          macdLine.push({ date, macd: match.ema - slowEMA[i].ema });
+        }
+      }
+      if(macdLine.length < signal) return { macdLine, signalLine: [] };
+      let m = 2 / (signal + 1);
+      let sumMacd = 0;
+      for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
+      let prevSig = sumMacd / signal;
+      let signalLine = [];
+      signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
+      for(let i = signal; i < macdLine.length; i++){
+        let s = (macdLine[i].macd - prevSig) * m + prevSig;
+        signalLine[i] = { date: macdLine[i].date, signal: s };
+        prevSig = s;
+      }
+      signalLine = signalLine.filter(x => x !== undefined);
+      return { macdLine, signalLine };
+    }
+    function computeRSI(prices, period=14){
+      let rsis = [];
+      for(let i = period; i < prices.length; i++){
+        let gains = 0, losses = 0;
+        for(let j = i - period + 1; j <= i; j++){
+          let diff = prices[j].close - prices[j-1].close;
+          if(diff > 0) gains += diff; else losses -= diff;
+        }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+        let rsi = 100 - (100 / (1 + rs));
+        rsis.push({ date: prices[i].date, rsi });
+      }
+      return rsis;
+    }
+    function computeBollingerBands(prices, period=20, k=2){
+      let bands = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let sma = slice.reduce((a, b) => a + b, 0) / period;
+        let variance = slice.reduce((sum, val) => sum + (val - sma) ** 2, 0) / period;
+        let std = Math.sqrt(variance);
+        bands.push({
+          date: prices[i].date,
+          sma,
+          upper: sma + k * std,
+          lower: sma - k * std
+        });
+      }
+      return bands;
+    }
+    function computeWMA(prices, period=20){
+      let wmas = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let numerator = 0, denominator = 0;
+        for(let j = 0; j < period; j++){
+          let weight = j + 1;
+          numerator += slice[j] * weight;
+          denominator += weight;
+        }
+        wmas.push({ date: prices[i].date, wma: numerator / denominator });
+      }
+      return wmas;
+    }
+    function scoreRSI(latestRSI, prevRSI){
+      let rel = 50 - latestRSI;
+      let base = 100 / (1 + Math.exp(-0.05 * rel));
+      let dRSI = prevRSI - latestRSI;
+      return base * (1 + 0.01 * dRSI);
+    }
+    function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
+      let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+      let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+      let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+      let dPercentB = prevPercentB - currentPercentB;
+      return baseBB * (1 + 0.1 * dPercentB);
+    }
+    function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
+      let currentX = (latestPrice / latestWMA) - 1;
+      let prevX = (prevPrice / prevWMA) - 1;
+      let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+      let dx = prevX - currentX;
+      return baseWMA * (1 + 0.5 * dx);
+    }
+    function polynomialRegression(x, y, degree){
+      let X = [];
+      for(let i = 0; i < x.length; i++){
+        let row = [];
+        for(let j = 0; j <= degree; j++){
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      let XT = math.transpose(X);
+      let XTX = math.multiply(XT, X);
+      let XTy = math.multiply(XT, y);
+      let coeffsMatrix = math.lusolve(XTX, XTy);
+      const coeffs = coeffsMatrix.map(val => val[0]);
+      return coeffs;
+    }
+    function predictValue(coeffs, x){
+      return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
+    }
+    function computeMomentumScoreUsingRegression(histValues){
+      if(histValues.length < 6) return null;
+      const recent = histValues.slice(-6);
+      const x = [1, 2, 3, 4, 5, 6];
+      const coeffs = polynomialRegression(x, recent, 3);
+      const predicted = predictValue(coeffs, 7);
+      const lastValue = recent[recent.length - 1];
+      const delta = predicted - lastValue;
+      const k = 5;
+      const score = 100 / (1 + Math.exp(-k * delta));
+      return score;
+    }
+    function computeGapTrendScore(macdLine, signalLine){
+      if(macdLine.length < 6 || signalLine.length < 6) return null;
+      const recentMACD = macdLine.slice(-6).map(item => item.macd);
+      const recentSignal = signalLine.slice(-6).map(item => item.signal);
+      const x = [1, 2, 3, 4, 5, 6];
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+      const predictedMACD = predictValue(macdCoeffs, 7);
+      const predictedSignal = predictValue(signalCoeffs, 7);
+      const predictedGap = predictedMACD - predictedSignal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const delta = predictedGap - currentGap;
+      const k = 5;
+      const gapScore = 100 / (1 + Math.exp(-k * delta));
+      return { gapScore, delta, currentGap, predictedGap };
+    }
+    function computeNewMACDScore(prices){
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if(macdLine.length < 2 || signalLine.length < 2) return 50;
+      const len = Math.min(macdLine.length, signalLine.length);
+      const latestMACD = macdLine[len - 1].macd;
+      const positionScore = 100 / (1 + Math.exp(latestMACD));
+      const gapData = computeGapTrendScore(macdLine, signalLine);
+      const gapScore = gapData ? gapData.gapScore : 50;
+      let histValues = [];
+      for(let i = 0; i < len; i++){
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
+      return finalScore;
+    }
+    function updateTechChart(prices){
+      let bands = computeBollingerBands(prices);
+      let wmas = computeWMA(prices);
+      let rsis = computeRSI(prices);
+      let macdData = computeMACD(prices);
+      let priceTrace = {
+        x: prices.map(p => p.date),
+        y: prices.map(p => p.close),
+        mode: 'lines+markers',
+        name: 'Historical'
+      };
+      let smaTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.sma),
+        mode: 'lines',
+        line: { dash:'dash', color:'#555' },
+        name: 'Bollinger SMA'
+      };
+      let upperTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.upper),
+        mode: 'lines',
+        line: { color:'red' },
+        name: 'Upper Band'
+      };
+      let lowerTrace = {
+        x: bands.map(b => b.date),
+        y: bands.map(b => b.lower),
+        mode: 'lines',
+        line: { color:'red' },
+        name: 'Lower Band'
+      };
+      let wmaTrace = {
+        x: wmas.map(w => w.date),
+        y: wmas.map(w => w.wma),
+        mode: 'lines',
+        line: { color:'orange' },
+        name: 'WMA'
+      };
+      let macdTrace = {
+        x: macdData.macdLine.map(m => m.date),
+        y: macdData.macdLine.map(m => m.macd),
+        mode: 'lines',
+        name: 'MACD',
+        xaxis: 'x2',
+        yaxis: 'y2'
+      };
+      let signalTrace = {
+        x: macdData.signalLine.map(s => s.date),
+        y: macdData.signalLine.map(s => s.signal),
+        mode: 'lines',
+        name: 'Signal',
+        xaxis: 'x2',
+        yaxis: 'y2'
+      };
+      let rsivals = computeRSI(prices, 14);
+      let rsiTrace = {
+        x: rsivals.map(r => r.date),
+        y: rsivals.map(r => r.rsi),
+        mode: 'lines',
+        name: 'RSI',
+        xaxis: 'x3',
+        yaxis: 'y3'
+      };
+      let layout = {
+        grid: { rows: 3, columns: 1, roworder:'top to bottom' },
+        margin: { t: 80 },
+        xaxis: { domain: [0,1], anchor: 'y', title: 'Date' },
+        yaxis: { domain: [0.55,1], title: 'Price' },
+        xaxis2: { domain: [0,1], anchor: 'y2', title: 'Date' },
+        yaxis2: { domain: [0.3,0.55], title: 'MACD' },
+        xaxis3: { domain: [0,1], anchor: 'y3', title: 'Date' },
+        yaxis3: { domain: [0,0.3], title: 'RSI' },
+        shapes: [
+          {
+            type: 'line',
+            xref: 'x3', yref: 'y3',
+            x0: Math.min(...rsivals.map(r => r.date)),
+            x1: Math.max(...rsivals.map(r => r.date)),
+            y0: 30, y1: 30,
+            line: { dash:'dash', color:'red' }
+          },
+          {
+            type: 'line',
+            xref: 'x3', yref: 'y3',
+            x0: Math.min(...rsivals.map(r => r.date)),
+            x1: Math.max(...rsivals.map(r => r.date)),
+            y0: 70, y1: 70,
+            line: { dash:'dash', color:'red' }
+          }
+        ],
+        title: "Combined Technical Indicators"
+      };
+      Plotly.newPlot('techChart', [
+        priceTrace, smaTrace, upperTrace, lowerTrace,
+        wmaTrace, macdTrace, signalTrace, rsiTrace
+      ], layout);
+      if(prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2){
+        document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+        return 50;
+      }
+      let latestPrice = prices[prices.length - 1].close;
+      let prevPrice = prices[prices.length - 2].close;
+      let latestRSI = rsivals[rsivals.length - 1].rsi;
+      let prevRSI = rsivals[rsivals.length - 2].rsi;
+      let rsiScore = scoreRSI(latestRSI, prevRSI);
+      let latestBand = bands[bands.length - 1];
+      let prevBand = bands[bands.length - 2];
+      let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
+      let macdScore = computeNewMACDScore(prices);
+      let latestWMA = wmas[wmas.length - 1].wma;
+      let prevWMA = wmas[wmas.length - 2].wma;
+      let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
+      let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
+      document.getElementById('techDetails').innerText =
+        `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
+      return aggregatedScore;
+    }
+    function randn_bm() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function getMedian(arr) {
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      if(sorted.length % 2 !== 0) return sorted[mid];
+      return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
     function computeStats(prices) {
       let logReturns = [];
       for(let i = 1; i < prices.length; i++){
@@ -506,20 +810,13 @@
     }
     function updateMCChart(finalPrices, lastPrice) {
       globalFinalPrices = finalPrices;
-      // Using Highcharts for MC distribution chart
-      Highcharts.chart('mcChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Monte Carlo Distribution of Final Prices', style: { color: textColor } },
-        xAxis: { title: { text: 'Price', style: { color: textColor } } },
-        yAxis: { title: { text: 'Frequency', style: { color: textColor } } },
-        series: [{
-          name: 'Frequency',
-          data: finalPrices,
-          color: '#888'
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
+      let trace = { x: finalPrices, type: 'histogram', marker: { color: 'gray' } };
+      let layout = {
+        title: "Monte Carlo Distribution of Final Prices",
+        xaxis: { title: "Price" },
+        yaxis: { title: "Frequency" }
+      };
+      Plotly.newPlot("mcChart", [trace], layout);
       let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
       let bullishScore = (countCurrent / finalPrices.length) * 100;
       document.getElementById('mcBullScore').innerText =
@@ -550,7 +847,15 @@
       let sliderProb = (countTarget / globalFinalPrices.length) * 100;
       document.getElementById('mcSliderProb').innerText =
         `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
-      // Optionally, update the chart with a plot line via Highcharts chart.update() if desired.
+      Plotly.relayout("mcChart", {
+        shapes: [{
+          type: 'line',
+          xref: 'x', yref: 'paper',
+          x0: val, x1: val,
+          y0: 0, y1: 1,
+          line: { color: 'red', width: 2 }
+        }]
+      });
     }
     function logisticBullish(slope) {
       const k = 0.3;
@@ -589,29 +894,54 @@
       return sentiments;
     }
     function updateSentimentChart(sentiments) {
-      // Using Highcharts for sentiment line chart
-      Highcharts.chart('sentChart', {
-        chart: { type: 'line', backgroundColor: 'transparent' },
-        title: { text: 'Sentiment Analysis', style: { color: textColor } },
-        xAxis: {
-          type: 'datetime',
-          title: { text: 'Date', style: { color: textColor } },
-          labels: { style: { color: textColor } }
-        },
-        yAxis: {
-          title: { text: 'Sentiment (0–100)', style: { color: textColor } },
-          min: 0, max: 100,
-          labels: { style: { color: textColor } }
-        },
-        series: [{
-          name: 'Sentiment',
-          data: sentiments.map(s => [s.date.getTime(), s.sentiment])
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
-      document.getElementById('sentDetails').innerText = "Sentiment Score: 50%";
-      return 50;
+      let traceRaw = {
+        x: sentiments.map(s => s.date),
+        y: sentiments.map(s => s.sentiment),
+        mode: 'markers+lines',
+        name: 'Sentiment'
+      };
+      if(sentiments.length < 2) {
+        Plotly.newPlot("sentChart", [traceRaw], {
+          title: "Sentiment Analysis",
+          xaxis: { title: "Date" },
+          yaxis: { title: "Sentiment (0..100)" }
+        });
+        document.getElementById('sentDetails').innerText = "Insufficient data => 50.";
+        return 50;
+      }
+      let firstDate = sentiments[0].date;
+      let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24));
+      let ys = sentiments.map(s => s.sentiment);
+      let n = xs.length;
+      let sumX = xs.reduce((a, b) => a + b, 0);
+      let sumY = ys.reduce((a, b) => a + b, 0);
+      let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+      let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+      let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      let intercept = (sumY - slope * sumX) / n;
+      let minDate = sentiments[0].date;
+      let maxDate = sentiments[sentiments.length - 1].date;
+      let trendYstart = intercept + slope * xs[0];
+      let trendYend = intercept + slope * xs[xs.length - 1];
+      let traceTrend = {
+        x: [minDate, maxDate],
+        y: [trendYstart, trendYend],
+        mode: 'lines',
+        line: { dash: 'dash', color: 'red' },
+        name: 'Trend'
+      };
+      let layout = {
+        title: "Sentiment Analysis",
+        xaxis: { title: "Date" },
+        yaxis: { title: "Sentiment (0..100)" }
+      };
+      Plotly.newPlot("sentChart", [traceRaw, traceTrend], layout);
+      let slopeBull = logisticBullish(slope);
+      let avgSentiment = sumY / n;
+      let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
+      document.getElementById('sentDetails').innerText =
+        `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
+      return finalBullishScore;
     }
     async function fetchInsiderData(ticker, periodMonths, currentPrice) {
       const url = `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
@@ -637,20 +967,14 @@
       return { totalBuys, totalSells };
     }
     function updateInsiderChart(totalBuys, totalSells) {
-      // Using Highcharts for insider activity column chart
-      Highcharts.chart('insiderChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Insider Activity', style: { color: textColor } },
-        xAxis: { categories: ['Bought', 'Sold'], labels: { style: { color: textColor } } },
-        yAxis: { title: { text: 'Shares', style: { color: textColor } }, labels: { style: { color: textColor } } },
-        series: [{
-          name: 'Insider Activity',
-          data: [totalBuys, totalSells],
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
+      const trace = {
+        x: ["Bought", "Sold"],
+        y: [totalBuys, totalSells],
+        type: 'bar',
+        marker: { color: ["green", "red"] }
+      };
+      const layout = { title: "Insider Activity (Shares Bought vs. Sold)" };
+      Plotly.newPlot("insiderChart", [trace], layout);
       let sum = totalBuys + totalSells;
       let insiderBull = 50;
       if(sum > 0){
@@ -682,20 +1006,14 @@
       return { totalPurchase, totalSale };
     }
     function updateCongressChart(totalPurchase, totalSale) {
-      // Using Highcharts for congress trading column chart
-      Highcharts.chart('congressChart', {
-        chart: { type: 'column', backgroundColor: 'transparent' },
-        title: { text: 'Congress Trading (Monetary Amounts)', style: { color: textColor } },
-        xAxis: { categories: ['Purchase Amount', 'Sale Amount'], labels: { style: { color: textColor } } },
-        yAxis: { title: { text: 'Amount', style: { color: textColor } }, labels: { style: { color: textColor } } },
-        series: [{
-          name: 'Congress Trading',
-          data: [totalPurchase, totalSale],
-          colorByPoint: true
-        }],
-        credits: { enabled: false },
-        legend: { itemStyle: { color: textColor } }
-      });
+      const trace = {
+        x: ["Purchase Amount", "Sale Amount"],
+        y: [totalPurchase, totalSale],
+        type: 'bar',
+        marker: { color: ["green", "red"] }
+      };
+      const layout = { title: "Congress Trading (Monetary Amounts)" };
+      Plotly.newPlot("congressChart", [trace], layout);
       let sum = totalPurchase + totalSale;
       let congressBull = 50;
       if(sum > 0){
