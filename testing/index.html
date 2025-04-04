@@ -215,7 +215,9 @@
   </div>
 
   <button id="simulateButton">Run Simulation</button>
-  <div id="loading" style="display:none; color: var(--accent-color); margin-top:10px;">Loading data and running simulation...</div>
+  <div id="loading" style="display:none; color: var(--accent-color); margin-top:10px;">
+    Loading data and running simulation...
+  </div>
 
   <!-- Aggregated Signal Bar Meter -->
   <div id="aggregateSection" class="section">
@@ -230,12 +232,13 @@
     </div>
   </div>
 
-  <!-- Other Sections -->
+  <!-- Company Description -->
   <div id="descriptionSection" class="section" style="display:none;">
     <h2>Company Overview</h2>
     <p id="companyDescription"></p>
   </div>
 
+  <!-- Fundamental Analysis Section -->
   <div id="fundamentalSection" class="section" style="display:none;">
     <h2>Fundamental Analysis Score</h2>
     <div id="fundamentalCharts" class="chartContainer"></div>
@@ -243,6 +246,7 @@
     <button id="fundamentalLinkButton">More Fundamental Analysis</button>
   </div>
 
+  <!-- Technical Analysis Section -->
   <div id="techSection" class="section" style="display:none;">
     <h2>Technical Bullish Score</h2>
     <div id="techChart" class="chartContainer"></div>
@@ -250,6 +254,7 @@
     <button id="technicalLinkButton">More Technical Analysis</button>
   </div>
 
+  <!-- Monte Carlo Simulation Section -->
   <div id="mcSection" class="section" style="display:none;">
     <h2>Monte Carlo Simulation (GBM)</h2>
     <div id="mcChart" class="chartContainer"></div>
@@ -257,6 +262,7 @@
     <div id="mcSliderSection" style="margin-top: 20px;"></div>
   </div>
 
+  <!-- Sentiment Analysis Section -->
   <div id="sentSection" class="section" style="display:none;">
     <h2>Sentiment Analysis</h2>
     <div id="sentChart" class="chartContainer"></div>
@@ -264,6 +270,7 @@
     <button id="sentimentLinkButton">More Sentiment Analysis</button>
   </div>
 
+  <!-- Insider Trading Section -->
   <div id="insiderSection" class="section" style="display:none;">
     <h2>Insider Trading Activity</h2>
     <div id="insiderChart" class="chartContainer"></div>
@@ -271,6 +278,7 @@
     <button id="insiderLinkButton">More Insider Analysis</button>
   </div>
 
+  <!-- Congress Trading Section -->
   <div id="congressSection" class="section" style="display:none;">
     <h2>Congress Trading Activity</h2>
     <div id="congressChart" class="chartContainer"></div>
@@ -280,22 +288,23 @@
     </div>
   </div>
 
+  <!-- Explanation Section -->
   <div id="explanation" class="section" style="text-align:center;">
     <button id="explanationButton">View Detailed Explanation</button>
   </div>
 
-  <!-- Buffer overlay -->
+  <!-- Buffer Overlay -->
   <div id="countdownOverlay">
     <div class="circle"></div>
     <div id="loadingText">Running 10,000 simulations</div>
   </div>
 
   <script>
-    // Helper to get CSS custom property values
+    // Helper: Get CSS variable value
     const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const textColor = getCssVar('--text-color');
 
-    // Show/hide manual sections
+    // Show/hide manual sections (only one event listener per checkbox)
     document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
       document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
     });
@@ -303,7 +312,9 @@
       document.getElementById("manualWeightsSection").style.display = this.checked ? "block" : "none";
     });
 
-    // Chart functions using Highcharts
+    // --- Chart Functions using Highcharts ---
+
+    // Fundamental Categories Chart
     function plotFundamentalCategories(categories) {
       const xLabels = [];
       const yValues = [];
@@ -334,6 +345,7 @@
       });
     }
 
+    // Technical Indicators Chart
     function updateTechChart(prices) {
       let bands = computeBollingerBands(prices);
       let wmas = computeWMA(prices);
@@ -446,6 +458,7 @@
       return aggregatedScore;
     }
 
+    // Monte Carlo Chart
     function updateMCChart(finalPrices, lastPrice) {
       globalFinalPrices = finalPrices;
       Highcharts.chart('mcChart', {
@@ -467,7 +480,7 @@
         `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
       let minPrice = Math.min(...finalPrices);
       let maxPrice = Math.max(...finalPrices);
-      let medianPrice = globalFinalPrices.sort((a,b)=> a - b)[Math.floor(globalFinalPrices.length/2)];
+      let medianPrice = globalFinalPrices.sort((a, b) => a - b)[Math.floor(globalFinalPrices.length/2)];
       let sliderHTML = `
         <label for="priceSlider">Select Target Price:</label>
         <input type="range" id="priceSlider" min="${minPrice.toFixed(2)}" max="${maxPrice.toFixed(2)}" step="0.01" value="${medianPrice.toFixed(2)}" oninput="updateMCSlider(this.value)">
@@ -486,9 +499,10 @@
       let sliderProb = (countTarget / globalFinalPrices.length) * 100;
       document.getElementById('mcSliderProb').innerText =
         `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
-      // Highcharts dynamic update can be added here if needed.
+      // Optionally, dynamic update to the chart can be added here.
     }
 
+    // Sentiment Chart
     function updateSentimentChart(sentiments) {
       Highcharts.chart('sentChart', {
         chart: { type: 'line', backgroundColor: 'transparent' },
@@ -514,6 +528,7 @@
       return 50;
     }
 
+    // Insider Chart
     function updateInsiderChart(totalBuys, totalSells) {
       Highcharts.chart('insiderChart', {
         chart: { type: 'column', backgroundColor: 'transparent' },
@@ -538,6 +553,7 @@
       return insiderBull;
     }
 
+    // Congress Chart
     function updateCongressChart(totalPurchase, totalSale) {
       Highcharts.chart('congressChart', {
         chart: { type: 'column', backgroundColor: 'transparent' },
@@ -562,7 +578,7 @@
       return congressBull;
     }
 
-    // Buffer overlay functions
+    // --- Buffer Overlay Functions ---
     let bufferDotInterval;
     function showBufferOverlay() {
       const overlay = document.getElementById("countdownOverlay");
@@ -580,6 +596,7 @@
       clearInterval(bufferDotInterval);
     }
 
+    // --- Simulation and Utility Functions ---
     async function runSimulation() {
       document.getElementById('loading').style.display = 'block';
       document.getElementById('aggregateSection').style.display = 'none';
@@ -690,12 +707,104 @@
       document.getElementById('loading').style.display = 'none';
     }
 
-    // Event listener for simulate button
+    // Event listener for the simulate button
     document.getElementById("simulateButton").addEventListener("click", () => {
       showBufferOverlay();
-      runSimulation().then(() => { hideBufferOverlay(); }).catch(() => { hideBufferOverlay(); });
+      runSimulation().then(() => {
+        hideBufferOverlay();
+      }).catch(() => {
+        hideBufferOverlay();
+      });
     });
-    
+
+    // Auto-populate futureDate input with next month's date
+    (function setDefaultFutureDate() {
+      const futureDateInput = document.getElementById('futureDate');
+      const today = new Date();
+      const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      futureDateInput.value = nextMonthDate.toISOString().split('T')[0];
+    })();
+
+    // Update link button texts dynamically based on ticker input
+    function updateLinkButtonTexts(){
+      const ticker = document.getElementById('ticker').value.trim();
+      if(ticker){
+        document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
+        document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
+        document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
+        document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
+        document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
+      } else {
+        document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
+        document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
+        document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
+        document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
+        document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
+      }
+    }
+    document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
+    updateLinkButtonTexts();
+
+    // Link Buttons Event Listeners
+    document.getElementById("sentimentLinkButton").addEventListener("click", () => {
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/sentiment?symbol=" + encodeURIComponent(ticker), "_blank");
+      } else {
+        alert("Enter a ticker first.");
+      }
+    });
+    document.getElementById("technicalLinkButton").addEventListener("click", () => {
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      const ticker = simulationReport.ticker;
+      const periodMonths = simulationReport.periodMonths;
+      const url = "https://www.intuitiontrades.com/technical/?symbol=" 
+                  + encodeURIComponent(ticker) 
+                  + "&period=" + periodMonths
+                  + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
+    document.getElementById("insiderLinkButton").addEventListener("click", () => {
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      const ticker = simulationReport.ticker;
+      const periodMonths = simulationReport.periodMonths;
+      const days = periodMonths * 30;
+      const url = "https://www.intuitiontrades.com/insider/?symbol=" 
+                + encodeURIComponent(ticker) 
+                + "&days=" + days
+                + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
+    document.getElementById("congressLinkButton").addEventListener("click", () => {
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      let ticker = simulationReport.ticker;
+      let periodMonths = simulationReport.periodMonths;
+      let days = periodMonths * 30;
+      let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+                + encodeURIComponent(ticker) 
+                + "&days=" + days 
+                + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
+    document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/fundamental/?symbol=" + encodeURIComponent(ticker), "_blank");
+      } else {
+        alert("Enter a ticker.");
+      }
+    });
+  </script>
+
     // The next line begins the explanation button event listener:
 
     document.getElementById("explanationButton").addEventListener("click", () => {
