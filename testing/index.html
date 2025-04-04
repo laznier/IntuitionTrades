@@ -1361,6 +1361,13 @@ function hideBufferOverlay() {
         alert("Enter a ticker.");
       }
     });
+    document.addEventListener("DOMContentLoaded", () => {
+  // Force the manual sections to use the checkbox state on load:
+  document.getElementById("manualPeriodDiv").style.display =
+    document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
+  document.getElementById("manualWeightsSection").style.display =
+    document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
+});
 
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!simulationReport) {
