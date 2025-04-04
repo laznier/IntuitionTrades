@@ -786,6 +786,27 @@ footer {
     display: flex;
   }
 }
+@keyframes rollUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Optional: style the container to ensure proper positioning */
+#heroPrice {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  font-size: 2vw;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
 
 </style>
 </head>
@@ -1406,9 +1427,24 @@ if (recentPoints.length === 0) return;
       const lastPrice = recentPoints[recentPoints.length - 1].y;
       const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
       
-      // Update price overlay
-      document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
-      
+  // After determining firstPrice and lastPrice:
+const heroPriceEl = document.getElementById('heroPrice');
+const newPriceText = `SPY ${lastPrice.toFixed(2)}`;
+// Set the color: green if up, red if down
+const newColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+
+// Create a new element for the animated price update
+const newPriceEl = document.createElement('span');
+newPriceEl.textContent = newPriceText;
+newPriceEl.style.color = newColor;
+newPriceEl.style.display = 'block';
+newPriceEl.style.animation = 'rollUp 0.5s forwards';
+
+// Replace the old price by clearing out the container and appending the new element
+heroPriceEl.innerHTML = '';
+heroPriceEl.appendChild(newPriceEl);
+
+
       Highcharts.stockChart('heroChart', {
         chart: {
           backgroundColor: 'transparent',
