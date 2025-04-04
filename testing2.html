@@ -1189,22 +1189,57 @@ function updateMCSlider(val) {
       return { totalBuys, totalSells };
     }
     function updateInsiderChart(totalBuys, totalSells) {
-      const trace = {
-        x: ["Bought", "Sold"],
-        y: [totalBuys, totalSells],
-        type: 'bar',
-        marker: { color: ["green", "red"] }
-      };
-      const layout = { title: "Insider Activity (Shares Bought vs. Sold)" };
-      darkNewPlot("insiderChart", [trace], layout);
-      let sum = totalBuys + totalSells;
-      let insiderBull = 50;
-      if(sum > 0){
-        insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
+  const categories = ["Bought", "Sold"];
+  const data = [totalBuys, totalSells];
+
+  // Render the insider trading chart with Highcharts.
+  Highcharts.chart("insiderChart", {
+    chart: {
+      type: "column",
+      backgroundColor: "transparent"
+    },
+    title: {
+      text: "Insider Trading Activity",
+      style: { color: "#fff" }
+    },
+    xAxis: {
+      categories: categories,
+      title: { text: null },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
+    yAxis: {
+      title: { text: "Shares", style: { color: "#fff" } },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
+    tooltip: {
+      formatter: function() {
+        return this.x + ": " + this.y;
       }
-      document.getElementById("insiderDetails").innerText =
-        `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
-      return insiderBull;
+    },
+    series: [{
+      name: "Shares",
+      data: data,
+      // Apply specific colors: green for "Bought" and red for "Sold"
+      colorByPoint: true,
+      colors: ["green", "red"]
+    }],
+    credits: { enabled: false },
+    legend: { enabled: false }
+  });
+
+  // Calculate the insider bullish score.
+  let sum = totalBuys + totalSells;
+  let insiderBull = 50;
+  if (sum > 0) {
+    insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
+  }
+  document.getElementById("insiderDetails").innerText =
+    `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
+  return insiderBull;
+}
+
     }
     async function fetchCongressData(ticker, periodMonths) {
       const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
