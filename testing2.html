@@ -910,40 +910,44 @@
 
   // Render the histogram using Highcharts and store the chart instance globally.
   window.mcChart = Highcharts.chart('mcChart', {
-    chart: {
-      type: 'column',
-      backgroundColor: 'transparent'
-    },
-    title: {
-      text: 'Monte Carlo Distribution of Final Prices',
-      style: { color: '#fff' }
-    },
-    xAxis: {
-      title: { text: 'Price', style: { color: '#fff' } },
-      crosshair: true
-    },
-    yAxis: {
-      title: { text: 'Frequency', style: { color: '#fff' } },
-      gridLineColor: '#444'
-    },
-    tooltip: {
-      formatter: function() {
-        return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+  chart: {
+    type: 'column',
+    backgroundColor: 'transparent'
+  },
+  title: {
+    text: 'Monte Carlo Distribution of Final Prices',
+    style: { color: '#fff' }
+  },
+  xAxis: {
+    title: { text: null },
+    crosshair: false
+  },
+  yAxis: {
+    title: { text: 'Frequency', style: { color: '#fff' } },
+    gridLineColor: '#444'
+  },
+  tooltip: {
+    formatter: function() {
+      return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+    }
+  },
+  plotOptions: {
+    series: {
+      states: {
+        hover: {
+          halo: { size: 0 }
+        }
       }
-    },
-    series: [{
-      name: 'Frequency',
-      data: histogramData,
-      color: 'gray'
-    }],
-    plotOptions: {
-      series: {
-        pointPadding: 0,
-        groupPadding: 0
-      }
-    },
-    credits: { enabled: false }
-  });
+    }
+  },
+  series: [{
+    name: 'Frequency',
+    data: histogramData,
+    color: 'gray'
+  }],
+  credits: { enabled: false }
+});
+
 
   // Compute and display the Monte Carlo bullish score.
   let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
@@ -1283,20 +1287,54 @@ function updateMCSlider(val) {
     function showBufferOverlay() {
   const overlay = document.getElementById("countdownOverlay");
   overlay.style.display = "flex";
-  const loadingText = document.getElementById("loadingText");
-  let dotCount = 0;
-  loadingText.innerText = "Running 10,000 simulations";
-  bufferDotInterval = setInterval(() => {
+  stepIndex = 0;
+
+  // Start the dot animation
+  dotCount = 0;
+  dotInterval = setInterval(() => {
     dotCount = (dotCount + 1) % 4;
-    loadingText.innerText = "Running 10,000 simulations" + ".".repeat(dotCount);
+    // Append the dots to the message
+    const baseText = loadingSteps[Math.min(stepIndex, loadingSteps.length - 1)].text;
+    document.getElementById("loadingText").innerText = baseText + ".".repeat(dotCount);
   }, 500);
+
+  // Begin cycling through the steps
+  cycleSteps();
 }
 
-function hideBufferOverlay() {
-  const overlay = document.getElementById("countdownOverlay");
-  overlay.style.display = "none";
-  clearInterval(bufferDotInterval);
+// This function goes through each step's duration, then moves to the next
+function cycleSteps() {
+  // If we've exceeded the steps array, remain on the last message indefinitely
+  if (stepIndex >= loadingSteps.length) {
+    return;
+  }
+  const currentStep = loadingSteps[stepIndex];
+  // Set the message text (the dot animation will keep appending the "...")
+  document.getElementById("loadingText").innerText = currentStep.text;
+
+  // Set a timeout for the step's duration
+  const t = setTimeout(() => {
+    stepIndex++;
+    cycleSteps();
+  }, currentStep.duration);
+
+  loadingTimeouts.push(t);
 }
+// Each step has a message and a duration in milliseconds
+const loadingSteps = [
+  { text: "Running 10,000 simulations", duration: 1500 },
+  { text: "Analyzing technical indicators", duration: 1000 },
+  { text: "Analyzing fundamental indicators", duration: 1000 },
+  { text: "Analyzing recent news articles", duration: 2000 },
+  { text: "Checking for insider trading", duration: 700 },
+  { text: "Analyzing political trades", duration: 2000 }
+];
+
+let stepIndex = 0;        // which step we're on
+let loadingTimeouts = []; // store timeouts so we can clear them if loading finishes
+let dotCount = 0;         // for "..." animation
+let dotInterval = null;   // store the setInterval for dot animation
+
 
     // Run simulation immediately while showing the overlay.
     async function runSimulation() {
@@ -1418,6 +1456,20 @@ function hideBufferOverlay() {
         hideBufferOverlay();
       });
     });
+
+    function hideBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "none";
+
+  // Clear all timeouts
+  loadingTimeouts.forEach(t => clearTimeout(t));
+  loadingTimeouts = [];
+
+  // Stop the dot animation
+  clearInterval(dotInterval);
+  dotInterval = null;
+}
+
 
     // Update link button texts dynamically based on ticker input.
     function updateLinkButtonTexts(){
