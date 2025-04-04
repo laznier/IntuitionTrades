@@ -599,141 +599,166 @@ footer {
   background-color: var(--primary-bg);
 }
 
-/* ========================= */
-/*  Live News Section Styles */
-/* ========================= */
-#live-news {
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  margin-bottom: var(--section-margin-bottom);
-  position: relative; /* For maximizing with absolute/fixed positioning */
-  transition: all var(--transition-speed);
+/* Live News Section Styles */
+.live-news {
+  position: relative;
+  padding: 1rem;
+  /* Normal background: 33% transparent */
+  background-color: rgba(0, 0, 0, 0.33);
+  margin-bottom: 2rem;
+  transition: all 0.3s;
 }
-#live-news.minimized {
-  height: 3rem;
+
+/* When minimized, just one line high. Hide feed & menu. */
+.live-news.minimized {
+  height: 2rem; /* Enough for the header line */
   overflow: hidden;
+  padding: 0.5rem 1rem;
 }
-#live-news.maximized {
+.live-news.minimized .live-news-menu,
+.live-news.minimized .live-news-feed {
+  display: none;
+}
+
+/* When maximized, full screen overlay-like look */
+.live-news.maximized {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 9999;
-  background-color: rgba(0, 0, 0, 0.95); /* A bit darker for full screen */
   margin: 0;
-  padding: 2rem;
+  z-index: 9999;
+  /* Darker overlay background */
+  background-color: rgba(0, 0, 0, 0.95);
   overflow-y: auto;
+  padding: 2rem;
 }
-#live-news h2 {
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: 2rem;
-}
-/* Top row (menu + controls) */
-.live-news-top-row {
+
+/* Title + Controls on same line */
+.live-news-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
 }
+.live-news-header .live-news-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Buttons for topics menu */
 .live-news-menu {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 .live-news-menu button {
-  background-color: var(--primary-bg);
+  background-color: #333;
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: 4px;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
-  transition: background-color var(--transition-speed);
-  font-size: 0.8rem;
-  color: var(--text-color);
-  white-space: nowrap;
+  font-size: 0.85rem;
+  color: #fff;
+  transition: background-color 0.3s;
 }
 .live-news-menu button:hover {
-  background-color: #ddd;
-  color: #333;
+  background-color: #555;
 }
-.live-news-controls {
-  display: flex;
-  gap: 0.75rem;
-}
+
+/* Controls (Minimize, Maximize, Close) */
 .live-news-controls span {
   cursor: pointer;
-  font-size: 1.2rem;
-  padding: 0.2rem 0.4rem;
-  background-color: var(--primary-bg);
-  border-radius: var(--border-radius);
-  transition: background-color var(--transition-speed);
+  font-size: 1rem;
+  padding: 0.3rem 0.6rem;
+  background-color: #333;
+  border-radius: 4px;
+  color: #fff;
+  transition: background-color 0.3s;
   user-select: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-color);
 }
 .live-news-controls span:hover {
-  background-color: #ddd;
-  color: #333;
+  background-color: #555;
 }
-.live-news-timestamp {
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-  text-align: right;
-  opacity: 0.7;
-}
-/* News feed container */
+
+/* News Feed container */
 .live-news-feed {
-  max-height: 600px; /* so it scrolls within the section */
+  max-height: 600px;
   overflow-y: auto;
   display: flex;
-  flex-direction: column-reverse; /* newest at top if you prepend items */
+  flex-direction: column; /* We'll prepend new items */
 }
+
+/* Custom scrollbar styling for a darker "wheel" look */
+.live-news-feed::-webkit-scrollbar {
+  width: 10px;
+}
+.live-news-feed::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Individual news item */
 .live-news-item {
-  background-color: rgba(0,0,0,0.7);
+  background-color: rgba(0, 0, 0, 0.7);
   margin-bottom: 1rem;
   padding: 0.75rem;
-  border-radius: var(--border-radius);
-  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: background-color 0.3s;
+}
+
+/* Hover effect for item (optional) */
+.live-news-item:hover {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Title + timestamp row */
+.live-news-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+/* Timestamp on the left */
+.live-news-timestamp {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  min-width: 8rem; /* so it lines up nicely */
 }
 .live-news-title {
   font-weight: bold;
   font-size: 1rem;
-  margin-bottom: 0.5rem;
   cursor: pointer;
   text-decoration: underline;
+  flex: 1; /* so it expands to fill leftover space */
 }
+
+/* Hidden summary that expands on click */
 .live-news-summary {
   margin-top: 0.5rem;
   font-size: 0.9rem;
   line-height: 1.4;
-}
-.live-news-summary a {
-  color: var(--accent-color);
-  text-decoration: underline;
-}
-/* Hide summary by default (expand on click) */
-.live-news-summary {
   display: none;
 }
+.live-news-summary a {
+  color: #16a34a;
+  text-decoration: underline;
+}
+
+/* Expanded item reveals the summary */
 .live-news-item.expanded .live-news-summary {
   display: block;
 }
 
-/* When Live News is maximized, slightly darken the rest of the page (optional approach) */
-body.live-news-overlay {
-  overflow: hidden;
-}
-body.live-news-overlay::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0,0,0,0.5);
-  z-index: 9998;
-}
 </style>
 </head>
 <body>
@@ -932,44 +957,41 @@ body.live-news-overlay::before {
     <div class="ml-embedded" data-form="N78gvr"></div>
   </section>
 
-  <!-- ===================================== -->
-  <!--        Live News Section             -->
-  <!-- ===================================== -->
-  <section id="live-news">
-    <h2>Live News</h2>
-    <div class="live-news-top-row">
-      <!-- Menu: "All News" + Topics -->
-      <div class="live-news-menu" id="liveNewsMenu">
-        <!-- Order them however you prefer -->
-        <button data-topic="">All News</button>
-        <button data-topic="financial_markets">Financial Markets</button>
-        <button data-topic="economy_macro">Economy (Macro)</button>
-        <button data-topic="economy_monetary">Economy (Monetary)</button>
-        <button data-topic="economy_fiscal">Economy (Fiscal)</button>
-        <button data-topic="finance">Finance</button>
-        <button data-topic="technology">Technology</button>
-        <button data-topic="earnings">Earnings</button>
-        <button data-topic="mergers_and_acquisitions">M&A</button>
-        <button data-topic="blockchain">Blockchain</button>
-        <button data-topic="real_estate">Real Estate</button>
-        <button data-topic="retail_wholesale">Retail & Wholesale</button>
-        <button data-topic="energy_transportation">Energy & Transport</button>
-        <button data-topic="life_sciences">Life Sciences</button>
-        <button data-topic="manufacturing">Manufacturing</button>
-        <button data-topic="ipo">IPO</button>
-      </div>
-      <!-- Controls: minimize, maximize, close -->
-      <div class="live-news-controls">
-        <span id="liveNewsMinimize" title="Minimize">-</span>
-        <span id="liveNewsMaximize" title="Maximize">▢</span>
-        <span id="liveNewsClose" title="Close">X</span>
-      </div>
+  <!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
     </div>
-    <div class="live-news-timestamp" id="liveNewsTimestamp"></div>
-    <div class="live-news-feed" id="liveNewsFeed">
-      <!-- Dynamically populated -->
-    </div>
-  </section>
+  </h2>
+  <!-- Menu: "All News" + Topics (combined economy) -->
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button> <!-- Combined macro, monetary, fiscal -->
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
+
   
   <main>
     <!-- Tools Section -->
@@ -1444,42 +1466,58 @@ body.live-news-overlay::before {
        Live News JavaScript
   =========================== -->
   <script>
-    // Example: adapt your own fetch logic. This is similar to fetchAllSentimentData(ticker),
-    // but now we use "topic" instead of "symbol".
+    // Example: adapt your own fetch logic for combining "economy" topics, etc.
     async function fetchAllSentimentData(topic) {
-      // If topic is empty, we get "all news". Otherwise, we pass the topic param.
-      const topicParam = topic ? `&topic=${topic}` : "";
-      // For demonstration, adapt the URL to your internal environment:
-      // e.g., https://www.intuitiontrades.com/api/sentiment?topic=finance&limit=20
-      // The code below is just an example. Adjust the endpoint & params as needed.
-      const url = `https://www.intuitiontrades.com/api/sentiment?limit=20${topicParam}`;
+      // If topic is "economy", we combine economy_macro, economy_monetary, economy_fiscal
+      let finalTopicParam = "";
+      if (topic === "economy") {
+        // Comma-separated topics
+        finalTopicParam = "economy_macro,economy_monetary,economy_fiscal";
+      } else {
+        finalTopicParam = topic; // e.g. "finance", "blockchain", or ""
+      }
+  
+      // Build the URL for your internal endpoint
+      // For "All News" (topic=""), we just omit the topics param
+      let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
+      if (finalTopicParam) {
+        url += `&topic=${finalTopicParam}`;
+      }
+  
       const resp = await fetch(url);
       const data = await resp.json();
-      if (!data.feed) throw new Error("No sentiment data from server.");
-      return data.feed; // returns an array of articles
+      if (!data.feed) {
+        throw new Error("No sentiment data from server.");
+      }
+      return data.feed;
     }
-
-    // Renders a single news item in the feed
+  
+    // Render a single news item in the feed
     function renderNewsItem(item) {
-      /*
-        item structure (based on your JSON example):
-        {
-          title: "...",
-          url: "...",
-          time_published: "YYYYMMDDTHHMMSS",
-          summary: "...",
-          source: "...",
-          ...
-        }
-      */
+      // item.time_published is "YYYYMMDDTHHMM" or similar
+      const rawTime = item.time_published || "";
+      const displayTime = formatTimePublished(rawTime);
+  
       const container = document.createElement("div");
       container.classList.add("live-news-item");
-
+  
+      // Row with timestamp + title
+      const row = document.createElement("div");
+      row.classList.add("live-news-row");
+  
+      const timeEl = document.createElement("div");
+      timeEl.classList.add("live-news-timestamp");
+      timeEl.textContent = displayTime;
+  
       const titleEl = document.createElement("div");
       titleEl.classList.add("live-news-title");
       titleEl.textContent = item.title || "Untitled";
-      container.appendChild(titleEl);
-
+  
+      row.appendChild(timeEl);
+      row.appendChild(titleEl);
+      container.appendChild(row);
+  
+      // Summary
       const summaryEl = document.createElement("div");
       summaryEl.classList.add("live-news-summary");
       summaryEl.innerHTML = `
@@ -1487,31 +1525,48 @@ body.live-news-overlay::before {
         <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
       `;
       container.appendChild(summaryEl);
-
+  
       // Toggle expand on title click
       titleEl.addEventListener("click", () => {
         container.classList.toggle("expanded");
       });
-
+  
       return container;
     }
-
-    // Updates the feed with new articles
+  
+    // Helper to format the time_published string from Alpha Vantage
+    function formatTimePublished(timeStr) {
+      // e.g. "20250403T152533" => "2025-04-03 15:25"
+      if (!timeStr || timeStr.length < 8) return "";
+      const year = timeStr.slice(0, 4);
+      const month = timeStr.slice(4, 6);
+      const day = timeStr.slice(6, 8);
+      let hour = "00";
+      let minute = "00";
+      if (timeStr.length >= 13) {
+        hour = timeStr.slice(9, 11);
+        minute = timeStr.slice(11, 13);
+      }
+      return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+  
     function updateNewsFeed(articles) {
       const feedContainer = document.getElementById("liveNewsFeed");
-      // We’ll prepend new items to the top. 
-      // (Alternatively, you can clear feedContainer first if you only want the latest 20 each time.)
-      feedContainer.innerHTML = ""; // Clear out old items if you want exactly the last 20
-
-      // Reverse the list so the newest appears at top if you want that
-      // or you can just append in normal order
+      // Clear old items so we only show the latest 20
+      feedContainer.innerHTML = "";
+  
+      // Prepend new items so the newest appear at the top
+      // (Though typically you'd reverse the array if needed.)
       articles.forEach(article => {
         const itemEl = renderNewsItem(article);
+        // newest at top
         feedContainer.prepend(itemEl);
       });
     }
-
-    // Main function to fetch & refresh news
+  
+    let selectedTopic = ""; // default all news
+    let refreshInterval = null;
+  
     async function refreshNews() {
       try {
         const articles = await fetchAllSentimentData(selectedTopic);
@@ -1519,58 +1574,65 @@ body.live-news-overlay::before {
       } catch (err) {
         console.error("Error refreshing news:", err);
       }
-      // Update local timestamp
-      const now = new Date();
-      document.getElementById("liveNewsTimestamp").textContent =
-        "Last Updated: " + now.toLocaleString();
     }
-
-    let selectedTopic = ""; // Default: all news
-    let refreshInterval = null;
-
+  
     document.addEventListener("DOMContentLoaded", () => {
+      // Topic menu
       const menuButtons = document.querySelectorAll("#liveNewsMenu button");
       menuButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-          selectedTopic = btn.getAttribute("data-topic");
+          selectedTopic = btn.getAttribute("data-topic") || "";
           refreshNews();
         });
       });
-
-      // Fetch initial news
+  
+      // Initial fetch
       refreshNews();
-      // Set interval to refresh every 10 seconds
-      refreshInterval = setInterval(refreshNews, 10000);
-
+      // Refresh every 30 seconds
+      refreshInterval = setInterval(refreshNews, 30000);
+  
       // Minimize / Maximize / Close
       const liveNewsSection = document.getElementById("live-news");
       const minimizeBtn = document.getElementById("liveNewsMinimize");
       const maximizeBtn = document.getElementById("liveNewsMaximize");
       const closeBtn = document.getElementById("liveNewsClose");
-
+  
+      // Track if minimized or not
+      let isMinimized = false;
+  
       minimizeBtn.addEventListener("click", () => {
-        // Toggle minimized
-        liveNewsSection.classList.toggle("minimized");
-      });
-
-      maximizeBtn.addEventListener("click", () => {
-        // Toggle maximized
-        const isMaximized = liveNewsSection.classList.contains("maximized");
-        if (isMaximized) {
-          liveNewsSection.classList.remove("maximized");
-          document.body.classList.remove("live-news-overlay");
+        if (!isMinimized) {
+          // Minimizing
+          liveNewsSection.classList.add("minimized");
+          minimizeBtn.textContent = "+"; // switch icon to plus
+          isMinimized = true;
         } else {
-          liveNewsSection.classList.add("maximized");
-          document.body.classList.add("live-news-overlay");
+          // Restoring from minimized
+          liveNewsSection.classList.remove("minimized");
+          minimizeBtn.textContent = "-"; // switch icon back
+          isMinimized = false;
         }
       });
-
+  
+      maximizeBtn.addEventListener("click", () => {
+        const isMaximized = liveNewsSection.classList.contains("maximized");
+        if (isMaximized) {
+          // Exit full-screen
+          liveNewsSection.classList.remove("maximized");
+          document.body.style.overflow = ""; // restore body scroll if needed
+        } else {
+          // Go full-screen
+          liveNewsSection.classList.add("maximized");
+          document.body.style.overflow = "hidden"; // disable body scroll behind overlay
+        }
+      });
+  
       closeBtn.addEventListener("click", () => {
-        // Remove the section entirely or hide it
         liveNewsSection.style.display = "none";
         clearInterval(refreshInterval);
       });
     });
   </script>
+  
 </body>
 </html>
