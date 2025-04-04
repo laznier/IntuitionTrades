@@ -611,7 +611,7 @@ footer {
 
 /* When minimized, just one line high. Hide feed & menu. */
 .live-news.minimized {
-  height: 2rem; /* Enough for the header line */
+  height: 3rem; /* Enough for the header line */
   overflow: hidden;
   padding: 0.5rem 1rem;
 }
@@ -685,7 +685,7 @@ footer {
 
 /* News Feed container */
 .live-news-feed {
-  max-height: 600px;
+  max-height: 400px;
   overflow-y: auto;
   display: flex;
   flex-direction: column; /* We'll prepend new items */
@@ -697,7 +697,7 @@ footer {
 }
 .live-news-feed::-webkit-scrollbar-track {
   background: #222;
-  border-radius: 5px;
+  border-radius: 1px;
 }
 .live-news-feed::-webkit-scrollbar-thumb {
   background: #555;
@@ -712,7 +712,7 @@ footer {
   background-color: rgba(0, 0, 0, 0.7);
   margin-bottom: 0;
   padding: 0.75rem;
-  border-radius: 4px;
+  border-radius: 1px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   transition: background-color 0.3s;
 }
@@ -757,6 +757,34 @@ footer {
 /* Expanded item reveals the summary */
 .live-news-item.expanded .live-news-summary {
   display: block;
+}
+/* Desktop styles: show the topics menu and hide the hamburger */
+.live-news-topics .news-hamburger {
+  display: none;
+}
+.live-news-topics .live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Mobile styles: show hamburger, hide topics menu by default */
+@media (max-width: 768px) {
+  .live-news-topics .news-hamburger {
+    display: block;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .live-news-topics .live-news-menu {
+    display: none;
+    flex-direction: column;
+  }
+  /* Optional: when active, display as a vertical list */
+  .live-news-topics .live-news-menu.active {
+    display: flex;
+  }
 }
 
 </style>
@@ -970,11 +998,15 @@ footer {
       <span id="liveNewsClose" title="Close">X</span>
     </div>
   </h2>
-  <!-- Menu: "All News" + Topics (combined economy) -->
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
   <div class="live-news-menu" id="liveNewsMenu">
     <button data-topic="">All News</button>
     <button data-topic="financial_markets">Financial Markets</button>
-    <button data-topic="economy">Economy</button> <!-- Combined macro, monetary, fiscal -->
+    <button data-topic="economy">Economy</button>
     <button data-topic="finance">Finance</button>
     <button data-topic="technology">Technology</button>
     <button data-topic="earnings">Earnings</button>
@@ -987,6 +1019,7 @@ footer {
     <button data-topic="manufacturing">Manufacturing</button>
     <button data-topic="ipo">IPO</button>
   </div>
+
   <div class="live-news-feed" id="liveNewsFeed">
     <!-- Dynamically populated -->
   </div>
@@ -1466,6 +1499,28 @@ footer {
        Live News JavaScript
   =========================== -->
   <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const newsHamburger = document.getElementById("newsHamburger");
+  const liveNewsMenu = document.getElementById("liveNewsMenu");
+  const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+
+  newsHamburger.addEventListener("click", () => {
+    liveNewsMenu.classList.toggle("active");
+  });
+
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedTopic = btn.getAttribute("data-topic") || "";
+      refreshNews();
+      // Auto-close the hamburger menu if it is open
+      if (liveNewsMenu.classList.contains("active")) {
+        liveNewsMenu.classList.remove("active");
+      }
+    });
+  });
+});
+
+
     // Example: adapt your own fetch logic for combining "economy" topics, etc.
     async function fetchAllSentimentData(topic) {
       // If topic is "economy", we combine economy_macro, economy_monetary, economy_fiscal
