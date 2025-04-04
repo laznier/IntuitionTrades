@@ -1327,12 +1327,17 @@ function updateMCSlider(val) {
     color: '#fff'
   }
 };
+
 function darkNewPlot(divId, data, layout = {}, config = {}) {
-  // Merge the dark defaults into the provided layout.
-  // The provided layout properties will override the defaults if there are conflicts.
+  // Merge dark defaults into provided layout.
+  // Properties in layout will override darkLayoutDefaults.
   const finalLayout = Object.assign({}, darkLayoutDefaults, layout);
-  darkNewPlot(divId, data, finalLayout, config);
+  // Set responsive: true by default.
+  const finalConfig = Object.assign({ responsive: true }, config);
+  // Call Plotly.newPlot (NOT darkNewPlot) to create the chart.
+  Plotly.newPlot(divId, data, finalLayout, finalConfig);
 }
+
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
