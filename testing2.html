@@ -908,8 +908,8 @@
     histogramData.push([binCenters[i], bins[i]]);
   }
 
-  // Render the histogram using Highcharts.
-  Highcharts.chart('mcChart', {
+  // Render the histogram using Highcharts and store the chart instance globally.
+  window.mcChart = Highcharts.chart('mcChart', {
     chart: {
       type: 'column',
       backgroundColor: 'transparent'
@@ -971,23 +971,34 @@
   return bullishScore;
 }
 
-    function updateMCSlider(val) {
-      val = parseFloat(val);
-      document.getElementById('sliderValue').textContent = val.toFixed(2);
-      let countTarget = globalFinalPrices.filter(p => p >= val).length;
-      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
-      document.getElementById('mcSliderProb').innerText =
-        `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
-      Plotly.relayout("mcChart", {
-        shapes: [{
-          type: 'line',
-          xref: 'x', yref: 'paper',
-          x0: val, x1: val,
-          y0: 0, y1: 1,
-          line: { color: 'red', width: 2 }
-        }]
-      });
+
+function updateMCSlider(val) {
+  val = parseFloat(val);
+  document.getElementById('sliderValue').textContent = val.toFixed(2);
+  let countTarget = globalFinalPrices.filter(p => p >= val).length;
+  let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+  document.getElementById('mcSliderProb').innerText =
+    `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
+  
+  // Update the plot line in the Highcharts chart.
+  if (window.mcChart) {
+    let axis = window.mcChart.xAxis[0];
+    // Remove existing plot line with id "targetPrice" if it exists.
+    if (axis.removePlotLine) {
+      axis.removePlotLine('targetPrice');
     }
+    // Add new plot line at the selected target price.
+    axis.addPlotLine({
+      id: 'targetPrice',
+      value: val,
+      color: 'red',
+      width: 2,
+      zIndex: 5,
+      dashStyle: 'Solid'
+    });
+  }
+}
+
     function logisticBullish(slope) {
       const k = 0.3;
       let raw = 100 / (1 + Math.exp(-k * slope));
