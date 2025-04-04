@@ -884,37 +884,93 @@
       return finals;
     }
     function updateMCChart(finalPrices, lastPrice) {
-      globalFinalPrices = finalPrices;
-      let trace = { x: finalPrices, type: 'histogram', marker: { color: 'gray' } };
-      let layout = {
-        title: "Monte Carlo Distribution of Final Prices",
-        xaxis: { title: "Price" },
-        yaxis: { title: "Frequency" }
-      };
-      Plotly.newPlot("mcChart", [trace], layout);
-      let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
-      let bullishScore = (countCurrent / finalPrices.length) * 100;
-      document.getElementById('mcBullScore').innerText =
-        `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
-      const minPrice = Math.min(...finalPrices);
-      const maxPrice = Math.max(...finalPrices);
-      const medianPrice = getMedian(finalPrices);
-      let sliderHTML = `
-        <label for="priceSlider">Select Target Price:</label>
-        <input type="range"
-               id="priceSlider"
-               min="${minPrice.toFixed(2)}"
-               max="${maxPrice.toFixed(2)}"
-               step="0.01"
-               value="${medianPrice.toFixed(2)}"
-               oninput="updateMCSlider(this.value)">
-        <span id="sliderValue">${medianPrice.toFixed(2)}</span>
-        <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
-      `;
-      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
-      updateMCSlider(medianPrice);
-      return bullishScore;
-    }
+  // Store finalPrices globally for slider use.
+  globalFinalPrices = finalPrices;
+
+  // Calculate histogram bin data.
+  const minPrice = Math.min(...finalPrices);
+  const maxPrice = Math.max(...finalPrices);
+  const binCount = 20;
+  const binWidth = (maxPrice - minPrice) / binCount;
+  let bins = new Array(binCount).fill(0);
+  for (let p of finalPrices) {
+    let bin = Math.floor((p - minPrice) / binWidth);
+    if (bin >= binCount) bin = binCount - 1;
+    bins[bin]++;
+  }
+  let binCenters = [];
+  for (let i = 0; i < binCount; i++) {
+    let center = minPrice + binWidth * (i + 0.5);
+    binCenters.push(center);
+  }
+  let histogramData = [];
+  for (let i = 0; i < binCount; i++){
+    histogramData.push([binCenters[i], bins[i]]);
+  }
+
+  // Render the histogram using Highcharts.
+  Highcharts.chart('mcChart', {
+    chart: {
+      type: 'column',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'Monte Carlo Distribution of Final Prices',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      title: { text: 'Price', style: { color: '#fff' } },
+      crosshair: true
+    },
+    yAxis: {
+      title: { text: 'Frequency', style: { color: '#fff' } },
+      gridLineColor: '#444'
+    },
+    tooltip: {
+      formatter: function() {
+        return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+      }
+    },
+    series: [{
+      name: 'Frequency',
+      data: histogramData,
+      color: 'gray'
+    }],
+    plotOptions: {
+      series: {
+        pointPadding: 0,
+        groupPadding: 0
+      }
+    },
+    credits: { enabled: false }
+  });
+
+  // Compute and display the Monte Carlo bullish score.
+  let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
+  let bullishScore = (countCurrent / finalPrices.length) * 100;
+  document.getElementById('mcBullScore').innerText =
+    `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
+
+  // Prepare and display the slider for target price selection.
+  let medianPrice = getMedian(finalPrices);
+  let sliderHTML = `
+    <label for="priceSlider">Select Target Price:</label>
+    <input type="range"
+           id="priceSlider"
+           min="${minPrice.toFixed(2)}"
+           max="${maxPrice.toFixed(2)}"
+           step="0.01"
+           value="${medianPrice.toFixed(2)}"
+           oninput="updateMCSlider(this.value)">
+    <span id="sliderValue">${medianPrice.toFixed(2)}</span>
+    <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
+  `;
+  document.getElementById('mcSliderSection').innerHTML = sliderHTML;
+  updateMCSlider(medianPrice);
+  
+  return bullishScore;
+}
+
     function updateMCSlider(val) {
       val = parseFloat(val);
       document.getElementById('sliderValue').textContent = val.toFixed(2);
