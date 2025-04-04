@@ -175,6 +175,11 @@
   margin: 0;
   padding: 0;
 }
+#fundamentalCharts {
+  width: 100%;
+  /* You can also set a max-width if needed */
+  max-width: 100%;
+}
 
 </style>
 <body>
@@ -1332,6 +1337,10 @@ function darkNewPlot(divId, data, layout = {}, config = {}) {
   const finalLayout = Object.assign({}, darkLayoutDefaults, layout);
   Plotly.newPlot(divId, data, finalLayout, config);
 }
+darkNewPlot('fundamentalCharts', data, layout, { responsive: true });
+window.addEventListener('resize', function() {
+  Plotly.Plots.resize(document.getElementById('fundamentalCharts'));
+});
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
