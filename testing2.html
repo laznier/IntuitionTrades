@@ -650,17 +650,19 @@
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return finalScore;
     }
+    
     function updateTechChart(prices) {
-  // Compute all the technical indicators as before
+  // Compute technical indicators as before
   let bands = computeBollingerBands(prices);
   let wmas = computeWMA(prices);
   let rsivals = computeRSI(prices, 14);
   let macdData = computeMACD(prices);
 
-  // Prepare series data in [timestamp, value] format
+  // Helper to convert date/value pairs for Highcharts
   const toTimeSeries = (data, valueKey) =>
     data.map(item => [item.date.getTime(), item[valueKey]]);
   
+  // Prepare the series data for each indicator
   const priceSeries = {
     name: 'Historical',
     data: toTimeSeries(prices, 'close'),
@@ -696,19 +698,35 @@
     color: 'orange',
     zIndex: 2
   };
+  // MACD line series
   const macdSeries = {
     name: 'MACD',
     data: toTimeSeries(macdData.macdLine, 'macd'),
     type: 'line',
     yAxis: 1,
-    zIndex: 2
+    zIndex: 3
   };
+  // Signal line series
   const signalSeries = {
     name: 'Signal',
     data: toTimeSeries(macdData.signalLine, 'signal'),
     type: 'line',
     yAxis: 1,
-    zIndex: 2
+    zIndex: 3
+  };
+  // MACD Histogram series: computed as MACD - Signal for matching indices
+  const macdHistogram = {
+    name: 'MACD Histogram',
+    data: macdData.macdLine.map((m, i) => {
+      // Ensure there's a matching signal value; otherwise return null
+      let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+      return [m.date.getTime(), m.macd - sig];
+    }),
+    type: 'column',
+    yAxis: 1,
+    color: '#90ed7d',
+    zIndex: 1,
+    tooltip: { valueDecimals: 2 }
   };
   const rsiSeries = {
     name: 'RSI',
@@ -718,11 +736,13 @@
     zIndex: 2
   };
 
-  // Create the Highcharts chart with three vertical panes
+  // Build the Highcharts chart with three vertical panes.
   Highcharts.chart('techChart', {
     chart: {
       zoomType: 'x',
-      backgroundColor: 'transparent'
+      backgroundColor: 'transparent',
+      // Ensure the chart uses the full container width
+      width: null
     },
     title: {
       text: 'Combined Technical Indicators',
@@ -733,13 +753,13 @@
       crosshair: true
     },
     yAxis: [{
-      // Primary yAxis for Price
+      // Price Pane: occupies the top portion
       title: { text: 'Price', style: { color: '#fff' } },
       height: '40%',
       lineWidth: 2,
       gridLineColor: '#444'
     }, {
-      // Secondary yAxis for MACD
+      // MACD Pane: now includes the histogram and the two line series
       title: { text: 'MACD', style: { color: '#fff' } },
       top: '45%',
       height: '25%',
@@ -747,7 +767,7 @@
       lineWidth: 2,
       gridLineColor: '#444'
     }, {
-      // Tertiary yAxis for RSI
+      // RSI Pane: occupies the bottom portion
       title: { text: 'RSI', style: { color: '#fff' } },
       top: '75%',
       height: '25%',
@@ -781,6 +801,7 @@
       upperSeries,
       lowerSeries,
       wmaSeries,
+      macdHistogram, // add histogram first so it appears behind the lines
       macdSeries,
       signalSeries,
       rsiSeries
@@ -791,13 +812,13 @@
         marker: { enabled: false }
       }
     },
-    // Use a modern dark theme look for the chart
+    // Apply a modern dark theme look
     style: {
       fontFamily: 'Arial, sans-serif'
     }
   });
 
-  // Calculate technical score as before using RSI, Bollinger, MACD and WMA values.
+  // Compute technical score as before
   if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
     document.getElementById('techDetails').innerText = "Not enough data => default 50.";
     return 50;
@@ -819,6 +840,7 @@
     `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
   return aggregatedScore;
 }
+
 
     function randn_bm() {
       let u = 0, v = 0;
