@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
@@ -10,593 +10,534 @@
   <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>:root {
-  /* Base typography and color variables */
-  --font-family: 'Arial', sans-serif;
-  --text-color: #fff;
-  --primary-bg: #333;
-  --secondary-bg: #444;
-  --section-bg: rgba(0, 0, 0, 0.33);
-  --accent-color: #16a34a; /* Example accent (you can change as needed) */
-  
-  /* Spacing and sizing */
-  --base-font-size: 16px;
-  --line-height: 1.5;
-  --heading-margin-bottom: 1rem;
-  --section-padding: 3rem 1rem;
-  --section-margin-bottom: 2rem;
-  --button-padding: 0.5rem 1rem;
-  --border-radius: 4px;
-  --transition-speed: 0.3s;
+  <style>
+    /* ============================================================
+       Global Reset & Base Styles
+    ============================================================ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      color: #fff; /* All text white */
+      margin: 0;
+      /* No background image on body; we'll use a fixed background element below */
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    
+    /* ============================================================
+       Fixed Background Element
+    ============================================================ */
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('/images/hero-background.png') no-repeat center center;
+      background-size: cover;
+      z-index: -9999;
+      transform: translateZ(0); /* May help on iOS */
+    }
+    @media (max-width: 768px) {
+      .background-fixed {
+        background: url('/images/hero-background.png') no-repeat center center;
+        background-size: cover;
+      }
+    }
+    
+    /* ============================================================
+       Hero Section
+    ============================================================ */
+    .hero {
+      position: relative;
+      padding: 3rem 1rem;
+      text-align: center;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+    #heroChart {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1; /* Behind the hero content but above the dark overlay */
+    }
+
+    #heroPrice {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 3;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    }
+    #heroPrice {
+  font-size: 2vw;
 }
 
-/* Global Reset & Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-html {
-  font-size: var(--base-font-size);
-}
-body {
-  font-family: var(--font-family);
-  color: var(--text-color);
-  background-color: #111; /* Dark background */
-  line-height: var(--line-height);
-}
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-/* Normalize headings */
-h1, h2, h3, h4, h5, h6 {
-  margin-bottom: var(--heading-margin-bottom);
-  font-weight: normal;
-}
-
-/* Fixed Background Element */
-.background-fixed {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: url('/images/hero-background.png') no-repeat center center;
-  background-size: cover;
-  z-index: -9999;
-  transform: translateZ(0);
-}
-@media (max-width: 768px) {
-  .background-fixed {
-    background: url('/images/hero-background.png') no-repeat center center;
-    background-size: cover;
-  }
-}
-
-/* Hero Section */
-.hero {
-  position: relative;
-  padding: var(--section-padding);
-  text-align: center;
-}
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 0;
-}
-.hero-content {
-  position: relative;
-  z-index: 1;
-}
-#heroChart {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
-#heroPrice {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 3;
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--text-color);
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-}
 @media (max-width: 600px) {
   #heroPrice {
     font-size: 3vw;
   }
 }
 
-/* Top Navigation (Horizontal Scrolling) */
-.topnav {
-  background-color: var(--primary-bg);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  white-space: nowrap;
-}
-.topnav ul {
-  display: flex;
-  list-style: none;
-}
-.topnav ul li {
-  position: relative;
-  flex: none;
-}
-.topnav ul li a {
-  display: block;
-  padding: 0.875rem 1.25rem;
-  color: var(--text-color);
-  transition: background-color var(--transition-speed), color var(--transition-speed);
-}
-.topnav ul li a:hover {
-  background-color: #ddd;
-  color: #333;
-}
-.dropdown-menu {
-  position: absolute;
-  top: -9999px;
-  left: -9999px;
-  display: none;
-  background-color: var(--primary-bg);
-  min-width: 9.375rem; /* 150px */
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.dropdown-menu li a {
-  display: block;
-  padding: 0.875rem 1.25rem;
-  color: var(--text-color);
-  background-color: var(--primary-bg);
-  transition: background-color var(--transition-speed), color var(--transition-speed);
-}
-.dropdown-menu li a:hover {
-  background-color: #ddd;
-  color: #333;
-}
 
-/* Mobile Menu: Sliding Sidebar */
-.mobile-menu-toggle {
-  background: none;
+    /* ============================================================
+       Top Navigation (Horizontal Scrolling)
+       (Based on provided .topnav CSS)
+    ============================================================ */
+    .topnav {
+      background-color: #333;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+    .topnav ul {
+      display: flex;
+      list-style: none;
+    }
+    .topnav ul li {
+      position: relative;
+      flex: none;
+    }
+    .topnav ul li a {
+      display: block;
+      padding: 14px 20px;
+      color: #fff;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    .dropdown-menu {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      display: none;
+      background-color: #333;
+      min-width: 150px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .dropdown-menu li a {
+      display: block;
+      position: relative;
+      width: 100%;
+      margin: 0;
+      padding: 14px 20px;
+      line-height: 1.0;
+      color: #fff;
+      background-color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .dropdown-menu li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    
+    /* ============================================================
+       Mobile Menu: Sliding Sidebar
+    ============================================================ */
+    .mobile-menu-toggle {
+      background: none;
+      border: none;
+      padding: 14px 20px;
+      cursor: pointer;
+      background-color: #333;
+      color: #fff;
+      display: block;
+    }
+    .mobile-menu-toggle svg {
+      vertical-align: middle;
+    }
+    .mobile-menu {
+      position: fixed;
+      top: 0;
+      left: -100%;
+      width: 80%;
+      max-width: 300px;
+      height: 100%;
+      background-color: #333;
+      color: #fff;
+      overflow-y: auto;
+      transition: left 0.3s ease;
+      z-index: 1500;
+      padding-top: 1rem;
+    }
+    .mobile-menu.open {
+      left: 0;
+    }
+    .mobile-menu nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .mobile-menu nav ul li {
+      border-bottom: 1px solid #444;
+    }
+    .mobile-menu nav ul li a,
+    .mobile-menu nav ul li .submenu-toggle {
+      display: block;
+      padding: 10px 20px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .mobile-menu nav ul li a:hover,
+    .mobile-menu nav ul li .submenu-toggle:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    .mobile-menu nav ul li ul.submenu {
+      display: none;
+      background-color: #444;
+    }
+    .mobile-menu nav ul li ul.submenu li a {
+      padding-left: 40px;
+    }
+    .mobile-menu .close-menu {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+    }
+    
+    /* ============================================================
+       Countdown Section
+       (Dark semi-transparent background)
+    ============================================================ */
+    .countdown-section {
+      text-align: center;
+      padding: 1rem;
+      background-color: rgba(17, 17, 17, 0.33);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .countdown-title {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .flip-clock {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .flip-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0 0.5rem;
+    }
+    .flip-number {
+      font-size: 2rem;
+      background: #333;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 0.25rem;
+      min-width: 2ch;
+      text-align: center;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,0.3);
+    }
+    .flip-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    .flip-separator {
+      font-size: 2rem;
+      margin: 0 0.5rem;
+      user-select: none;
+    }
+    .newsletter-btn {
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      background-color: #444;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      color: white; /* Added white text */
+    }
+    .newsletter-btn:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    
+    /* ============================================================
+       Weekly Stock Picks Section
+       (Dark semi-transparent background)
+    ============================================================ */
+    #weekly-stock-picks {
+      padding: 2rem 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      text-align: center;
+    }
+    #weekly-stock-picks h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .stock-picks-container {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    .stock-pick {
+      background: #000;
+      padding: 1rem;
+      border: 1px solid #444;
+      border-radius: 8px;
+      width: 300px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+    .stock-pick h3 {
+      margin-top: 0;
+    }
+    .stock-pick ol {
+      text-align: left;
+      padding-left: 1.5rem;
+    }
+    
+    /* ============================================================
+       Buy & Sell Tickers
+    ============================================================ */
+    .buy-ticker,
+    .sell-ticker {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.2s;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .buy-ticker {
+      background-color: #28a745;
+      border: none;
+    }
+    .buy-ticker:hover {
+      background-color: #218838;
+      transform: translateY(-2px);
+    }
+    .sell-ticker {
+      background-color: #dc3545;
+      border: none;
+    }
+    .sell-ticker:hover {
+      background-color: #c82333;
+      transform: translateY(-2px);
+    }
+    
+    /* ============================================================
+       Tools Section
+       (Dark semi-transparent background)
+    ============================================================ */
+    #tools {
+      padding: 2rem 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+    }
+    #tools h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      padding: 0 2rem;
+    }
+    .tool-card {
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      text-align: center;
+      padding-bottom: 1rem;
+      transition: transform 0.2s;
+    }
+    .tool-card:hover {
+      transform: translateY(-2px);
+    }
+    .tool-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .tool-card h2 {
+      margin: 1rem 0 0.5rem;
+      font-size: 1.25rem;
+    }
+    .tool-card p {
+      margin: 0 1rem 1rem;
+    }
+    .tool-button {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #000;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .tool-button:hover {
+      background: #005fa3;
+    }
+    
+    /* ============================================================
+       Newsletter Signup Section
+       (Dark semi-transparent background)
+    ============================================================ */
+    #newsletter-signup {
+      padding: 2rem 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      text-align: center;
+    }
+    #newsletter-signup h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    #newsletter-signup form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    #newsletter-signup input {
+      padding: 0.75rem;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      color: #000;
+    }
+    #newsletter-signup button {
+      padding: 0.75rem 1.5rem;
+      background-color: #333;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    #newsletter-signup button:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    
+    /* ============================================================
+       Feedback Section
+       (Dark semi-transparent background)
+    ============================================================ */
+    #feedback-section {
+      text-align: center;
+      padding: 3rem 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      margin-top: 2rem;
+    }
+    #feedback-section h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    #feedback-section p {
+      margin-bottom: 1.5rem;
+    }
+    #feedback-section a {
+      padding: 0.75rem 1.5rem;
+      background-color: #333;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    #feedback-section a:hover {
+      background-color: #555;
+    }
+    
+    /* ============================================================
+       Back Button
+    ============================================================ */
+    .back-button {
+      display: inline-block;
+      margin: 1rem 0;
+      padding: 0.75rem 1.5rem;
+      background-color: #333;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+      cursor: pointer;
+    }
+    .back-button:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+    
+    /* ============================================================
+       Footer
+       (Dark semi-transparent background)
+    ============================================================ */
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.33);
+      margin-top: 2rem;
+    }
+    
+    /* ============================================================
+       Responsive Adjustments
+    ============================================================ */
+    @media (min-width: 768px) {
+      .mobile-menu-toggle { display: none; }
+      .mobile-menu { display: none; }
+      nav.header__inline-menu { display: block; }
+    }
+    @media (max-width: 767px) {
+      nav.header__inline-menu { display: none; }
+    }
+    @media (max-width: 768px) {
+      .tool-card { width: 90%; }
+    }
+    
+    /* ============================================================
+       Performance Button Styles
+    ============================================================ */
+    .performance-button {
+  margin-left: 10px;
+  padding: 5px 10px;
   border: none;
-  padding: 0.875rem 1.25rem;
-  cursor: pointer;
-  background-color: var(--primary-bg);
-  color: var(--text-color);
-  display: block;
-}
-.mobile-menu-toggle svg {
-  vertical-align: middle;
-}
-.mobile-menu {
-  position: fixed;
-  top: 0;
-  left: -100%;
-  width: 80%;
-  max-width: 18.75rem; /* 300px */
-  height: 100%;
-  background-color: var(--primary-bg);
-  color: var(--text-color);
-  overflow-y: auto;
-  transition: left var(--transition-speed) ease;
-  z-index: 1500;
-  padding-top: 1rem;
-}
-.mobile-menu.open {
-  left: 0;
-}
-.mobile-menu nav ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.mobile-menu nav ul li {
-  border-bottom: 0.0625rem solid #444;
-}
-.mobile-menu nav ul li a,
-.mobile-menu nav ul li .submenu-toggle {
-  display: block;
-  padding: 0.625rem 1.25rem;
-  color: var(--text-color);
-  cursor: pointer;
-}
-.mobile-menu nav ul li a:hover,
-.mobile-menu nav ul li .submenu-toggle:hover {
-  background-color: #ddd;
-  color: #333;
-}
-.mobile-menu nav ul li ul.submenu {
-  display: none;
-  background-color: var(--secondary-bg);
-}
-.mobile-menu nav ul li ul.submenu li a {
-  padding-left: 2.5rem; /* 40px */
-}
-.mobile-menu .close-menu {
-  background: none;
-  border: none;
-  color: var(--text-color);
-  font-size: 1.5rem;
-  position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
-  cursor: pointer;
-}
-
-/* Countdown Section */
-.countdown-section {
-  text-align: center;
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: var(--section-margin-bottom);
-}
-.countdown-title {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-}
-.flip-clock {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #222;
-  padding: 1rem;
-  border-radius: var(--border-radius);
-  margin-bottom: 1rem;
-}
-.flip-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 0 0.5rem;
-}
-.flip-number {
-  font-size: 2rem;
-  background: var(--primary-bg);
-  padding: 0.5rem 1rem;
-  border-radius: var(--border-radius);
-  margin-bottom: 0.25rem;
-  min-width: 2ch;
-  text-align: center;
-  box-shadow: inset 0 -0.25rem 0 rgba(0,0,0,0.3);
-}
-.flip-label {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-}
-.flip-separator {
-  font-size: 2rem;
-  margin: 0 0.5rem;
-  user-select: none;
-}
-.newsletter-btn {
-  font-size: 0.9rem;
-  padding: var(--button-padding);
-  background-color: var(--secondary-bg);
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: background-color var(--transition-speed);
-  color: var(--text-color);
-}
-.newsletter-btn:hover {
-  background-color: #ddd;
-  color: #333;
-}
-
-/* Weekly Stock Picks Section */
-#weekly-stock-picks {
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  text-align: center;
-  margin-bottom: var(--section-margin-bottom);
-}
-#weekly-stock-picks h2 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-.stock-picks-container {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.stock-pick {
-  background: #000;
-  padding: 1rem;
-  border: 0.0625rem solid #444;
-  border-radius: 0.5rem;
-  width: 18.75rem; /* 300px */
-  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
-}
-.stock-pick h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-}
-.stock-pick ol {
-  text-align: left;
-  padding-left: 1.5rem;
-}
-
-/* Buy & Sell Tickers */
-.buy-ticker,
-.sell-ticker {
-  display: inline-block;
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--border-radius);
+  border-radius: 4px;
   font-weight: bold;
-  transition: background-color var(--transition-speed), transform 0.2s;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.2);
-}
-.buy-ticker {
-  background-color: #28a745;
-  border: none;
-}
-.buy-ticker:hover {
-  background-color: #218838;
-  transform: translateY(-0.125rem);
-}
-.sell-ticker {
-  background-color: #dc3545;
-  border: none;
-}
-.sell-ticker:hover {
-  background-color: #c82333;
-  transform: translateY(-0.125rem);
+  cursor: pointer; /* New: shows a pointer on hover */
 }
 
-/* Tools Section */
-#tools {
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  margin-bottom: var(--section-margin-bottom);
-}
-#tools h2 {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  font-size: 2rem;
-}
-.tool-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
-  gap: 1.5rem;
-  padding: 0 2rem;
-}
-.tool-card {
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 0.375rem;
-  overflow: hidden;
-  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
-  text-align: center;
-  padding-bottom: 1rem;
-  transition: transform 0.2s;
-}
-.tool-card:hover {
-  transform: translateY(-0.125rem);
-}
-.tool-card img {
-  width: 100%;
-  height: 9.375rem; /* 150px */
-  object-fit: cover;
-}
-.tool-card h2 {
-  margin: 1rem 0 0.5rem;
-  font-size: 1.25rem;
-}
-.tool-card p {
-  margin: 0 1rem 1rem;
-}
-.tool-button {
-  display: inline-block;
-  padding: var(--button-padding);
-  background: #000;
-  border-radius: var(--border-radius);
-  transition: background var(--transition-speed);
-}
-.tool-button:hover {
-  background: #005fa3;
-}
-
-/* Newsletter Signup Section */
-#newsletter-signup {
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  text-align: center;
-  margin-bottom: var(--section-margin-bottom);
-}
-#newsletter-signup h2 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-#newsletter-signup form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  max-width: 25rem;
-  margin: 0 auto;
-}
-#newsletter-signup input {
-  padding: 0.75rem;
-  width: 100%;
-  border: 0.0625rem solid #ccc;
-  border-radius: var(--border-radius);
-  color: #000;
-}
-#newsletter-signup button {
-  padding: 0.75rem 1.5rem;
-  background-color: var(--primary-bg);
-  border-radius: var(--border-radius);
-  transition: background-color var(--transition-speed);
-}
-#newsletter-signup button:hover {
-  background-color: #ddd;
-  color: #333;
-}
-
-/* Feedback Section */
-#feedback-section {
-  text-align: center;
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  margin-top: var(--section-margin-bottom);
-}
-#feedback-section h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-#feedback-section p {
-  margin-bottom: 1.5rem;
-}
-#feedback-section a {
-  padding: 0.75rem 1.5rem;
-  background-color: var(--primary-bg);
-  border-radius: 0.3125rem;
-  transition: background-color var(--transition-speed);
-}
-#feedback-section a:hover {
-  background-color: #555;
-}
-
-/* Back Button */
-.back-button {
-  display: inline-block;
-  margin: 1rem 0;
-  padding: 0.75rem 1.5rem;
-  background-color: var(--primary-bg);
-  border-radius: var(--border-radius);
-  transition: background-color var(--transition-speed);
-  cursor: pointer;
-}
-.back-button:hover {
-  background-color: #ddd;
-  color: #333;
-}
-
-/* Footer */
-footer {
-  text-align: center;
-  padding: 1rem;
-  background-color: var(--section-bg);
-  margin-top: 2rem;
-}
-
-/* Responsive Adjustments */
-@media (min-width: 768px) {
-  .mobile-menu-toggle { display: none; }
-  .mobile-menu { display: none; }
-  nav.header__inline-menu { display: block; }
-}
-@media (max-width: 767px) {
-  nav.header__inline-menu { display: none; }
-}
-@media (max-width: 768px) {
-  .tool-card { width: 90%; }
-}
-
-/* Performance Button & Summary Styles */
-.performance-button {
-  margin-left: 1.25rem;
-  padding: 0.3125rem 0.625rem;
-  border: none;
-  border-radius: var(--border-radius);
-  font-weight: bold;
-  cursor: pointer;
-}
-.performance-green {
-  background-color: #28a745 !important;
-}
-.performance-red {
-  background-color: #dc3545 !important;
-}
-#performance-summary {
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  text-align: center;
-}
-#performance-summary .performance-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-#performance-summary button {
-  padding: 0.625rem 1.25rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: background-color var(--transition-speed);
-  color: var(--text-color);
-}
-#performance-summary button:hover {
-  opacity: 0.9;
-}
-.positive-performance {
-  background-color: #28a745;
-}
-.negative-performance {
-  background-color: #dc3545;
-}
-.explanation-box {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: rgba(0, 0, 0, 0.7);
-  border-radius: var(--border-radius);
-  color: var(--text-color);
-  font-size: 0.9rem;
-  max-width: 37.5rem;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.4;
-}
-@media (max-width: 600px) {
-  #performance-summary button {
-    font-size: 0.9rem;
-    padding: 0.5rem 0.75rem;
-  }
-  .explanation-box {
-    font-size: 0.9rem;
-    padding: 0.8rem;
-  }
-}
-.performance-summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  max-width: 37.5rem;
-  margin: 0 auto;
-}
-.performance-summary-grid button {
-  width: 100%;
-  padding: 0.8rem;
-  font-size: 0.9rem;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: background-color var(--transition-speed);
-}
-.performance-summary-grid .non-clickable {
-  cursor: default;
-}
-.performance-summary-grid button:nth-child(odd) {
-  background-color: var(--primary-bg);
-}
-</style>
+    .performance-green {
+      background-color: #28a745 !important;
+    }
+    .performance-red {
+      background-color: #dc3545 !important;
+    }
+  </style>
 </head>
 <body>
   <!-- Fixed Background Element -->
@@ -676,7 +617,9 @@ footer {
 
   <!-- Hero Section -->
   <header class="hero">
+    <!-- Add this new chart container; it will serve as an extra background layer -->
     <div id="heroChart"></div>
+    <!-- Add this overlay for the SPY price -->
     <div id="heroPrice"></div>
     <div class="hero-content">
       <h1>Intuition Trades</h1>
@@ -684,6 +627,7 @@ footer {
     </div>
   </header>
   
+
   <!-- Countdown Section -->
   <section class="countdown-section">
     <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
@@ -761,38 +705,18 @@ footer {
     </div>
   </section>
 
-  <!-- Performance Summary Section (Updated) -->
-  <section id="performance-summary">
-    <h2>Weekly Performance</h2>
-    <div class="performance-summary-grid">
-      <!-- Row 1: Our Top Picks -->
-      <button id="weeklyPicksButton">Our Top Picks</button>
-      <button id="weeklyPicksChange" class="non-clickable">Loading...</button>
-      
-      <!-- Row 2: S&P 500 -->
-      <button id="sp500Button">SP500</button>
-      <button id="sp500Change" class="non-clickable">Loading...</button>
-      
-      <!-- Row 3: Nasdaq -->
-      <button id="nasdaqButton">NASDAQ</button>
-      <button id="nasdaqChange" class="non-clickable">Loading...</button>
-    </div>
-    <!-- Explanation Box (hidden by default) -->
-    <div id="weeklyExplanationBox" class="explanation-box" style="display: none;"></div>
-  </section>
-  
   <!-- Newsletter Signup Section -->
-  <section id="newsletter-signup">
-    <!-- MailerLite Universal Embed Code -->
-    <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-      ml('account', '1422635');
-    </script>
-    <div class="ml-embedded" data-form="N78gvr"></div>
-  </section>
+<section id="newsletter-signup">
+  <!-- MailerLite Universal Embed Code -->
+  <script>
+    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+    ml('account', '1422635');
+  </script>
+  <div class="ml-embedded" data-form="N78gvr"></div>
+</section>
   
   <main>
     <!-- Tools Section -->
@@ -883,9 +807,9 @@ footer {
 
   <!-- ============================================================
        JavaScript Section
+       (Desktop Dropdown, Mobile Menu Toggle, Data Fetch, Countdown & Smooth Scroll)
   ============================================================ -->
   <script>
-    // Desktop Dropdown & Mobile Menu Toggle
     document.addEventListener("DOMContentLoaded", () => {
       const canHover = window.matchMedia('(hover: hover)').matches;
       const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
@@ -894,6 +818,7 @@ footer {
           const dropdownMenu = drop.querySelector('.dropdown-menu');
           drop.addEventListener('mouseenter', () => {
             const rect = drop.getBoundingClientRect();
+            // Append dropdown to body and set its fixed position
             document.body.appendChild(dropdownMenu);
             dropdownMenu.style.position = 'fixed';
             dropdownMenu.style.top = rect.bottom + 'px';
@@ -947,7 +872,8 @@ footer {
         });
       }
     });
-    
+  </script>
+  <script>
     const openMenuBtn = document.getElementById("openMenu");
     const closeMenuBtn = document.getElementById("closeMenu");
     const mobileMenu = document.getElementById("mobileMenu");
@@ -967,170 +893,102 @@ footer {
       });
     });
   </script>
+<script>
+  const initialDate = "2025-03-28";
+  const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
 
-  <script>
-    // This function fetches intraday data for a given ticker using 5min interval,
-    // finds the first available price on the initial date and the most recent price,
-    // then calculates and displays the percentage difference in the given buttonElement.
-    function updateTickerPerformanceIntraday(ticker, buttonElement) {
-      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
-      fetch(intradayUrl)
+  document.addEventListener('DOMContentLoaded', () => {
+    // Update the small header text
+    document.querySelectorAll('.performance-header').forEach(header => {
+      header.textContent = "Performance Since " + initialDate;
+    });
+
+    // Fetch performance for each ticker
+    tickers.forEach(ticker => {
+      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+
+      fetch(histUrl)
         .then(response => response.json())
         .then(data => {
-          if (!data || !data["Time Series (5min)"]) return;
-          const timeSeries = data["Time Series (5min)"];
-          const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
+          if (!data || !data["Time Series (Daily)"]) return;
 
-          // Adjust this date as needed
-          const initialDate = "2025-03-28";
-          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
-          if (!initialTimestamps.length) return;
-          const initialTimestamp = initialTimestamps[0];
-          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+          const timeSeries = data["Time Series (Daily)"];
+          const initialRecord = timeSeries[initialDate];
+          if (!initialRecord) return;
 
-          // Get the most recent timestamp (<= current time)
-          const now = new Date();
-          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
-          if (!currentTimestamps.length) return;
-          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
-          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
-
-          // Calculate percentage difference
+          const initialPrice = parseFloat(initialRecord["4. close"]);
+          const lastRefreshed = data["Meta Data"]["3. Last Refreshed"];
+          const mostRecent = timeSeries[lastRefreshed];
+          const currentPrice = parseFloat(mostRecent["4. close"]);
           const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
           const diffFormatted = diff.toFixed(2) + '%';
 
-          // Update button text and styling
-          buttonElement.textContent = diffFormatted;
-          if (diff >= 0) {
-            buttonElement.classList.add('positive-performance');
-            buttonElement.classList.remove('negative-performance');
-          } else {
-            buttonElement.classList.add('negative-performance');
-            buttonElement.classList.remove('positive-performance');
+          // Grab the performance button by ID
+          const perfEl = document.getElementById(`performance-${ticker}`);
+          if (perfEl) {
+            perfEl.textContent = diffFormatted;
+            
+            // Apply green or red background
+            if (diff >= 0) {
+              perfEl.classList.add('performance-green');
+            } else {
+              perfEl.classList.add('performance-red');
+            }
+
+            // **New**: Add a click listener to navigate
+            perfEl.addEventListener('click', () => {
+              window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+            });
           }
         })
-        .catch(error => console.error("Error fetching intraday data for", ticker, error));
-    }
+        .catch(error => console.log(error));
+    });
+  });
+</script>
 
-    // Update the 6 weekly pick tickers (OXY, VRSN, MMM, AOS, ALB, RPD)
+  <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const initialDate = "2025-03-28";
-      document.querySelectorAll('.performance-header').forEach(header => {
-        header.textContent = "Performance Since " + initialDate;
-      });
-
-      const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
-      tickers.forEach(ticker => {
-        const perfEl = document.getElementById(`performance-${ticker}`);
-        if (perfEl) {
-          updateTickerPerformanceIntraday(ticker, perfEl);
-          // Make each performance button clickable to see intraday chart
-          perfEl.addEventListener('click', () => {
-            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-          });
-        }
-      });
-    });
-  </script>
-
-  <script>
-    // Calculate and display the average performance of top picks and short picks in the Performance Summary
-    document.addEventListener("DOMContentLoaded", function() {
-      // We'll use QQQ for NASDAQ, SPY for S&P 500
-      updateTickerPerformanceIntraday("SPY", document.getElementById("sp500Change"));
-      updateTickerPerformanceIntraday("QQQ", document.getElementById("nasdaqChange"));
-
-      // Make the left buttons clickable to intraday pages
-      document.getElementById("sp500Button").addEventListener("click", () => {
-        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
-      });
-      document.getElementById("nasdaqButton").addEventListener("click", () => {
-        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
-      });
-
-      // Top 3 Buys & Top 3 Shorts
-      const topBuys = ["OXY", "VRSN", "MMM"];
-      const bottomShorts = ["AOS", "ALB", "RPD"];
-
-      function generateExplanation() {
-        return (
-          "This number represents the average profit percentage if you had " +
-          "bought our top three recommended stocks (" + topBuys.join(", ") + ") and " +
-          "shorted our bottom three picks (" + bottomShorts.join(", ") + ") as of " +
-          "2025-03-28. It updates in real time based on intraday data."
-        );
-      }
-
-      function calculateWeeklyPicksPerformance() {
-        let total = 0;
-        let count = 0;
-        // Buys
-        topBuys.forEach(ticker => {
-          const el = document.getElementById("performance-" + ticker);
-          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-            const val = parseFloat(el.textContent.replace('%', ''));
-            if (!isNaN(val)) {
-              total += val;
-              count++;
-            }
-          }
-        });
-        // Shorts
-        bottomShorts.forEach(ticker => {
-          const el = document.getElementById("performance-" + ticker);
-          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-            const val = parseFloat(el.textContent.replace('%', ''));
-            if (!isNaN(val)) {
-              // For shorts, invert the sign
-              total += -val;
-              count++;
-            }
-          }
-        });
-        return count ? total / count : 0;
-      }
-
-      function updateWeeklyPicksButton() {
-        const performance = calculateWeeklyPicksPerformance();
-        const performanceText = performance.toFixed(2) + '%';
-
-        // Left button: "Our Top Picks"
-        const picksBtn = document.getElementById("weeklyPicksButton");
-        picksBtn.textContent = "Our Top Picks";
-
-        // Right button: actual performance
-        const picksChangeBtn = document.getElementById("weeklyPicksChange");
-        picksChangeBtn.textContent = performanceText;
-
-        if (performance >= 0) {
-          picksChangeBtn.classList.add("positive-performance");
-          picksChangeBtn.classList.remove("negative-performance");
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay();
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
         } else {
-          picksChangeBtn.classList.add("negative-performance");
-          picksChangeBtn.classList.remove("positive-performance");
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
         }
       }
-
-      // Update weekly picks performance after a short delay, then periodically
-      setTimeout(updateWeeklyPicksButton, 3000);
-      setInterval(updateWeeklyPicksButton, 60000);
-
-      // Toggle explanation box on "Our Top Picks" button click
-      const weeklyPicksButton = document.getElementById("weeklyPicksButton");
-      const explanationBox = document.getElementById("weeklyExplanationBox");
-      weeklyPicksButton.addEventListener("click", function() {
-        explanationBox.textContent = generateExplanation();
-        explanationBox.style.display =
-          (explanationBox.style.display === "none" || explanationBox.style.display === "")
-            ? "block"
-            : "none";
+      function updateCountdown() {
+        const now = new Date();
+        const target = getNextMondayTarget();
+        const diff = target - now;
+        if (diff <= 0) {
+          document.getElementById('days').textContent = '00';
+          document.getElementById('hours').textContent = '00';
+          document.getElementById('minutes').textContent = '00';
+          document.getElementById('seconds').textContent = '00';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        document.getElementById('days').textContent = days.toString().padStart(2, '0');
+        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
       });
     });
   </script>
-
-  <!-- SPY Chart (Hero Section) -->
-  <script>
-    async function fetchSPYData() {
+    <script>async function fetchSPYData() {
       try {
         const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
         const data = await response.json();
@@ -1178,47 +1036,58 @@ footer {
       document.getElementById('heroPrice').textContent = `SPY ${lastPrice.toFixed(2)}`;
       
       Highcharts.stockChart('heroChart', {
-        chart: {
-          backgroundColor: 'transparent',
-          margin: [20, 20, 40, 20],
-          spacing: [0, 0, 0, 0],
-          events: {
-            contextmenu: function (e) {
-              e.preventDefault();
-            }
-          }
-        },
-        exporting: {
-          enabled: false,
-          buttons: {
-            contextButton: { enabled: false }
-          }
-        },
-        time: { useUTC: false },
-        rangeSelector: { enabled: false },
-        title: { text: null },
-        xAxis: { visible: false },
-        yAxis: { visible: false },
-        tooltip: { enabled: false },
-        credits: { enabled: false },
-        navigator: { enabled: false },
-        scrollbar: { enabled: false },
-        series: [{
-          name: 'SPY',
-          data: todayPoints.map(p => [p.x, p.y]),
-          type: 'line',
-          color: lineColor,
-          lineWidth: 2,
-          marker: { enabled: false },
-          enableMouseTracking: false
-        }]
-      });
+  chart: {
+    backgroundColor: 'transparent',
+    margin: [20, 20, 40, 20],
+    spacing: [0, 0, 0, 0],
+    events: {
+      contextmenu: function (e) {
+        e.preventDefault();
+      }
     }
-    
+  },
+  exporting: {
+    enabled: false, // disables the context button entirely
+    buttons: {
+      contextButton: {
+        enabled: false
+      }
+    }
+  },
+  time: {
+    useUTC: false
+  },
+  rangeSelector: { enabled: false },
+  title: { text: null },
+  xAxis: { visible: false },
+  yAxis: { visible: false },
+  tooltip: { enabled: false },
+  credits: { enabled: false },
+  navigator: { enabled: false },
+  scrollbar: { enabled: false },
+  series: [{
+    name: 'SPY',
+    data: todayPoints.map(p => [p.x, p.y]),
+    type: 'line',
+    color: lineColor,
+    lineWidth: 2,
+    marker: { enabled: false },
+    enableMouseTracking: false
+  }]
+});
+
+    }
+      
+    // Initial call and set interval to update every minute
     document.addEventListener("DOMContentLoaded", () => {
       plotHeroChart();
       setInterval(plotHeroChart, 60000);
     });
-  </script>
+    exporting: {
+  enabled: false
+}
+
+    </script>
+    
 </body>
 </html>
