@@ -158,6 +158,24 @@
     background: var(--accent-color);
     margin-bottom: 20px;
   }
+  /* Remove extra space under the Monte Carlo chart container */
+#mcSection {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Style the slider to be wider */
+#mcSliderSection input[type="range"] {
+  width: 100%;   /* Make the slider span full width of its container */
+  margin: 10px 0; /* Optional: adjust vertical spacing */
+}
+
+/* Optional: reduce spacing inside the slider section */
+#mcSliderSection {
+  margin: 0;
+  padding: 0;
+}
+
 </style>
 <body>
   <!-- Back to Main Page button -->
@@ -747,7 +765,7 @@
       zoomType: 'x',
       backgroundColor: 'transparent',
       // Set a fixed width if desired (you can adjust 1200 to any value)
-      width: 1200
+      width: 2000
     },
     title: {
       text: 'Combined Technical Indicators',
@@ -923,9 +941,19 @@
     style: { color: '#fff' }
   },
   xAxis: {
-    title: { text: null },
-    crosshair: false
-  },
+  title: { text: null },
+  crosshair: false
+},
+plotOptions: {
+  series: {
+    states: {
+      hover: {
+        halo: { size: 0 }
+      }
+    }
+  }
+},
+
   yAxis: {
     title: { text: 'Frequency', style: { color: '#fff' } },
     gridLineColor: '#444'
