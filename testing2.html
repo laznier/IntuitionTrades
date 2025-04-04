@@ -1239,8 +1239,6 @@ function updateMCSlider(val) {
     `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
   return insiderBull;
 }
-
-    }
     async function fetchCongressData(ticker, periodMonths) {
       const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
       const resp = await fetch(url);
