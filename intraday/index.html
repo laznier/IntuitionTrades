@@ -230,36 +230,38 @@
     /***************************************
      * 3) FILTERING DATA BY RANGE
      ***************************************/
-    function filterDataForRange(points, range) {
-      const now = new Date();
-      let fromDate;
-      switch (range) {
-        case "1D":
-          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case "5D":
-          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-          break;
-        case "1M":
-          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "6M":
-          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-          break;
-        case "YTD":
-          fromDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        case "1Y":
-          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-          break;
-        case "5Y":
-          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-      }
-      return points.filter(p => p.x >= fromDate.getTime());
-    }
+     function filterDataForRange(points, range) {
+  const now = new Date();
+  let fromDate;
+  switch (range) {
+    case "1D":
+      // Use a rolling 24-hour window.
+      fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case "5D":
+      fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+      break;
+    case "1M":
+      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case "6M":
+      fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+      break;
+    case "YTD":
+      fromDate = new Date(now.getFullYear(), 0, 1);
+      break;
+    case "1Y":
+      fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+    case "5Y":
+      fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+      break;
+    default:
+      fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
+  }
+  return points.filter(p => p.x >= fromDate.getTime());
+}
+
 
     /***************************************
      * 4) TOP BAR UPDATE
