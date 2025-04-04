@@ -10,7 +10,8 @@
   <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>:root {
+<style>
+:root {
   /* Base typography and color variables */
   --font-family: 'Arial', sans-serif;
   --text-color: #fff;
@@ -111,13 +112,11 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-color);
   text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
 }
-
 @media (max-width: 600px) {
   #heroPrice {
     font-size: 3vw;
   }
 }
-
 
 /* Top Navigation (Horizontal Scrolling) */
 .topnav {
@@ -599,6 +598,167 @@ footer {
 .performance-summary-grid button:nth-child(odd) {
   background-color: var(--primary-bg);
 }
+
+/* Live News Section Styles */
+.live-news {
+  position: relative;
+  padding: 1rem;
+  /* Normal background: 33% transparent */
+  background-color: rgba(0, 0, 0, 0.33);
+  margin-bottom: 2rem;
+  transition: all 0.3s;
+}
+
+/* When minimized, just one line high. Hide feed & menu. */
+.live-news.minimized {
+  height: 2rem; /* Enough for the header line */
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+}
+.live-news.minimized .live-news-menu,
+.live-news.minimized .live-news-feed {
+  display: none;
+}
+
+/* When maximized, full screen overlay-like look */
+.live-news.maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 9999;
+  /* Darker overlay background */
+  background-color: rgba(0, 0, 0, 0.95);
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Title + Controls on same line */
+.live-news-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.live-news-header .live-news-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Buttons for topics menu */
+.live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.live-news-menu button {
+  background-color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #fff;
+  transition: background-color 0.3s;
+}
+.live-news-menu button:hover {
+  background-color: #555;
+}
+
+/* Controls (Minimize, Maximize, Close) */
+.live-news-controls span {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.3rem 0.6rem;
+  background-color: #333;
+  border-radius: 4px;
+  color: #fff;
+  transition: background-color 0.3s;
+  user-select: none;
+}
+.live-news-controls span:hover {
+  background-color: #555;
+}
+
+/* News Feed container */
+.live-news-feed {
+  max-height: 600px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column; /* We'll prepend new items */
+}
+
+/* Custom scrollbar styling for a darker "wheel" look */
+.live-news-feed::-webkit-scrollbar {
+  width: 10px;
+}
+.live-news-feed::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Individual news item */
+.live-news-item {
+  background-color: rgba(0, 0, 0, 0.7);
+  margin-bottom: 0;
+  padding: 0.75rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: background-color 0.3s;
+}
+
+/* Hover effect for item (optional) */
+.live-news-item:hover {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Title + timestamp row */
+.live-news-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+/* Timestamp on the left */
+.live-news-timestamp {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  min-width: 8rem; /* so it lines up nicely */
+}
+.live-news-title {
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: underline;
+  flex: 1; /* so it expands to fill leftover space */
+}
+
+/* Hidden summary that expands on click */
+.live-news-summary {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: none;
+}
+.live-news-summary a {
+  color: #16a34a;
+  text-decoration: underline;
+}
+
+/* Expanded item reveals the summary */
+.live-news-item.expanded .live-news-summary {
+  display: block;
+}
+
 </style>
 </head>
 <body>
@@ -662,7 +822,7 @@ footer {
             <li><a href="congress/">Congress Trades</a></li>
             <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
             <li><a href="analyst/">Combined Analyst Ratings</a></li>
-            <li><a href="sentiment">Market Sentiment</a></li>
+            <li><a href="sentiment/">Market Sentiment</a></li>
             <li><a href="insider/">Insider Tracker</a></li>
             <li><a href="technical/">Combined Technical Analysis</a></li>
             <li><a href="MACD/">MACD Analysis</a></li>
@@ -783,7 +943,7 @@ footer {
     <!-- Explanation Box (hidden by default) -->
     <div id="weeklyExplanationBox" class="explanation-box" style="display: none;"></div>
   </section>  
-  
+
   <!-- Newsletter Signup Section -->
   <section id="newsletter-signup">
     <!-- MailerLite Universal Embed Code -->
@@ -796,6 +956,42 @@ footer {
     </script>
     <div class="ml-embedded" data-form="N78gvr"></div>
   </section>
+
+  <!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
+    </div>
+  </h2>
+  <!-- Menu: "All News" + Topics (combined economy) -->
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button> <!-- Combined macro, monetary, fiscal -->
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
+
   
   <main>
     <!-- Tools Section -->
@@ -1222,47 +1418,225 @@ footer {
       plotHeroChart();
       setInterval(plotHeroChart, 60000);
     });
-    document.addEventListener('DOMContentLoaded', () => {
-  function getNextMondayTarget() {
-    const now = new Date();
-    const currentUTCDay = now.getUTCDay();
-    let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-    if (currentUTCDay === 1 && now < target) { 
-      return target; 
-    } else {
-      let daysUntilMonday = (8 - currentUTCDay) % 7;
-      if (daysUntilMonday === 0) { daysUntilMonday = 7; }
-      target.setUTCDate(target.getUTCDate() + daysUntilMonday);
-      return target;
-    }
-  }
-  function updateCountdown() {
-    const now = new Date();
-    const target = getNextMondayTarget();
-    const diff = target - now;
-    if (diff <= 0) {
-      document.getElementById('days').textContent = '00';
-      document.getElementById('hours').textContent = '00';
-      document.getElementById('minutes').textContent = '00';
-      document.getElementById('seconds').textContent = '00';
-      return;
-    }
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    document.getElementById('days').textContent = days.toString().padStart(2, '0');
-    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
-  }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
-  document.getElementById('scrollToSignup').addEventListener('click', () => {
-    document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
-  });
-});
 
+    // Countdown
+    document.addEventListener('DOMContentLoaded', () => {
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay();
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
+        } else {
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
+        }
+      }
+      function updateCountdown() {
+        const now = new Date();
+        const target = getNextMondayTarget();
+        const diff = target - now;
+        if (diff <= 0) {
+          document.getElementById('days').textContent = '00';
+          document.getElementById('hours').textContent = '00';
+          document.getElementById('minutes').textContent = '00';
+          document.getElementById('seconds').textContent = '00';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        document.getElementById('days').textContent = days.toString().padStart(2, '0');
+        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
   </script>
+
+  <!-- ==========================
+       Live News JavaScript
+  =========================== -->
+  <script>
+    // Example: adapt your own fetch logic for combining "economy" topics, etc.
+    async function fetchAllSentimentData(topic) {
+      // If topic is "economy", we combine economy_macro, economy_monetary, economy_fiscal
+      let finalTopicParam = "";
+      if (topic === "economy") {
+        // Comma-separated topics
+        finalTopicParam = "economy_macro,economy_monetary,economy_fiscal";
+      } else {
+        finalTopicParam = topic; // e.g. "finance", "blockchain", or ""
+      }
+  
+      // Build the URL for your internal endpoint
+      // For "All News" (topic=""), we just omit the topics param
+      let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
+      if (finalTopicParam) {
+        url += `&topic=${finalTopicParam}`;
+      }
+  
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (!data.feed) {
+        throw new Error("No sentiment data from server.");
+      }
+      return data.feed;
+    }
+  
+    // Render a single news item in the feed
+    function renderNewsItem(item) {
+      // item.time_published is "YYYYMMDDTHHMM" or similar
+      const rawTime = item.time_published || "";
+      const displayTime = formatTimePublished(rawTime);
+  
+      const container = document.createElement("div");
+      container.classList.add("live-news-item");
+  
+      // Row with timestamp + title
+      const row = document.createElement("div");
+      row.classList.add("live-news-row");
+  
+      const timeEl = document.createElement("div");
+      timeEl.classList.add("live-news-timestamp");
+      timeEl.textContent = displayTime;
+  
+      const titleEl = document.createElement("div");
+      titleEl.classList.add("live-news-title");
+      titleEl.textContent = item.title || "Untitled";
+  
+      row.appendChild(timeEl);
+      row.appendChild(titleEl);
+      container.appendChild(row);
+  
+      // Summary
+      const summaryEl = document.createElement("div");
+      summaryEl.classList.add("live-news-summary");
+      summaryEl.innerHTML = `
+        <p>${item.summary || "No summary available."}</p>
+        <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
+      `;
+      container.appendChild(summaryEl);
+  
+      // Toggle expand on title click
+      titleEl.addEventListener("click", () => {
+        container.classList.toggle("expanded");
+      });
+  
+      return container;
+    }
+  
+    // Helper to format the time_published string from Alpha Vantage
+    function formatTimePublished(timeStr) {
+      // e.g. "20250403T152533" => "2025-04-03 15:25"
+      if (!timeStr || timeStr.length < 8) return "";
+      const year = timeStr.slice(0, 4);
+      const month = timeStr.slice(4, 6);
+      const day = timeStr.slice(6, 8);
+      let hour = "00";
+      let minute = "00";
+      if (timeStr.length >= 13) {
+        hour = timeStr.slice(9, 11);
+        minute = timeStr.slice(11, 13);
+      }
+      return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+  
+    function updateNewsFeed(articles) {
+  const feedContainer = document.getElementById("liveNewsFeed");
+  feedContainer.innerHTML = ""; // Clear out old items
+  
+  // Sort articles so that newer items come first:
+  articles.sort((a, b) => {
+    // Compare time strings in descending order
+    return b.time_published.localeCompare(a.time_published);
+  });
+  
+  // Append items in the sorted order (newest first)
+  articles.forEach(article => {
+    const itemEl = renderNewsItem(article);
+    feedContainer.appendChild(itemEl);
+  });
+}
+
+  
+    let selectedTopic = ""; // default all news
+    let refreshInterval = null;
+  
+    async function refreshNews() {
+      try {
+        const articles = await fetchAllSentimentData(selectedTopic);
+        updateNewsFeed(articles);
+      } catch (err) {
+        console.error("Error refreshing news:", err);
+      }
+    }
+  
+    document.addEventListener("DOMContentLoaded", () => {
+      // Topic menu
+      const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+      menuButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedTopic = btn.getAttribute("data-topic") || "";
+          refreshNews();
+        });
+      });
+  
+      // Initial fetch
+      refreshNews();
+      // Refresh every 30 seconds
+      refreshInterval = setInterval(refreshNews, 120000);
+  
+      // Minimize / Maximize / Close
+      const liveNewsSection = document.getElementById("live-news");
+      const minimizeBtn = document.getElementById("liveNewsMinimize");
+      const maximizeBtn = document.getElementById("liveNewsMaximize");
+      const closeBtn = document.getElementById("liveNewsClose");
+  
+      // Track if minimized or not
+      let isMinimized = false;
+  
+      minimizeBtn.addEventListener("click", () => {
+        if (!isMinimized) {
+          // Minimizing
+          liveNewsSection.classList.add("minimized");
+          minimizeBtn.textContent = "+"; // switch icon to plus
+          isMinimized = true;
+        } else {
+          // Restoring from minimized
+          liveNewsSection.classList.remove("minimized");
+          minimizeBtn.textContent = "-"; // switch icon back
+          isMinimized = false;
+        }
+      });
+  
+      maximizeBtn.addEventListener("click", () => {
+        const isMaximized = liveNewsSection.classList.contains("maximized");
+        if (isMaximized) {
+          // Exit full-screen
+          liveNewsSection.classList.remove("maximized");
+          document.body.style.overflow = ""; // restore body scroll if needed
+        } else {
+          // Go full-screen
+          liveNewsSection.classList.add("maximized");
+          document.body.style.overflow = "hidden"; // disable body scroll behind overlay
+        }
+      });
+  
+      closeBtn.addEventListener("click", () => {
+        liveNewsSection.style.display = "none";
+        clearInterval(refreshInterval);
+      });
+    });
+  </script>
+  
 </body>
 </html>

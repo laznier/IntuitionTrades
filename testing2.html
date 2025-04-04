@@ -710,7 +710,7 @@ footer {
 /* Individual news item */
 .live-news-item {
   background-color: rgba(0, 0, 0, 0.7);
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   padding: 0.75rem;
   border-radius: 4px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.5);
@@ -1551,18 +1551,22 @@ footer {
     }
   
     function updateNewsFeed(articles) {
-      const feedContainer = document.getElementById("liveNewsFeed");
-      // Clear old items so we only show the latest 20
-      feedContainer.innerHTML = "";
+  const feedContainer = document.getElementById("liveNewsFeed");
+  feedContainer.innerHTML = ""; // Clear out old items
   
-      // Prepend new items so the newest appear at the top
-      // (Though typically you'd reverse the array if needed.)
-      articles.forEach(article => {
-        const itemEl = renderNewsItem(article);
-        // newest at top
-        feedContainer.prepend(itemEl);
-      });
-    }
+  // Sort articles so that newer items come first:
+  articles.sort((a, b) => {
+    // Compare time strings in descending order
+    return b.time_published.localeCompare(a.time_published);
+  });
+  
+  // Append items in the sorted order (newest first)
+  articles.forEach(article => {
+    const itemEl = renderNewsItem(article);
+    feedContainer.appendChild(itemEl);
+  });
+}
+
   
     let selectedTopic = ""; // default all news
     let refreshInterval = null;
@@ -1589,7 +1593,7 @@ footer {
       // Initial fetch
       refreshNews();
       // Refresh every 30 seconds
-      refreshInterval = setInterval(refreshNews, 30000);
+      refreshInterval = setInterval(refreshNews, 120000);
   
       // Minimize / Maximize / Close
       const liveNewsSection = document.getElementById("live-news");
