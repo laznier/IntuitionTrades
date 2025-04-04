@@ -1397,13 +1397,13 @@ footer {
       
       // Filter today's data
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayPoints = points.filter(p => p.x >= startOfDay.getTime());
-      if (todayPoints.length === 0) return;
+const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+const recentPoints = points.filter(p => p.x >= twentyFourHoursAgo.getTime());
+if (recentPoints.length === 0) return;
       
       // Determine line color based on performance
-      const firstPrice = todayPoints[0].y;
-      const lastPrice = todayPoints[todayPoints.length - 1].y;
+      const firstPrice = recentPoints[0].y;
+      const lastPrice = recentPoints[recentPoints.length - 1].y;
       const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
       
       // Update price overlay
@@ -1437,7 +1437,7 @@ footer {
         scrollbar: { enabled: false },
         series: [{
           name: 'SPY',
-          data: todayPoints.map(p => [p.x, p.y]),
+          data: recentPoints.map(p => [p.x, p.y]),
           type: 'line',
           color: lineColor,
           lineWidth: 2,
