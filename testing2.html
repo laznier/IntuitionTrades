@@ -1450,9 +1450,9 @@ body.live-news-overlay::before {
       // If topic is empty, we get "all news". Otherwise, we pass the topic param.
       const topicParam = topic ? `&topic=${topic}` : "";
       // For demonstration, adapt the URL to your internal environment:
-      // e.g., https://www.projectmanagerhelper.com/api/sentiment?topic=finance&limit=20
+      // e.g., https://www.intuitiontrades.com/api/sentiment?topic=finance&limit=20
       // The code below is just an example. Adjust the endpoint & params as needed.
-      const url = `https://www.projectmanagerhelper.com/api/sentiment?limit=20${topicParam}`;
+      const url = `https://www.intuitiontrades.com/api/sentiment?limit=20${topicParam}`;
       const resp = await fetch(url);
       const data = await resp.json();
       if (!data.feed) throw new Error("No sentiment data from server.");
