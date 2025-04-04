@@ -41,6 +41,8 @@ export default async function handler(req, res) {
     // Append your API key
     url += `&apikey=${apiKey}`;
 
+    console.log("Fetching from Alpha Vantage URL:", url);
+
     // Fetch data from Alpha Vantage
     const response = await fetch(url);
     const data = await response.json();
