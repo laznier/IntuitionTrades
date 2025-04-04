@@ -8,7 +8,7 @@
   <!-- Include Highcharts and its histogram module -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
-  <!-- Include Math.js -->
+  <!-- Include Math.js so that 'math' is defined -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
 
   <style>
@@ -157,8 +157,6 @@
       margin-bottom: 20px;
     }
   </style>
-
-</style>
 </head>
 <body>
   <!-- Back to Main Page button -->
@@ -166,7 +164,8 @@
 
   <h1>Advanced Stock Analysis</h1>
   <p>
-    Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution. Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.
+    Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.
+    Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.
   </p>
 
   <!-- Input Section -->
@@ -219,9 +218,7 @@
   </div>
 
   <button id="simulateButton">Run Simulation</button>
-  <div id="loading" style="display:none; color: var(--accent-color); margin-top:10px;">
-    Loading data and running simulation...
-  </div>
+  <div id="loading" style="display:none;">Loading data and running simulation...</div>
 
   <!-- Aggregated Signal Bar Meter -->
   <div id="aggregateSection" class="section">
@@ -241,9 +238,8 @@
     <h2>Company Overview</h2>
     <p id="companyDescription"></p>
   </div>
-
   <!-- Fundamental Analysis Section -->
-  <div id="fundamentalSection" class="section" style="display:none;">
+  <div id="fundamentalSection">
     <h2>Fundamental Analysis Score</h2>
     <div id="fundamentalCharts" class="chartContainer"></div>
     <div id="fundamentalText" style="margin-top:10px; font-weight:600;"></div>
@@ -304,264 +300,179 @@
   </div>
 
   <script>
-    /**********************************************
-     * Helper & Utility Functions
-     **********************************************/
-    // Get CSS variable values
-    const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const textColor = getCssVar('--text-color');
+    let simulationReport = null;
+    let globalFinalPrices = [];
+    let bufferDotInterval;
 
-    // Basic Math & Regression Functions
-    function polynomialRegression(x, y, degree) {
-      let X = [];
-      for(let i = 0; i < x.length; i++){
-        let row = [];
-        for(let j = 0; j <= degree; j++){
-          row.push(Math.pow(x[i], j));
+    // Auto-populate futureDate with next month's date
+    (function setDefaultFutureDate() {
+      const futureDateInput = document.getElementById('futureDate');
+      const today = new Date();
+      const nextMonthDate = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        today.getDate()
+      );
+      const isoDate = nextMonthDate.toISOString().split('T')[0];
+      futureDateInput.value = isoDate;
+    })();
+
+    // Show/hide manual historical period
+    document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
+      document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
+    });
+
+    // Show/hide manual weights (only one event listener needed)
+    document.getElementById("useManualWeightsCheckbox").addEventListener("change", function() {
+      document.getElementById("manualWeightsSection").style.display = this.checked ? "block" : "none";
+    });
+
+    // If user changes the manualRegimeSelect, auto-fill weights
+    document.getElementById("manualRegimeSelect").addEventListener("change", function(){
+      const val = this.value;
+      if(val==="Bear"){
+        document.getElementById("wMC").value   = 0.05;
+        document.getElementById("wTech").value = 0.05;
+        document.getElementById("wSent").value = 0.10;
+        document.getElementById("wIns").value  = 0.30;
+        document.getElementById("wFund").value = 0.30;
+        document.getElementById("wCong").value = 0.20;
+        document.getElementById("manualScale").value = 0.25;
+      } else if(val==="Bull"){
+        document.getElementById("wMC").value   = 0.20;
+        document.getElementById("wTech").value = 0.25;
+        document.getElementById("wSent").value = 0.15;
+        document.getElementById("wIns").value  = 0.15;
+        document.getElementById("wFund").value = 0.15;
+        document.getElementById("wCong").value = 0.10;
+        document.getElementById("manualScale").value = 1.00;
+      } else {
+        // Neutral
+        document.getElementById("wMC").value   = 0.15;
+        document.getElementById("wTech").value = 0.20;
+        document.getElementById("wSent").value = 0.15;
+        document.getElementById("wIns").value  = 0.15;
+        document.getElementById("wFund").value = 0.20;
+        document.getElementById("wCong").value = 0.15;
+        document.getElementById("manualScale").value = 0.50;
+      }
+    });
+    /***********************************************
+     * UTILITY, FUNDAMENTALS, TECHNICAL, MONTE CARLO,
+     * SENTIMENT, INSIDER, CONGRESS - same as user code
+     ***********************************************/
+     function parseAlphaDate(str) {
+      const year  = str.substring(0,4);
+      const month = str.substring(4,6);
+      const day   = str.substring(6,8);
+      const hour  = str.substring(9,11) || "00";
+      const min   = str.substring(11,13) || "00";
+      const sec   = str.substring(13,15) || "00";
+      return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+    }
+    function processHistoricalData(timeSeries, periodMonths) {
+      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+      const endDate = new Date(dates[dates.length - 1]);
+      const startDate = new Date(endDate);
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let prices = [];
+      for (let date of dates) {
+        const dt = new Date(date);
+        if (dt >= startDate && dt <= endDate) {
+          prices.push({
+            date: dt,
+            close: parseFloat(timeSeries[date]["5. adjusted close"])
+          });
         }
-        X.push(row);
       }
-      let XT = math.transpose(X);
-      let XTX = math.multiply(XT, X);
-      let XTy = math.multiply(XT, y);
-      let coeffsMatrix = math.lusolve(XTX, XTy);
-      const coeffs = coeffsMatrix.map(val => val[0]);
-      return coeffs;
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
     }
-    function predictValue(coeffs, x){
-      return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
-    }
-
-    // Random normal using Box-Muller
-    function randn_bm() {
-      let u = 0, v = 0;
-      while(u === 0) u = Math.random();
-      while(v === 0) v = Math.random();
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    }
-    function getMedian(arr) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      const mid = Math.floor(sorted.length / 2);
-      if(sorted.length % 2 !== 0) return sorted[mid];
-      return (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-
-    // Utility functions for technical analysis
-    function computeEMA(prices, period) {
-      let ema = [];
-      let multi = 2 / (period + 1);
-      let sum = 0;
-      for (let i = 0; i < period; i++) {
-        sum += prices[i].close;
-      }
-      let prevEma = sum / period;
-      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
-      for (let i = period; i < prices.length; i++){
-        let cur = prices[i].close;
-        let next = (cur - prevEma) * multi + prevEma;
-        ema[i] = { date: prices[i].date, ema: next };
-        prevEma = next;
-      }
-      return ema.filter(x => x !== undefined);
-    }
-    function computeMACD(prices, fast=12, slow=26, signal=9) {
-      let fastEMA = computeEMA(prices, fast);
-      let slowEMA = computeEMA(prices, slow);
-      let macdLine = [];
-      for(let i = 0; i < slowEMA.length; i++){
-        let date = slowEMA[i].date;
-        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
-        if(match){
-          macdLine.push({ date, macd: match.ema - slowEMA[i].ema });
-        }
-      }
-      if(macdLine.length < signal) return { macdLine, signalLine: [] };
-      let m = 2 / (signal + 1);
-      let sumMacd = 0;
-      for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
-      let prevSig = sumMacd / signal;
-      let signalLine = [];
-      signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
-      for(let i = signal; i < macdLine.length; i++){
-        let s = (macdLine[i].macd - prevSig) * m + prevSig;
-        signalLine[i] = { date: macdLine[i].date, signal: s };
-        prevSig = s;
-      }
-      signalLine = signalLine.filter(x => x !== undefined);
-      return { macdLine, signalLine };
-    }
-    function computeRSI(prices, period=14){
-      let rsis = [];
-      for(let i = period; i < prices.length; i++){
-        let gains = 0, losses = 0;
-        for(let j = i - period + 1; j <= i; j++){
-          let diff = prices[j].close - prices[j-1].close;
-          if(diff > 0) gains += diff; else losses -= diff;
-        }
-        let avgGain = gains / period;
-        let avgLoss = losses / period;
-        let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
-        let rsi = 100 - (100 / (1 + rs));
-        rsis.push({ date: prices[i].date, rsi });
-      }
-      return rsis;
-    }
-    function computeBollingerBands(prices, period=20, k=2){
-      let bands = [];
-      for(let i = period - 1; i < prices.length; i++){
-        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-        let sma = slice.reduce((a, b) => a + b, 0) / period;
-        let variance = slice.reduce((sum, val) => sum + (val - sma) ** 2, 0) / period;
-        let std = Math.sqrt(variance);
-        bands.push({
-          date: prices[i].date,
-          sma,
-          upper: sma + k * std,
-          lower: sma - k * std
-        });
-      }
-      return bands;
-    }
-    function computeWMA(prices, period=20){
-      let wmas = [];
-      for(let i = period - 1; i < prices.length; i++){
-        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-        let numerator = 0, denominator = 0;
-        for(let j = 0; j < period; j++){
-          let weight = j + 1;
-          numerator += slice[j] * weight;
-          denominator += weight;
-        }
-        wmas.push({ date: prices[i].date, wma: numerator / denominator });
-      }
-      return wmas;
-    }
-
-    // Score functions for technical indicators
-    function scoreRSI(latestRSI, prevRSI){
-      let rel = 50 - latestRSI;
-      let base = 100 / (1 + Math.exp(-0.05 * rel));
-      let dRSI = prevRSI - latestRSI;
-      return base * (1 + 0.01 * dRSI);
-    }
-    function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
-      let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
-      let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
-      let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
-      let dPercentB = prevPercentB - currentPercentB;
-      return baseBB * (1 + 0.1 * dPercentB);
-    }
-    function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
-      let currentX = (latestPrice / latestWMA) - 1;
-      let prevX = (prevPrice / prevWMA) - 1;
-      let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
-      let dx = prevX - currentX;
-      return baseWMA * (1 + 0.5 * dx);
-    }
-    function computeMomentumScoreUsingRegression(histValues){
-      if(histValues.length < 6) return null;
-      const recent = histValues.slice(-6);
-      const x = [1, 2, 3, 4, 5, 6];
-      const coeffs = polynomialRegression(x, recent, 3);
-      const predicted = predictValue(coeffs, 7);
-      const lastValue = recent[recent.length - 1];
-      const delta = predicted - lastValue;
-      const k = 5;
-      const score = 100 / (1 + Math.exp(-k * delta));
-      return score;
-    }
-    function computeGapTrendScore(macdLine, signalLine){
-      if(macdLine.length < 6 || signalLine.length < 6) return null;
-      const recentMACD = macdLine.slice(-6).map(item => item.macd);
-      const recentSignal = signalLine.slice(-6).map(item => item.signal);
-      const x = [1, 2, 3, 4, 5, 6];
-      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
-      const predictedMACD = predictValue(macdCoeffs, 7);
-      const predictedSignal = predictValue(signalCoeffs, 7);
-      const predictedGap = predictedMACD - predictedSignal;
-      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
-      const delta = predictedGap - currentGap;
-      const k = 5;
-      const gapScore = 100 / (1 + Math.exp(-k * delta));
-      return { gapScore, delta, currentGap, predictedGap };
-    }
-    function computeNewMACDScore(prices){
-      const macdData = computeMACD(prices);
-      const macdLine = macdData.macdLine;
-      const signalLine = macdData.signalLine;
-      if(macdLine.length < 2 || signalLine.length < 2) return 50;
-      const len = Math.min(macdLine.length, signalLine.length);
-      const latestMACD = macdLine[len - 1].macd;
-      const positionScore = 100 / (1 + Math.exp(latestMACD));
-      const gapData = computeGapTrendScore(macdLine, signalLine);
-      const gapScore = gapData ? gapData.gapScore : 50;
-      let histValues = [];
-      for(let i = 0; i < len; i++){
-        histValues.push(macdLine[i].macd - signalLine[i].signal);
-      }
-      const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
-      const finalScore = (positionScore + gapScore + momentumScore) / 3;
-      return finalScore;
-    }
-
     function computeFundScores(data) {
-  // Normalize a value between min and max to a 0–100 scale.
-  const norm = (val, min, max) => {
-    if (!val || isNaN(val)) return 50;
-    let ratio = (val - min) / (max - min);
-    let scaled = ratio * 100;
-    return Math.max(0, Math.min(100, scaled));
-  };
-
-  let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
-  let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
-  let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
-  let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
-  let profitability = (margin + opMarg + roa + roe) / 4;
-
-  let pe = parseFloat(data.PERatio);
-  let peScore = 100 - norm(pe, 5, 40);
-  let peg = parseFloat(data.PEGRatio);
-  let pegScore = 100 - norm(peg, 0.5, 2.5);
-  let ps = parseFloat(data.PriceToSalesRatioTTM);
-  let psScore = 100 - norm(ps, 1, 10);
-  let pb = parseFloat(data.PriceToBookRatio);
-  let pbScore = 100 - norm(pb, 1, 10);
-  let valuation = (peScore + pegScore + psScore + pbScore) / 4;
-
-  let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
-  let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
-  let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
-  let ratio = 0;
-  if (pRef > 0 && data.AnalystTargetPrice) {
-    ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
-  }
-  let tgtScore = norm(ratio, 0, 0.5);
-  let growth = (rg + eg + tgtScore) / 3;
-
-  let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
-  let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
-  let eps = norm(parseFloat(data.EPS), 0, 12);
-  let dividends = (dy + dps + eps) / 3;
-
-  let ebitda = parseFloat(data.EBITDA);
-  let revTTM = parseFloat(data.RevenueTTM);
-  let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
-  let evEbitda = parseFloat(data.EVToEBITDA);
-  let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
-  let beta = parseFloat(data.Beta);
-  let betaScore = isNaN(beta) ? 50 : 100 - norm(beta, 0, 2);
-  let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
-
-  return {
-    profitability,
-    valuation,
-    growth,
-    dividends,
-    financial
-  };
-}
+      const norm = (val, min, max) => {
+        if(!val || isNaN(val)) return 50;
+        let ratio = (val - min)/(max - min);
+        let scaled = ratio*100;
+        return Math.max(0, Math.min(100, scaled));
+      };
+      let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
+      let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
+      let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
+      let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
+      let profitability = (margin + opMarg + roa + roe) / 4;
+      let pe = parseFloat(data.PERatio);
+      let peScore = 100 - norm(pe, 5, 40);
+      let peg = parseFloat(data.PEGRatio);
+      let pegScore = 100 - norm(peg, 0.5, 2.5);
+      let ps = parseFloat(data.PriceToSalesRatioTTM);
+      let psScore = 100 - norm(ps, 1, 10);
+      let pb = parseFloat(data.PriceToBookRatio);
+      let pbScore = 100 - norm(pb, 1, 10);
+      let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+      let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+      let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+      let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
+      let ratio = 0;
+      if(pRef > 0 && data.AnalystTargetPrice){
+        ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
+      }
+      let tgtScore = norm(ratio, 0, 0.5);
+      let growth = (rg + eg + tgtScore) / 3;
+      let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
+      let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
+      let eps = norm(parseFloat(data.EPS), 0, 12);
+      let dividends = (dy + dps + eps) / 3;
+      let ebitda = parseFloat(data.EBITDA);
+      let revTTM = parseFloat(data.RevenueTTM);
+      let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+      let evEbitda = parseFloat(data.EVToEBITDA);
+      let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+      let beta = parseFloat(data.Beta);
+      let betaScore = 50;
+      if(!isNaN(beta)){
+        betaScore = 100 - norm(beta, 0, 2);
+      }
+      let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+      return {
+        profitability,
+        valuation,
+        growth,
+        dividends,
+        financial
+      };
+    }
+    function plotFundamentalCategories(categories) {
+      const container = document.getElementById('fundamentalCharts');
+      container.innerHTML = '';
+      const xLabels = [];
+      const yValues = [];
+      for (const [key, value] of Object.entries(categories)) {
+        xLabels.push(key.charAt(0).toUpperCase() + key.slice(1));
+        yValues.push(value);
+      }
+      // Using Highcharts for fundamental categories bar chart
+      Highcharts.chart('fundamentalCharts', {
+        chart: { type: 'bar', backgroundColor: 'transparent' },
+        title: { text: 'Fundamental Categories', style: { color: textColor } },
+        xAxis: {
+          categories: xLabels,
+          labels: { style: { color: textColor } }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          title: { text: 'Score', style: { color: textColor } },
+          labels: { style: { color: textColor } }
+        },
+        series: [{
+          name: 'Score',
+          data: yValues,
+          colorByPoint: true
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: textColor } }
+      });
+    }
 
     // Statistical functions for Monte Carlo simulation
     function computeStats(prices) {
@@ -593,8 +504,207 @@
       }
       return finals;
     }
-
-    // Utility functions for market regime determination
+    function updateMCChart(finalPrices, lastPrice) {
+      globalFinalPrices = finalPrices;
+      // Using Highcharts for MC distribution chart
+      Highcharts.chart('mcChart', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Monte Carlo Distribution of Final Prices', style: { color: textColor } },
+        xAxis: { title: { text: 'Price', style: { color: textColor } } },
+        yAxis: { title: { text: 'Frequency', style: { color: textColor } } },
+        series: [{
+          name: 'Frequency',
+          data: finalPrices,
+          color: '#888'
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: textColor } }
+      });
+      let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
+      let bullishScore = (countCurrent / finalPrices.length) * 100;
+      document.getElementById('mcBullScore').innerText =
+        `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const medianPrice = getMedian(finalPrices);
+      let sliderHTML = `
+        <label for="priceSlider">Select Target Price:</label>
+        <input type="range"
+               id="priceSlider"
+               min="${minPrice.toFixed(2)}"
+               max="${maxPrice.toFixed(2)}"
+               step="0.01"
+               value="${medianPrice.toFixed(2)}"
+               oninput="updateMCSlider(this.value)">
+        <span id="sliderValue">${medianPrice.toFixed(2)}</span>
+        <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
+      `;
+      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
+      updateMCSlider(medianPrice);
+      return bullishScore;
+    }
+    function updateMCSlider(val) {
+      val = parseFloat(val);
+      document.getElementById('sliderValue').textContent = val.toFixed(2);
+      let countTarget = globalFinalPrices.filter(p => p >= val).length;
+      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+      document.getElementById('mcSliderProb').innerText =
+        `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
+      // Optionally, update the chart with a plot line via Highcharts chart.update() if desired.
+    }
+    function logisticBullish(slope) {
+      const k = 0.3;
+      let raw = 100 / (1 + Math.exp(-k * slope));
+      return Math.max(0, Math.min(100, raw));
+    }
+    async function fetchSentimentData(ticker, periodMonths) {
+      let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let resp = await fetch(url);
+      let data = await resp.json();
+      if(!data.feed) throw new Error("No sentiment data from server.");
+      let startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let byHour = {};
+      for(let article of data.feed) {
+        let dt = parseAlphaDate(article.time_published);
+        if(isNaN(dt) || dt < startDate) continue;
+        if(!article.ticker_sentiment) continue;
+        let tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
+        if(!tItem) continue;
+        let raw = parseFloat(tItem.ticker_sentiment_score);
+        if(isNaN(raw)) continue;
+        let norm = ((raw + 1) / 2) * 100;
+        let hourKey = dt.toISOString().substring(0,13);
+        if(!byHour[hourKey]) byHour[hourKey] = [];
+        byHour[hourKey].push(norm);
+      }
+      let sentiments = [];
+      for(let hStr in byHour) {
+        let vals = byHour[hStr];
+        let avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        let dt = new Date(`${hStr}:00:00Z`);
+        sentiments.push({ date: dt, sentiment: avg });
+      }
+      sentiments.sort((a, b) => a.date - b.date);
+      return sentiments;
+    }
+    function updateSentimentChart(sentiments) {
+      // Using Highcharts for sentiment line chart
+      Highcharts.chart('sentChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'Sentiment Analysis', style: { color: textColor } },
+        xAxis: {
+          type: 'datetime',
+          title: { text: 'Date', style: { color: textColor } },
+          labels: { style: { color: textColor } }
+        },
+        yAxis: {
+          title: { text: 'Sentiment (0–100)', style: { color: textColor } },
+          min: 0, max: 100,
+          labels: { style: { color: textColor } }
+        },
+        series: [{
+          name: 'Sentiment',
+          data: sentiments.map(s => [s.date.getTime(), s.sentiment])
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: textColor } }
+      });
+      document.getElementById('sentDetails').innerText = "Sentiment Score: 50%";
+      return 50;
+    }
+    async function fetchInsiderData(ticker, periodMonths, currentPrice) {
+      const url = `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if(!data.data || !Array.isArray(data.data)) throw new Error("No insider data array found.");
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - periodMonths);
+      let totalBuys = 0, totalSells = 0;
+      data.data.forEach(item => {
+        if(!item.transaction_date || !item.acquisition_or_disposal || !item.shares) return;
+        if(!item.share_price || parseFloat(item.share_price) === 0) return;
+        const tradePrice = parseFloat(item.share_price);
+        const lb = currentPrice * 0.5, ub = currentPrice * 1.5;
+        if(tradePrice < lb || tradePrice > ub) return;
+        const dt = new Date(item.transaction_date);
+        if(dt >= cutoff && !isNaN(dt)){
+          const shares = parseFloat(item.shares);
+          if(item.acquisition_or_disposal === "A") totalBuys += shares;
+          else if(item.acquisition_or_disposal === "D") totalSells += shares;
+        }
+      });
+      return { totalBuys, totalSells };
+    }
+    function updateInsiderChart(totalBuys, totalSells) {
+      // Using Highcharts for insider activity column chart
+      Highcharts.chart('insiderChart', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Insider Activity', style: { color: textColor } },
+        xAxis: { categories: ['Bought', 'Sold'], labels: { style: { color: textColor } } },
+        yAxis: { title: { text: 'Shares', style: { color: textColor } }, labels: { style: { color: textColor } } },
+        series: [{
+          name: 'Insider Activity',
+          data: [totalBuys, totalSells],
+          colorByPoint: true
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: textColor } }
+      });
+      let sum = totalBuys + totalSells;
+      let insiderBull = 50;
+      if(sum > 0){
+        insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
+      }
+      document.getElementById("insiderDetails").innerText =
+        `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
+      return insiderBull;
+    }
+    async function fetchCongressData(ticker, periodMonths) {
+      const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+      const resp = await fetch(url);
+      const j = await resp.json();
+      if(!j.data || !Array.isArray(j.data)){
+        throw new Error("Invalid congress data format.");
+      }
+      const rawData = j.data;
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - periodMonths);
+      let totalPurchase = 0, totalSale = 0;
+      for(let item of rawData){
+        if(!item.TransactionDate || !item.Transaction) continue;
+        let dt = new Date(item.TransactionDate);
+        if(isNaN(dt) || dt < cutoff) continue;
+        let amt = parseFloat(item.Amount) || 0;
+        if(/purchase/i.test(item.Transaction)) totalPurchase += amt;
+        if(/sale/i.test(item.Transaction)) totalSale += amt;
+      }
+      return { totalPurchase, totalSale };
+    }
+    function updateCongressChart(totalPurchase, totalSale) {
+      // Using Highcharts for congress trading column chart
+      Highcharts.chart('congressChart', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Congress Trading (Monetary Amounts)', style: { color: textColor } },
+        xAxis: { categories: ['Purchase Amount', 'Sale Amount'], labels: { style: { color: textColor } } },
+        yAxis: { title: { text: 'Amount', style: { color: textColor } }, labels: { style: { color: textColor } } },
+        series: [{
+          name: 'Congress Trading',
+          data: [totalPurchase, totalSale],
+          colorByPoint: true
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: textColor } }
+      });
+      let sum = totalPurchase + totalSale;
+      let congressBull = 50;
+      if(sum > 0){
+        congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
+      }
+      document.getElementById("congressDetails").innerText =
+        `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+      return congressBull;
+    }
     function computeSMAforRegime(priceArray, period) {
       if(!priceArray || priceArray.length < period) return null;
       let slice = priceArray.slice(-period);
@@ -709,25 +819,26 @@
       }
     }
 
-    // --- Buffer Overlay Functions ---
-    let bufferDotInterval;
+    // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
-      const overlay = document.getElementById("countdownOverlay");
-      overlay.style.display = "flex";
-      const loadingText = document.getElementById("loadingText");
-      let dotCount = 0;
-      loadingText.innerText = "Running 10,000 simulations";
-      bufferDotInterval = setInterval(() => {
-        dotCount = (dotCount + 1) % 4;
-        loadingText.innerText = "Running 10,000 simulations" + ".".repeat(dotCount);
-      }, 500);
-    }
-    function hideBufferOverlay() {
-      document.getElementById("countdownOverlay").style.display = "none";
-      clearInterval(bufferDotInterval);
-    }
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "flex";
+  const loadingText = document.getElementById("loadingText");
+  let dotCount = 0;
+  loadingText.innerText = "Running 10,000 simulations";
+  bufferDotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    loadingText.innerText = "Running 10,000 simulations" + ".".repeat(dotCount);
+  }, 500);
+}
 
-    // --- Simulation Function ---
+function hideBufferOverlay() {
+  const overlay = document.getElementById("countdownOverlay");
+  overlay.style.display = "none";
+  clearInterval(bufferDotInterval);
+}
+
+    // Run simulation immediately while showing the overlay.
     async function runSimulation() {
       document.getElementById('loading').style.display = 'block';
       document.getElementById('aggregateSection').style.display = 'none';
@@ -838,22 +949,17 @@
       document.getElementById('loading').style.display = 'none';
     }
 
-    // --- Event Listeners ---
-    // Simulate button
+    // NEW: When the simulation button is clicked, show the buffer overlay immediately and start simulation concurrently.
     document.getElementById("simulateButton").addEventListener("click", () => {
       showBufferOverlay();
-      runSimulation().then(() => { hideBufferOverlay(); }).catch(() => { hideBufferOverlay(); });
+      runSimulation().then(() => {
+        hideBufferOverlay();
+      }).catch(() => {
+        hideBufferOverlay();
+      });
     });
 
-    // Auto-populate futureDate input with next month's date
-    (function setDefaultFutureDate() {
-      const futureDateInput = document.getElementById('futureDate');
-      const today = new Date();
-      const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-      futureDateInput.value = nextMonthDate.toISOString().split('T')[0];
-    })();
-
-    // Update link button texts dynamically based on ticker input
+    // Update link button texts dynamically based on ticker input.
     function updateLinkButtonTexts(){
       const ticker = document.getElementById('ticker').value.trim();
       if(ticker){
@@ -873,7 +979,7 @@
     document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
     updateLinkButtonTexts();
 
-    // Link Buttons
+    // Link Buttons Event Listeners
     document.getElementById("sentimentLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
@@ -883,45 +989,59 @@
       }
     });
     document.getElementById("technicalLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      const ticker = simulationReport.ticker;
-      const periodMonths = simulationReport.periodMonths;
-      const url = "https://www.intuitiontrades.com/technical/?symbol=" 
-                  + encodeURIComponent(ticker) 
-                  + "&period=" + periodMonths
-                  + "&autoFetch=true";
-      window.open(url, "_blank");
-    });
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  const ticker = simulationReport.ticker;
+  const periodMonths = simulationReport.periodMonths;
+  const url = "https://www.intuitiontrades.com/technical/?symbol=" 
+              + encodeURIComponent(ticker) 
+              + "&period=" + periodMonths
+              + "&autoFetch=true";
+  window.open(url, "_blank");
+});
+
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
-      }
-      const ticker = simulationReport.ticker;
-      const periodMonths = simulationReport.periodMonths;
-      const days = periodMonths * 30;
-      const url = "https://www.intuitiontrades.com/insider/?symbol=" 
-                + encodeURIComponent(ticker) 
-                + "&days=" + days
-                + "&autoFetch=true";
-      window.open(url, "_blank");
-    });
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  const ticker = simulationReport.ticker;
+  const periodMonths = simulationReport.periodMonths;
+  const days = periodMonths * 30;  // approximate conversion from months to days
+  const url = "https://www.intuitiontrades.com/insider/?symbol=" 
+            + encodeURIComponent(ticker) 
+            + "&days=" + days
+            + "&autoFetch=true"; // optional flag for auto-running the fetch
+  window.open(url, "_blank");
+});
+
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-      if (!simulationReport) {
-        alert("Please run a simulation first.");
-        return;
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  // Use the ticker and period from the simulation report
+  let ticker = simulationReport.ticker;
+  let periodMonths = simulationReport.periodMonths;
+  // Convert period in months to days (approximate)
+  let days = periodMonths * 30;
+  // Construct the URL with query parameters: symbol, days, and autoFetch flag
+  let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+            + encodeURIComponent(ticker) 
+            + "&days=" + days 
+            + "&autoFetch=true";
+  window.open(url, "_blank");
+});
+
+    document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
+      let ticker = document.getElementById("ticker").value.trim();
+      if(ticker){
+        window.open("https://www.intuitiontrades.com/fundamental/?symbol=" + encodeURIComponent(ticker), "_blank");
+      } else {
+        alert("Enter a ticker.");
       }
-      let ticker = simulationReport.ticker;
-      let periodMonths = simulationReport.periodMonths;
-      let days = periodMonths * 30;
-      let url = "https://www.intuitiontrades.com/congress/?symbol=" 
-                + encodeURIComponent(ticker) 
-                + "&days=" + days 
-                + "&autoFetch=true";
-      window.open(url, "_blank");
     });
 
     document.getElementById("explanationButton").addEventListener("click", () => {
@@ -937,6 +1057,41 @@
       let html = `<!DOCTYPE html>
   <html lang="en">
   <head>
+    <meta charset="UTF-8">
+    <title>Detailed Simulation Report for ${simulationReport.ticker}</title>
+    <style>
+      body { 
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+        background: #f9fafb; 
+        color: #333; 
+        margin: 0 auto; 
+        max-width: 900px; 
+        padding: 2rem; 
+        line-height: 1.6; 
+      }
+      h1, h2, h3 { text-align: center; }
+      section { margin-bottom: 2rem; }
+      pre { 
+        background: #eee; 
+        padding: 1rem; 
+        border-radius: 4px; 
+        overflow-x: auto; 
+      }
+      a { color: #2563eb; }
+      table {
+        border-collapse: collapse;
+        margin-top: 1rem;
+        width: 100%;
+      }
+      th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+      }
+      th { background: #f2f2f2; }
+      p { text-align: justify; }
+    </style>
+  </head>
   <body>
     <h1>Detailed Simulation Report for ${simulationReport.ticker}</h1>
     
