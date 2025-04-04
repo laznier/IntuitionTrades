@@ -465,12 +465,15 @@
       };
     }
     function plotFundamentalCategories(categories) {
-  // Extract the category names and their scores.
   const catNames = [];
-  const scores = [];
+  const seriesData = [];
+  
   for (const [key, value] of Object.entries(categories)) {
     catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
-    scores.push(value);
+    seriesData.push({
+      y: value,
+      color: interpolateColor(value)  // Use the helper to compute a color.
+    });
   }
 
   Highcharts.chart('fundamentalCharts', {
@@ -502,17 +505,7 @@
     },
     series: [{
       name: 'Score',
-      data: scores,
-      // Use zones to color bars:
-      // Values below 50 are red, 50 and above are green.
-      zones: [{
-        value: 50,
-        color: 'red'
-      }, {
-        color: 'green'
-      }],
-      // Ensure each bar uses its zone color
-      colorByPoint: true
+      data: seriesData
     }],
     legend: {
       enabled: false
@@ -520,6 +513,7 @@
     credits: { enabled: false }
   });
 }
+
 
 
     function computeEMA(prices, period) {
@@ -1227,7 +1221,7 @@ function updateMCSlider(val) {
       backgroundColor: "transparent"
     },
     title: {
-      text: "Shares traded",
+      text: "Shares",
       style: { color: "#fff" }
     },
     xAxis: {
@@ -1289,6 +1283,16 @@ function updateMCSlider(val) {
       return { totalPurchase, totalSale };
     }
     
+    function interpolateColor(value) {
+  // value should be between 0 and 100.
+  // Calculate the interpolation ratio (0 = red, 1 = green).
+  const ratio = Math.max(0, Math.min(1, value / 100));
+  const r = Math.round(255 * (1 - ratio));
+  const g = Math.round(255 * ratio);
+  return `rgb(${r},${g},0)`;
+}
+
+
     function updateCongressChart(totalPurchase, totalSale) {
   const categories = ["Purchase Amount", "Sale Amount"];
   const data = [totalPurchase, totalSale];
@@ -1300,7 +1304,7 @@ function updateMCSlider(val) {
       backgroundColor: "transparent"
     },
     title: {
-      text: "Congress Trades (USD)",
+      text: "(USD)",
       style: { color: "#fff" }
     },
     xAxis: {
