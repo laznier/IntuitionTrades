@@ -1557,31 +1557,47 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-    // Example: adapt your own fetch logic for combining "economy" topics, etc.
-    async function fetchAllSentimentData(topic) {
-      // If topic is "economy", we combine economy_macro, economy_monetary, economy_fiscal
-      let finalTopicParam = "";
-      if (topic === "economy") {
-        // Simicolons-separated topics
-        finalTopicParam = "economy_macro,economy_monetary,economy_fiscal";
-      } else {
-        finalTopicParam = topic; // e.g. "finance", "blockchain", or ""
-      }
-  
-      // Build the URL for your internal endpoint
-      // For "All News" (topic=""), we just omit the topics param
-      let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
-      if (finalTopicParam) {
-        url += `&topic=${finalTopicParam}`;
-      }
-  
+async function fetchAllSentimentData(topic) {
+  // If topic is "economy", we request each subtopic separately.
+  if (topic === "economy") {
+    const subTopics = ["economy_macro", "economy_monetary", "economy_fiscal"];
+    
+    // Create an array of fetch promises for each subtopic.
+    const fetchPromises = subTopics.map(async (subTopic) => {
+      const url = `https://www.intuitiontrades.com/api/sentiment?limit=20&topic=${subTopic}`;
       const resp = await fetch(url);
       const data = await resp.json();
-      if (!data.feed) {
-        throw new Error("No sentiment data from server.");
-      }
-      return data.feed;
+      // Return feed array; if none, return an empty array.
+      return data.feed || [];
+    });
+
+    // Wait for all fetches to complete.
+    const feeds = await Promise.all(fetchPromises);
+    // Combine the feeds from each subtopic.
+    let combinedFeed = feeds.flat();
+
+    // Sort the combined feed from newest to oldest.
+    // This example assumes each news item has a 'time_published' property.
+    // Adjust the comparison if you need to parse dates.
+    combinedFeed.sort((a, b) => b.time_published.localeCompare(a.time_published));
+    
+    return combinedFeed;
+  } else {
+    // For non-economy topics (or when topic is empty), use a single fetch.
+    let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
+    if (topic) {
+      url += `&topic=${topic}`;
     }
+    
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!data.feed) {
+      throw new Error("No sentiment data from server.");
+    }
+    return data.feed;
+  }
+}
+
   
     // Render a single news item in the feed
     function renderNewsItem(item) {
