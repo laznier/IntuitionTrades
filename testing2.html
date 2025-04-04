@@ -492,7 +492,7 @@
         yaxis: { range: [0, 100] },
         margin: { t: 50 }
       };
-      Plotly.newPlot('fundamentalCharts', data, layout);
+      darkNewPlot('fundamentalCharts', data, layout);
     }
     function computeEMA(prices, period) {
       let ema = [];
@@ -1079,7 +1079,7 @@ function updateMCSlider(val) {
         name: 'Sentiment'
       };
       if(sentiments.length < 2) {
-        Plotly.newPlot("sentChart", [traceRaw], {
+        darkNewPlot("sentChart", [traceRaw], {
           title: "Sentiment Analysis",
           xaxis: { title: "Date" },
           yaxis: { title: "Sentiment (0..100)" }
@@ -1113,7 +1113,7 @@ function updateMCSlider(val) {
         xaxis: { title: "Date" },
         yaxis: { title: "Sentiment (0..100)" }
       };
-      Plotly.newPlot("sentChart", [traceRaw, traceTrend], layout);
+      darkNewPlot("sentChart", [traceRaw, traceTrend], layout);
       let slopeBull = logisticBullish(slope);
       let avgSentiment = sumY / n;
       let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
@@ -1152,7 +1152,7 @@ function updateMCSlider(val) {
         marker: { color: ["green", "red"] }
       };
       const layout = { title: "Insider Activity (Shares Bought vs. Sold)" };
-      Plotly.newPlot("insiderChart", [trace], layout);
+      darkNewPlot("insiderChart", [trace], layout);
       let sum = totalBuys + totalSells;
       let insiderBull = 50;
       if(sum > 0){
@@ -1191,7 +1191,7 @@ function updateMCSlider(val) {
         marker: { color: ["green", "red"] }
       };
       const layout = { title: "Congress Trading (Monetary Amounts)" };
-      Plotly.newPlot("congressChart", [trace], layout);
+      darkNewPlot("congressChart", [trace], layout);
       let sum = totalPurchase + totalSale;
       let congressBull = 50;
       if(sum > 0){
@@ -1314,6 +1314,24 @@ function updateMCSlider(val) {
         }
       }
     }
+    const darkLayoutDefaults = {
+  paper_bgcolor: '#111',
+  plot_bgcolor: '#333',
+  font: { color: '#fff' },
+  xaxis: {
+    gridcolor: '#444',
+    color: '#fff'
+  },
+  yaxis: {
+    gridcolor: '#444',
+    color: '#fff'
+  }
+};
+function darkNewPlot(divId, data, layout = {}, config = {}) {
+  // Merge dark defaults into provided layout. Provided layout takes precedence.
+  const finalLayout = Object.assign({}, darkLayoutDefaults, layout);
+  Plotly.newPlot(divId, data, finalLayout, config);
+}
 
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
