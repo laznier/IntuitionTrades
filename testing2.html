@@ -503,12 +503,24 @@
     series: [{
       name: 'Score',
       data: scores,
-      color: '#16a34a'
+      // Use zones to color bars:
+      // Values below 50 are red, 50 and above are green.
+      zones: [{
+        value: 50,
+        color: 'red'
+      }, {
+        color: 'green'
+      }],
+      // Ensure each bar uses its zone color
+      colorByPoint: true
     }],
-    credits: { enabled: false },
-    legend: { enabled: false }
+    legend: {
+      enabled: false
+    },
+    credits: { enabled: false }
   });
 }
+
 
     function computeEMA(prices, period) {
       let ema = [];
@@ -1444,31 +1456,7 @@ function updateMCSlider(val) {
         }
       }
     }
-    const darkLayoutDefaults = {
-  paper_bgcolor: '#111',
-  plot_bgcolor: '#333',
-  font: { color: '#fff' },
-  xaxis: {
-    gridcolor: '#444',
-    color: '#fff'
-  },
-  yaxis: {
-    gridcolor: '#444',
-    color: '#fff'
-  }
-};
-
-function darkNewPlot(divId, data, layout = {}, config = {}) {
-  // Merge dark defaults into provided layout.
-  // Properties in layout will override darkLayoutDefaults.
-  const finalLayout = Object.assign({}, darkLayoutDefaults, layout);
-  // Set responsive: true by default.
-  const finalConfig = Object.assign({ responsive: true }, config);
-  // Call Plotly.newPlot (NOT darkNewPlot) to create the chart.
-  Plotly.newPlot(divId, data, finalLayout, finalConfig);
-}
-
-
+    
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
   const overlay = document.getElementById("countdownOverlay");
