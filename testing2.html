@@ -1287,9 +1287,11 @@ function updateMCSlider(val) {
       labels: { style: { color: "#fff" } }
     },
     tooltip: {
-      formatter: function() {
-        return this.x + ": " + this.y;
-      }
+  formatter: function() {
+    // No decimals, comma-separated dollars.
+    return this.x + ": $" + Highcharts.numberFormat(this.y, 0);
+  }
+
     },
     series: [{
       name: "Amount",
