@@ -758,6 +758,34 @@ footer {
 .live-news-item.expanded .live-news-summary {
   display: block;
 }
+/* Desktop styles: show the topics menu and hide the hamburger */
+.live-news-topics .news-hamburger {
+  display: none;
+}
+.live-news-topics .live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Mobile styles: show hamburger, hide topics menu by default */
+@media (max-width: 768px) {
+  .live-news-topics .news-hamburger {
+    display: block;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .live-news-topics .live-news-menu {
+    display: none;
+    flex-direction: column;
+  }
+  /* Optional: when active, display as a vertical list */
+  .live-news-topics .live-news-menu.active {
+    display: flex;
+  }
+}
 
 </style>
 </head>
@@ -970,11 +998,15 @@ footer {
       <span id="liveNewsClose" title="Close">X</span>
     </div>
   </h2>
-  <!-- Menu: "All News" + Topics (combined economy) -->
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
   <div class="live-news-menu" id="liveNewsMenu">
     <button data-topic="">All News</button>
     <button data-topic="financial_markets">Financial Markets</button>
-    <button data-topic="economy">Economy</button> <!-- Combined macro, monetary, fiscal -->
+    <button data-topic="economy">Economy</button>
     <button data-topic="finance">Finance</button>
     <button data-topic="technology">Technology</button>
     <button data-topic="earnings">Earnings</button>
@@ -987,6 +1019,7 @@ footer {
     <button data-topic="manufacturing">Manufacturing</button>
     <button data-topic="ipo">IPO</button>
   </div>
+
   <div class="live-news-feed" id="liveNewsFeed">
     <!-- Dynamically populated -->
   </div>
@@ -1466,6 +1499,28 @@ footer {
        Live News JavaScript
   =========================== -->
   <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const newsHamburger = document.getElementById("newsHamburger");
+  const liveNewsMenu = document.getElementById("liveNewsMenu");
+  const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+
+  newsHamburger.addEventListener("click", () => {
+    liveNewsMenu.classList.toggle("active");
+  });
+
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedTopic = btn.getAttribute("data-topic") || "";
+      refreshNews();
+      // Auto-close the hamburger menu if it is open
+      if (liveNewsMenu.classList.contains("active")) {
+        liveNewsMenu.classList.remove("active");
+      }
+    });
+  });
+});
+
+
     // Example: adapt your own fetch logic for combining "economy" topics, etc.
     async function fetchAllSentimentData(topic) {
       // If topic is "economy", we combine economy_macro, economy_monetary, economy_fiscal
