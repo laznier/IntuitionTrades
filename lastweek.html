@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Last Week's Performance | Intuition Trades</title>
+  <meta name="description" content="Last week's performance metrics for our top picks versus SP500 and NASDAQ." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Highcharts scripts if needed -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  
+  <style>
+    :root {
+      --font-family: 'Arial', sans-serif;
+      --text-color: #fff;
+      --primary-bg: #333;
+      --secondary-bg: #444;
+      --section-bg: rgba(0, 0, 0, 0.33);
+      --accent-color: #16a34a;
+      --base-font-size: 16px;
+      --line-height: 1.5;
+      --border-radius: 4px;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html {
+      font-size: var(--base-font-size);
+    }
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background-color: #111;
+      line-height: var(--line-height);
+    }
+    a {
+      /* Global links: underlined green */
+      text-decoration: underline;
+      color: var(--accent-color);
+    }
+    /* Remove underline for header site name and ticker links */
+    .header a,
+    .stock-link {
+      text-decoration: none;
+    }
+    /* Back to Home Button styling */
+    .back-button {
+      display: inline-block;
+      margin: 1rem 0;
+      padding: 0.75rem 1.5rem;
+      background-color: var(--primary-bg);
+      border-radius: var(--border-radius);
+      text-decoration: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      border: none;
+    }
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 2rem 1rem;
+      background-color: var(--section-bg);
+    }
+    .hero h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .hero p {
+      font-size: 1rem;
+      max-width: 700px;
+      margin: 0.5rem auto;
+      line-height: 1.4;
+    }
+    /* Content Wrapper */
+    .content-wrapper {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 1rem;
+    }
+    /* Performance Summary */
+    #performance-summary {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    #performance-summary h2 {
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+    }
+    .performance-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .performance-summary-grid button {
+      padding: 0.8rem;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      font-size: 1rem;
+      color: #fff;
+      background-color: #444;
+      transition: background 0.3s;
+    }
+    .performance-summary-grid button:hover {
+      opacity: 0.9;
+    }
+    .positive-performance {
+      background-color: #28a745;
+    }
+    .negative-performance {
+      background-color: #dc3545;
+    }
+    .non-clickable {
+      cursor: default;
+    }
+    .explanation-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.7);
+      border-radius: var(--border-radius);
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.4;
+      display: none;
+    }
+    /* Picks Section */
+    .picks-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    .picks-card {
+      background-color: #000;
+      border: 1px solid #444;
+      border-radius: var(--border-radius);
+      width: 300px;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .picks-card h3 {
+      margin-bottom: 0.5rem;
+    }
+    .picks-card .performance-header {
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .picks-card ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      text-align: left;
+    }
+    .picks-card li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .picks-card a {
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--border-radius);
+      color: #fff;
+      font-weight: bold;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .picks-card a:hover {
+      opacity: 0.9;
+    }
+    /* Default color for ticker links; these will be updated by JS */
+    .buy-default {
+      background-color: var(--accent-color);
+    }
+    .sell-default {
+      background-color: #dc3545;
+    }
+    .performance-button {
+      margin-left: 1rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--border-radius);
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      background-color: #444;
+      transition: background 0.2s;
+    }
+    .performance-button:hover {
+      background-color: #555;
+    }
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: var(--primary-bg);
+      margin-top: 2rem;
+      color: #fff;
+    }
+    footer a {
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to Home Button -->
+  <div style="text-align:center; padding:1rem;">
+    <button class="back-button" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  </div>
+
+  <!-- Hero Section -->
+  <div class="hero">
+    <h1>Last Week's Performance</h1>
+    <p>Explore how our top picks stacked up against the SP500 and NASDAQ.</p>
+  </div>
+
+  <div class="content-wrapper">
+    <!-- Performance Summary Section -->
+    <section id="performance-summary">
+      <h2>Weekly Performance</h2>
+      <div class="performance-summary-grid">
+        <!-- Our Top Picks -->
+        <button id="weeklyPicksButton">Our Top Picks</button>
+        <button id="weeklyPicksChange" class="non-clickable">Loading...</button>
+        
+        <!-- S&P 500 -->
+        <button id="sp500Button">SP500</button>
+        <button id="sp500Change" class="non-clickable">Loading...</button>
+        
+        <!-- Nasdaq -->
+        <button id="nasdaqButton">NASDAQ</button>
+        <button id="nasdaqChange" class="non-clickable">Loading...</button>
+      </div>
+      <div id="weeklyExplanationBox" class="explanation-box"></div>
+    </section>
+
+    <!-- Picks Section: Top 3 Buys & Top 3 Shorts -->
+    <section class="picks-section">
+      <!-- Top 3 Buys Card -->
+      <div class="picks-card">
+        <h3>Top 3 Buys</h3>
+        <div class="performance-header">Performance Since 2025-03-28</div>
+        <ol>
+          <li>
+            <a id="link-OXY" href="https://www.intuitiontrades.com/stocks/?ticker=OXY" target="_blank" class="stock-link buy-default">OXY</a>
+            <button class="performance-button" id="performance-OXY">Loading...</button>
+          </li>
+          <li>
+            <a id="link-VRSN" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN" target="_blank" class="stock-link buy-default">VRSN</a>
+            <button class="performance-button" id="performance-VRSN">Loading...</button>
+          </li>
+          <li>
+            <a id="link-MMM" href="https://www.intuitiontrades.com/stocks/?ticker=MMM" target="_blank" class="stock-link buy-default">MMM</a>
+            <button class="performance-button" id="performance-MMM">Loading...</button>
+          </li>
+        </ol>
+      </div>
+      <!-- Top 3 Shorts Card -->
+      <div class="picks-card">
+        <h3>Top 3 Shorts</h3>
+        <div class="performance-header">Performance Since 2025-03-28</div>
+        <ol>
+          <li>
+            <a id="link-AOS" href="https://www.intuitiontrades.com/stocks/?ticker=AOS" target="_blank" class="stock-link sell-default">AOS</a>
+            <button class="performance-button" id="performance-AOS">Loading...</button>
+          </li>
+          <li>
+            <a id="link-ALB" href="https://www.intuitiontrades.com/stocks/?ticker=ALB" target="_blank" class="stock-link sell-default">ALB</a>
+            <button class="performance-button" id="performance-ALB">Loading...</button>
+          </li>
+          <li>
+            <a id="link-RPD" href="https://www.intuitiontrades.com/stocks/?ticker=RPD" target="_blank" class="stock-link sell-default">RPD</a>
+            <button class="performance-button" id="performance-RPD">Loading...</button>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+  </footer>
+
+  <!-- JavaScript for Performance Calculations -->
+  <script>
+    const initialDate = "2025-03-28";
+
+    // Update ticker performance and adjust ticker link background color
+    function updateTickerPerformanceIntraday(ticker, buttonElement) {
+      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(intradayUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort(); // Ascending order
+
+          // Get initial price on initialDate
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+
+          // Get most recent price
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+
+          // Calculate percentage difference
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          buttonElement.textContent = diff.toFixed(2) + '%';
+
+          // Update performance button classes
+          if (diff >= 0) {
+            buttonElement.classList.add("positive-performance");
+            buttonElement.classList.remove("negative-performance");
+          } else {
+            buttonElement.classList.add("negative-performance");
+            buttonElement.classList.remove("positive-performance");
+          }
+
+          // Also update the ticker link background color
+          const linkEl = document.getElementById("link-" + ticker);
+          if (linkEl) {
+            if (diff >= 0) {
+              linkEl.style.backgroundColor = "#16a34a"; // Green for positive
+            } else {
+              linkEl.style.backgroundColor = "#dc3545"; // Red for negative
+            }
+          }
+        })
+        .catch(error => console.error("Error fetching data for", ticker, error));
+    }
+
+    // Calculate average performance for top picks
+    function calculateWeeklyPicksPerformance(buys, shorts) {
+      let total = 0, count = 0;
+      buys.forEach(ticker => {
+        const el = document.getElementById("performance-" + ticker);
+        if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+          const val = parseFloat(el.textContent.replace('%', ''));
+          if (!isNaN(val)) { total += val; count++; }
+        }
+      });
+      shorts.forEach(ticker => {
+        const el = document.getElementById("performance-" + ticker);
+        if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+          const val = parseFloat(el.textContent.replace('%', ''));
+          if (!isNaN(val)) { total += -val; count++; }
+        }
+      });
+      return count ? total / count : 0;
+    }
+
+    // Update index performance (for SPY/QQQ)
+    function updateIndexPerformance(ticker, buttonElement) {
+      const url = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort();
+
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          buttonElement.textContent = diff.toFixed(2) + '%';
+
+          if (diff >= 0) {
+            buttonElement.classList.add("positive-performance");
+            buttonElement.classList.remove("negative-performance");
+          } else {
+            buttonElement.classList.add("negative-performance");
+            buttonElement.classList.remove("positive-performance");
+          }
+        })
+        .catch(error => console.error("Error fetching index data for", ticker, error));
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const buys = ["OXY", "VRSN", "MMM"];
+      const shorts = ["AOS", "ALB", "RPD"];
+
+      // Update performance for each ticker
+      [...buys, ...shorts].forEach(ticker => {
+        const btn = document.getElementById("performance-" + ticker);
+        if (btn) {
+          updateTickerPerformanceIntraday(ticker, btn);
+          btn.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
+        }
+      });
+
+      // Update index performance for SPY and QQQ
+      updateIndexPerformance("SPY", document.getElementById("sp500Change"));
+      updateIndexPerformance("QQQ", document.getElementById("nasdaqChange"));
+
+      document.getElementById("sp500Button").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
+      });
+      document.getElementById("nasdaqButton").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
+      });
+
+      // Update Our Top Picks performance button
+      function updateWeeklyPicksButton() {
+        const perf = calculateWeeklyPicksPerformance(buys, shorts);
+        const picksBtn = document.getElementById("weeklyPicksChange");
+        picksBtn.textContent = perf.toFixed(2) + '%';
+        if (perf >= 0) {
+          picksBtn.classList.add("positive-performance");
+          picksBtn.classList.remove("negative-performance");
+        } else {
+          picksBtn.classList.add("negative-performance");
+          picksBtn.classList.remove("positive-performance");
+        }
+      }
+
+      // Explanation text toggle
+      function generateExplanation() {
+        return "This number represents the average profit percentage if you had bought our top three recommended stocks (" + buys.join(", ") + ") and shorted our bottom three picks (" + shorts.join(", ") + ") starting on " + initialDate + ". It updates in real time based on intraday data.";
+      }
+      const weeklyPicksButton = document.getElementById("weeklyPicksButton");
+      const explanationBox = document.getElementById("weeklyExplanationBox");
+      weeklyPicksButton.addEventListener("click", () => {
+        if (explanationBox.style.display === "none" || explanationBox.style.display === "") {
+          explanationBox.textContent = generateExplanation();
+          explanationBox.style.display = "block";
+        } else {
+          explanationBox.style.display = "none";
+        }
+      });
+
+      setTimeout(updateWeeklyPicksButton, 3000);
+      setInterval(updateWeeklyPicksButton, 60000);
+    });
+  </script>
+</body>
+</html>
