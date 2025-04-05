@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Congress Trading Insights</title>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -18,6 +26,9 @@
       text-align: center;
       margin-bottom: 20px;
       font-weight: 600;
+    }
+    p, li {
+      margin-bottom: 0.75em;
     }
     label {
       display: block;
@@ -29,21 +40,22 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
@@ -51,9 +63,9 @@
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
@@ -62,7 +74,7 @@
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
       display: none;
     }
     .two-column {
@@ -74,9 +86,9 @@
     .column {
       flex: 1;
       min-width: 300px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #fff;
+      background-color: var(--secondary-bg);
       padding: 1rem;
     }
     .column h2 {
@@ -84,14 +96,15 @@
       margin-bottom: 10px;
     }
     .pickItem {
-      border: 1px solid #e5e7eb;
+      border: 1px solid #555;
       border-radius: 4px;
       padding: 8px 16px;
       margin-bottom: 8px;
       cursor: pointer;
     }
     .pickItem:hover {
-      background-color: #f3f3f3;
+      background-color: var(--accent-color);
+      color: var(--text-color);
     }
     .bullish {
       color: green;
@@ -102,30 +115,54 @@
     #statsSection p {
       margin: 0.5rem 0;
     }
+    /* Autocomplete styling */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
   </style>
 </head>
 <body>
 
-  <!-- Optional Back Button -->
+  <!-- Back to Main Page -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">
     Back to Main Page
   </button>
 
   <h1>Congress Trading Insights</h1>
   <p>
-    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades. 
-    We will filter by date only.
+    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades.
+    We filter trades by date.
   </p>
 
+  <!-- Ticker Input with Autocomplete -->
   <label for="ticker">Ticker Symbol:</label>
   <input type="text" id="ticker" placeholder="e.g. TSLA" />
+  <ul id="ticker-suggestions"></ul>
+  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color: var(--accent-color);"></div>
 
+  <!-- Timeframe Input -->
   <label for="days">Timeframe (days):</label>
   <input type="number" id="days" placeholder="e.g. 30" value="30" />
 
-  <!-- Button to fetch data -->
+  <!-- Fetch Button -->
   <button id="fetchButton">Get Congress Data</button>
-
   <div id="loading">Loading congress trading data...</div>
 
   <!-- Summary Section -->
@@ -134,7 +171,7 @@
     <p id="statsSummary"></p>
   </div>
 
-  <!-- Two columns for Purchases and Sales -->
+  <!-- Two Columns for Purchases and Sales -->
   <div class="two-column" style="margin-top: 20px;">
     <div id="buyCol" class="column" style="display:none;">
       <h2>Purchases</h2>
@@ -153,6 +190,66 @@
   </div>
 
   <script>
+    /* ================= Autocomplete Functions ================= */
+
+    // Clears the suggestions list and any displayed company full name.
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+
+    // Fetch ticker suggestions from your API endpoint.
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+
+    // Render the suggestion list into the <ul id="ticker-suggestions">.
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = ''; // Clear previous suggestions
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    // Global variable for debounce timeout.
+    let debounceTimeout;
+
+    /* ================= Congress Trading & URL Initialization ================= */
+
+    // Setup Congress Trading Data fetching.
     document.getElementById('fetchButton').addEventListener('click', async () => {
       const ticker = document.getElementById('ticker').value.trim();
       const days = parseInt(document.getElementById('days').value.trim()) || 30;
@@ -160,10 +257,8 @@
         alert("Please enter a ticker symbol first.");
         return;
       }
-
-      // Reset UI elements
-      const loadingEl = document.getElementById('loading');
-      loadingEl.style.display = 'block';
+      // Reset UI elements.
+      document.getElementById('loading').style.display = 'block';
       document.getElementById('statsSection').style.display = 'none';
       document.getElementById('buyCol').style.display = 'none';
       document.getElementById('sellCol').style.display = 'none';
@@ -171,47 +266,37 @@
       document.getElementById('summary').innerHTML = '';
 
       try {
-        // Fetch from the local /api/congress endpoint
         const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
         const response = await fetch(url);
-
         if (!response.ok) {
           const text = await response.text();
           throw new Error(`Failed to fetch: ${response.status} - ${text}`);
         }
-
-        // Expect a JSON object with a data property
         const jsonResponse = await response.json();
         if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
           throw new Error("Invalid congress data format.");
         }
         const rawData = jsonResponse.data;
-
-        // Filter transactions by timeframe (using TransactionDate)
+        // Filter transactions by timeframe.
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         const filtered = rawData.filter(item => {
           const tradeDate = new Date(item.TransactionDate);
           return !isNaN(tradeDate) && tradeDate >= cutoff;
         });
-
         // Sort transactions by TransactionDate (oldest first)
         filtered.sort((a, b) => new Date(a.TransactionDate) - new Date(b.TransactionDate));
-
-        // Separate purchases and sales based on the Transaction field
+        // Separate purchases and sales.
         const purchases = filtered.filter(item => /purchase/i.test(item.Transaction));
         const sales = filtered.filter(item => /sale/i.test(item.Transaction));
-
-        // Calculate summary statistics
+        // Calculate summary statistics.
         let totalPurchase = 0, totalSale = 0;
         filtered.forEach(item => {
           const amt = parseFloat(item.Amount) || 0;
           if (/purchase/i.test(item.Transaction)) totalPurchase += amt;
           if (/sale/i.test(item.Transaction)) totalSale += amt;
         });
-
-        // Render summary
-        const statsSection = document.getElementById('statsSection');
+        // Render summary.
         const statsSummary = document.getElementById('statsSummary');
         statsSummary.innerHTML = `
           <p><strong>Ticker:</strong> ${ticker.toUpperCase()}</p>
@@ -220,21 +305,18 @@
           <p><strong>Total Purchase Amount:</strong> $${totalPurchase.toLocaleString()}</p>
           <p><strong>Total Sale Amount:</strong> $${totalSale.toLocaleString()}</p>
         `;
-        statsSection.style.display = 'block';
-
-        // Render columns for purchases and sales
+        document.getElementById('statsSection').style.display = 'block';
         showColumn(purchases, 'buyCol', 'buyContainer', true);
         showColumn(sales, 'sellCol', 'sellContainer', false);
-
       } catch (err) {
         console.error("Error fetching congress data:", err);
         alert(`Error: ${err.message}`);
       } finally {
-        loadingEl.style.display = 'none';
+        document.getElementById('loading').style.display = 'none';
       }
     });
 
-    // Helper function to render transaction columns
+    // Helper function to render transaction columns.
     function showColumn(list, colId, containerId, isBuy) {
       const colEl = document.getElementById(colId);
       const containerEl = document.getElementById(containerId);
@@ -255,7 +337,7 @@
       });
     }
 
-    // Function to display detailed information about a transaction
+    // Function to display detailed transaction information.
     function showDetails(item, rank, isBuy) {
       document.getElementById('summarySection').style.display = 'block';
       const summaryEl = document.getElementById('summary');
@@ -278,26 +360,44 @@
       summaryEl.innerHTML = html;
       summaryEl.scrollIntoView({ behavior: 'smooth' });
     }
-    
-  document.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    const symbol = params.get('symbol');
-    const days = params.get('days');
-    if (symbol) {
-      document.getElementById('ticker').value = symbol;
-    }
-    if (days) {
-      document.getElementById('days').value = days;
-    }
-    if (params.get('autoFetch') === 'true') {
-      // Delay slightly to ensure inputs are populated before triggering click
-      setTimeout(() => {
-        document.getElementById('fetchButton').click();
-      }, 500);
-    }
-  });
 
+    // URL Parameter Initialization for Congress Trading page.
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const days = params.get('days');
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+      }
+      if (days) {
+        document.getElementById('days').value = days;
+      }
+      if (params.get('autoFetch') === 'true') {
+        setTimeout(() => {
+          document.getElementById('fetchButton').click();
+        }, 500);
+      }
+    });
 
+    /* ================= Autocomplete Integration ================= */
+    // Set up autocomplete for the ticker input.
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      // Clear any suggestions on load.
+      clearSuggestions();
+    });
   </script>
 </body>
 </html>
