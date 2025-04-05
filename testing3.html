@@ -724,6 +724,46 @@ footer {
 .live-news-controls span:hover {
   background-color: #555;
 }
+/* Autocomplete Suggestions Container */
+#ticker-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #222; /* dark background */
+  border: 1px solid #444; /* subtle border */
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* modern shadow */
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Each suggestion item */
+#ticker-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #ccc;
+}
+
+/* Hover state for suggestions */
+#ticker-suggestions li:hover {
+  background-color: #16a34a; /* accent color */
+  color: #fff;
+}
+
+/* Optional: Style the ticker symbol and company name differently */
+#ticker-suggestions li .ticker-symbol {
+  font-weight: bold;
+}
+#ticker-suggestions li .company-name {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
 
 /* News Feed container */
 .live-news-feed {
