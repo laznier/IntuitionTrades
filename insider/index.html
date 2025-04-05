@@ -4,11 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Insider Trading Insights</title>
+  <!-- Include Highcharts for graphs -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -18,6 +28,9 @@
       text-align: center;
       margin-bottom: 20px;
       font-weight: 600;
+    }
+    p, li {
+      margin-bottom: 0.75em;
     }
     label {
       display: block;
@@ -29,42 +42,39 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
     }
+    /* Section styling */
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
     }
-    #loading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #f97316;
-      display: none;
-    }
+    /* Two-column layout */
     .two-column {
       display: flex;
       gap: 2rem;
@@ -74,9 +84,9 @@
     .column {
       flex: 1;
       min-width: 300px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #fff;
+      background-color: var(--secondary-bg);
       padding: 1rem;
     }
     .column h2 {
@@ -84,32 +94,78 @@
       margin-bottom: 10px;
     }
     .pickItem {
-      border: 1px solid #e5e7eb;
+      border: 1px solid #555;
       border-radius: 4px;
       padding: 8px 16px;
       margin-bottom: 8px;
       cursor: pointer;
     }
     .pickItem:hover {
-      background-color: #f3f3f3;
+      background-color: var(--accent-color);
+      color: var(--text-color);
     }
     .bullish {
-      color: green;
+      color: #16a34a;
     }
     .bearish {
-      color: red;
+      color: #dc2626;
     }
     #statsSection p {
       margin: 0.5rem 0;
     }
+    /* Autocomplete styling */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    /* Ticker form container */
+    #tickerForm {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    /* Chart container */
+    .chartContainer {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: var(--accent-color);
+      display: none;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-
-  <!-- Optional Back Button -->
-  <button onclick="window.location.href='https://www.intuitiontrades.com'">
-    Back to Main Page
-  </button>
+  <!-- Back to Home Button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
   <h1>Insider Trading Insights</h1>
   <p>
@@ -117,13 +173,18 @@
     Only transactions whose share price is within ±50% of the last close are considered.
   </p>
 
-  <label for="ticker">Ticker Symbol:</label>
-  <input type="text" id="ticker" placeholder="e.g. IBM" />
+  <!-- Ticker Input Form with Autocomplete -->
+  <div id="tickerForm">
+    <label for="ticker">Ticker Symbol:</label>
+    <input type="text" id="ticker" placeholder="e.g. IBM" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+  </div>
 
   <label for="days">Timeframe (days):</label>
   <input type="number" id="days" placeholder="e.g. 30" value="30" />
 
-  <!-- Single button to fetch insider data -->
+  <!-- Button to fetch insider data -->
   <button id="insiderButton">Get Insider Data</button>
 
   <div id="loading">Loading insider data...</div>
@@ -131,7 +192,9 @@
   <!-- Summary Section -->
   <div id="statsSection" class="section" style="display:none;">
     <h2>Insider Summary</h2>
-    <p id="statsSummary"></p>
+    <div id="statsSummary"></div>
+    <!-- Highcharts container for a summary bar chart -->
+    <div id="insiderChart" class="chartContainer" style="display:none;"></div>
   </div>
 
   <!-- Two columns for Acquisitions and Disposals -->
@@ -153,7 +216,77 @@
   </div>
 
   <script>
-    // Fetch last close price using TIME_SERIES_DAILY_ADJUSTED data.
+    /*******************************************************
+     * GLOBAL VARIABLES & AUTOCOMPLETE FUNCTIONS
+     *******************************************************/
+    let debounceTimeout;
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+
+    /*******************************************************
+     * 1) FETCHING & PROCESSING FUNCTIONS
+     *******************************************************/
+    // Fetch last close price using historical data.
     async function fetchLastPrice(ticker) {
       const histUrl = `https://www.projectmanagerhelper.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
       const histResponse = await fetch(histUrl);
@@ -174,7 +307,9 @@
       return parseFloat(lastRecord["4. close"]);
     }
 
-    // Event listener for "Get Insider Data" button
+    /*******************************************************
+     * 2) INSIDER DATA FETCH & UI HANDLING
+     *******************************************************/
     document.getElementById('insiderButton').addEventListener('click', async () => {
       const ticker = document.getElementById('ticker').value.trim();
       const days = parseInt(document.getElementById('days').value.trim()) || 30;
@@ -192,7 +327,7 @@
       document.getElementById('summary').innerHTML = '';
 
       try {
-        // Fetch insider data
+        // Fetch insider data from your API endpoint.
         const url = `https://www.projectmanagerhelper.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
         const response = await fetch(url);
         if (!response.ok) {
@@ -202,18 +337,12 @@
         if (!data.data || !Array.isArray(data.data)) {
           throw new Error("Invalid insider data format.");
         }
-        // Fetch last close price from historical data
+        // Fetch last close price.
         const lastPrice = await fetchLastPrice(ticker);
-        
-        // Define the price range: ±50% of lastPrice
         const lowerBound = lastPrice * 0.5;
         const upperBound = lastPrice * 1.5;
-        
-        // Optional: filter by timeframe
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
-        
-        // Filter transactions: must be within timeframe and have a valid share price within the bounds.
         const filtered = data.data.filter(item => {
           const d = new Date(item.transaction_date);
           if (isNaN(d) || d < cutoff) return false;
@@ -221,24 +350,17 @@
           if (isNaN(sharePrice) || sharePrice === 0) return false;
           return sharePrice >= lowerBound && sharePrice <= upperBound;
         });
-        
-        // Sort filtered transactions by date (oldest first)
         filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
-        
-        // Separate acquisitions and disposals
         const acquisitions = filtered.filter(item => item.acquisition_or_disposal === 'A');
         const disposals = filtered.filter(item => item.acquisition_or_disposal === 'D');
-        
-        // Calculate simple stats (optional)
         let totalBuys = 0, totalSells = 0;
         filtered.forEach(item => {
           const sharesNum = parseFloat(item.shares) || 0;
-          if (item.acquisition_or_disposal === 'A') {
-            totalBuys += sharesNum;
-          } else if (item.acquisition_or_disposal === 'D') {
-            totalSells += sharesNum;
-          }
+          if (item.acquisition_or_disposal === 'A') totalBuys += sharesNum;
+          else if (item.acquisition_or_disposal === 'D') totalSells += sharesNum;
         });
+        
+        // Render summary stats.
         const statsSection = document.getElementById('statsSection');
         const statsSummary = document.getElementById('statsSummary');
         statsSummary.innerHTML = `
@@ -251,7 +373,32 @@
         `;
         statsSection.style.display = 'block';
         
-        // Render acquisitions and disposals
+        // Plot a Highcharts column chart for summary.
+        Highcharts.chart('insiderChart', {
+          chart: {
+            type: 'column',
+            backgroundColor: 'var(--secondary-bg)'
+          },
+          title: { text: 'Insider Trading Summary' },
+          xAxis: {
+            categories: ['Total Buys', 'Total Sells'],
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          yAxis: {
+            title: { text: 'Shares' },
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          series: [{
+            name: ticker.toUpperCase(),
+            data: [totalBuys, totalSells],
+            colorByPoint: true,
+            colors: ['#16a34a', '#dc2626']
+          }],
+          credits: { enabled: false }
+        });
+        document.getElementById('insiderChart').style.display = 'block';
+        
+        // Render transaction columns.
         showColumn(acquisitions, 'bullishCol', 'bullishContainer', true);
         showColumn(disposals, 'bearishCol', 'bearishContainer', false);
       } catch (err) {
@@ -262,7 +409,6 @@
       }
     });
 
-    // Helper to render a column of transactions
     function showColumn(list, colId, containerId, isBullish) {
       const colEl = document.getElementById(colId);
       const containerEl = document.getElementById(containerId);
@@ -284,7 +430,6 @@
       });
     }
 
-    // Display details for a selected transaction
     function showSummary(item, rank, isBullish) {
       document.getElementById('summarySection').style.display = 'block';
       const summaryEl = document.getElementById('summary');
@@ -296,31 +441,49 @@
       html += `<li><strong>Share Price:</strong> $${parseFloat(item.share_price).toFixed(2)}</li>`;
       html += `<li><strong>Shares:</strong> ${parseFloat(item.shares).toLocaleString()}</li>`;
       html += "</ul>";
-      summaryEl.innerHTML = html;
-      summaryEl.scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('summary').innerHTML = html;
+      document.getElementById('summary').scrollIntoView({ behavior: 'smooth' });
     }
-  // Auto-populate ticker and days, then run insider analysis if URL parameters are provided.
-  window.onload = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const symbol = urlParams.get('symbol');
-    const days = urlParams.get('days');
-    
-    if (symbol) {
-      document.getElementById('ticker').value = symbol;
-    }
-    if (days) {
-      document.getElementById('days').value = days;
-    }
-    
-    // Auto-run the insider data fetch if a symbol is provided.
-    if (symbol) {
-      // Optionally delay to ensure the page is fully loaded.
-      setTimeout(() => {
-        document.getElementById('insiderButton').click();
-      }, 100);
-    }
-  };
 
+    /*******************************************************
+     * 4) TICKER AUTOCOMPLETE INTEGRATION
+     *******************************************************/
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+
+    /*******************************************************
+     * 5) URL PARAMETER INITIALIZATION (Optional)
+     *******************************************************/
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const days = params.get('days');
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+      }
+      if (days) {
+        document.getElementById('days').value = days;
+      }
+      if (symbol) {
+        setTimeout(() => {
+          document.getElementById('insiderButton').click();
+        }, 100);
+      }
+    };
   </script>
 </body>
 </html>
