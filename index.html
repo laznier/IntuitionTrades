@@ -943,16 +943,16 @@ footer {
         <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VST">VST</a>
-            <button class="performance-button" id="performance-VST">Loading...</button>
-          </li>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=WYNN">WYNN</a>
-            <button class="performance-button" id="performance-WYNN">Loading...</button>
-          </li>
-          <li>
             <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
             <button class="performance-button" id="performance-OXY">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a>
+            <button class="performance-button" id="performance-VRSN">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MMM">MMM</a>
+            <button class="performance-button" id="performance-MMM">Loading...</button>
           </li>
         </ol>
       </div>
@@ -962,16 +962,16 @@ footer {
         <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
         <ol>
           <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=INTA">INTA</a>
-            <button class="performance-button" id="performance-INTA">Loading...</button>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AOS">AOS</a>
+            <button class="performance-button" id="performance-AOS">Loading...</button>
           </li>
           <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a>
-            <button class="performance-button" id="performance-AXON">Loading...</button>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a>
+            <button class="performance-button" id="performance-ALB">Loading...</button>
           </li>
           <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=LYV">LYV</a>
-            <button class="performance-button" id="performance-LYV">Loading...</button>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=RPD">RPD</a>
+            <button class="performance-button" id="performance-RPD">Loading...</button>
           </li>
         </ol>
       </div>
@@ -1273,14 +1273,14 @@ footer {
         .catch(error => console.error("Error fetching intraday data for", ticker, error));
     }
 
-    // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV)
+    // Update the 6 weekly pick tickers (OXY, VRSN, MMM, AOS, ALB, RPD)
     document.addEventListener('DOMContentLoaded', () => {
       const initialDate = "2025-03-28";
       document.querySelectorAll('.performance-header').forEach(header => {
         header.textContent = "Performance Since " + initialDate;
       });
 
-      const tickers = ["VST", "WYNN", "OXY", "INTA", "AXON", "LYV"];
+      const tickers = ["OXY", "VRSN", "MMM", "AOS", "ALB", "RPD"];
       tickers.forEach(ticker => {
         const perfEl = document.getElementById(`performance-${ticker}`);
         if (perfEl) {
@@ -1310,8 +1310,8 @@ footer {
       });
 
       // Top 3 Buys & Top 3 Shorts
-      const topBuys = ["VST", "WYNN", "OXY"];
-      const bottomShorts = ["INTA", "AXON", "LYV"];
+      const topBuys = ["OXY", "VRSN", "MMM"];
+      const bottomShorts = ["AOS", "ALB", "RPD"];
 
       function generateExplanation() {
         return (
