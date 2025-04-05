@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Congress Trading Insights</title>
-  <!-- Include Chart.js library if needed for graphs -->
+  <!-- Include Chart.js library -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -24,7 +24,7 @@
       padding: 2rem;
       line-height: 1.6;
     }
-    h1, h2 {
+    h1 {
       text-align: center;
       margin-bottom: 20px;
       font-weight: 600;
@@ -69,19 +69,53 @@
       border-radius: 4px;
       background-color: var(--secondary-bg);
     }
-    /* Spinner styles */
-    .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid var(--accent-color);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: var(--accent-color);
+      display: none;
+    }
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+    }
+    .column h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pickItem {
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    .bullish {
+      color: green;
+    }
+    .bearish {
+      color: red;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
     }
     /* Autocomplete styling */
     #ticker-suggestions {
@@ -107,31 +141,25 @@
   </style>
 </head>
 <body>
-  <!-- Back to Main Page Button -->
+  <!-- Back to Main Page Button (updated for consistency) -->
   <button onclick="window.location.href='https://intuitiontrades.com'">Back to Main Page</button>
 
   <h1>Interactive Top Congress Trades</h1>
-  <p>This page displays congressional trades with filtering and interactive details.</p>
+  <p>This page displays the top 5 stocks bought and sold by Congress with filtering and interactive details.</p>
 
   <!-- Button to load data -->
   <div style="text-align: center;">
     <button id="fetchButton">Load Congress Trades Data</button>
   </div>
 
-  <!-- Spinner with countdown during data load -->
-  <div id="loading" style="display:none; text-align:center;">
+  <!-- Spinner for buffering -->
+  <div id="loading">
     <div class="spinner"></div>
     <p>Loading data... (<span id="countdown">15</span> seconds remaining)</p>
   </div>
 
-  <!-- Temporary section to quickly display senator/congressperson names -->
-  <div id="senatorsList" class="section" style="display:none;">
-    <h2>Importing Data from:</h2>
-    <p id="senatorsNames"></p>
-  </div>
-
-  <!-- Filter section; hidden until after data is loaded -->
-  <div id="filterSection" style="display:none;">
+  <!-- Filter section (appears after data load) -->
+  <div id="filterSection">
     <label for="filterDays">Filter by days (e.g. 90):</label>
     <input type="number" id="filterDays" value="90" min="1"/>
     <br>
@@ -144,15 +172,25 @@
     <div id="company-full-name" style="margin-top:5px; font-size:1rem; color: var(--accent-color);"></div>
     <br>
     <button id="applyFilter">Apply Filter</button>
+     <!-- Ticker Input with Autocomplete -->
+ 
   </div>
 
-  <!-- Results section with dynamic title and filtered trades -->
-  <div id="resultsSection" class="section" style="display:none;">
-    <h2 id="resultsTitle"></h2>
-    <div id="resultsContainer"></div>
+  <!-- Two columns for Top 5 Buying and Selling -->
+  <div class="two-column">
+    <div id="buyCol" class="column" style="display:none;">
+      <h2>Top 5 Buying</h2>
+      <div id="buyContainer"></div>
+    </div>
+    <div id="sellCol" class="column" style="display:none;">
+      <h2>Top 5 Selling</h2>
+      <div id="sellContainer"></div>
+    </div>
   </div>
 
-  <!-- Details section for a selected stock (if needed) -->
+  <!-- Details section for a selected stock:
+       The graph appears at the top,
+       followed by the transaction details. -->
   <div id="detailsSection" class="section" style="display:none;">
     <h2>Stock Details</h2>
     <div id="chartContainer">
@@ -162,11 +200,9 @@
   </div>
 
   <script>
-    // Global declarations
-    let debounceTimeout;
-    let allData = []; // To store all fetched data
-
-    /* ================= Autocomplete Functions ================= */
+     // Global declaration for debounceTimeout
+     let debounceTimeout;
+     /* ================= Autocomplete Functions ================= */
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -182,7 +218,9 @@
     async function fetchTickerSuggestions(searchQuery) {
       try {
         const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
         const data = await response.json();
         return data.bestMatches || [];
       } catch (error) {
@@ -205,52 +243,134 @@
         li.addEventListener('click', () => {
           document.getElementById('ticker').value = item["1. symbol"];
           const fullNameElem = document.getElementById('company-full-name');
-          if (fullNameElem) fullNameElem.innerText = item["2. name"];
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
           clearSuggestions();
         });
         list.appendChild(li);
       });
     }
+    let allData = []; // Global storage for fetched data
 
-    // Autocomplete integration for ticker input.
-    document.addEventListener("DOMContentLoaded", () => {
-      const tickerInput = document.getElementById('ticker');
-      tickerInput.addEventListener('input', () => {
-        const query = tickerInput.value.trim();
-        if (query.length < 2) {
-          clearSuggestions();
-          return;
-        }
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(async () => {
-          const suggestions = await fetchTickerSuggestions(query);
-          renderTickerSuggestions(suggestions);
-        }, 300);
+    // Utility: Parse the Range string "$1,001 - $15,000" and compute the average
+    function getAverageFromRange(rangeStr) {
+      if (!rangeStr) return 0;
+      const cleanStr = rangeStr.replace(/\$/g, '').replace(/,/g, '');
+      const parts = cleanStr.split('-').map(s => parseFloat(s.trim()));
+      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        return (parts[0] + parts[1]) / 2;
+      }
+      return 0;
+    }
+
+    // Render the top stocks from the filtered data
+    function renderTopStocks(filteredData) {
+      // Group all trades by ticker (combining purchases and sales)
+      function groupByTicker(trades) {
+        const map = {};
+        trades.forEach(trade => {
+          const ticker = trade.Ticker || 'Unknown';
+          if (!map[ticker]) {
+            map[ticker] = { ticker, trades: [] };
+          }
+          map[ticker].trades.push(trade);
+        });
+        return Object.values(map);
+      }
+
+      const groups = groupByTicker(filteredData);
+
+      // For each group, compute:
+      // - Total Buy Dollars (sum of averages for purchase trades)
+      // - Total Sell Dollars (sum of averages for sale trades)
+      // - Net Dollars = Total Buy Dollars - Total Sell Dollars
+      // - Trade Count
+      groups.forEach(group => {
+        let totalBuy = 0, totalSell = 0;
+        group.trades.forEach(trade => {
+          const avg = getAverageFromRange(trade.Range);
+          if (trade.Transaction && trade.Transaction.toLowerCase() === 'purchase') {
+            totalBuy += avg;
+          } else if (trade.Transaction && trade.Transaction.toLowerCase() === 'sale') {
+            totalSell += avg;
+          }
+        });
+        group.totalBuy = totalBuy;
+        group.totalSell = totalSell;
+        group.netDollars = totalBuy - totalSell;
+        group.tradeCount = group.trades.length;
       });
-      clearSuggestions();
-    });
 
-    /* ================= Data Fetch and UI Initialization ================= */
+      // Separate groups into top buys (net positive) and top sells (net negative)
+      const topBuys = groups.filter(group => group.netDollars > 0)
+                            .sort((a, b) => b.netDollars - a.netDollars)
+                            .slice(0, 5);
+      const topSells = groups.filter(group => group.netDollars < 0)
+                             .sort((a, b) => a.netDollars - b.netDollars)
+                             .slice(0, 5);
+
+      // Render top buying tickers
+      const buyContainer = document.getElementById('buyContainer');
+      buyContainer.innerHTML = '';
+      topBuys.forEach(group => {
+        const div = document.createElement('div');
+        div.classList.add('item');
+        div.innerHTML = `
+          <strong>${group.ticker}</strong><br>
+          Trades: ${group.tradeCount}<br>
+          Total Dollars Spent: $${group.netDollars.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        `;
+        // Clicking shows all transactions (buys and sells) for that ticker
+        div.addEventListener('click', () => showDetails(group));
+        buyContainer.appendChild(div);
+      });
+
+      // Render top selling tickers
+      const sellContainer = document.getElementById('sellContainer');
+      sellContainer.innerHTML = '';
+      topSells.forEach(group => {
+        const div = document.createElement('div');
+        div.classList.add('item');
+        // For sells, display the absolute value of net dollars
+        div.innerHTML = `
+          <strong>${group.ticker}</strong><br>
+          Trades: ${group.tradeCount}<br>
+          Total Dollars Acquired: $${Math.abs(group.netDollars).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        `;
+        div.addEventListener('click', () => showDetails(group));
+        sellContainer.appendChild(div);
+      });
+
+      document.getElementById('buyCol').style.display = topBuys.length > 0 ? 'block' : 'none';
+      document.getElementById('sellCol').style.display = topSells.length > 0 ? 'block' : 'none';
+    }
+
+    // Fetch data when the user clicks the fetch button
     document.getElementById('fetchButton').addEventListener('click', async () => {
+      console.log("[DEBUG] Fetch button clicked");
       document.getElementById('loading').style.display = 'block';
-      // Hide previous sections if any.
-      document.getElementById('filterSection').style.display = 'none';
-      document.getElementById('resultsSection').style.display = 'none';
-      document.getElementById('senatorsList').style.display = 'none';
-      document.getElementById('detailsSection').style.display = 'none';
 
-      // Start the countdown timer.
+      // Start the countdown timer
       let countdown = 15;
       const countdownEl = document.getElementById('countdown');
       countdownEl.innerText = countdown;
       const timerInterval = setInterval(() => {
         countdown--;
         countdownEl.innerText = countdown;
-        if (countdown <= 0) clearInterval(timerInterval);
+        if (countdown <= 0) {
+          clearInterval(timerInterval);
+        }
       }, 1000);
+
+      // Hide previous sections
+      document.getElementById('detailsSection').style.display = 'none';
+      document.getElementById('buyContainer').innerHTML = '';
+      document.getElementById('sellContainer').innerHTML = '';
 
       try {
         const response = await fetch('/api/topcongress');
+        console.log("[DEBUG] Response status:", response.status);
         if (!response.ok) {
           const text = await response.text();
           throw new Error(`Failed to fetch data: ${response.status} - ${text}`);
@@ -260,20 +380,13 @@
           throw new Error("Invalid data format from API. Expected { data: [] }");
         }
         allData = jsonResponse.data;
+        console.log("[DEBUG] Total records fetched:", allData.length);
 
-        // Display the unique names of senators/congresspeople.
-        const names = [...new Set(allData.map(item => item.Representative).filter(Boolean))];
-        document.getElementById('senatorsNames').innerText = names.join(', ');
-        document.getElementById('senatorsList').style.display = 'block';
-
-        // After a brief delay, hide the names section and show the filter section.
-        setTimeout(() => {
-          document.getElementById('senatorsList').style.display = 'none';
-          document.getElementById('filterSection').style.display = 'block';
-        }, 2000); // Adjust delay as needed.
-
+        // Initially render with all data (no filter)
+        renderTopStocks(allData);
+        document.getElementById('filterSection').style.display = 'block';
       } catch (error) {
-        console.error("Error fetching congress data:", error);
+        console.error("[DEBUG] Error:", error);
         alert("Error: " + error.message);
       } finally {
         clearInterval(timerInterval);
@@ -281,86 +394,44 @@
       }
     });
 
-    /* ================= Filtering and Dynamic Results Rendering ================= */
-    // When user clicks "Apply Filter"
+    // Apply filter by number of days, politician, and stock (client-side filtering)
     document.getElementById('applyFilter').addEventListener('click', () => {
       const days = parseInt(document.getElementById('filterDays').value.trim()) || 90;
       const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
-      const tickerFilter = document.getElementById('ticker').value.trim().toLowerCase();
+      const stockFilter = document.getElementById('ticker').value.trim().toLowerCase();
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       
-      // Filter the global data.
       const filteredData = allData.filter(item => {
+        // Filter by days
         if (!item.TransactionDate) return false;
         const tradeDate = new Date(item.TransactionDate);
         if (isNaN(tradeDate) || tradeDate < cutoff) return false;
-        if (politicianFilter && (!item.Representative || item.Representative.toLowerCase().indexOf(politicianFilter) === -1)) return false;
-        if (tickerFilter && (!item.Ticker || item.Ticker.toLowerCase().indexOf(tickerFilter) === -1)) return false;
+        // Filter by politician if provided
+        if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
+          return false;
+        }
+        // Filter by stock if provided
+        if (stockFilter && item.Ticker && item.Ticker.toLowerCase().indexOf(stockFilter) === -1) {
+          return false;
+        }
         return true;
       });
       
-      renderFilteredTrades(filteredData, { days, tickerFilter, politicianFilter });
+      console.log("[DEBUG] Records after filtering:", filteredData.length);
+      renderTopStocks(filteredData);
+      document.getElementById('detailsSection').style.display = 'none';
     });
 
-    // Render filtered trades with a dynamic title.
-    function renderFilteredTrades(filteredData, { days, tickerFilter, politicianFilter }) {
-      const resultsSection = document.getElementById('resultsSection');
-      const resultsTitle = document.getElementById('resultsTitle');
-      const resultsContainer = document.getElementById('resultsContainer');
-      
-      // Build dynamic title.
-      let title = "";
-      if (tickerFilter && days) {
-        title = `${tickerFilter.toUpperCase()} trades in the last ${days} days`;
-      } else if (tickerFilter) {
-        title = `${tickerFilter.toUpperCase()} trades`;
-      } else if (days) {
-        title = `All reported trades in the last ${days} days`;
-      } else {
-        title = "All reported trades";
-      }
-      if (politicianFilter) {
-        // Look for a matching full name.
-        const match = filteredData.find(item => item.Representative && item.Representative.toLowerCase().includes(politicianFilter));
-        if (match && match.Representative) {
-          title = tickerFilter 
-            ? `${tickerFilter.toUpperCase()} trades by ${match.Representative} in the last ${days} days`
-            : `Trades by ${match.Representative} in the last ${days} days`;
-        }
-      }
-      resultsTitle.innerText = title;
-      
-      // Render each trade in a simple list.
-      resultsContainer.innerHTML = "";
-      if(filteredData.length === 0) {
-        resultsContainer.innerHTML = "<p>No trades found matching the filters.</p>";
-      } else {
-        filteredData.forEach(trade => {
-          const div = document.createElement('div');
-          div.style.borderBottom = "1px solid #555";
-          div.style.padding = "8px 0";
-          const rep = trade.Representative || 'N/A';
-          const ticker = trade.Ticker || 'N/A';
-          const tradeDate = trade.TransactionDate ? new Date(trade.TransactionDate).toLocaleDateString() : 'N/A';
-          const trans = trade.Transaction || 'N/A';
-          div.innerHTML = `<strong>${ticker}</strong> - ${trans} on ${tradeDate} by ${rep}`;
-          resultsContainer.appendChild(div);
-        });
-      }
-      resultsSection.style.display = 'block';
-      resultsSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    /* ================= Detailed Trade Information and Timeline Graph ================= */
+    // Show detailed transactions for a selected ticker and render timeline graph
     function showDetails(group) {
       const detailsSection = document.getElementById('detailsSection');
       const detailsEl = document.getElementById('details');
 
-      // Render the timeline graph (using all transactions for the ticker).
+      // Render the timeline graph (using all transactions for the ticker)
       renderTimelineGraph(group);
 
-      // Render the list of transactions.
+      // Render the list of transactions
       let html = `
         <p><strong>Ticker:</strong> ${group.ticker}</p>
         <p><strong>Total Trades:</strong> ${group.tradeCount}</p>
@@ -395,26 +466,30 @@
       detailsSection.scrollIntoView({ behavior: 'smooth' });
     }
 
+    // Render a timeline graph for the selected ticker using Chart.js
     function renderTimelineGraph(group) {
-      // Group all trades by TransactionDate.
+      // Group all trades (both purchase and sale) by TransactionDate
       const timeline = {};
       group.trades.forEach(trade => {
         if (!trade.TransactionDate) return;
         const dateStr = new Date(trade.TransactionDate).toLocaleDateString();
         const avg = getAverageFromRange(trade.Range);
+        // For purchases add positive, for sales subtract
         const value = (trade.Transaction && trade.Transaction.toLowerCase() === 'purchase') ? avg : -avg;
-        if (!timeline[dateStr]) timeline[dateStr] = 0;
+        if (!timeline[dateStr]) {
+          timeline[dateStr] = 0;
+        }
         timeline[dateStr] += value;
       });
       const sortedDates = Object.keys(timeline).sort((a, b) => new Date(a) - new Date(b));
       const values = sortedDates.map(date => timeline[date]);
 
-      // Compute symmetric bounds for the Y-axis.
+      // Compute symmetric bounds for Y-axis
       const minVal = Math.min(...values);
       const maxVal = Math.max(...values);
       const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
 
-      // Create or update the chart.
+      // Create or update the chart
       const chartContainer = document.getElementById('chartContainer');
       chartContainer.innerHTML = '<canvas id="trendChart"></canvas>';
       const ctx = document.getElementById('trendChart').getContext('2d');
@@ -458,17 +533,26 @@
         }
       });
     }
+        /* ================= Autocomplete Integration ================= */
+     // Set up autocomplete for the ticker input.
+     document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      // Clear any suggestions on load.
+      clearSuggestions();
+    });
 
-    // Utility: Parse the Range string "$1,001 - $15,000" and compute the average.
-    function getAverageFromRange(rangeStr) {
-      if (!rangeStr) return 0;
-      const cleanStr = rangeStr.replace(/\$/g, '').replace(/,/g, '');
-      const parts = cleanStr.split('-').map(s => parseFloat(s.trim()));
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-        return (parts[0] + parts[1]) / 2;
-      }
-      return 0;
-    }
   </script>
 </body>
 </html>
