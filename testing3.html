@@ -1056,17 +1056,12 @@ footer {
     Live News
 
     <!-- NEW: Ticker Search Box -->
-  <div class="ticker-search-container">
-    <input
-      type="text"
-      id="tickerSearchInput"
-      class="dark-input" 
-      placeholder="Ticker"
-    />
-    <button id="tickerSearchButton" class="dark-input">
-      Search
-    </button>
-  </div>
+    <div class="ticker-search-container">
+        <input type="text" id="TickerSearchInput" class="dark-input" placeholder="Ticker" />
+        <ul id="ticker-suggestions" style="display:none;"></ul>
+        <button id="tickerSearchButton" class="dark-input">Search</button>
+      </div>
+      
   
     <!-- Controls: minimize, maximize, close -->
     <div class="live-news-controls">
@@ -1781,16 +1776,75 @@ tickerSearchButton.addEventListener("click", async () => {
   }
 });
 
-    document.addEventListener("DOMContentLoaded", () => {
-        attachTickerAutocomplete('#tickerSearchInput');
-      // Topic menu
-      const menuButtons = document.querySelectorAll("#liveNewsMenu button");
-      menuButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          selectedTopic = btn.getAttribute("data-topic") || "";
-          refreshNews();
-        });
-      });
+  // Clear suggestions function
+function clearSuggestions() {
+  const list = document.getElementById('ticker-suggestions');
+  list.innerHTML = '';
+  list.style.display = 'none';
+}
+
+// Fetch suggestions from the API
+async function fetchTickerSuggestions(searchQuery) {
+  try {
+    const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+    const data = await response.json();
+    return data.bestMatches || [];
+  } catch (error) {
+    console.error("Error fetching ticker suggestions:", error);
+    return [];
+  }
+}
+
+// Render suggestions into the UL element
+function renderTickerSuggestions(suggestions) {
+  const list = document.getElementById('ticker-suggestions');
+  list.innerHTML = ''; // Clear previous suggestions
+  if (!suggestions.length) {
+    list.style.display = 'none';
+    return;
+  }
+  list.style.display = 'block';
+  suggestions.forEach(item => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+    li.addEventListener('click', () => {
+      document.getElementById('TickerSearchInput').value = item["1. symbol"];
+      clearSuggestions();
+    });
+    list.appendChild(li);
+  });
+}
+
+// Attach autocomplete functionality to your input
+function attachTickerAutocomplete(selector) {
+  const tickerInput = document.querySelector(selector);
+  if (!tickerInput) return;
+  let debounceTimeout;
+  tickerInput.addEventListener('input', () => {
+    const query = tickerInput.value.trim();
+    if (query.length < 2) {
+      clearSuggestions();
+      return;
+    }
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(async () => {
+      const suggestions = await fetchTickerSuggestions(query);
+      renderTickerSuggestions(suggestions);
+    }, 300);
+  });
+  // Optionally, clear suggestions when the input loses focus:
+  tickerInput.addEventListener('blur', () => {
+    setTimeout(clearSuggestions, 100);
+  });
+}
+
+// Initialize autocomplete when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  attachTickerAutocomplete('#TickerSearchInput');
+});
+
+  
       
 
       // Initial fetch
@@ -1838,7 +1892,6 @@ tickerSearchButton.addEventListener("click", async () => {
         liveNewsSection.style.display = "none";
         clearInterval(refreshInterval);
       });
-    });
   </script>
   
 </body>
