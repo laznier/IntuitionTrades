@@ -193,6 +193,8 @@ button:hover {
     <button id="applyFilter">Apply Filter</button>
   </div>
 
+  <div id="tradesTitle" style="display:none; text-align: center; margin-top: 20px; font-weight: 600; font-size: 1.2rem;"></div>
+
   <!-- Two columns for Top 5 Buying and Selling -->
   <div class="two-column">
     <div id="buyCol" class="column" style="display:none;">
@@ -970,30 +972,56 @@ document.getElementById('filterPolitician').addEventListener('input', () => {
     });
 
     // Apply filter by days, politician, and stock
-    document.getElementById('applyFilter').addEventListener('click', () => {
-      const daysInput = document.getElementById('filterDays').value.trim();
-      const days = daysInput === "" ? null : parseInt(daysInput);
-      const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
-      const stockFilter = document.getElementById('ticker').value.trim().toLowerCase();
-      const filteredData = allData.filter(item => {
-        if (days !== null) {
-          if (!item.TransactionDate) return false;
-          const tradeDate = new Date(item.TransactionDate);
-          let cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - days);
-          if (isNaN(tradeDate) || tradeDate < cutoff) return false;
-        }
-        if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
-          return false;
-        }
-        if (stockFilter && item.Ticker && item.Ticker.toLowerCase().indexOf(stockFilter) === -1) {
-          return false;
-        }
-        return true;
-      });
-      renderTopStocks(filteredData);
-      document.getElementById('detailsSection').style.display = 'none';
-    });
+document.getElementById('applyFilter').addEventListener('click', () => {
+  const daysInput = document.getElementById('filterDays').value.trim();
+  const days = daysInput === "" ? null : parseInt(daysInput);
+  const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
+  const stockFilter = document.getElementById('ticker').value.trim().toLowerCase();
+
+  const filteredData = allData.filter(item => {
+    if (days !== null) {
+      if (!item.TransactionDate) return false;
+      const tradeDate = new Date(item.TransactionDate);
+      let cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      if (isNaN(tradeDate) || tradeDate < cutoff) return false;
+    }
+    if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
+      return false;
+    }
+    if (stockFilter && item.Ticker && item.Ticker.toLowerCase().indexOf(stockFilter) === -1) {
+      return false;
+    }
+    return true;
+  });
+
+  // Construct the trades title based on filters:
+  let tradesTitle = "";
+  if (stockFilter && days && politicianFilter) {
+    // If all three filters are applied, try to get the full politician name from the first transaction.
+    let repName = "";
+    if (filteredData.length > 0 && filteredData[0].Representative) {
+      repName = filteredData[0].Representative;
+    } else {
+      repName = document.getElementById('filterPolitician').value.trim();
+    }
+    tradesTitle = `${stockFilter.toUpperCase()} trades by ${repName} in the last ${days} days`;
+  } else if (stockFilter && days) {
+    tradesTitle = `${stockFilter.toUpperCase()} trades in the last ${days} days`;
+  } else if (stockFilter) {
+    tradesTitle = `${stockFilter.toUpperCase()} trades`;
+  } else if (days) {
+    tradesTitle = `All reported trades in the last ${days} days`;
+  } else {
+    tradesTitle = "All reported trades";
+  }
+  document.getElementById('tradesTitle').innerText = tradesTitle;
+  document.getElementById('tradesTitle').style.display = 'block';
+
+  renderTopStocks(filteredData);
+  document.getElementById('detailsSection').style.display = 'none';
+});
+
 
     // Show detailed transactions for a selected ticker and render timeline graph
     function showDetails(group) {
