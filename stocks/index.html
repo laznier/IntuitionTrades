@@ -175,6 +175,30 @@
   margin: 0;
   padding: 0;
 }
+/* Styling for the ticker suggestions dropdown */
+#ticker-suggestions {
+  position: absolute;
+  background-color: var(--secondary-bg);
+  border: 1px solid #555;
+  width: calc(100% - 20px);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#ticker-suggestions li {
+  padding: 8px;
+  cursor: pointer;
+}
+
+#ticker-suggestions li:hover {
+  background-color: var(--accent-color);
+  color: #fff;
+}
+
 
 </style>
 <body>
@@ -185,11 +209,17 @@
   <p>Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
   Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.</p>
 
-  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-  <input type="text" id="ticker" value="AAPL">
   
   <label for="futureDate">Future Date:</label>
   <input type="date" id="futureDate">
+
+  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+  <input type="text" id="ticker" value="AAPL">
+  <ul id="ticker-suggestions"></ul>
+  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
+  
+  
+
 
   <!-- Manual override for historical period (optional) -->
   <label style="margin-top:15px;">
@@ -2162,24 +2192,106 @@ Weighted Score = ( w_MC × MC_Bull
   win.document.write(html);
   win.document.close();
 });
-document.addEventListener("DOMContentLoaded", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has('ticker')) {
-    const tickerInput = document.getElementById('ticker');
-    if (tickerInput) {
-      tickerInput.value = urlParams.get('ticker');
-      updateLinkButtonTexts();
+
+  // Global variable for debouncing
+  let debounceTimeout;
+
+  // Clears the suggestions list and any displayed company full name
+  function clearSuggestions() {
+    const list = document.getElementById('ticker-suggestions');
+    if (list) {
+      list.innerHTML = '';
+      list.style.display = 'none';
     }
-    const simulateBtn = document.getElementById('simulateButton');
-    if (simulateBtn) {
-      setTimeout(() => {
-        simulateBtn.click();
-      }, 100);
+    const fullNameElem = document.getElementById('company-full-name');
+    if (fullNameElem) {
+      fullNameElem.innerText = '';
     }
   }
-});
 
-  </script>
-  
+  // Fetch ticker suggestions from your API endpoint (/api/ticker?query=...)
+  async function fetchTickerSuggestions(searchQuery) {
+    try {
+      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.bestMatches || [];
+    } catch (error) {
+      console.error("Error fetching ticker suggestions:", error);
+      return [];
+    }
+  }
+
+  // Render the suggestion list into the <ul id="ticker-suggestions">
+  function renderTickerSuggestions(suggestions) {
+    const list = document.getElementById('ticker-suggestions');
+    list.innerHTML = ''; // Clear previous suggestions
+
+    if (!suggestions || suggestions.length === 0) {
+      list.style.display = 'none';
+      return;
+    }
+    list.style.display = 'block';
+    suggestions.forEach(item => {
+      const li = document.createElement('li');
+      // Display the ticker symbol and full company name
+      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+      li.addEventListener('click', () => {
+        // Autofill the ticker input and show full company name in a side element (if present)
+        document.getElementById('ticker').value = item["1. symbol"];
+        const fullNameElem = document.getElementById('company-full-name');
+        if (fullNameElem) {
+          fullNameElem.innerText = item["2. name"];
+        }
+        clearSuggestions();
+      });
+      list.appendChild(li);
+    });
+  }
+
+  // Initialize everything once the DOM is loaded
+  document.addEventListener("DOMContentLoaded", () => {
+    // --- URL Parameters & Simulation Initialization ---
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('ticker')) {
+      const tickerInput = document.getElementById('ticker');
+      if (tickerInput) {
+        tickerInput.value = urlParams.get('ticker');
+        updateLinkButtonTexts();
+      }
+      const simulateBtn = document.getElementById('simulateButton');
+      if (simulateBtn) {
+        setTimeout(() => {
+          simulateBtn.click();
+        }, 100);
+      }
+    }
+    
+    // --- Autocomplete Integration ---
+    const tickerInput = document.getElementById('ticker');
+    tickerInput.addEventListener('input', () => {
+      const query = tickerInput.value.trim();
+      if (query.length < 2) {
+        clearSuggestions();
+        return;
+      }
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(async () => {
+        const suggestions = await fetchTickerSuggestions(query);
+        renderTickerSuggestions(suggestions);
+      }, 300);
+    });
+    
+    // Clear any suggestions on load and update link buttons if needed.
+    clearSuggestions();
+    updateLinkButtonTexts();
+  });
+
+
+</script>
+
+
 </body>
 </html>
