@@ -4,13 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Combined Fundamental Analysis</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Include Highcharts for graphs -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <!-- (Include any other Highcharts modules if needed) -->
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -29,25 +38,27 @@
       margin-top: 15px;
       font-weight: 500;
     }
-    input[type="text"] {
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
@@ -55,121 +66,97 @@
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
     }
+    /* Autocomplete styling */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    /* Ticker form container */
+    #tickerForm {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    /* Chart container styling */
     .chartContainer {
       margin-top: 20px;
-    }
-    /* Aggregated Fundamental Meter styles */
-    #aggregateSection {
-      display: none;
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px solid #e5e7eb;
+      padding: 10px;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
-    }
-    #aggregateBar {
-      position: relative;
-      background: linear-gradient(to right, red, green);
-      height: 30px;
-      border-radius: 15px;
-      margin: 10px 0;
-    }
-    #aggregateMarker {
-      position: absolute;
-      top: 0;
-      width: 2px;
-      height: 100%;
-      background: black;
-    }
-    #aggregateScoreText {
-      position: absolute;
-      width: 100%;
-      text-align: center;
-      line-height: 30px;
-      font-weight: bold;
-      color: #fff;
-      text-shadow: 1px 1px 2px #000;
+      background-color: var(--secondary-bg);
     }
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
+      display: none;
+      text-align: center;
     }
-    /* Back to Home Button */
-    #backHome {
-      margin-bottom: 20px;
-    }
-    /* Raw fundamental data table styling */
+    /* Table styling for raw data */
     #rawDataTable {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
     }
-    #rawDataTable th, #rawDataTable td {
-      border: 1px solid #ccc;
-      padding: 6px;
+    #rawDataTable th,
+    #rawDataTable td {
+      border: 1px solid #444;
+      padding: 8px;
       text-align: left;
-      vertical-align: top;
     }
     #rawDataTable th {
-      background: #f2f2f2;
-      width: 30%;
-    }
-
-    /* Mobile-specific adjustments */
-    @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-        font-size: 0.9rem;
-      }
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 10px;
-      }
-      .section {
-        padding: 10px;
-        margin-top: 15px;
-      }
-      button {
-        font-size: 0.9rem;
-        padding: 8px 16px;
-      }
-      /* Adjust raw data table font size */
-      #rawDataTable th, #rawDataTable td {
-        padding: 4px;
-        font-size: 0.85rem;
-      }
-      /* Ensure Plotly charts resize on mobile */
-      .chartContainer div {
-        width: 100% !important;
-        height: auto !important;
-      }
+      background-color: var(--secondary-bg);
     }
   </style>
 </head>
 <body>
   <!-- Back to Home Button -->
-  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
   <h1>Combined Fundamental Analysis</h1>
   <p>Enter a ticker symbol to retrieve fundamental data.</p>
 
-  <label for="ticker">Ticker Symbol (e.g. IBM):</label>
-  <input type="text" id="ticker" value="IBM">
+  <!-- Ticker Input Form with Autocomplete -->
+  <div id="tickerForm">
+    <input type="text" id="ticker" placeholder="e.g. TSLA" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+  </div>
 
   <button id="runFundamental">Run Analysis</button>
-  <div id="loading" style="display:none;">Loading data and computing scores...</div>
+  <div id="loading">Loading data and computing scores...</div>
 
   <!-- Aggregated Fundamental Meter -->
-  <div id="aggregateSection">
+  <div id="aggregateSection" class="section" style="display:none;">
     <h2>Aggregated Fundamental Score</h2>
     <div style="display: flex; align-items: center;">
       <span style="margin-right: 10px; font-weight: bold;">Weak</span>
@@ -181,50 +168,40 @@
     </div>
   </div>
 
-  <!-- NEW SECTION: Raw Data (shows everything from the API except Description) -->
-  <div class="section" id="rawDataSection" style="display:none;">
+  <!-- Raw Data Section -->
+  <div id="rawDataSection" class="section" style="display:none;">
     <h2>Full Fundamental Data</h2>
-    <table id="rawDataTable">
-      <!-- We'll dynamically populate this table -->
-    </table>
+    <table id="rawDataTable"></table>
   </div>
 
   <!-- Company Description -->
-  <div class="section" id="descriptionSection" style="display:none;">
+  <div id="descriptionSection" class="section" style="display:none;">
     <h2>Company Overview</h2>
     <p id="companyDescription"></p>
   </div>
 
-  <!-- Profitability -->
-  <div class="section chartContainer" id="profitSection" style="display:none;">
+  <!-- Sections for each Fundamental Category -->
+  <div id="profitSection" class="section chartContainer" style="display:none;">
     <h2>Profitability Score</h2>
     <div id="profitChart"></div>
     <div id="profitText" style="margin-top:10px; font-weight:600;"></div>
   </div>
-
-  <!-- Valuation -->
-  <div class="section chartContainer" id="valuationSection" style="display:none;">
+  <div id="valuationSection" class="section chartContainer" style="display:none;">
     <h2>Valuation Score</h2>
     <div id="valuationChart"></div>
     <div id="valuationText" style="margin-top:10px; font-weight:600;"></div>
   </div>
-
-  <!-- Growth -->
-  <div class="section chartContainer" id="growthSection" style="display:none;">
+  <div id="growthSection" class="section chartContainer" style="display:none;">
     <h2>Growth Score</h2>
     <div id="growthChart"></div>
     <div id="growthText" style="margin-top:10px; font-weight:600;"></div>
   </div>
-
-  <!-- Dividends -->
-  <div class="section chartContainer" id="dividendSection" style="display:none;">
+  <div id="dividendSection" class="section chartContainer" style="display:none;">
     <h2>Dividend &amp; Return Score</h2>
     <div id="dividendChart"></div>
     <div id="dividendText" style="margin-top:10px; font-weight:600;"></div>
   </div>
-
-  <!-- Financial Health -->
-  <div class="section chartContainer" id="financialSection" style="display:none;">
+  <div id="financialSection" class="section chartContainer" style="display:none;">
     <h2>Financial Health Score</h2>
     <div id="financialChart"></div>
     <div id="financialText" style="margin-top:10px; font-weight:600;"></div>
@@ -236,96 +213,83 @@
   </div>
 
   <script>
-    /*******************************************************/
-    /* 1) EVENT HANDLER                                    */
-    /*******************************************************/
-    document.getElementById('runFundamental').addEventListener('click', async () => {
-      const ticker = document.getElementById('ticker').value.trim();
-      if(!ticker) {
-        alert('Please enter a ticker');
+    /*******************************************************
+     * GLOBAL VARIABLES & AUTOCOMPLETE FUNCTIONS
+     *******************************************************/
+    let debounceTimeout;
+    // Clear suggestions from autocomplete list and company name display.
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+    // Fetch ticker suggestions from the /api/ticker endpoint.
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+    // Render suggestions into the autocomplete <ul>.
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
         return;
       }
-      document.getElementById('loading').style.display = 'block';
-
-      // Hide all sections
-      hideSection('aggregateSection');
-      hideSection('rawDataSection');
-      hideSection('descriptionSection');
-      hideSection('profitSection');
-      hideSection('valuationSection');
-      hideSection('growthSection');
-      hideSection('dividendSection');
-      hideSection('financialSection');
-
-      try {
-        // 1) Fetch from /api/fundamental
-        const url = `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if(!data || !data.Symbol) {
-          alert('No fundamental data found.');
-          document.getElementById('loading').style.display = 'none';
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
           return;
         }
-
-        // 2) Show raw fundamental data (skipping 'Description')
-        showSection('rawDataSection');
-        populateRawDataTable(data);
-
-        // 3) Display Description in Company Overview
-        showSection('descriptionSection');
-        document.getElementById('companyDescription').innerText = data.Description || 'No description available.';
-
-        // 4) Compute Scores
-        const { profitability, valuation, growth, dividends, financial } = computeScores(data);
-        const aggregatedScore = (profitability + valuation + growth + dividends + financial) / 5;
-
-        // 5) Show aggregated meter
-        showSection('aggregateSection');
-        document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
-        document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
-
-        // 6) Plot each category
-        if(profitability >= 0) {
-          showSection('profitSection');
-          plotCategory('profitChart', 'Profitability', profitability);
-          document.getElementById('profitText').innerText = `Profitability Score: ${profitability.toFixed(1)}%`;
-        }
-        if(valuation >= 0) {
-          showSection('valuationSection');
-          plotCategory('valuationChart', 'Valuation', valuation);
-          document.getElementById('valuationText').innerText = `Valuation Score: ${valuation.toFixed(1)}%`;
-        }
-        if(growth >= 0) {
-          showSection('growthSection');
-          plotCategory('growthChart', 'Growth', growth);
-          document.getElementById('growthText').innerText = `Growth Score: ${growth.toFixed(1)}%`;
-        }
-        if(dividends >= 0) {
-          showSection('dividendSection');
-          plotCategory('dividendChart', 'Dividend & Returns', dividends);
-          document.getElementById('dividendText').innerText = `Dividend & Return Score: ${dividends.toFixed(1)}%`;
-        }
-        if(financial >= 0) {
-          showSection('financialSection');
-          plotCategory('financialChart', 'Financial Health', financial);
-          document.getElementById('financialText').innerText = `Financial Health Score: ${financial.toFixed(1)}%`;
-        }
-      } catch(err) {
-        console.error(err);
-        alert('Error fetching fundamental data.');
-      }
-
-      document.getElementById('loading').style.display = 'none';
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      // Clear any suggestions on initial load.
+      clearSuggestions();
     });
 
-    /*******************************************************/
-    /* 2) SCORING LOGIC                                    */
-    /*******************************************************/
+    /*******************************************************
+     * 1) FUNDAMENTAL ANALYSIS & SCORE COMPUTATION
+     *******************************************************/
     function computeScores(d) {
       const norm = (val, min, max) => {
-        if(!val || isNaN(val)) return 50;
+        if (!val || isNaN(val)) return 50;
         const ratio = (val - min) / (max - min);
         return Math.max(0, Math.min(100, ratio * 100));
       };
@@ -350,7 +314,7 @@
       const earnGrowth = norm(parseFloat(d.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
       const priceRef = parseFloat(d['50DayMovingAverage']) || parseFloat(d['200DayMovingAverage']) || 0;
       let ratio = 0;
-      if(priceRef > 0 && d.AnalystTargetPrice) {
+      if (priceRef > 0 && d.AnalystTargetPrice) {
         ratio = (parseFloat(d.AnalystTargetPrice) / priceRef) - 1;
       }
       const tgtScore = norm(ratio, 0, 0.5);
@@ -368,7 +332,7 @@
       const evEbitdaScore = 100 - norm(evEbitda, 5, 30);
       const beta = parseFloat(d.Beta);
       let betaScore = 50;
-      if(!isNaN(beta)) {
+      if (!isNaN(beta)) {
         betaScore = 100 - norm(beta, 0, 2);
       }
       const financial = (ebitdaMarginScore + evEbitdaScore + betaScore) / 3;
@@ -382,41 +346,45 @@
       };
     }
 
-    /*******************************************************/
-    /* 3) PLOTTING AND DISPLAY HELPERS                     */
-    /*******************************************************/
-    function hideSection(id) {
-      document.getElementById(id).style.display = 'none';
-    }
-    function showSection(id) {
-      document.getElementById(id).style.display = 'block';
-    }
+    /*******************************************************
+     * 2) PLOTTING FUNCTIONS (Using Highcharts)
+     *******************************************************/
     function plotCategory(divId, label, score) {
-      const trace = {
-        x: [label],
-        y: [score],
-        type: 'bar',
-        marker: {
-          color: [score],
-          cmin: 0,
-          cmax: 100,
-          colorscale: [
-            [0, 'rgba(220, 20, 60, 0.8)'],
-            [1, 'rgba(34, 139, 34, 0.8)']
-          ]
-        }
-      };
-      const layout = {
-        yaxis: { range: [0, 100] },
-        margin: { t: 20 }
-      };
-      Plotly.newPlot(divId, [trace], layout);
+      Highcharts.chart(divId, {
+        chart: {
+          type: 'column',
+          backgroundColor: 'transparent',
+          height: 200
+        },
+        title: { text: null },
+        xAxis: {
+          categories: [label],
+          visible: false
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          title: { text: null },
+          labels: { enabled: false }
+        },
+        legend: { enabled: false },
+        tooltip: {
+          pointFormat: '{point.y:.1f}%'
+        },
+        series: [{
+          name: label,
+          data: [score],
+          color: score < 50 ? '#dc2626' : '#16a34a'
+        }],
+        credits: { enabled: false }
+      });
     }
+
     function populateRawDataTable(data) {
       const table = document.getElementById('rawDataTable');
       table.innerHTML = '';
       for (const [key, value] of Object.entries(data)) {
-        if(key === "Description") continue;
+        if (key === "Description") continue;
         const row = document.createElement('tr');
         const cellKey = document.createElement('th');
         cellKey.textContent = key;
@@ -427,58 +395,208 @@
         table.appendChild(row);
       }
     }
-// Auto-populate ticker and run analysis if "symbol" query parameter is present.
-window.onload = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const symbol = urlParams.get('symbol');
-    if (symbol) {
-      document.getElementById('ticker').value = symbol;
-      // Optionally, you can delay the click to ensure everything is loaded.
-      setTimeout(() => {
-        document.getElementById('runFundamental').click();
-      }, 100);
-    }
-  };
-    /*******************************************************/
-    /* 4) EXPLANATION BUTTON                               */
-    /*******************************************************/
+
+    /*******************************************************
+     * 3) FUNDAMENTAL ANALYSIS UI HANDLERS
+     *******************************************************/
+    document.getElementById('runFundamental').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      if (!ticker) {
+        alert('Please enter a ticker symbol.');
+        return;
+      }
+      document.getElementById('loading').style.display = 'block';
+
+      // Hide all sections
+      ['aggregateSection', 'rawDataSection', 'descriptionSection',
+       'profitSection', 'valuationSection', 'growthSection',
+       'dividendSection', 'financialSection'].forEach(id => {
+         document.getElementById(id).style.display = 'none';
+       });
+
+      try {
+        // Fetch fundamental data from your API endpoint (adjust the URL if needed)
+        const url = `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!data || !data.Symbol) {
+          alert('No fundamental data found.');
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+
+        // Show raw data (excluding Description)
+        document.getElementById('rawDataSection').style.display = 'block';
+        populateRawDataTable(data);
+
+        // Show company description
+        document.getElementById('descriptionSection').style.display = 'block';
+        document.getElementById('companyDescription').innerText = data.Description || 'No description available.';
+
+        // Compute category scores
+        const { profitability, valuation, growth, dividends, financial } = computeScores(data);
+        const aggregatedScore = (profitability + valuation + growth + dividends + financial) / 5;
+
+        // Show aggregated meter
+        document.getElementById('aggregateSection').style.display = 'block';
+        document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
+        document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
+
+        // Plot each category if defined
+        if (profitability >= 0) {
+          document.getElementById('profitSection').style.display = 'block';
+          plotCategory('profitChart', 'Profitability', profitability);
+          document.getElementById('profitText').innerText = `Profitability: ${profitability.toFixed(1)}%`;
+        }
+        if (valuation >= 0) {
+          document.getElementById('valuationSection').style.display = 'block';
+          plotCategory('valuationChart', 'Valuation', valuation);
+          document.getElementById('valuationText').innerText = `Valuation: ${valuation.toFixed(1)}%`;
+        }
+        if (growth >= 0) {
+          document.getElementById('growthSection').style.display = 'block';
+          plotCategory('growthChart', 'Growth', growth);
+          document.getElementById('growthText').innerText = `Growth: ${growth.toFixed(1)}%`;
+        }
+        if (dividends >= 0) {
+          document.getElementById('dividendSection').style.display = 'block';
+          plotCategory('dividendChart', 'Dividend & Returns', dividends);
+          document.getElementById('dividendText').innerText = `Dividend & Return: ${dividends.toFixed(1)}%`;
+        }
+        if (financial >= 0) {
+          document.getElementById('financialSection').style.display = 'block';
+          plotCategory('financialChart', 'Financial Health', financial);
+          document.getElementById('financialText').innerText = `Financial Health: ${financial.toFixed(1)}%`;
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error fetching fundamental data.');
+      }
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    /*******************************************************
+     * 4) EXPLANATION PAGE BUTTON
+     *******************************************************/
     document.getElementById('explanationButton').addEventListener('click', () => {
-      let w = window.open('', '_blank');
-      const html = `<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Fundamentals Explanation</title><style>body{font-family:Segoe UI;max-width:800px;margin:20px auto;padding:20px;line-height:1.6;}h1{text-align:center;font-weight:600;}code{background:#eee;padding:2px 4px;}table{border-collapse:collapse;margin-top:1rem;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f2f2f2;}p{text-align:justify;}</style></head><body>
-      <h1>Expanded Fundamental Analysis Explanation</h1>
-      <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
-      <ul>
-        <li><strong>Profitability</strong></li>
-        <li><strong>Valuation</strong></li>
-        <li><strong>Growth</strong></li>
-        <li><strong>Dividend & Return</strong></li>
-        <li><strong>Financial Health</strong></li>
-      </ul>
-      <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
-      <h2>Normalization Method</h2>
-      <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
-      <pre><code>ratio = (value - min) / (max - min)
+      const w = window.open('', '_blank');
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fundamentals Explanation</title>
+  <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
+      margin: 20px auto;
+      max-width: 800px;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    pre, code {
+      background-color: var(--secondary-bg);
+      padding: 5px 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #444;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: var(--secondary-bg);
+    }
+    p {
+      text-align: justify;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+  </style>
+</head>
+<body>
+  <h1>Expanded Fundamental Analysis Explanation</h1>
+  <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
+  <ul>
+    <li><strong>Profitability</strong></li>
+    <li><strong>Valuation</strong></li>
+    <li><strong>Growth</strong></li>
+    <li><strong>Dividend & Return</strong></li>
+    <li><strong>Financial Health</strong></li>
+  </ul>
+  <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
+  <h2>Normalization Method</h2>
+  <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
+  <pre><code>ratio = (value - min) / (max - min)
 score = clamp(ratio * 100, 0, 100)</code></pre>
-      <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
-      <h2>Profitability</h2>
-      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>, then averages the normalized values for a <strong>Profitability Score</strong>.</p>
-      <h2>Valuation</h2>
-      <p>We look at <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>, invert their scores, and average them to yield the <strong>Valuation Score</strong>.</p>
-      <h2>Growth</h2>
-      <p>Growth includes metrics such as <strong>Quarterly Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>, averaged for a <strong>Growth Score</strong>.</p>
-      <h2>Dividend &amp; Return</h2>
-      <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong> to yield the <strong>Dividend &amp; Return Score</strong>.</p>
-      <h2>Financial Health</h2>
-      <p>We compute a <strong>Financial Health Score</strong> from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
-      <h2>Final Aggregation</h2>
-      <p>The aggregated fundamental score is the average of the five category scores.</p>
-      <h2>Interpretation &amp; Disclaimer</h2>
-      <p>A higher score suggests a fundamentally stronger company by these basic metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
-      <p style='text-align:center;'><button onclick='window.close()'>Close</button></p>
-      </body></html>`;
+  <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
+  <h2>Profitability</h2>
+  <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>.</p>
+  <h2>Valuation</h2>
+  <p>We examine <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong> ratios (inverted as needed).</p>
+  <h2>Growth</h2>
+  <p>Growth is based on <strong>Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>.</p>
+  <h2>Dividend & Return</h2>
+  <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong>.</p>
+  <h2>Financial Health</h2>
+  <p>This score is computed from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
+  <h2>Final Aggregation</h2>
+  <p>The aggregated fundamental score is the average of all five category scores.</p>
+  <h2>Interpretation & Disclaimer</h2>
+  <p>A higher score suggests a fundamentally stronger company by these metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
+  <p style="text-align:center;"><button onclick="window.close()">Close Explanation</button></p>
+</body>
+</html>`;
       w.document.write(html);
       w.document.close();
     });
+
+    /*******************************************************
+     * 5) URL PARAMETER INITIALIZATION (Optional)
+     *******************************************************/
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+        setTimeout(() => {
+          document.getElementById('runFundamental').click();
+        }, 100);
+      }
+    };
   </script>
 </body>
 </html>
