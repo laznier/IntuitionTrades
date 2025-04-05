@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Combined Fundamental Analysis</title>
+  <title>Insider Trading Insights</title>
   <!-- Include Highcharts for graphs -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
-  <!-- (Include any other Highcharts modules if needed) -->
   <style>
     :root {
       --primary-bg: #111;
@@ -63,6 +62,7 @@
     button:hover {
       background: #1e3a8a;
     }
+    /* Section styling */
     .section {
       margin-top: 30px;
       padding: 20px;
@@ -73,6 +73,45 @@
     .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
+    }
+    /* Two-column layout */
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+    }
+    .column h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pickItem {
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    .bullish {
+      color: #16a34a;
+    }
+    .bearish {
+      color: #dc2626;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
     }
     /* Autocomplete styling */
     #ticker-suggestions {
@@ -107,7 +146,7 @@
       color: var(--accent-color);
       text-align: center;
     }
-    /* Chart container styling */
+    /* Chart container */
     .chartContainer {
       margin-top: 20px;
       padding: 10px;
@@ -122,94 +161,58 @@
       display: none;
       text-align: center;
     }
-    /* Table styling for raw data */
-    #rawDataTable {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    #rawDataTable th,
-    #rawDataTable td {
-      border: 1px solid #444;
-      padding: 8px;
-      text-align: left;
-    }
-    #rawDataTable th {
-      background-color: var(--secondary-bg);
-    }
   </style>
 </head>
 <body>
   <!-- Back to Home Button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Combined Fundamental Analysis</h1>
-  <p>Enter a ticker symbol to retrieve fundamental data.</p>
+  <h1>Insider Trading Insights</h1>
+  <p>
+    Enter a ticker symbol (e.g., IBM) and a timeframe (in days) to retrieve insider trading data. 
+    Only transactions whose share price is within ±50% of the last close are considered.
+  </p>
 
   <!-- Ticker Input Form with Autocomplete -->
   <div id="tickerForm">
-    <input type="text" id="ticker" placeholder="e.g. TSLA" />
+    <label for="ticker">Ticker Symbol:</label>
+    <input type="text" id="ticker" placeholder="e.g. IBM" />
     <ul id="ticker-suggestions"></ul>
     <div id="company-full-name"></div>
   </div>
 
-  <button id="runFundamental">Run Analysis</button>
-  <div id="loading">Loading data and computing scores...</div>
+  <label for="days">Timeframe (days):</label>
+  <input type="number" id="days" placeholder="e.g. 30" value="30" />
 
-  <!-- Aggregated Fundamental Meter -->
-  <div id="aggregateSection" class="section" style="display:none;">
-    <h2>Aggregated Fundamental Score</h2>
-    <div style="display: flex; align-items: center;">
-      <span style="margin-right: 10px; font-weight: bold;">Weak</span>
-      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
-        <div id="aggregateMarker"></div>
-        <span id="aggregateScoreText"></span>
-      </div>
-      <span style="margin-left: 10px; font-weight: bold;">Strong</span>
+  <!-- Button to fetch insider data -->
+  <button id="insiderButton">Get Insider Data</button>
+
+  <div id="loading">Loading insider data...</div>
+
+  <!-- Summary Section -->
+  <div id="statsSection" class="section" style="display:none;">
+    <h2>Insider Summary</h2>
+    <div id="statsSummary"></div>
+    <!-- Highcharts container for a summary bar chart -->
+    <div id="insiderChart" class="chartContainer" style="display:none;"></div>
+  </div>
+
+  <!-- Two columns for Acquisitions and Disposals -->
+  <div class="two-column" style="margin-top: 20px;">
+    <div id="bullishCol" class="column" style="display:none;">
+      <h2>Acquisitions (Buy)</h2>
+      <div id="bullishContainer"></div>
+    </div>
+    <div id="bearishCol" class="column" style="display:none;">
+      <h2>Disposals (Sell)</h2>
+      <div id="bearishContainer"></div>
     </div>
   </div>
 
-  <!-- Raw Data Section -->
-  <div id="rawDataSection" class="section" style="display:none;">
-    <h2>Full Fundamental Data</h2>
-    <table id="rawDataTable"></table>
-  </div>
-
-  <!-- Company Description -->
-  <div id="descriptionSection" class="section" style="display:none;">
-    <h2>Company Overview</h2>
-    <p id="companyDescription"></p>
-  </div>
-
-  <!-- Sections for each Fundamental Category -->
-  <div id="profitSection" class="section chartContainer" style="display:none;">
-    <h2>Profitability Score</h2>
-    <div id="profitChart"></div>
-    <div id="profitText" style="margin-top:10px; font-weight:600;"></div>
-  </div>
-  <div id="valuationSection" class="section chartContainer" style="display:none;">
-    <h2>Valuation Score</h2>
-    <div id="valuationChart"></div>
-    <div id="valuationText" style="margin-top:10px; font-weight:600;"></div>
-  </div>
-  <div id="growthSection" class="section chartContainer" style="display:none;">
-    <h2>Growth Score</h2>
-    <div id="growthChart"></div>
-    <div id="growthText" style="margin-top:10px; font-weight:600;"></div>
-  </div>
-  <div id="dividendSection" class="section chartContainer" style="display:none;">
-    <h2>Dividend &amp; Return Score</h2>
-    <div id="dividendChart"></div>
-    <div id="dividendText" style="margin-top:10px; font-weight:600;"></div>
-  </div>
-  <div id="financialSection" class="section chartContainer" style="display:none;">
-    <h2>Financial Health Score</h2>
-    <div id="financialChart"></div>
-    <div id="financialText" style="margin-top:10px; font-weight:600;"></div>
-  </div>
-
-  <!-- Explanation Button -->
-  <div style="text-align:center; margin-top:20px;">
-    <button id="explanationButton">View Explanation</button>
+  <!-- Transaction Details Section -->
+  <div id="summarySection" class="section" style="display:none;">
+    <h2>Transaction Details</h2>
+    <div id="summary"></div>
   </div>
 
   <script>
@@ -217,7 +220,6 @@
      * GLOBAL VARIABLES & AUTOCOMPLETE FUNCTIONS
      *******************************************************/
     let debounceTimeout;
-    // Clear suggestions from autocomplete list and company name display.
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -229,7 +231,6 @@
         fullNameElem.innerText = '';
       }
     }
-    // Fetch ticker suggestions from the /api/ticker endpoint.
     async function fetchTickerSuggestions(searchQuery) {
       try {
         const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
@@ -243,7 +244,6 @@
         return [];
       }
     }
-    // Render suggestions into the autocomplete <ul>.
     function renderTickerSuggestions(suggestions) {
       const list = document.getElementById('ticker-suggestions');
       list.innerHTML = '';
@@ -280,308 +280,189 @@
           renderTickerSuggestions(suggestions);
         }, 300);
       });
-      // Clear any suggestions on initial load.
       clearSuggestions();
     });
 
     /*******************************************************
-     * 1) FUNDAMENTAL ANALYSIS & SCORE COMPUTATION
+     * 1) FETCHING & PROCESSING FUNCTIONS
      *******************************************************/
-    function computeScores(d) {
-      const norm = (val, min, max) => {
-        if (!val || isNaN(val)) return 50;
-        const ratio = (val - min) / (max - min);
-        return Math.max(0, Math.min(100, ratio * 100));
-      };
-
-      const margin = norm(parseFloat(d.ProfitMargin), 0, 0.25);
-      const opMargin = norm(parseFloat(d.OperatingMarginTTM), 0, 0.3);
-      const roa = norm(parseFloat(d.ReturnOnAssetsTTM), 0, 0.15);
-      const roe = norm(parseFloat(d.ReturnOnEquityTTM), 0, 0.35);
-      const profitability = (margin + opMargin + roa + roe) / 4;
-
-      const pe = parseFloat(d.PERatio);
-      const peScore = 100 - norm(pe, 5, 40);
-      const peg = parseFloat(d.PEGRatio);
-      const pegScore = 100 - norm(peg, 0.5, 2.5);
-      const ps = parseFloat(d.PriceToSalesRatioTTM);
-      const psScore = 100 - norm(ps, 1, 10);
-      const pb = parseFloat(d.PriceToBookRatio);
-      const pbScore = 100 - norm(pb, 1, 10);
-      const valuation = (peScore + pegScore + psScore + pbScore) / 4;
-
-      const revGrowth = norm(parseFloat(d.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
-      const earnGrowth = norm(parseFloat(d.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
-      const priceRef = parseFloat(d['50DayMovingAverage']) || parseFloat(d['200DayMovingAverage']) || 0;
-      let ratio = 0;
-      if (priceRef > 0 && d.AnalystTargetPrice) {
-        ratio = (parseFloat(d.AnalystTargetPrice) / priceRef) - 1;
+    // Fetch last close price using historical data.
+    async function fetchLastPrice(ticker) {
+      const histUrl = `https://www.projectmanagerhelper.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
+      const histResponse = await fetch(histUrl);
+      if (!histResponse.ok) {
+        throw new Error("Failed to fetch historical data. Status: " + histResponse.status);
       }
-      const tgtScore = norm(ratio, 0, 0.5);
-      const growth = (revGrowth + earnGrowth + tgtScore) / 3;
-
-      const dy = norm(parseFloat(d.DividendYield), 0, 0.07);
-      const dps = norm(parseFloat(d.DividendPerShare), 0, 10);
-      const eps = norm(parseFloat(d.EPS), 0, 12);
-      const dividends = (dy + dps + eps) / 3;
-
-      const ebitda = parseFloat(d.EBITDA);
-      const revTTM = parseFloat(d.RevenueTTM);
-      const ebitdaMarginScore = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
-      const evEbitda = parseFloat(d.EVToEBITDA);
-      const evEbitdaScore = 100 - norm(evEbitda, 5, 30);
-      const beta = parseFloat(d.Beta);
-      let betaScore = 50;
-      if (!isNaN(beta)) {
-        betaScore = 100 - norm(beta, 0, 2);
+      const histData = await histResponse.json();
+      const meta = histData["Meta Data"];
+      const timeSeries = histData["Time Series (Daily)"];
+      if (!meta || !timeSeries) {
+        throw new Error("Invalid historical data format.");
       }
-      const financial = (ebitdaMarginScore + evEbitdaScore + betaScore) / 3;
-
-      return {
-        profitability,
-        valuation,
-        growth,
-        dividends,
-        financial
-      };
+      const lastRefreshed = meta["3. Last Refreshed"];
+      const lastRecord = timeSeries[lastRefreshed];
+      if (!lastRecord || !lastRecord["4. close"]) {
+        throw new Error("Could not determine last close price.");
+      }
+      return parseFloat(lastRecord["4. close"]);
     }
 
     /*******************************************************
-     * 2) PLOTTING FUNCTIONS (Using Highcharts)
+     * 2) INSIDER DATA FETCH & UI HANDLING
      *******************************************************/
-    function plotCategory(divId, label, score) {
-      Highcharts.chart(divId, {
-        chart: {
-          type: 'column',
-          backgroundColor: 'transparent',
-          height: 200
-        },
-        title: { text: null },
-        xAxis: {
-          categories: [label],
-          visible: false
-        },
-        yAxis: {
-          min: 0,
-          max: 100,
-          title: { text: null },
-          labels: { enabled: false }
-        },
-        legend: { enabled: false },
-        tooltip: {
-          pointFormat: '{point.y:.1f}%'
-        },
-        series: [{
-          name: label,
-          data: [score],
-          color: score < 50 ? '#dc2626' : '#16a34a'
-        }],
-        credits: { enabled: false }
+    document.getElementById('insiderButton').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      const days = parseInt(document.getElementById('days').value.trim()) || 30;
+      if (!ticker) {
+        alert("Please enter a ticker symbol first.");
+        return;
+      }
+      
+      const loadingEl = document.getElementById('loading');
+      loadingEl.style.display = 'block';
+      document.getElementById('statsSection').style.display = 'none';
+      document.getElementById('bullishCol').style.display = 'none';
+      document.getElementById('bearishCol').style.display = 'none';
+      document.getElementById('summarySection').style.display = 'none';
+      document.getElementById('summary').innerHTML = '';
+
+      try {
+        // Fetch insider data from your API endpoint.
+        const url = `https://www.projectmanagerhelper.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to fetch insider data. Status: " + response.status);
+        }
+        const data = await response.json();
+        if (!data.data || !Array.isArray(data.data)) {
+          throw new Error("Invalid insider data format.");
+        }
+        // Fetch last close price.
+        const lastPrice = await fetchLastPrice(ticker);
+        const lowerBound = lastPrice * 0.5;
+        const upperBound = lastPrice * 1.5;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const filtered = data.data.filter(item => {
+          const d = new Date(item.transaction_date);
+          if (isNaN(d) || d < cutoff) return false;
+          const sharePrice = parseFloat(item.share_price);
+          if (isNaN(sharePrice) || sharePrice === 0) return false;
+          return sharePrice >= lowerBound && sharePrice <= upperBound;
+        });
+        filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+        const acquisitions = filtered.filter(item => item.acquisition_or_disposal === 'A');
+        const disposals = filtered.filter(item => item.acquisition_or_disposal === 'D');
+        let totalBuys = 0, totalSells = 0;
+        filtered.forEach(item => {
+          const sharesNum = parseFloat(item.shares) || 0;
+          if (item.acquisition_or_disposal === 'A') totalBuys += sharesNum;
+          else if (item.acquisition_or_disposal === 'D') totalSells += sharesNum;
+        });
+        
+        // Render summary stats.
+        const statsSection = document.getElementById('statsSection');
+        const statsSummary = document.getElementById('statsSummary');
+        statsSummary.innerHTML = `
+          <p><strong>Timeframe:</strong> Last ${days} day(s)</p>
+          <p><strong>Total Buys:</strong> ${totalBuys.toLocaleString()} shares</p>
+          <p><strong>Total Sells:</strong> ${totalSells.toLocaleString()} shares</p>
+          <p><strong>Transactions Considered:</strong> ${filtered.length}</p>
+          <p><strong>Last Close Price:</strong> $${lastPrice.toFixed(2)}</p>
+          <p><strong>Valid Price Range:</strong> $${lowerBound.toFixed(2)} - $${upperBound.toFixed(2)}</p>
+        `;
+        statsSection.style.display = 'block';
+        
+        // Plot a Highcharts column chart for summary.
+        Highcharts.chart('insiderChart', {
+          chart: {
+            type: 'column',
+            backgroundColor: 'var(--secondary-bg)'
+          },
+          title: { text: 'Insider Trading Summary' },
+          xAxis: {
+            categories: ['Total Buys', 'Total Sells'],
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          yAxis: {
+            title: { text: 'Shares' },
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          series: [{
+            name: ticker.toUpperCase(),
+            data: [totalBuys, totalSells],
+            colorByPoint: true,
+            colors: ['#16a34a', '#dc2626']
+          }],
+          credits: { enabled: false }
+        });
+        document.getElementById('insiderChart').style.display = 'block';
+        
+        // Render transaction columns.
+        showColumn(acquisitions, 'bullishCol', 'bullishContainer', true);
+        showColumn(disposals, 'bearishCol', 'bearishContainer', false);
+      } catch (err) {
+        console.error("Error retrieving insider data:", err);
+        alert("Error: " + err.message);
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    });
+
+    function showColumn(list, colId, containerId, isBullish) {
+      const colEl = document.getElementById(colId);
+      const containerEl = document.getElementById(containerId);
+      containerEl.innerHTML = "";
+      if (list.length === 0) {
+        colEl.style.display = 'none';
+        return;
+      }
+      colEl.style.display = 'block';
+      list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.classList.add('pickItem');
+        div.classList.add(isBullish ? 'bullish' : 'bearish');
+        const sharesStr = parseFloat(item.shares).toLocaleString();
+        const dateStr = item.transaction_date || "N/A";
+        div.innerHTML = `<strong>${item.ticker}</strong> - ${sharesStr} shares on ${dateStr}`;
+        div.addEventListener('click', () => showSummary(item, idx + 1, isBullish));
+        containerEl.appendChild(div);
       });
     }
 
-    function populateRawDataTable(data) {
-      const table = document.getElementById('rawDataTable');
-      table.innerHTML = '';
-      for (const [key, value] of Object.entries(data)) {
-        if (key === "Description") continue;
-        const row = document.createElement('tr');
-        const cellKey = document.createElement('th');
-        cellKey.textContent = key;
-        const cellVal = document.createElement('td');
-        cellVal.textContent = value;
-        row.appendChild(cellKey);
-        row.appendChild(cellVal);
-        table.appendChild(row);
-      }
+    function showSummary(item, rank, isBullish) {
+      document.getElementById('summarySection').style.display = 'block';
+      const summaryEl = document.getElementById('summary');
+      let html = `<p><strong>Transaction #${rank}: ${item.ticker}</strong> (${isBullish ? 'Buy' : 'Sell'})</p>`;
+      html += "<ul>";
+      html += `<li><strong>Date:</strong> ${item.transaction_date || 'N/A'}</li>`;
+      html += `<li><strong>Executive:</strong> ${item.executive || 'N/A'}</li>`;
+      html += `<li><strong>Title:</strong> ${item.executive_title || 'N/A'}</li>`;
+      html += `<li><strong>Share Price:</strong> $${parseFloat(item.share_price).toFixed(2)}</li>`;
+      html += `<li><strong>Shares:</strong> ${parseFloat(item.shares).toLocaleString()}</li>`;
+      html += "</ul>";
+      document.getElementById('summary').innerHTML = html;
+      document.getElementById('summary').scrollIntoView({ behavior: 'smooth' });
     }
 
     /*******************************************************
-     * 3) FUNDAMENTAL ANALYSIS UI HANDLERS
+     * 4) TICKER AUTOCOMPLETE INTEGRATION
      *******************************************************/
-    document.getElementById('runFundamental').addEventListener('click', async () => {
-      const ticker = document.getElementById('ticker').value.trim();
-      if (!ticker) {
-        alert('Please enter a ticker symbol.');
-        return;
-      }
-      document.getElementById('loading').style.display = 'block';
-
-      // Hide all sections
-      ['aggregateSection', 'rawDataSection', 'descriptionSection',
-       'profitSection', 'valuationSection', 'growthSection',
-       'dividendSection', 'financialSection'].forEach(id => {
-         document.getElementById(id).style.display = 'none';
-       });
-
-      try {
-        // Fetch fundamental data from your API endpoint (adjust the URL if needed)
-        const url = `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (!data || !data.Symbol) {
-          alert('No fundamental data found.');
-          document.getElementById('loading').style.display = 'none';
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
           return;
         }
-
-        // Show raw data (excluding Description)
-        document.getElementById('rawDataSection').style.display = 'block';
-        populateRawDataTable(data);
-
-        // Show company description
-        document.getElementById('descriptionSection').style.display = 'block';
-        document.getElementById('companyDescription').innerText = data.Description || 'No description available.';
-
-        // Compute category scores
-        const { profitability, valuation, growth, dividends, financial } = computeScores(data);
-        const aggregatedScore = (profitability + valuation + growth + dividends + financial) / 5;
-
-        // Show aggregated meter
-        document.getElementById('aggregateSection').style.display = 'block';
-        document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
-        document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
-
-        // Plot each category if defined
-        if (profitability >= 0) {
-          document.getElementById('profitSection').style.display = 'block';
-          plotCategory('profitChart', 'Profitability', profitability);
-          document.getElementById('profitText').innerText = `Profitability: ${profitability.toFixed(1)}%`;
-        }
-        if (valuation >= 0) {
-          document.getElementById('valuationSection').style.display = 'block';
-          plotCategory('valuationChart', 'Valuation', valuation);
-          document.getElementById('valuationText').innerText = `Valuation: ${valuation.toFixed(1)}%`;
-        }
-        if (growth >= 0) {
-          document.getElementById('growthSection').style.display = 'block';
-          plotCategory('growthChart', 'Growth', growth);
-          document.getElementById('growthText').innerText = `Growth: ${growth.toFixed(1)}%`;
-        }
-        if (dividends >= 0) {
-          document.getElementById('dividendSection').style.display = 'block';
-          plotCategory('dividendChart', 'Dividend & Returns', dividends);
-          document.getElementById('dividendText').innerText = `Dividend & Return: ${dividends.toFixed(1)}%`;
-        }
-        if (financial >= 0) {
-          document.getElementById('financialSection').style.display = 'block';
-          plotCategory('financialChart', 'Financial Health', financial);
-          document.getElementById('financialText').innerText = `Financial Health: ${financial.toFixed(1)}%`;
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Error fetching fundamental data.');
-      }
-      document.getElementById('loading').style.display = 'none';
-    });
-
-    /*******************************************************
-     * 4) EXPLANATION PAGE BUTTON
-     *******************************************************/
-    document.getElementById('explanationButton').addEventListener('click', () => {
-      const w = window.open('', '_blank');
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Fundamentals Explanation</title>
-  <style>
-    :root {
-      --primary-bg: #111;
-      --secondary-bg: #333;
-      --accent-color: #16a34a;
-      --text-color: #fff;
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
-    }
-    body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      margin: 20px auto;
-      max-width: 800px;
-      padding: 20px;
-      line-height: 1.6;
-    }
-    h1 {
-      text-align: center;
-      font-weight: 600;
-      margin-bottom: 20px;
-    }
-    pre, code {
-      background-color: var(--secondary-bg);
-      padding: 5px 10px;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-    }
-    th, td {
-      border: 1px solid #444;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: var(--secondary-bg);
-    }
-    p {
-      text-align: justify;
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
-  </style>
-</head>
-<body>
-  <h1>Expanded Fundamental Analysis Explanation</h1>
-  <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
-  <ul>
-    <li><strong>Profitability</strong></li>
-    <li><strong>Valuation</strong></li>
-    <li><strong>Growth</strong></li>
-    <li><strong>Dividend & Return</strong></li>
-    <li><strong>Financial Health</strong></li>
-  </ul>
-  <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
-  <h2>Normalization Method</h2>
-  <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
-  <pre><code>ratio = (value - min) / (max - min)
-score = clamp(ratio * 100, 0, 100)</code></pre>
-  <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
-  <h2>Profitability</h2>
-  <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>.</p>
-  <h2>Valuation</h2>
-  <p>We examine <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong> ratios (inverted as needed).</p>
-  <h2>Growth</h2>
-  <p>Growth is based on <strong>Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>.</p>
-  <h2>Dividend & Return</h2>
-  <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong>.</p>
-  <h2>Financial Health</h2>
-  <p>This score is computed from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
-  <h2>Final Aggregation</h2>
-  <p>The aggregated fundamental score is the average of all five category scores.</p>
-  <h2>Interpretation & Disclaimer</h2>
-  <p>A higher score suggests a fundamentally stronger company by these metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
-  <p style="text-align:center;"><button onclick="window.close()">Close Explanation</button></p>
-</body>
-</html>`;
-      w.document.write(html);
-      w.document.close();
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
     });
 
     /*******************************************************
@@ -590,10 +471,16 @@ score = clamp(ratio * 100, 0, 100)</code></pre>
     window.onload = () => {
       const params = new URLSearchParams(window.location.search);
       const symbol = params.get('symbol');
+      const days = params.get('days');
       if (symbol) {
         document.getElementById('ticker').value = symbol;
+      }
+      if (days) {
+        document.getElementById('days').value = days;
+      }
+      if (symbol) {
         setTimeout(() => {
-          document.getElementById('runFundamental').click();
+          document.getElementById('insiderButton').click();
         }, 100);
       }
     };
