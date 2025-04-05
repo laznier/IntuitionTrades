@@ -1614,18 +1614,25 @@ let dotInterval = null;   // store the setInterval for dot animation
           for(let k in categories){ catSum += categories[k]; nCats++; }
           fundBull = catSum / nCats;
         }
-        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        let resp = await fetch(histUrl);
-        let data = await resp.json();
-        if(!data["Time Series (Daily)"]){
-          throw new Error("Unable to retrieve valid historical data.");
-        }
-        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if(prices.length < 2){
-          alert("Not enough historical data.");
-          document.getElementById('loading').style.display = 'none';
-          return;
-        }
+        // Fetch historical data
+let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+let resp = await fetch(histUrl);
+let data = await resp.json();
+
+// If no valid time series is found, log a warning and set prices to null.
+let prices;
+if (!data["Time Series (Daily)"]) {
+  console.warn("No valid historical data received; defaulting all historical-based indicators to 50.");
+  prices = null;
+} else {
+  prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+}
+
+// If there isn’t enough data (or prices is null), warn and use defaults.
+if (prices === null || prices.length < 2) {
+  console.warn("Not enough historical data; defaulting technical and Monte Carlo indicators to 50.");
+}
+
         document.getElementById('aggregateSection').style.display = 'block';
         document.getElementById('descriptionSection').style.display = 'block';
         document.getElementById('companyDescription').innerText = companyDesc;
@@ -1674,6 +1681,33 @@ let dotInterval = null;   // store the setInterval for dot animation
       }
       document.getElementById('loading').style.display = 'none';
     }
+    // Technical Indicators
+let techBull;
+if (prices === null || prices.length < 2) {
+  document.getElementById('techSection').style.display = 'block';
+  document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+  techBull = 50;
+} else {
+  document.getElementById('techSection').style.display = 'block';
+  techBull = updateTechChart(prices);
+}
+
+// Monte Carlo Simulation
+let mcStats, mcBull;
+if (prices === null || prices.length < 2) {
+  mcStats = { lastPrice: 50, mean: 0, stdDev: 0 };
+  mcBull = 50;
+  document.getElementById('mcSection').style.display = 'block';
+  document.getElementById('mcBullScore').innerText =
+    `Monte Carlo Bullish Score: ${mcBull.toFixed(2)}% (default)`;
+} else {
+  mcStats = computeStats(prices);
+  let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
+  let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+  document.getElementById('mcSection').style.display = 'block';
+  mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+}
+
 
     // NEW: When the simulation button is clicked, show the buffer overlay immediately and start simulation concurrently.
     document.getElementById("simulateButton").addEventListener("click", () => {
