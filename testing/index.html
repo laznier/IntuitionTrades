@@ -180,7 +180,7 @@
   position: absolute;
   background-color: var(--secondary-bg);
   border: 1px solid #555;
-  width: calc(100% - 20px); /* Adjust as needed based on your input's width */
+  width: calc(100% - 20px);
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;
@@ -199,6 +199,7 @@
   color: #fff;
 }
 
+
 </style>
 <body>
   <!-- Back to Main Page button -->
@@ -213,8 +214,11 @@
   <input type="date" id="futureDate">
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-<input type="text" id="ticker" value="AAPL">
-<ul id="ticker-suggestions"></ul>
+  <input type="text" id="ticker" value="AAPL">
+  <ul id="ticker-suggestions"></ul>
+  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
+  
+  
 
 
   <!-- Manual override for historical period (optional) -->
@@ -2269,9 +2273,105 @@ async function fetchTickerSuggestions(searchQuery) {
         return [];
       }
     }
+    <!-- Place this near the bottom of your HTML, before the closing </body> tag -->
 
+  // --- Existing URL param and simulation initialization ---
+  document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('ticker')) {
+      const tickerInput = document.getElementById('ticker');
+      if (tickerInput) {
+        tickerInput.value = urlParams.get('ticker');
+        updateLinkButtonTexts();
+      }
+      const simulateBtn = document.getElementById('simulateButton');
+      if (simulateBtn) {
+        setTimeout(() => {
+          simulateBtn.click();
+        }, 100);
+      }
+    }
+    
+    // --- Autocomplete Integration ---
+    const tickerInput = document.getElementById('ticker');
+    tickerInput.addEventListener('input', () => {
+      const query = tickerInput.value.trim();
+      if (query.length < 2) {
+        clearSuggestions();
+        return;
+      }
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(async () => {
+        const suggestions = await fetchTickerSuggestions(query);
+        renderTickerSuggestions(suggestions);
+      }, 300);
+    });
+    
+    // Optional: if you have a side element to display the company full name,
+    // ensure it’s cleared on load.
+    clearSuggestions();
+    
+    // Call updateLinkButtonTexts if needed
+    updateLinkButtonTexts();
+  });
 
-  </script>
+  // --- Autocomplete Functions ---
+  let debounceTimeout;
+
+  // Clears the suggestions list and any displayed company name.
+  function clearSuggestions() {
+    const list = document.getElementById('ticker-suggestions');
+    list.innerHTML = '';
+    list.style.display = 'none';
+    const fullNameElem = document.getElementById('company-full-name');
+    if(fullNameElem) {
+      fullNameElem.innerText = '';
+    }
+  }
+
+  // Fetch ticker suggestions from your API endpoint.
+  async function fetchTickerSuggestions(searchQuery) {
+    try {
+      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.bestMatches || [];
+    } catch (error) {
+      console.error("Error fetching ticker suggestions:", error);
+      return [];
+    }
+  }
+
+  // Render the suggestion list.
+  function renderTickerSuggestions(suggestions) {
+    const list = document.getElementById('ticker-suggestions');
+    list.innerHTML = ''; // Clear previous suggestions
+
+    if (suggestions.length === 0) {
+      list.style.display = 'none';
+      return;
+    }
+    list.style.display = 'block';
+    suggestions.forEach(item => {
+      const li = document.createElement('li');
+      // Display the ticker and the full company name
+      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+      li.addEventListener('click', () => {
+        // Autofill the ticker input and display full company name in a side element
+        document.getElementById('ticker').value = item["1. symbol"];
+        const fullNameElem = document.getElementById('company-full-name');
+        if(fullNameElem) {
+          fullNameElem.innerText = item["2. name"];
+        }
+        clearSuggestions();
+      });
+      list.appendChild(li);
+    });
+  }
+</script>
+
 
 </body>
 </html>
