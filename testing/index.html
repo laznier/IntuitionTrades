@@ -139,6 +139,7 @@
   </style>
 </head>
 <body>
+
   <!-- Back to Main Page -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">
     Back to Main Page
@@ -146,7 +147,8 @@
 
   <h1>Congress Trading Insights</h1>
   <p>
-    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades. We filter trades by date.
+    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades.
+    We filter trades by date.
   </p>
 
   <!-- Ticker Input with Autocomplete -->
@@ -188,7 +190,66 @@
   </div>
 
   <script>
-    // ------------------ Congress Trading Data Functionality ------------------
+    /* ================= Autocomplete Functions ================= */
+
+    // Clears the suggestions list and any displayed company full name.
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+
+    // Fetch ticker suggestions from your API endpoint.
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+
+    // Render the suggestion list into the <ul id="ticker-suggestions">.
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = ''; // Clear previous suggestions
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    // Global variable for debounce timeout.
+    let debounceTimeout;
+
+    /* ================= Congress Trading & URL Initialization ================= */
+
+    // Setup Congress Trading Data fetching.
     document.getElementById('fetchButton').addEventListener('click', async () => {
       const ticker = document.getElementById('ticker').value.trim();
       const days = parseInt(document.getElementById('days').value.trim()) || 30;
@@ -196,7 +257,7 @@
         alert("Please enter a ticker symbol first.");
         return;
       }
-      // Reset UI elements
+      // Reset UI elements.
       document.getElementById('loading').style.display = 'block';
       document.getElementById('statsSection').style.display = 'none';
       document.getElementById('buyCol').style.display = 'none';
@@ -216,7 +277,7 @@
           throw new Error("Invalid congress data format.");
         }
         const rawData = jsonResponse.data;
-        // Filter transactions by timeframe (using TransactionDate)
+        // Filter transactions by timeframe.
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         const filtered = rawData.filter(item => {
@@ -225,17 +286,17 @@
         });
         // Sort transactions by TransactionDate (oldest first)
         filtered.sort((a, b) => new Date(a.TransactionDate) - new Date(b.TransactionDate));
-        // Separate purchases and sales based on Transaction field
+        // Separate purchases and sales.
         const purchases = filtered.filter(item => /purchase/i.test(item.Transaction));
         const sales = filtered.filter(item => /sale/i.test(item.Transaction));
-        // Calculate summary statistics
+        // Calculate summary statistics.
         let totalPurchase = 0, totalSale = 0;
         filtered.forEach(item => {
           const amt = parseFloat(item.Amount) || 0;
           if (/purchase/i.test(item.Transaction)) totalPurchase += amt;
           if (/sale/i.test(item.Transaction)) totalSale += amt;
         });
-        // Render summary
+        // Render summary.
         const statsSummary = document.getElementById('statsSummary');
         statsSummary.innerHTML = `
           <p><strong>Ticker:</strong> ${ticker.toUpperCase()}</p>
@@ -245,7 +306,6 @@
           <p><strong>Total Sale Amount:</strong> $${totalSale.toLocaleString()}</p>
         `;
         document.getElementById('statsSection').style.display = 'block';
-        // Render columns for purchases and sales
         showColumn(purchases, 'buyCol', 'buyContainer', true);
         showColumn(sales, 'sellCol', 'sellContainer', false);
       } catch (err) {
@@ -256,6 +316,7 @@
       }
     });
 
+    // Helper function to render transaction columns.
     function showColumn(list, colId, containerId, isBuy) {
       const colEl = document.getElementById(colId);
       const containerEl = document.getElementById(containerId);
@@ -276,6 +337,7 @@
       });
     }
 
+    // Function to display detailed transaction information.
     function showDetails(item, rank, isBuy) {
       document.getElementById('summarySection').style.display = 'block';
       const summaryEl = document.getElementById('summary');
@@ -299,7 +361,7 @@
       summaryEl.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // ------------------ URL Parameter Initialization ------------------
+    // URL Parameter Initialization for Congress Trading page.
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
       const symbol = params.get('symbol');
@@ -311,15 +373,14 @@
         document.getElementById('days').value = days;
       }
       if (params.get('autoFetch') === 'true') {
-        // Delay to ensure inputs are populated before triggering click
         setTimeout(() => {
           document.getElementById('fetchButton').click();
         }, 500);
       }
     });
 
-    // ------------------ Autocomplete Integration ------------------
-    // Listen for input changes on the ticker field and fetch suggestions.
+    /* ================= Autocomplete Integration ================= */
+    // Set up autocomplete for the ticker input.
     document.addEventListener("DOMContentLoaded", () => {
       const tickerInput = document.getElementById('ticker');
       tickerInput.addEventListener('input', () => {
@@ -334,47 +395,9 @@
           renderTickerSuggestions(suggestions);
         }, 300);
       });
-      // Clear suggestions on load.
+      // Clear any suggestions on load.
       clearSuggestions();
     });
-
-    // ------------------ Autocomplete Functions ------------------
-    async function fetchTickerSuggestions(searchQuery) {
-      try {
-        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
-        }
-        const data = await response.json();
-        return data.bestMatches || [];
-      } catch (error) {
-        console.error("Error fetching ticker suggestions:", error);
-        return [];
-      }
-    }
-
-    function renderTickerSuggestions(suggestions) {
-      const list = document.getElementById('ticker-suggestions');
-      list.innerHTML = ''; // Clear previous suggestions
-      if (!suggestions || suggestions.length === 0) {
-        list.style.display = 'none';
-        return;
-      }
-      list.style.display = 'block';
-      suggestions.forEach(item => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
-        li.addEventListener('click', () => {
-          document.getElementById('ticker').value = item["1. symbol"];
-          const fullNameElem = document.getElementById('company-full-name');
-          if (fullNameElem) {
-            fullNameElem.innerText = item["2. name"];
-          }
-          clearSuggestions();
-        });
-        list.appendChild(li);
-      });
-    }
   </script>
 </body>
 </html>
