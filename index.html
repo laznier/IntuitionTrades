@@ -1243,7 +1243,7 @@ footer {
           const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
 
           // Adjust this date as needed
-          const initialDate = "2025-04-05";
+          const initialDate = "2025-03-28";
           const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
           if (!initialTimestamps.length) return;
           const initialTimestamp = initialTimestamps[0];
@@ -1275,7 +1275,7 @@ footer {
 
     // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV)
     document.addEventListener('DOMContentLoaded', () => {
-      const initialDate = "2025-04-05";
+      const initialDate = "2025-03-28";
       document.querySelectorAll('.performance-header').forEach(header => {
         header.textContent = "Performance Since " + initialDate;
       });
@@ -1318,7 +1318,7 @@ footer {
           "This number represents the average profit percentage if you had " +
           "bought our top three recommended stocks (" + topBuys.join(", ") + ") and " +
           "shorted our bottom three picks (" + bottomShorts.join(", ") + ") as of " +
-          "2025-04-05. It updates in real time based on intraday data."
+          "2025-03-28. It updates in real time based on intraday data."
         );
       }
 
@@ -1661,7 +1661,7 @@ async function fetchAllSentimentData(topic) {
   
     // Helper to format the time_published string from Alpha Vantage
     function formatTimePublished(timeStr) {
-      // e.g. "20250403T161833" => "2025-04-05 16:18"
+      // e.g. "20250403T152533" => "2025-04-03 15:25"
       if (!timeStr || timeStr.length < 8) return "";
       const year = timeStr.slice(0, 4);
       const month = timeStr.slice(4, 6);
