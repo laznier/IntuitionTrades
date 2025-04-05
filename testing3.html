@@ -47,21 +47,24 @@
       font-size: 0.95rem;
       background-color: var(--secondary-bg);
       color: var(--text-color);
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
+        }
+        button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: var(--accent-color);
+  color: var(--text-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--transition-speed), transform 0.2s ease;
+}
+
+button:hover {
+  background: #1e3a8a;
+  transform: scale(1.05);
+}
+
     .section {
       margin-top: 30px;
       padding: 20px;
@@ -165,7 +168,8 @@
     <input type="number" id="filterDays" value="90" min="1"/>
     <br>
     <label for="filterPolitician">Filter by Politician:</label>
-    <input type="text" id="filterPolitician" placeholder="Enter name"/>
+  <input type="text" id="filterPolitician" placeholder="Enter name"/>
+  <ul id="politician-suggestions" style="position: absolute; background-color: var(--secondary-bg); border: 1px solid #555; width: calc(100% - 20px); max-height: 200px; overflow-y: auto; z-index: 1000; list-style: none; padding: 0; margin: 0; display: none;"></ul>
     <br>
     <label for="ticker">Ticker Symbol:</label>
     <input type="text" id="ticker" placeholder="e.g. TSLA" />
@@ -717,7 +721,8 @@
       "Young, Todd",
       "Zinke, Ryan"
     ];
-
+    
+    
     // When loading starts, calculate interval time so that the entire list is cycled over 15 seconds.
     // (Interval time in milliseconds = 15000 divided by the number of names.)
     const totalCycleTime = 15000; // 15 seconds
@@ -772,6 +777,48 @@
         list.appendChild(li);
       });
     }
+    // Clear politician suggestions
+function clearPoliticianSuggestions() {
+  const list = document.getElementById('politician-suggestions');
+  if (list) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+  }
+}
+
+// Render politician suggestions from the politicianNames array
+function renderPoliticianSuggestions(suggestions) {
+  const list = document.getElementById('politician-suggestions');
+  list.innerHTML = '';
+  if (suggestions.length === 0) {
+    list.style.display = 'none';
+    return;
+  }
+  list.style.display = 'block';
+  suggestions.forEach(name => {
+    const li = document.createElement('li');
+    li.style.padding = '8px';
+    li.style.cursor = 'pointer';
+    li.innerText = name;
+    li.addEventListener('click', () => {
+      document.getElementById('filterPolitician').value = name;
+      clearPoliticianSuggestions();
+    });
+    list.appendChild(li);
+  });
+}
+
+// Add event listener for the politician filter input
+document.getElementById('filterPolitician').addEventListener('input', () => {
+  const query = document.getElementById('filterPolitician').value.trim().toLowerCase();
+  if (!query) {
+    clearPoliticianSuggestions();
+    return;
+  }
+  // Filter the politicianNames array based on the query
+  const filteredNames = politicianNames.filter(name => name.toLowerCase().includes(query));
+  renderPoliticianSuggestions(filteredNames);
+});
 
     // Utility: Parse the Range string "$1,001 - $15,000" and compute the average
     function getAverageFromRange(rangeStr) {
