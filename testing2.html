@@ -213,6 +213,42 @@
   </div>
 
   <script>
+  
+  // Declare global variables and functions first
+  let debounceTimeout;
+
+  function clearSuggestions() {
+    const list = document.getElementById('ticker-suggestions');
+    if (list) {
+      list.innerHTML = '';
+      list.style.display = 'none';
+    }
+    const fullNameElem = document.getElementById('company-full-name');
+    if (fullNameElem) {
+      fullNameElem.innerText = '';
+    }
+  }
+
+  // ... then add the rest of your code including event listeners ...
+  
+  document.addEventListener("DOMContentLoaded", () => {
+    const tickerInput = document.getElementById('ticker');
+    tickerInput.addEventListener('input', () => {
+      const query = tickerInput.value.trim();
+      if (query.length < 2) {
+        clearSuggestions();
+        return;
+      }
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(async () => {
+        const suggestions = await fetchTickerSuggestions(query);
+        renderTickerSuggestions(suggestions);
+      }, 300);
+    });
+    clearSuggestions();
+  });
+
+
     /*******************************************************
      * 1) FUNDAMENTAL ANALYSIS & SCORE COMPUTATION
      *******************************************************/
@@ -506,35 +542,38 @@
     }
   </style>
 </head>
-<body>
-  <h1>Expanded Fundamental Analysis Explanation</h1>
-  <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
-  <ul>
-    <li><strong>Profitability</strong></li>
-    <li><strong>Valuation</strong></li>
-    <li><strong>Growth</strong></li>
-    <li><strong>Dividend &amp; Return</strong></li>
-    <li><strong>Financial Health</strong></li>
-  </ul>
-  <p>Each category includes multiple metrics pulled from the API. We normalize each metric to a 0–100 scale. Some metrics are scored directly (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
-  <h2>Normalization Method</h2>
-  <pre><code>ratio = (value - min) / (max - min)
+body{font-family:Segoe UI;max-width:800px;margin:20px auto;padding:20px;line-height:1.6;}h1{text-align:center;font-weight:600;}code{background:#eee;padding:2px 4px;}table{border-collapse:collapse;margin-top:1rem;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f2f2f2;}p{text-align:justify;}</style></head><body>
+      <h1>Expanded Fundamental Analysis Explanation</h1>
+      <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
+      <ul>
+        <li><strong>Profitability</strong></li>
+        <li><strong>Valuation</strong></li>
+        <li><strong>Growth</strong></li>
+        <li><strong>Dividend & Return</strong></li>
+        <li><strong>Financial Health</strong></li>
+      </ul>
+      <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
+      <h2>Normalization Method</h2>
+      <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
+      <pre><code>ratio = (value - min) / (max - min)
 score = clamp(ratio * 100, 0, 100)</code></pre>
-  <p>If a value is above the maximum, it is capped at 100; if below the minimum, it bottoms out at 0.</p>
-  <h2>Profitability</h2>
-  <p>This score considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>.</p>
-  <h2>Valuation</h2>
-  <p>This score is derived from <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong> ratios (inverted as necessary).</p>
-  <h2>Growth</h2>
-  <p>This score uses <strong>Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>.</p>
-  <h2>Dividend &amp; Return</h2>
-  <p>This score averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong>.</p>
-  <h2>Financial Health</h2>
-  <p>This score is computed from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
-  <h2>Final Aggregation</h2>
-  <p>The aggregated fundamental score is the average of all five category scores.</p>
-  <p style="text-align:center;"><button onclick="window.close()">Close Explanation</button></p>
-</body>
+      <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
+      <h2>Profitability</h2>
+      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>, then averages the normalized values for a <strong>Profitability Score</strong>.</p>
+      <h2>Valuation</h2>
+      <p>We look at <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>, invert their scores, and average them to yield the <strong>Valuation Score</strong>.</p>
+      <h2>Growth</h2>
+      <p>Growth includes metrics such as <strong>Quarterly Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>, averaged for a <strong>Growth Score</strong>.</p>
+      <h2>Dividend &amp; Return</h2>
+      <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong> to yield the <strong>Dividend &amp; Return Score</strong>.</p>
+      <h2>Financial Health</h2>
+      <p>We compute a <strong>Financial Health Score</strong> from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
+      <h2>Final Aggregation</h2>
+      <p>The aggregated fundamental score is the average of the five category scores.</p>
+      <h2>Interpretation &amp; Disclaimer</h2>
+      <p>A higher score suggests a fundamentally stronger company by these basic metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
+      <p style='text-align:center;'><button onclick='window.close()'>Close</button></p>
+      </body>
 </html>`;
       w.document.write(html);
       w.document.close();
