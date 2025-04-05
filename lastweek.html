@@ -87,7 +87,7 @@
       text-align: center;
       margin-bottom: 2rem;
     }
-    /* Changed title below */
+    /* Updated title */
     #performance-summary h2 {
       font-size: 1.75rem;
       margin-bottom: 1rem;
@@ -113,10 +113,10 @@
       opacity: 0.9;
     }
     .positive-performance {
-      background-color: #28a745;
+      background-color: #28a745 !important;
     }
     .negative-performance {
-      background-color: var(--negative-color);
+      background-color: var(--negative-color) !important;
     }
     .non-clickable {
       cursor: default;
@@ -230,7 +230,6 @@
   <div class="content-wrapper">
     <!-- Performance Summary Section -->
     <section id="performance-summary">
-      <!-- Updated title below -->
       <h2>Overall Performance Since 2025-03-28</h2>
       <div class="performance-summary-grid">
         <!-- Our Top Picks -->
@@ -301,7 +300,6 @@
     const initialDate = "2025-03-28";
 
     // Update ticker performance and update performance button color.
-    // 'type' should be either "buy" or "short" to keep link background fixed.
     function updateTickerPerformanceIntraday(ticker, buttonElement, type) {
       const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
       fetch(intradayUrl)
@@ -328,7 +326,7 @@
           const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
           buttonElement.textContent = diff.toFixed(2) + '%';
 
-          // Update performance button classes
+          // Update performance button classes based on diff
           if (diff >= 0) {
             buttonElement.classList.add("positive-performance");
             buttonElement.classList.remove("negative-performance");
@@ -336,7 +334,6 @@
             buttonElement.classList.add("negative-performance");
             buttonElement.classList.remove("positive-performance");
           }
-          // For ticker links, keep fixed color based on type; no change needed.
         })
         .catch(error => console.error("Error fetching data for", ticker, error));
     }
@@ -431,7 +428,7 @@
         window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
       });
 
-      // Update Our Top Picks performance button.
+      // Update Overall Performance (Our Top Picks) button.
       function updateWeeklyPicksButton() {
         const perf = calculateWeeklyPicksPerformance(buys, shorts);
         const picksBtn = document.getElementById("weeklyPicksChange");
