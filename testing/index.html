@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Congress Trading Insights</title>
+  <title>Live Stock Chart</title>
+  <!-- Highcharts Stock Scripts -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
   <style>
     :root {
       --primary-bg: #111;
@@ -17,116 +20,46 @@
       font-family: var(--font-family);
       background-color: var(--primary-bg);
       color: var(--text-color);
+      max-width: 1200px;
       margin: 0 auto;
-      max-width: 900px;
       padding: 2rem;
       line-height: 1.6;
     }
     h1 {
       text-align: center;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-    p, li {
-      margin-bottom: 0.75em;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 500;
-    }
-    input[type="text"],
-    input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      font-size: 0.95rem;
-      background-color: var(--secondary-bg);
-      color: var(--text-color);
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
-    .section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
     }
-    #loading {
-      margin-top: 10px;
-      font-style: italic;
-      color: var(--accent-color);
-      display: none;
-    }
-    .two-column {
-      display: flex;
-      gap: 2rem;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .column {
-      flex: 1;
-      min-width: 300px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-      padding: 1rem;
-    }
-    .column h2 {
+    /* Ticker Input Form & Autocomplete */
+    #tickerForm {
       text-align: center;
       margin-bottom: 10px;
+      position: relative; /* For positioning autocomplete suggestions */
     }
-    .pickItem {
-      border: 1px solid #555;
+    #ticker {
+      padding: 8px;
+      font-size: 1rem;
       border-radius: 4px;
-      padding: 8px 16px;
-      margin-bottom: 8px;
-      cursor: pointer;
-    }
-    .pickItem:hover {
-      background-color: var(--accent-color);
+      border: 1px solid #555;
+      width: 150px;
+      text-align: center;
+      background-color: var(--secondary-bg);
       color: var(--text-color);
     }
-    .bullish {
-      color: green;
-    }
-    .bearish {
-      color: red;
-    }
-    #statsSection p {
-      margin: 0.5rem 0;
-    }
-    /* Autocomplete styling */
     #ticker-suggestions {
       position: absolute;
+      top: 100%;
+      left: 0;
       background-color: var(--secondary-bg);
       border: 1px solid #555;
-      width: calc(100% - 20px);
+      width: calc(100% - 4px);
       max-height: 200px;
       overflow-y: auto;
       z-index: 1000;
       list-style: none;
       padding: 0;
       margin: 0;
+      display: none;
     }
     #ticker-suggestions li {
       padding: 8px;
@@ -136,63 +69,138 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    /* Top Bar */
+    #topBar {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+    #priceInfo {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+    #changeInfo {
+      font-size: 1.4rem;
+      margin-right: 10px;
+    }
+    #timeInfo {
+      font-size: 1rem;
+      color: #ccc;
+    }
+    #caution {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #dc2626;
+      margin-bottom: 10px;
+    }
+    /* Range Tabs */
+    #rangeTabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .rangeTab {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0 4px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--secondary-bg);
+      transition: background var(--transition-speed);
+    }
+    .rangeTab.active {
+      background: var(--accent-color);
+      color: var(--text-color);
+      border-color: #1e3a8a;
+    }
+    /* Chart Container */
+    .chartContainer {
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: var(--secondary-bg);
+    }
+    #chart {
+      width: 100%;
+      height: 600px;
+    }
+    #loading {
+      text-align: center;
+      margin-top: 10px;
+      font-style: italic;
+      color: var(--accent-color);
+      display: none;
+    }
+    #backHome {
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      #chart {
+        height: 400px;
+      }
+      #priceInfo {
+        font-size: 1.4rem;
+      }
+      #changeInfo {
+        font-size: 1.2rem;
+      }
+    }
   </style>
 </head>
 <body>
-
-  <!-- Back to Main Page -->
-  <button onclick="window.location.href='https://www.intuitiontrades.com'">
-    Back to Main Page
-  </button>
-
-  <h1>Congress Trading Insights</h1>
-  <p>
-    Enter a ticker symbol (e.g., TSLA) and a timeframe (in days) to retrieve congressional trades.
-    We filter trades by date.
-  </p>
-
-  <!-- Ticker Input with Autocomplete -->
-  <label for="ticker">Ticker Symbol:</label>
-  <input type="text" id="ticker" placeholder="e.g. TSLA" />
-  <ul id="ticker-suggestions"></ul>
-  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color: var(--accent-color);"></div>
-
-  <!-- Timeframe Input -->
-  <label for="days">Timeframe (days):</label>
-  <input type="number" id="days" placeholder="e.g. 30" value="30" />
-
-  <!-- Fetch Button -->
-  <button id="fetchButton">Get Congress Data</button>
-  <div id="loading">Loading congress trading data...</div>
-
-  <!-- Summary Section -->
-  <div id="statsSection" class="section" style="display:none;">
-    <h2>Congress Summary</h2>
-    <p id="statsSummary"></p>
+  <!-- Back to Home Button -->
+  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  
+  <h1>Live Stock Chart</h1>
+  
+  <!-- Ticker Input Form with Autocomplete -->
+  <div id="tickerForm">
+    <input type="text" id="ticker" value="SPY" placeholder="Enter Ticker" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+    <button id="loadBtn">Load Chart</button>
   </div>
-
-  <!-- Two Columns for Purchases and Sales -->
-  <div class="two-column" style="margin-top: 20px;">
-    <div id="buyCol" class="column" style="display:none;">
-      <h2>Purchases</h2>
-      <div id="buyContainer"></div>
-    </div>
-    <div id="sellCol" class="column" style="display:none;">
-      <h2>Sales</h2>
-      <div id="sellContainer"></div>
-    </div>
+  
+  <!-- Top Bar: Price, Change, Time -->
+  <div id="topBar">
+    <span id="priceInfo"></span>
+    <span id="changeInfo"></span>
+    <span id="timeInfo"></span>
   </div>
-
-  <!-- Transaction Details Section -->
-  <div id="summarySection" class="section" style="display:none;">
-    <h2>Transaction Details</h2>
-    <div id="summary"></div>
+  
+  <!-- Caution Note -->
+  <div id="caution">
+    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
   </div>
-
+  
+  <!-- Range Tabs -->
+  <div id="rangeTabs">
+    <div class="rangeTab active" data-range="1D">1D</div>
+    <div class="rangeTab" data-range="5D">5D</div>
+    <div class="rangeTab" data-range="1M">1M</div>
+    <div class="rangeTab" data-range="6M">6M</div>
+    <div class="rangeTab" data-range="YTD">YTD</div>
+    <div class="rangeTab" data-range="1Y">1Y</div>
+    <div class="rangeTab" data-range="5Y">5Y</div>
+  </div>
+  
+  <!-- Chart Container -->
+  <div class="chartContainer">
+    <div id="chart"></div>
+    <div id="loading">Loading data...</div>
+  </div>
+  
   <script>
-    /* ================= Autocomplete Functions ================= */
-
-    // Clears the suggestions list and any displayed company full name.
+    /***************************************
+     * AUTOCOMPLETE FUNCTIONS
+     ***************************************/
+    let debounceTimeout;
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -204,8 +212,6 @@
         fullNameElem.innerText = '';
       }
     }
-
-    // Fetch ticker suggestions from your API endpoint.
     async function fetchTickerSuggestions(searchQuery) {
       try {
         const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
@@ -219,11 +225,9 @@
         return [];
       }
     }
-
-    // Render the suggestion list into the <ul id="ticker-suggestions">.
     function renderTickerSuggestions(suggestions) {
       const list = document.getElementById('ticker-suggestions');
-      list.innerHTML = ''; // Clear previous suggestions
+      list.innerHTML = '';
       if (!suggestions || suggestions.length === 0) {
         list.style.display = 'none';
         return;
@@ -243,144 +247,201 @@
         list.appendChild(li);
       });
     }
-
-    // Global variable for debounce timeout.
-    let debounceTimeout;
-
-    /* ================= Congress Trading & URL Initialization ================= */
-
-    // Setup Congress Trading Data fetching.
-    document.getElementById('fetchButton').addEventListener('click', async () => {
-      const ticker = document.getElementById('ticker').value.trim();
-      const days = parseInt(document.getElementById('days').value.trim()) || 30;
-      if (!ticker) {
-        alert("Please enter a ticker symbol first.");
-        return;
+  
+    /***************************************
+     * LIVE CHART FUNCTIONS
+     ***************************************/
+    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
+      return response.json();
+    }
+    async function fetchHistoricalData(symbol) {
+      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
+      return response.json();
+    }
+    function parseIntradayData(data, interval) {
+      const seriesKey = `Time Series (${interval})`;
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
+          open: parseFloat(rec["1. open"]),
+          high: parseFloat(rec["2. high"]),
+          low: parseFloat(rec["3. low"]),
+          close: parseFloat(rec["4. close"]),
+          volume: parseInt(rec["5. volume"], 10),
+          original: timestamp
+        });
       }
-      // Reset UI elements.
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    function parseHistoricalData(data) {
+      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const dateStr in raw) {
+        const rec = raw[dateStr];
+        const date = new Date(dateStr);
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"]),
+          open: parseFloat(rec["1. open"]),
+          high: parseFloat(rec["2. high"]),
+          low: parseFloat(rec["3. low"]),
+          close: parseFloat(rec["4. close"]),
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
+          original: dateStr
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    function filterDataForRange(points, range) {
+      const now = new Date();
+      let fromDate;
+      switch (range) {
+        case "1D":
+          fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case "5D":
+          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          break;
+        case "1M":
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "6M":
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
+        case "YTD":
+          fromDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case "1Y":
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        case "5Y":
+          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      }
+      return points.filter(p => p.x >= fromDate.getTime());
+    }
+    function updateTopBar(points, symbol) {
+      if (points.length < 2) return;
+      const first = points[0];
+      const last = points[points.length - 1];
+      const diff = last.close - first.close;
+      const pct = (diff / first.close) * 100;
+      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
+      const changeEl = document.getElementById('changeInfo');
+      if (diff >= 0) {
+        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#16a34a";
+      } else {
+        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#dc2626";
+      }
+      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
+    }
+    function plotChart(points, symbol, range) {
+      let seriesData, chartType, seriesOptions = {};
+      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
+        seriesData = points.map(p => [p.x, p.y]);
+        chartType = 'line';
+        const firstClose = points[0].close;
+        const lastClose = points[points.length - 1].close;
+        let color = (lastClose > firstClose) ? 'green' : (lastClose < firstClose) ? 'red' : 'blue';
+        seriesOptions = {
+          color: color,
+          fillColor: Highcharts.color(color).setOpacity(0.15).get()
+        };
+      } else {
+        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
+        chartType = 'candlestick';
+        seriesOptions = { color: 'red', upColor: 'green' };
+      }
+      Highcharts.stockChart('chart', {
+        chart: { backgroundColor: 'var(--secondary-bg)', marginRight: 80 },
+        time: { useUTC: false },
+        title: { text: `${symbol.toUpperCase()} Price` },
+        xAxis: { type: 'datetime', maxPadding: 0.15 },
+        yAxis: { title: { text: 'Price' } },
+        tooltip: { split: false, shared: true, xDateFormat: '%Y-%m-%d %H:%M:%S' },
+        series: [{
+          name: symbol.toUpperCase(),
+          data: seriesData,
+          type: chartType,
+          tooltip: { valueDecimals: 2 },
+          ...seriesOptions
+        }],
+        navigator: { enabled: true },
+        scrollbar: { enabled: true },
+        credits: { enabled: false }
+      });
+    }
+    async function loadChart() {
+      const symbol = document.getElementById('ticker').value.trim() || "SPY";
+      const range = currentRange;
       document.getElementById('loading').style.display = 'block';
-      document.getElementById('statsSection').style.display = 'none';
-      document.getElementById('buyCol').style.display = 'none';
-      document.getElementById('sellCol').style.display = 'none';
-      document.getElementById('summarySection').style.display = 'none';
-      document.getElementById('summary').innerHTML = '';
-
       try {
-        const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Failed to fetch: ${response.status} - ${text}`);
+        let rawData, points;
+        if (range === "1D") {
+          rawData = await fetchIntradayData(symbol, "1min", "full");
+          points = parseIntradayData(rawData, "1min");
+        } else if (range === "5D") {
+          rawData = await fetchIntradayData(symbol, "5min", "full");
+          points = parseIntradayData(rawData, "5min");
+        } else if (range === "1M") {
+          rawData = await fetchIntradayData(symbol, "60min", "full");
+          points = parseIntradayData(rawData, "60min");
+        } else {
+          rawData = await fetchHistoricalData(symbol);
+          points = parseHistoricalData(rawData);
         }
-        const jsonResponse = await response.json();
-        if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-          throw new Error("Invalid congress data format.");
+        points = filterDataForRange(points, range);
+        if (points.length === 0) {
+          alert("No data found for this symbol and range.");
+          return;
         }
-        const rawData = jsonResponse.data;
-        // Filter transactions by timeframe.
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        const filtered = rawData.filter(item => {
-          const tradeDate = new Date(item.TransactionDate);
-          return !isNaN(tradeDate) && tradeDate >= cutoff;
-        });
-        // Sort transactions by TransactionDate (oldest first)
-        filtered.sort((a, b) => new Date(a.TransactionDate) - new Date(b.TransactionDate));
-        // Separate purchases and sales.
-        const purchases = filtered.filter(item => /purchase/i.test(item.Transaction));
-        const sales = filtered.filter(item => /sale/i.test(item.Transaction));
-        // Calculate summary statistics.
-        let totalPurchase = 0, totalSale = 0;
-        filtered.forEach(item => {
-          const amt = parseFloat(item.Amount) || 0;
-          if (/purchase/i.test(item.Transaction)) totalPurchase += amt;
-          if (/sale/i.test(item.Transaction)) totalSale += amt;
-        });
-        // Render summary.
-        const statsSummary = document.getElementById('statsSummary');
-        statsSummary.innerHTML = `
-          <p><strong>Ticker:</strong> ${ticker.toUpperCase()}</p>
-          <p><strong>Timeframe:</strong> Last ${days} day(s)</p>
-          <p><strong>Transactions Found:</strong> ${filtered.length}</p>
-          <p><strong>Total Purchase Amount:</strong> $${totalPurchase.toLocaleString()}</p>
-          <p><strong>Total Sale Amount:</strong> $${totalSale.toLocaleString()}</p>
-        `;
-        document.getElementById('statsSection').style.display = 'block';
-        showColumn(purchases, 'buyCol', 'buyContainer', true);
-        showColumn(sales, 'sellCol', 'sellContainer', false);
+        plotChart(points, symbol, range);
+        updateTopBar(points, symbol);
       } catch (err) {
-        console.error("Error fetching congress data:", err);
-        alert(`Error: ${err.message}`);
+        console.error("Error loading data:", err);
+        alert("Failed to load data.");
       } finally {
         document.getElementById('loading').style.display = 'none';
       }
-    });
-
-    // Helper function to render transaction columns.
-    function showColumn(list, colId, containerId, isBuy) {
-      const colEl = document.getElementById(colId);
-      const containerEl = document.getElementById(containerId);
-      containerEl.innerHTML = "";
-      if (list.length === 0) {
-        colEl.style.display = 'none';
-        return;
-      }
-      colEl.style.display = 'block';
-      list.forEach((item, idx) => {
-        const div = document.createElement('div');
-        div.classList.add('pickItem');
-        div.classList.add(isBuy ? 'bullish' : 'bearish');
-        const tradeDateStr = item.TransactionDate ? new Date(item.TransactionDate).toLocaleDateString() : "N/A";
-        div.innerHTML = `<strong>${item.Ticker}</strong> - ${item.Transaction} on ${tradeDateStr}`;
-        div.addEventListener('click', () => showDetails(item, idx + 1, isBuy));
-        containerEl.appendChild(div);
+    }
+    let currentRange = "1D";
+    document.querySelectorAll(".rangeTab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentRange = tab.getAttribute("data-range");
+        loadChart();
       });
-    }
-
-    // Function to display detailed transaction information.
-    function showDetails(item, rank, isBuy) {
-      document.getElementById('summarySection').style.display = 'block';
-      const summaryEl = document.getElementById('summary');
-      const dateStr = item.TransactionDate ? new Date(item.TransactionDate).toLocaleString() : "N/A";
-      let html = `<p><strong>Transaction #${rank}: ${item.Ticker}</strong> (${isBuy ? 'Purchase' : 'Sale'})</p>`;
-      html += "<ul>";
-      html += `<li><strong>Representative:</strong> ${item.Representative || 'N/A'}</li>`;
-      html += `<li><strong>Transaction Date:</strong> ${dateStr}</li>`;
-      html += `<li><strong>Transaction Type:</strong> ${item.Transaction || 'N/A'}</li>`;
-      html += `<li><strong>Amount:</strong> $${(item.Amount || 0).toLocaleString()}</li>`;
-      html += `<li><strong>Range:</strong> ${item.Range || 'N/A'}</li>`;
-      html += `<li><strong>Party:</strong> ${item.Party || 'N/A'}</li>`;
-      html += `<li><strong>House:</strong> ${item.House || 'N/A'}</li>`;
-      html += `<li><strong>District:</strong> ${item.District || 'N/A'}</li>`;
-      html += `<li><strong>Excess Return:</strong> ${item.ExcessReturn || 0}</li>`;
-      html += `<li><strong>Price Change:</strong> ${item.PriceChange || 0}</li>`;
-      html += `<li><strong>SPY Change:</strong> ${item.SPYChange || 0}</li>`;
-      html += `<li><strong>Description:</strong> ${item.Description || 'N/A'}</li>`;
-      html += "</ul>";
-      summaryEl.innerHTML = html;
-      summaryEl.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // URL Parameter Initialization for Congress Trading page.
+    });
+    document.getElementById('loadBtn').addEventListener('click', loadChart);
     document.addEventListener("DOMContentLoaded", () => {
       const params = new URLSearchParams(window.location.search);
-      const symbol = params.get('symbol');
-      const days = params.get('days');
-      if (symbol) {
-        document.getElementById('ticker').value = symbol;
+      const tickerParam = params.get('ticker');
+      if (tickerParam) {
+        document.getElementById('ticker').value = tickerParam;
       }
-      if (days) {
-        document.getElementById('days').value = days;
-      }
-      if (params.get('autoFetch') === 'true') {
-        setTimeout(() => {
-          document.getElementById('fetchButton').click();
-        }, 500);
-      }
+      loadChart();
+      setInterval(loadChart, 60000);
     });
-
-    /* ================= Autocomplete Integration ================= */
-    // Set up autocomplete for the ticker input.
+  
+    /***************************************
+     * TICKER AUTOCOMPLETE INTEGRATION
+     ***************************************/
     document.addEventListener("DOMContentLoaded", () => {
       const tickerInput = document.getElementById('ticker');
       tickerInput.addEventListener('input', () => {
@@ -395,7 +456,6 @@
           renderTickerSuggestions(suggestions);
         }, 300);
       });
-      // Clear any suggestions on load.
       clearSuggestions();
     });
   </script>
