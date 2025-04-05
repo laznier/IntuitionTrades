@@ -1,41 +1,43 @@
+// api/ticker.js
+
 export default async function handler(req, res) {
-    // Allow CORS if needed.
     res.setHeader("Access-Control-Allow-Origin", "*");
+    // Uncomment if needed:
+    // res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    // res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   
-    // Expect the search query in a query parameter, e.g. ?query=apple
-    const { query } = req.query;
-    if (!query) {
-      return res.status(400).json({ error: "Missing query parameter" });
-    }
-  
-    const apiKey = process.env.ALPHAVANTAGE_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "Missing ALPHAVANTAGE_API_KEY env var" });
-    }
-  
-    // Build the external API URL for symbol search.
-    const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
-    
     try {
-      // Fetch data from Alpha Vantage
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) {
-        return res.status(response.status).json({ error: response.statusText });
+      // 1. Grab the query parameter from the URL, e.g. /api/ticker?query=SAIC
+      const query = req.query.query;
+      if (!query) {
+        return res.status(400).json({ error: "Please provide a query parameter (e.g. ?query=SAIC)" });
       }
+  
+      // 2. Use your hidden API key from environment variables
+      const apiKey = process.env.ALPHA_VANTAGE_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "Missing ALPHA_VANTAGE_KEY env var" });
+      }
+  
+      // 3. Build the Alpha Vantage URL for the SYMBOL_SEARCH function
+      const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
+  
+      // 4. Fetch data from Alpha Vantage
+      const response = await fetch(url);
       const data = await response.json();
   
-      // Check if bestMatches is available
+      // 5. Check if the data is valid (i.e. contains bestMatches)
       if (!data.bestMatches) {
         return res.status(500).json({
-          error: "No bestMatches found in response",
-          details: data
+          error: "Error fetching ticker data from Alpha Vantage",
+          details: data,
         });
       }
   
-      // Return the fetched data (as JSON)
-      return res.status(200).json(data);
+      // 6. Return the data
+      return res.json(data);
     } catch (error) {
-      console.error("Error in /api/ticker:", error);
+      console.error("Error in /api/ticker route:", error);
       return res.status(500).json({ error: "Internal Server Error" });
     }
   }
