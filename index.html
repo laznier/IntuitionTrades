@@ -448,6 +448,14 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #ddd;
   color: #333;
 }
+.news-thumbnail {
+  width: 50px;           /* Adjust as needed */
+  height: 50px;          /* Adjust as needed */
+  object-fit: cover;     /* Ensures the image fills the dimensions */
+  border-radius: 4px;    /* Optional: adds rounded corners */
+  margin-right: 10px;    /* Spacing between image and text */
+  display: block;        /* Or inline-block if you want it on the same line */
+}
 
 /* Feedback Section */
 #feedback-section {
@@ -1601,45 +1609,55 @@ async function fetchAllSentimentData(topic) {
   
     // Render a single news item in the feed
     function renderNewsItem(item) {
-      // item.time_published is "YYYYMMDDTHHMM" or similar
-      const rawTime = item.time_published || "";
-      const displayTime = formatTimePublished(rawTime);
-  
-      const container = document.createElement("div");
-      container.classList.add("live-news-item");
-  
-      // Row with timestamp + title
-      const row = document.createElement("div");
-      row.classList.add("live-news-row");
-  
-      const timeEl = document.createElement("div");
-      timeEl.classList.add("live-news-timestamp");
-      timeEl.textContent = displayTime;
-  
-      const titleEl = document.createElement("div");
-      titleEl.classList.add("live-news-title");
-      titleEl.textContent = item.title || "Untitled";
-  
-      row.appendChild(timeEl);
-      row.appendChild(titleEl);
-      container.appendChild(row);
-  
-      // Summary
-      const summaryEl = document.createElement("div");
-      summaryEl.classList.add("live-news-summary");
-      summaryEl.innerHTML = `
-        <p>${item.summary || "No summary available."}</p>
-        <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
-      `;
-      container.appendChild(summaryEl);
-  
-      // Toggle expand on title click
-      titleEl.addEventListener("click", () => {
-        container.classList.toggle("expanded");
-      });
-  
-      return container;
-    }
+  const rawTime = item.time_published || "";
+  const displayTime = formatTimePublished(rawTime);
+
+  // Create container for the news item
+  const container = document.createElement("div");
+  container.classList.add("live-news-item");
+
+  // Add image thumbnail if available
+  if (item.banner_image) {
+    const imgEl = document.createElement("img");
+    imgEl.src = item.banner_image;
+    imgEl.alt = item.title || "News Thumbnail";
+    imgEl.classList.add("news-thumbnail");
+    container.appendChild(imgEl);
+  }
+
+  // Create a row for the timestamp and title
+  const row = document.createElement("div");
+  row.classList.add("live-news-row");
+
+  const timeEl = document.createElement("div");
+  timeEl.classList.add("live-news-timestamp");
+  timeEl.textContent = displayTime;
+
+  const titleEl = document.createElement("div");
+  titleEl.classList.add("live-news-title");
+  titleEl.textContent = item.title || "Untitled";
+
+  row.appendChild(timeEl);
+  row.appendChild(titleEl);
+  container.appendChild(row);
+
+  // Create the summary element
+  const summaryEl = document.createElement("div");
+  summaryEl.classList.add("live-news-summary");
+  summaryEl.innerHTML = `
+    <p>${item.summary || "No summary available."}</p>
+    <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
+  `;
+  container.appendChild(summaryEl);
+
+  // Toggle summary visibility on title click
+  titleEl.addEventListener("click", () => {
+    container.classList.toggle("expanded");
+  });
+
+  return container;
+}
+
   
     // Helper to format the time_published string from Alpha Vantage
     function formatTimePublished(timeStr) {
