@@ -1,89 +1,42 @@
-// ticker.js
-
-const API_KEY = process.env.ALPHAVANTAGE_API_KEY || 'demo';
-const BASE_URL = 'https://www.alphavantage.co/query';
-
-let lastQuery = '';      // Store the last query to avoid duplicate API calls.
-let debounceTimeout = null;
-
-/**
- * Fetch suggestions from Alpha Vantage SYMBOL_SEARCH endpoint.
- * @param {string} query - The user's search query.
- * @returns {Promise<Array>} - Returns an array of suggestion objects.
- */
-async function searchStockSymbol(query) {
-  const url = `${BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${API_KEY}`;
-  try {
-    // Force no-cache to get the latest data.
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
+export default async function handler(req, res) {
+    // Allow CORS if needed.
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  
+    // Expect the search query in a query parameter, e.g. ?query=apple
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: "Missing query parameter" });
     }
-    const data = await response.json();
-    if (data.bestMatches) {
-      console.log("Fetched suggestions for query:", query, data.bestMatches);
-      return data.bestMatches;
-    } else {
-      console.log("No bestMatches found for query:", query, data);
-      return [];
+  
+    const apiKey = process.env.ALPHAVANTAGE_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Missing ALPHAVANTAGE_API_KEY env var" });
     }
-  } catch (error) {
-    console.error("Error fetching symbol search:", error);
-    return [];
-  }
-}
-
-/**
- * Render suggestions in the suggestions container.
- * @param {Array} suggestions - Array of suggestion objects.
- */
-function renderSuggestions(suggestions) {
-  const suggestionBox = document.getElementById('ticker-suggestions');
-  suggestionBox.innerHTML = ''; // Clear previous suggestions
-
-  if (suggestions.length === 0) {
-    suggestionBox.style.display = 'none';
-    return;
-  }
-  suggestionBox.style.display = 'block';
-
-  suggestions.forEach(item => {
-    const li = document.createElement('li');
-    // Display the symbol and name from the API response.
-    li.textContent = `${item["1. symbol"]} - ${item["2. name"]}`;
-    li.addEventListener('click', () => {
-      document.getElementById('ticker').value = item["1. symbol"];
-      suggestionBox.innerHTML = '';
-      suggestionBox.style.display = 'none';
-    });
-    suggestionBox.appendChild(li);
-  });
-}
-
-/**
- * Initialize the auto-complete functionality with debounce.
- */
-function initTickerAutocomplete() {
-  const tickerInput = document.getElementById('ticker');
-  tickerInput.addEventListener('input', (e) => {
-    const query = e.target.value.trim();
-
-    // Clear suggestions if the query is too short.
-    if (query.length < 2) {
-      document.getElementById('ticker-suggestions').innerHTML = '';
-      document.getElementById('ticker-suggestions').style.display = 'none';
-      return;
-    }
+  
+    // Build the external API URL for symbol search.
+    const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
     
-    // Debounce API calls: clear previous timeout and set a new one.
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(async () => {
-      if (query === lastQuery) return; // Skip if the query hasn't changed.
-      lastQuery = query;
-      const suggestions = await searchStockSymbol(query);
-      renderSuggestions(suggestions);
-    }, 300);
-  });
-}
-
-document.addEventListener('DOMContentLoaded', initTickerAutocomplete);
+    try {
+      // Fetch data from Alpha Vantage
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: response.statusText });
+      }
+      const data = await response.json();
+  
+      // Check if bestMatches is available
+      if (!data.bestMatches) {
+        return res.status(500).json({
+          error: "No bestMatches found in response",
+          details: data
+        });
+      }
+  
+      // Return the fetched data (as JSON)
+      return res.status(200).json(data);
+    } catch (error) {
+      console.error("Error in /api/ticker:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+  
