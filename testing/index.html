@@ -2192,91 +2192,68 @@ Weighted Score = ( w_MC × MC_Bull
   win.document.write(html);
   win.document.close();
 });
-document.addEventListener("DOMContentLoaded", () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.has('ticker')) {
-    const tickerInput = document.getElementById('ticker');
-    if (tickerInput) {
-      tickerInput.value = urlParams.get('ticker');
-      updateLinkButtonTexts();
-    }
-    const simulateBtn = document.getElementById('simulateButton');
-    if (simulateBtn) {
-      setTimeout(() => {
-        simulateBtn.click();
-      }, 100);
-    }
-  }
-});
-async function fetchTickerSuggestions(searchQuery) {
-  try {
-    const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
-    }
-    const data = await response.json();
-    return data.bestMatches || [];
-  } catch (error) {
-    console.error("Error fetching ticker suggestions:", error);
-    return [];
-  }
-}
 
-    // ... your existing simulation code ...
+  // Global variable for debouncing
+  let debounceTimeout;
 
-    // Client-side autocomplete integration:
-    let debounceTimeout;
-    document.getElementById('ticker').addEventListener('input', () => {
-      const query = document.getElementById('ticker').value.trim();
-      if (query.length < 2) {
-        document.getElementById('ticker-suggestions').innerHTML = '';
-        document.getElementById('ticker-suggestions').style.display = 'none';
-        return;
-      }
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(async () => {
-        const suggestions = await fetchTickerSuggestions(query);
-        renderTickerSuggestions(suggestions);
-      }, 300);
-    });
-
-    function renderTickerSuggestions(suggestions) {
-      const list = document.getElementById('ticker-suggestions');
+  // Clears the suggestions list and any displayed company full name
+  function clearSuggestions() {
+    const list = document.getElementById('ticker-suggestions');
+    if (list) {
       list.innerHTML = '';
-      if (suggestions.length === 0) {
-        list.style.display = 'none';
-        return;
-      }
-      list.style.display = 'block';
-      suggestions.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item["1. symbol"]} - ${item["2. name"]}`;
-        li.addEventListener('click', () => {
-          document.getElementById('ticker').value = item["1. symbol"];
-          list.innerHTML = '';
-          list.style.display = 'none';
-        });
-        list.appendChild(li);
-      });
+      list.style.display = 'none';
     }
+    const fullNameElem = document.getElementById('company-full-name');
+    if (fullNameElem) {
+      fullNameElem.innerText = '';
+    }
+  }
 
-    async function fetchTickerSuggestions(searchQuery) {
-      try {
-        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+  // Fetch ticker suggestions from your API endpoint (/api/ticker?query=...)
+  async function fetchTickerSuggestions(searchQuery) {
+    try {
+      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.bestMatches || [];
+    } catch (error) {
+      console.error("Error fetching ticker suggestions:", error);
+      return [];
+    }
+  }
+
+  // Render the suggestion list into the <ul id="ticker-suggestions">
+  function renderTickerSuggestions(suggestions) {
+    const list = document.getElementById('ticker-suggestions');
+    list.innerHTML = ''; // Clear previous suggestions
+
+    if (!suggestions || suggestions.length === 0) {
+      list.style.display = 'none';
+      return;
+    }
+    list.style.display = 'block';
+    suggestions.forEach(item => {
+      const li = document.createElement('li');
+      // Display the ticker symbol and full company name
+      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+      li.addEventListener('click', () => {
+        // Autofill the ticker input and show full company name in a side element (if present)
+        document.getElementById('ticker').value = item["1. symbol"];
+        const fullNameElem = document.getElementById('company-full-name');
+        if (fullNameElem) {
+          fullNameElem.innerText = item["2. name"];
         }
-        const data = await response.json();
-        return data.bestMatches || [];
-      } catch (error) {
-        console.error("Error fetching ticker suggestions:", error);
-        return [];
-      }
-    }
-    <!-- Place this near the bottom of your HTML, before the closing </body> tag -->
+        clearSuggestions();
+      });
+      list.appendChild(li);
+    });
+  }
 
-  // --- Existing URL param and simulation initialization ---
+  // Initialize everything once the DOM is loaded
   document.addEventListener("DOMContentLoaded", () => {
+    // --- URL Parameters & Simulation Initialization ---
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('ticker')) {
       const tickerInput = document.getElementById('ticker');
@@ -2307,69 +2284,12 @@ async function fetchTickerSuggestions(searchQuery) {
       }, 300);
     });
     
-    // Optional: if you have a side element to display the company full name,
-    // ensure it’s cleared on load.
+    // Clear any suggestions on load and update link buttons if needed.
     clearSuggestions();
-    
-    // Call updateLinkButtonTexts if needed
     updateLinkButtonTexts();
   });
 
-  // --- Autocomplete Functions ---
-  let debounceTimeout;
 
-  // Clears the suggestions list and any displayed company name.
-  function clearSuggestions() {
-    const list = document.getElementById('ticker-suggestions');
-    list.innerHTML = '';
-    list.style.display = 'none';
-    const fullNameElem = document.getElementById('company-full-name');
-    if(fullNameElem) {
-      fullNameElem.innerText = '';
-    }
-  }
-
-  // Fetch ticker suggestions from your API endpoint.
-  async function fetchTickerSuggestions(searchQuery) {
-    try {
-      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      return data.bestMatches || [];
-    } catch (error) {
-      console.error("Error fetching ticker suggestions:", error);
-      return [];
-    }
-  }
-
-  // Render the suggestion list.
-  function renderTickerSuggestions(suggestions) {
-    const list = document.getElementById('ticker-suggestions');
-    list.innerHTML = ''; // Clear previous suggestions
-
-    if (suggestions.length === 0) {
-      list.style.display = 'none';
-      return;
-    }
-    list.style.display = 'block';
-    suggestions.forEach(item => {
-      const li = document.createElement('li');
-      // Display the ticker and the full company name
-      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
-      li.addEventListener('click', () => {
-        // Autofill the ticker input and display full company name in a side element
-        document.getElementById('ticker').value = item["1. symbol"];
-        const fullNameElem = document.getElementById('company-full-name');
-        if(fullNameElem) {
-          fullNameElem.innerText = item["2. name"];
-        }
-        clearSuggestions();
-      });
-      list.appendChild(li);
-    });
-  }
 </script>
 
 
