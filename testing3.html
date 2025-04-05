@@ -1025,7 +1025,7 @@ footer {
 <div style="margin-bottom: 1rem;">
     <input 
       type="text" 
-      id="tickerSearchInput" 
+      id="tickerInput" 
       placeholder="Ticker" 
       style="padding: 0.3rem; border-radius: 4px;"
     />
@@ -1732,10 +1732,10 @@ async function fetchAllSentimentDataByTicker(ticker) {
     }
     // Ticker search
 const tickerSearchButton = document.getElementById("tickerSearchButton");
-const tickerSearchInput = document.getElementById("tickerSearchInput");
+const tickerInput = document.getElementById("tickerInput");
 
 tickerSearchButton.addEventListener("click", async () => {
-  const ticker = tickerSearchInput.value.trim().toUpperCase();
+  const ticker = tickerInput.value.trim().toUpperCase();
   if (!ticker) {
     alert("Please enter a ticker symbol.");
     return;
@@ -1751,6 +1751,7 @@ tickerSearchButton.addEventListener("click", async () => {
 });
 
     document.addEventListener("DOMContentLoaded", () => {
+        attachTickerAutocomplete('#tickerInput');
       // Topic menu
       const menuButtons = document.querySelectorAll("#liveNewsMenu button");
       menuButtons.forEach(btn => {
@@ -1759,7 +1760,8 @@ tickerSearchButton.addEventListener("click", async () => {
           refreshNews();
         });
       });
-  
+      
+
       // Initial fetch
       refreshNews();
       // Refresh every 30 seconds
