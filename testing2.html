@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Stock Chart</title>
-  <!-- Highcharts Stock Scripts -->
-  <script src="https://code.highcharts.com/stock/highstock.js"></script>
-  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  <title>Combined Fundamental Analysis</title>
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  
   <style>
     :root {
       --primary-bg: #111;
@@ -20,61 +20,116 @@
       font-family: var(--font-family);
       background-color: var(--primary-bg);
       color: var(--text-color);
-      max-width: 1200px;
       margin: 0 auto;
+      max-width: 900px;
       padding: 2rem;
       line-height: 1.6;
     }
     h1 {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
       font-weight: 600;
     }
-    button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: var(--accent-color);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background var(--transition-speed);
-}
-button:hover {
-  background: #1e3a8a;
-}
-
-    /* Ticker Input Form & Autocomplete */
-    #tickerForm {
-      text-align: center;
-      margin-bottom: 10px;
-      position: relative; /* For positioning autocomplete suggestions */
+    p, li {
+      margin-bottom: 0.75em;
     }
-    #ticker {
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
       padding: 8px;
-      font-size: 1rem;
-      border-radius: 4px;
+      margin-top: 5px;
       border: 1px solid #555;
-      width: 150px;
-      text-align: center;
+      border-radius: 4px;
+      font-size: 0.95rem;
       background-color: var(--secondary-bg);
       color: var(--text-color);
     }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: var(--accent-color);
+      display: none;
+    }
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+    }
+    .column h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .pickItem {
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    .bullish {
+      color: green;
+    }
+    .bearish {
+      color: red;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
+    }
+    /* Autocomplete styling */
     #ticker-suggestions {
       position: absolute;
-      top: 100%;
-      left: 0;
       background-color: var(--secondary-bg);
       border: 1px solid #555;
-      width: calc(100% - 4px);
+      width: calc(100% - 20px);
       max-height: 200px;
       overflow-y: auto;
       z-index: 1000;
       list-style: none;
       padding: 0;
       margin: 0;
-      display: none;
     }
     #ticker-suggestions li {
       padding: 8px;
@@ -84,140 +139,296 @@ button:hover {
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    #company-full-name {
-      margin-top: 5px;
-      font-size: 1rem;
-      color: var(--accent-color);
-      text-align: center;
-    }
-    /* Top Bar */
-    #topBar {
-      text-align: center;
-      margin-bottom: 5px;
-    }
-    #priceInfo {
-      font-size: 1.8rem;
-      font-weight: 600;
-      margin-right: 10px;
-    }
-    #changeInfo {
-      font-size: 1.4rem;
-      margin-right: 10px;
-    }
-    #timeInfo {
-      font-size: 1rem;
-      color: #ccc;
-    }
-    #caution {
-      text-align: center;
-      font-size: 0.9rem;
-      color: #dc2626;
-      margin-bottom: 10px;
-    }
-    /* Range Tabs */
-    #rangeTabs {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .rangeTab {
-      display: inline-block;
-      padding: 8px 16px;
-      margin: 0 4px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      cursor: pointer;
-      background: var(--secondary-bg);
-      transition: background var(--transition-speed);
-    }
-    .rangeTab.active {
-      background: var(--accent-color);
-      color: var(--text-color);
-      border-color: #1e3a8a;
-    }
-    
-    /* Chart Container */
-    .chartContainer {
-      padding: 10px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      background: var(--secondary-bg);
-    }
-    #chart {
-      width: 100%;
-      height: 600px;
-    }
-    #loading {
-      text-align: center;
-      margin-top: 10px;
-      font-style: italic;
-      color: var(--accent-color);
-      display: none;
-    }
-    #backHome {
-      margin-bottom: 20px;
-    }
-    @media (max-width: 600px) {
-      #chart {
-        height: 400px;
-      }
-      #priceInfo {
-        font-size: 1.4rem;
-      }
-      #changeInfo {
-        font-size: 1.2rem;
-      }
-    
-    }
   </style>
 </head>
 <body>
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
-  
-  <h1>Live Stock Chart</h1>
-  
-  <!-- Ticker Input Form with Autocomplete -->
-  <div id="tickerForm">
-    <input type="text" id="ticker" value="SPY" placeholder="Enter Ticker" />
-    <ul id="ticker-suggestions"></ul>
-    <div id="company-full-name"></div>
-    <button id="loadBtn">Load Chart</button>
+
+  <h1>Combined Fundamental Analysis</h1>
+  <p>Enter a ticker symbol to retrieve fundamental data.</p>
+
+  <!-- Ticker Input with Autocomplete -->
+  <label for="ticker">Ticker Symbol:</label>
+  <input type="text" id="ticker" placeholder="e.g. TSLA" />
+  <ul id="ticker-suggestions"></ul>
+  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color: var(--accent-color);"></div>
+
+  <button id="runFundamental">Run Analysis</button>
+  <div id="loading" style="display:none;">Loading data and computing scores...</div>
+
+  <!-- Aggregated Fundamental Meter -->
+  <div id="aggregateSection">
+    <h2>Aggregated Fundamental Score</h2>
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">Weak</span>
+      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
+        <div id="aggregateMarker"></div>
+        <span id="aggregateScoreText"></span>
+      </div>
+      <span style="margin-left: 10px; font-weight: bold;">Strong</span>
+    </div>
   </div>
 
-  <!-- Top Bar: Price, Change, Time -->
-  <div id="topBar">
-    <span id="priceInfo"></span>
-    <span id="changeInfo"></span>
-    <span id="timeInfo"></span>
-  </div>
-  
-  <!-- Caution Note -->
-  <div id="caution">
-    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
+  <!-- NEW SECTION: Raw Data (shows everything from the API except Description) -->
+  <div class="section" id="rawDataSection" style="display:none;">
+    <h2>Full Fundamental Data</h2>
+    <table id="rawDataTable">
+      <!-- We'll dynamically populate this table -->
+    </table>
   </div>
 
-  <!-- Range Tabs -->
-  <div id="rangeTabs">
-    <div class="rangeTab active" data-range="1D">1D</div>
-    <div class="rangeTab" data-range="5D">5D</div>
-    <div class="rangeTab" data-range="1M">1M</div>
-    <div class="rangeTab" data-range="6M">6M</div>
-    <div class="rangeTab" data-range="YTD">YTD</div>
-    <div class="rangeTab" data-range="1Y">1Y</div>
-    <div class="rangeTab" data-range="5Y">5Y</div>
+  <!-- Company Description -->
+  <div class="section" id="descriptionSection" style="display:none;">
+    <h2>Company Overview</h2>
+    <p id="companyDescription"></p>
   </div>
 
-  <!-- Chart Container -->
-  <div class="chartContainer">
-    <div id="chart"></div>
-    <div id="loading" style="display:none;">Loading data...</div>
+  <!-- Profitability -->
+  <div class="section chartContainer" id="profitSection" style="display:none;">
+    <h2>Profitability Score</h2>
+    <div id="profitChart"></div>
+    <div id="profitText" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Valuation -->
+  <div class="section chartContainer" id="valuationSection" style="display:none;">
+    <h2>Valuation Score</h2>
+    <div id="valuationChart"></div>
+    <div id="valuationText" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Growth -->
+  <div class="section chartContainer" id="growthSection" style="display:none;">
+    <h2>Growth Score</h2>
+    <div id="growthChart"></div>
+    <div id="growthText" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Dividends -->
+  <div class="section chartContainer" id="dividendSection" style="display:none;">
+    <h2>Dividend &amp; Return Score</h2>
+    <div id="dividendChart"></div>
+    <div id="dividendText" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Financial Health -->
+  <div class="section chartContainer" id="financialSection" style="display:none;">
+    <h2>Financial Health Score</h2>
+    <div id="financialChart"></div>
+    <div id="financialText" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Explanation Button -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="explanationButton">View Explanation</button>
   </div>
 
   <script>
-    /***************************************
-     * AUTOCOMPLETE FUNCTIONS
-     ***************************************/
-     let debounceTimeout;
+    /*******************************************************/
+    /* 1) EVENT HANDLER                                    */
+    /*******************************************************/
+    document.getElementById('runFundamental').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      if(!ticker) {
+        alert('Please enter a ticker');
+        return;
+      }
+      document.getElementById('loading').style.display = 'block';
+
+      // Hide all sections
+      hideSection('aggregateSection');
+      hideSection('rawDataSection');
+      hideSection('descriptionSection');
+      hideSection('profitSection');
+      hideSection('valuationSection');
+      hideSection('growthSection');
+      hideSection('dividendSection');
+      hideSection('financialSection');
+
+      try {
+        // 1) Fetch from /api/fundamental
+        const url = `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if(!data || !data.Symbol) {
+          alert('No fundamental data found.');
+          document.getElementById('loading').style.display = 'none';
+          return;
+        }
+
+        // 2) Show raw fundamental data (skipping 'Description')
+        showSection('rawDataSection');
+        populateRawDataTable(data);
+
+        // 3) Display Description in Company Overview
+        showSection('descriptionSection');
+        document.getElementById('companyDescription').innerText = data.Description || 'No description available.';
+
+        // 4) Compute Scores
+        const { profitability, valuation, growth, dividends, financial } = computeScores(data);
+        const aggregatedScore = (profitability + valuation + growth + dividends + financial) / 5;
+
+        // 5) Show aggregated meter
+        showSection('aggregateSection');
+        document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
+        document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
+
+        // 6) Plot each category
+        if(profitability >= 0) {
+          showSection('profitSection');
+          plotCategory('profitChart', 'Profitability', profitability);
+          document.getElementById('profitText').innerText = `Profitability Score: ${profitability.toFixed(1)}%`;
+        }
+        if(valuation >= 0) {
+          showSection('valuationSection');
+          plotCategory('valuationChart', 'Valuation', valuation);
+          document.getElementById('valuationText').innerText = `Valuation Score: ${valuation.toFixed(1)}%`;
+        }
+        if(growth >= 0) {
+          showSection('growthSection');
+          plotCategory('growthChart', 'Growth', growth);
+          document.getElementById('growthText').innerText = `Growth Score: ${growth.toFixed(1)}%`;
+        }
+        if(dividends >= 0) {
+          showSection('dividendSection');
+          plotCategory('dividendChart', 'Dividend & Returns', dividends);
+          document.getElementById('dividendText').innerText = `Dividend & Return Score: ${dividends.toFixed(1)}%`;
+        }
+        if(financial >= 0) {
+          showSection('financialSection');
+          plotCategory('financialChart', 'Financial Health', financial);
+          document.getElementById('financialText').innerText = `Financial Health Score: ${financial.toFixed(1)}%`;
+        }
+      } catch(err) {
+        console.error(err);
+        alert('Error fetching fundamental data.');
+      }
+
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    /*******************************************************/
+    /* 2) SCORING LOGIC                                    */
+    /*******************************************************/
+    function computeScores(d) {
+      const norm = (val, min, max) => {
+        if(!val || isNaN(val)) return 50;
+        const ratio = (val - min) / (max - min);
+        return Math.max(0, Math.min(100, ratio * 100));
+      };
+
+      const margin = norm(parseFloat(d.ProfitMargin), 0, 0.25);
+      const opMargin = norm(parseFloat(d.OperatingMarginTTM), 0, 0.3);
+      const roa = norm(parseFloat(d.ReturnOnAssetsTTM), 0, 0.15);
+      const roe = norm(parseFloat(d.ReturnOnEquityTTM), 0, 0.35);
+      const profitability = (margin + opMargin + roa + roe) / 4;
+
+      const pe = parseFloat(d.PERatio);
+      const peScore = 100 - norm(pe, 5, 40);
+      const peg = parseFloat(d.PEGRatio);
+      const pegScore = 100 - norm(peg, 0.5, 2.5);
+      const ps = parseFloat(d.PriceToSalesRatioTTM);
+      const psScore = 100 - norm(ps, 1, 10);
+      const pb = parseFloat(d.PriceToBookRatio);
+      const pbScore = 100 - norm(pb, 1, 10);
+      const valuation = (peScore + pegScore + psScore + pbScore) / 4;
+
+      const revGrowth = norm(parseFloat(d.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+      const earnGrowth = norm(parseFloat(d.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+      const priceRef = parseFloat(d['50DayMovingAverage']) || parseFloat(d['200DayMovingAverage']) || 0;
+      let ratio = 0;
+      if(priceRef > 0 && d.AnalystTargetPrice) {
+        ratio = (parseFloat(d.AnalystTargetPrice) / priceRef) - 1;
+      }
+      const tgtScore = norm(ratio, 0, 0.5);
+      const growth = (revGrowth + earnGrowth + tgtScore) / 3;
+
+      const dy = norm(parseFloat(d.DividendYield), 0, 0.07);
+      const dps = norm(parseFloat(d.DividendPerShare), 0, 10);
+      const eps = norm(parseFloat(d.EPS), 0, 12);
+      const dividends = (dy + dps + eps) / 3;
+
+      const ebitda = parseFloat(d.EBITDA);
+      const revTTM = parseFloat(d.RevenueTTM);
+      const ebitdaMarginScore = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+      const evEbitda = parseFloat(d.EVToEBITDA);
+      const evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+      const beta = parseFloat(d.Beta);
+      let betaScore = 50;
+      if(!isNaN(beta)) {
+        betaScore = 100 - norm(beta, 0, 2);
+      }
+      const financial = (ebitdaMarginScore + evEbitdaScore + betaScore) / 3;
+
+      return {
+        profitability,
+        valuation,
+        growth,
+        dividends,
+        financial
+      };
+    }
+
+    /*******************************************************/
+    /* 3) PLOTTING AND DISPLAY HELPERS                     */
+    /*******************************************************/
+    function hideSection(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+    function showSection(id) {
+      document.getElementById(id).style.display = 'block';
+    }
+    function plotCategory(divId, label, score) {
+      const trace = {
+        x: [label],
+        y: [score],
+        type: 'bar',
+        marker: {
+          color: [score],
+          cmin: 0,
+          cmax: 100,
+          colorscale: [
+            [0, 'rgba(220, 20, 60, 0.8)'],
+            [1, 'rgba(34, 139, 34, 0.8)']
+          ]
+        }
+      };
+      const layout = {
+        yaxis: { range: [0, 100] },
+        margin: { t: 20 }
+      };
+      Plotly.newPlot(divId, [trace], layout);
+    }
+    function populateRawDataTable(data) {
+      const table = document.getElementById('rawDataTable');
+      table.innerHTML = '';
+      for (const [key, value] of Object.entries(data)) {
+        if(key === "Description") continue;
+        const row = document.createElement('tr');
+        const cellKey = document.createElement('th');
+        cellKey.textContent = key;
+        const cellVal = document.createElement('td');
+        cellVal.textContent = value;
+        row.appendChild(cellKey);
+        row.appendChild(cellVal);
+        table.appendChild(row);
+      }
+    }
+// Auto-populate ticker and run analysis if "symbol" query parameter is present.
+window.onload = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const symbol = urlParams.get('symbol');
+    if (symbol) {
+      document.getElementById('ticker').value = symbol;
+      // Optionally, you can delay the click to ensure everything is loaded.
+      setTimeout(() => {
+        document.getElementById('runFundamental').click();
+      }, 100);
+    }
+  };
+    // Clears the suggestions list and any displayed company full name.
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -229,6 +440,8 @@ button:hover {
         fullNameElem.innerText = '';
       }
     }
+
+    // Fetch ticker suggestions from your API endpoint.
     async function fetchTickerSuggestions(searchQuery) {
       try {
         const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
@@ -242,346 +455,52 @@ button:hover {
         return [];
       }
     }
-    function renderTickerSuggestions(suggestions) {
-      const list = document.getElementById('ticker-suggestions');
-      list.innerHTML = '';
-      if (!suggestions || suggestions.length === 0) {
-        list.style.display = 'none';
-        return;
-      }
-      list.style.display = 'block';
-      suggestions.forEach(item => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
-        li.addEventListener('click', () => {
-          document.getElementById('ticker').value = item["1. symbol"];
-          const fullNameElem = document.getElementById('company-full-name');
-          if (fullNameElem) {
-            fullNameElem.innerText = item["2. name"];
-          }
-          clearSuggestions();
-        });
-        list.appendChild(li);
-      });
-    }
-    /***************************************
-     * 1) DATA FETCH FUNCTIONS
-     ***************************************/
-    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
-      return response.json();
-    }
-    async function fetchHistoricalData(symbol) {
-      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
-      return response.json();
-    }
 
-    /***************************************
-     * 2) DATA PARSE FUNCTIONS
-     ***************************************/
-    // For intraday data, we store both the parsed Date and the original API timestamp.
-    function parseIntradayData(data, interval) {
-      const seriesKey = `Time Series (${interval})`;
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const timestamp in raw) {
-        const rec = raw[timestamp];
-        const date = new Date(timestamp.replace(" ", "T"));
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"], 10),
-          original: timestamp
-        });
-      }
-      points.sort((a, b) => a.x - b.x);
-      return points;
-    }
-    // For historical data.
-    function parseHistoricalData(data) {
-      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const dateStr in raw) {
-        const rec = raw[dateStr];
-        const date = new Date(dateStr);
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
-          original: dateStr
-        });
-      }
-      points.sort((a, b) => a.x - b.x);
-      return points;
-    }
-
-    /***************************************
-     * 3) FILTERING DATA BY RANGE
-     ***************************************/
-     function filterDataForRange(points, range) {
-  const now = new Date();
-  let fromDate;
-  switch (range) {
-    case "1D":
-      // Use a rolling 24-hour window.
-      fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case "5D":
-      fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-      break;
-    case "1M":
-      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case "6M":
-      fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-      break;
-    case "YTD":
-      fromDate = new Date(now.getFullYear(), 0, 1);
-      break;
-    case "1Y":
-      fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      break;
-    case "5Y":
-      fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-  }
-  return points.filter(p => p.x >= fromDate.getTime());
-}
-
-
-    /***************************************
-     * 4) TOP BAR UPDATE
-     ***************************************/
-    function updateTopBar(points, symbol) {
-      if (points.length < 2) return;
-      const first = points[0];
-      const last = points[points.length - 1];
-      const diff = last.close - first.close;
-      const pct = (diff / first.close) * 100;
-
-      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-      const changeEl = document.getElementById('changeInfo');
-      if (diff >= 0) {
-        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#16a34a";
-      } else {
-        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#dc2626";
-      }
-      // Use the API's original timestamp and append " US/Eastern"
-      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
-    }
-
-    /***************************************
-     * 5) CHART PLOTTING FUNCTION
-     ***************************************/
-    function plotChart(points, symbol, range) {
-      let seriesData, chartType, seriesOptions = {};
-
-      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
-        seriesData = points.map(p => [p.x, p.y]);
-        chartType = 'line';
-        const firstClose = points[0].close;
-        const lastClose = points[points.length - 1].close;
-        let color = 'blue';
-        if (lastClose > firstClose) color = 'green';
-        else if (lastClose < firstClose) color = 'red';
-        seriesOptions = {
-          color: color,
-          fillColor: Highcharts.color(color).setOpacity(0.15).get()
-        };
-      } else {
-        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
-        chartType = 'candlestick';
-        seriesOptions = {
-          color: 'red',
-          upColor: 'green'
-        };
-      }
-
-      Highcharts.stockChart('chart', {
-        chart: {
-          backgroundColor: '#fff',
-          marginRight: 80,
-          events: {
-            load: function () {
-              const chart = this;
-              const yAxis = chart.yAxis[0];
-              const series = chart.series[0];
-              // Use series.points for both line and candlestick charts.
-              const pts = series.points;
-              if (!pts || pts.length === 0) return;
-              const lastPoint = pts[pts.length - 1];
-              const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
-              let lineY;
-              if (series.type === 'candlestick') {
-                // For candlestick charts, use plotClose.
-                lineY = chart.plotTop + lastPoint.plotClose;
-              } else {
-                // For line charts, use plotY.
-                lineY = chart.plotTop + lastPoint.plotY;
-              }
-              // Draw the fixed dashed line at the exact pixel of the last data point.
-              chart.lastPriceLine = chart.renderer.path([
-                'M', chart.plotLeft, lineY,
-                'L', chart.plotLeft + chart.plotWidth, lineY
-              ]).attr({
-                'stroke-width': 1,
-                stroke: 'gray',
-                dashstyle: 'Dash'
-              }).add();
-              // Draw the fixed last-price label on the right.
-              chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
-                chart.plotLeft + chart.plotWidth + 5,
-                lineY + 4
-              ).css({ color: 'gray' }).add();
-              // Create dynamic crosshair line and label.
-              chart.crosshairLine = chart.renderer.path().attr({
-                'stroke-width': 1,
-                stroke: 'black',
-                dashstyle: 'Solid'
-              }).add();
-              chart.crosshairLabel = chart.renderer.text('',
-                chart.plotLeft + chart.plotWidth + 5,
-                chart.plotTop
-              ).css({ color: 'black' }).add();
-              // Update crosshair on mousemove using unrounded conversion.
-              Highcharts.addEvent(chart.container, 'mousemove', function(e) {
-                const event = chart.pointer.normalize(e);
-                // Use false to avoid rounding discrepancies.
-                const yVal = chart.yAxis[0].toValue(event.chartY, false);
-                const yPix = chart.yAxis[0].toPixels(yVal, true);
-                chart.crosshairLine.attr({
-                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
-                });
-                chart.crosshairLabel.attr({
-                  text: yVal.toFixed(2),
-                  x: chart.plotLeft + chart.plotWidth + 5,
-                  y: yPix + 4
-                });
-              });
-              Highcharts.addEvent(chart.container, 'mouseleave', function() {
-                chart.crosshairLine.attr({ d: [] });
-                chart.crosshairLabel.attr({ text: '' });
-              });
-            }
-          }
-        },
-        time: {
-          useUTC: false
-        },
-        accessibility: {
-          enabled: false
-        },
-        rangeSelector: {
-          enabled: false
-        },
-        title: {
-          text: `${symbol.toUpperCase()} Price`
-        },
-        xAxis: {
-          type: 'datetime',
-          maxPadding: 0.15
-        },
-        yAxis: {
-          title: { text: 'Price' }
-        },
-        tooltip: {
-          split: false,
-          shared: true,
-          xDateFormat: '%Y-%m-%d %H:%M:%S'
-        },
-        series: [{
-          name: symbol.toUpperCase(),
-          data: seriesData,
-          type: chartType,
-          tooltip: { valueDecimals: 2 },
-          ...seriesOptions
-        }],
-        navigator: { enabled: true },
-        scrollbar: { enabled: true },
-        credits: { enabled: false }
-      });
-    }
-
-    /***************************************
-     * 6) MAIN LOAD FUNCTION
-     ***************************************/
-    async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "SPY";
-      const range = currentRange;
-      document.getElementById('loading').style.display = 'block';
-      try {
-        let rawData, points;
-        if (range === "1D") {
-          // For 1D: 1 minute intervals with full output to capture a full day
-          rawData = await fetchIntradayData(symbol, "1min", "full");
-          points = parseIntradayData(rawData, "1min");
-        } else if (range === "5D") {
-          // For 5D: 5 minute intervals with full output to cover more data
-          rawData = await fetchIntradayData(symbol, "5min", "full");
-          points = parseIntradayData(rawData, "5min");
-        } else if (range === "1M") {
-          rawData = await fetchIntradayData(symbol, "60min", "full");
-          points = parseIntradayData(rawData, "60min");
-        } else {
-          rawData = await fetchHistoricalData(symbol);
-          points = parseHistoricalData(rawData);
-        }
-        points = filterDataForRange(points, range);
-        if (points.length === 0) {
-          alert("No data found for this symbol and range.");
-          return;
-        }
-        plotChart(points, symbol, range);
-        updateTopBar(points, symbol);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        alert("Failed to load data.");
-      } finally {
-        document.getElementById('loading').style.display = 'none';
-      }
-    }
-
-    /***************************************
-     * 7) RANGE TABS & AUTO UPDATE
-     ***************************************/
-    let currentRange = "1D";
-    document.querySelectorAll(".rangeTab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        currentRange = tab.getAttribute("data-range");
-        loadChart();
-      });
+    
+    /*******************************************************/
+    /* 4) EXPLANATION BUTTON                               */
+    /*******************************************************/
+    document.getElementById('explanationButton').addEventListener('click', () => {
+      let w = window.open('', '_blank');
+      const html = `<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Fundamentals Explanation</title><style>body{font-family:Segoe UI;max-width:800px;margin:20px auto;padding:20px;line-height:1.6;}h1{text-align:center;font-weight:600;}code{background:#eee;padding:2px 4px;}table{border-collapse:collapse;margin-top:1rem;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f2f2f2;}p{text-align:justify;}</style></head><body>
+      <h1>Expanded Fundamental Analysis Explanation</h1>
+      <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
+      <ul>
+        <li><strong>Profitability</strong></li>
+        <li><strong>Valuation</strong></li>
+        <li><strong>Growth</strong></li>
+        <li><strong>Dividend & Return</strong></li>
+        <li><strong>Financial Health</strong></li>
+      </ul>
+      <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
+      <h2>Normalization Method</h2>
+      <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
+      <pre><code>ratio = (value - min) / (max - min)
+score = clamp(ratio * 100, 0, 100)</code></pre>
+      <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
+      <h2>Profitability</h2>
+      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>, then averages the normalized values for a <strong>Profitability Score</strong>.</p>
+      <h2>Valuation</h2>
+      <p>We look at <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>, invert their scores, and average them to yield the <strong>Valuation Score</strong>.</p>
+      <h2>Growth</h2>
+      <p>Growth includes metrics such as <strong>Quarterly Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>, averaged for a <strong>Growth Score</strong>.</p>
+      <h2>Dividend &amp; Return</h2>
+      <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong> to yield the <strong>Dividend &amp; Return Score</strong>.</p>
+      <h2>Financial Health</h2>
+      <p>We compute a <strong>Financial Health Score</strong> from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
+      <h2>Final Aggregation</h2>
+      <p>The aggregated fundamental score is the average of the five category scores.</p>
+      <h2>Interpretation &amp; Disclaimer</h2>
+      <p>A higher score suggests a fundamentally stronger company by these basic metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
+      <p style='text-align:center;'><button onclick='window.close()'>Close</button></p>
+      </body></html>`;
+      w.document.write(html);
+      w.document.close();
     });
-    document.getElementById('loadBtn').addEventListener('click', loadChart);
+
+    /* ================= Autocomplete Integration ================= */
+    // Set up autocomplete for the ticker input.
     document.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      const ticker = params.get('ticker');
-      if (ticker) {
-        document.getElementById('ticker').value = ticker;
-      }
-      loadChart();
-      setInterval(loadChart, 60000);
-    });
-    /***************************************
-     * TICKER AUTOCOMPLETE INTEGRATION
-     ***************************************/
-     document.addEventListener("DOMContentLoaded", () => {
       const tickerInput = document.getElementById('ticker');
       tickerInput.addEventListener('input', () => {
         const query = tickerInput.value.trim();
@@ -595,6 +514,7 @@ button:hover {
           renderTickerSuggestions(suggestions);
         }, 300);
       });
+      // Clear any suggestions on load.
       clearSuggestions();
     });
   </script>
