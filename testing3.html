@@ -78,6 +78,7 @@
       font-style: italic;
       color: var(--accent-color);
       display: none;
+      text-align: center;
     }
     .two-column {
       display: flex;
@@ -141,7 +142,7 @@
   </style>
 </head>
 <body>
-  <!-- Back to Main Page Button (updated for consistency) -->
+  <!-- Back to Main Page Button -->
   <button onclick="window.location.href='https://intuitiontrades.com'">Back to Main Page</button>
 
   <h1>Interactive Top Congress Trades</h1>
@@ -152,14 +153,14 @@
     <button id="fetchButton">Load Congress Trades Data</button>
   </div>
 
-  <!-- Spinner for buffering -->
+  <!-- Spinner for buffering with dynamic countdown and searching text -->
   <div id="loading">
-    <div class="spinner"></div>
     <p>Loading data... (<span id="countdown">15</span> seconds remaining)</p>
+    <p id="searchingText">Searching...</p>
   </div>
 
-  <!-- Filter section (appears after data load) -->
-  <div id="filterSection">
+  <!-- Filter section (hidden until data is loaded) -->
+  <div id="filterSection" style="display:none;">
     <label for="filterDays">Filter by days (e.g. 90):</label>
     <input type="number" id="filterDays" value="90" min="1"/>
     <br>
@@ -172,8 +173,6 @@
     <div id="company-full-name" style="margin-top:5px; font-size:1rem; color: var(--accent-color);"></div>
     <br>
     <button id="applyFilter">Apply Filter</button>
-     <!-- Ticker Input with Autocomplete -->
- 
   </div>
 
   <!-- Two columns for Top 5 Buying and Selling -->
@@ -188,9 +187,7 @@
     </div>
   </div>
 
-  <!-- Details section for a selected stock:
-       The graph appears at the top,
-       followed by the transaction details. -->
+  <!-- Details section for a selected stock -->
   <div id="detailsSection" class="section" style="display:none;">
     <h2>Stock Details</h2>
     <div id="chartContainer">
@@ -200,9 +197,24 @@
   </div>
 
   <script>
-     // Global declaration for debounceTimeout
-     let debounceTimeout;
-     /* ================= Autocomplete Functions ================= */
+    // Global declaration for debounceTimeout and timer intervals
+    let debounceTimeout, countdownInterval, searchingInterval;
+    // Global storage for fetched data
+    let allData = [];
+
+    // List of 20+ politician names for the dynamic searching text
+    const politicianNames = [
+      "Senator Mitt Romney", "Senator Mark Warner", "Senator Rick Scott",
+      "Representative Nancy Pelosi", "Representative Darrell Issa",
+      "Senator Dianne Feinstein", "Senator Tim Scott", "Senator Marco Rubio",
+      "Representative Vern Buchanan", "Representative David Valadao",
+      "Representative Tom Cole", "Representative Kevin Hern",
+      "Senator Susan Collins", "Senator Ben Sasse", "Representative Jim Himes",
+      "Representative John Moolenaar", "Representative Adam Kinzinger",
+      "Representative Elise Stefanik", "Senator Chris Murphy", "Representative Andy Biggs"
+    ];
+
+    /* ================= Autocomplete Functions ================= */
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -251,7 +263,6 @@
         list.appendChild(li);
       });
     }
-    let allData = []; // Global storage for fetched data
 
     // Utility: Parse the Range string "$1,001 - $15,000" and compute the average
     function getAverageFromRange(rangeStr) {
@@ -266,7 +277,7 @@
 
     // Render the top stocks from the filtered data
     function renderTopStocks(filteredData) {
-      // Group all trades by ticker (combining purchases and sales)
+      // Group all trades by ticker
       function groupByTicker(trades) {
         const map = {};
         trades.forEach(trade => {
@@ -281,11 +292,6 @@
 
       const groups = groupByTicker(filteredData);
 
-      // For each group, compute:
-      // - Total Buy Dollars (sum of averages for purchase trades)
-      // - Total Sell Dollars (sum of averages for sale trades)
-      // - Net Dollars = Total Buy Dollars - Total Sell Dollars
-      // - Trade Count
       groups.forEach(group => {
         let totalBuy = 0, totalSell = 0;
         group.trades.forEach(trade => {
@@ -302,7 +308,6 @@
         group.tradeCount = group.trades.length;
       });
 
-      // Separate groups into top buys (net positive) and top sells (net negative)
       const topBuys = groups.filter(group => group.netDollars > 0)
                             .sort((a, b) => b.netDollars - a.netDollars)
                             .slice(0, 5);
@@ -310,7 +315,6 @@
                              .sort((a, b) => a.netDollars - b.netDollars)
                              .slice(0, 5);
 
-      // Render top buying tickers
       const buyContainer = document.getElementById('buyContainer');
       buyContainer.innerHTML = '';
       topBuys.forEach(group => {
@@ -321,18 +325,15 @@
           Trades: ${group.tradeCount}<br>
           Total Dollars Spent: $${group.netDollars.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         `;
-        // Clicking shows all transactions (buys and sells) for that ticker
         div.addEventListener('click', () => showDetails(group));
         buyContainer.appendChild(div);
       });
 
-      // Render top selling tickers
       const sellContainer = document.getElementById('sellContainer');
       sellContainer.innerHTML = '';
       topSells.forEach(group => {
         const div = document.createElement('div');
         div.classList.add('item');
-        // For sells, display the absolute value of net dollars
         div.innerHTML = `
           <strong>${group.ticker}</strong><br>
           Trades: ${group.tradeCount}<br>
@@ -348,18 +349,25 @@
 
     // Fetch data when the user clicks the fetch button
     document.getElementById('fetchButton').addEventListener('click', async () => {
-      console.log("[DEBUG] Fetch button clicked");
       document.getElementById('loading').style.display = 'block';
-
-      // Start the countdown timer
+      
+      // Start the countdown timer from 15 seconds
       let countdown = 15;
       const countdownEl = document.getElementById('countdown');
       countdownEl.innerText = countdown;
-      const timerInterval = setInterval(() => {
+      
+      // Update "Searching" text every 700ms with a random politician name from our list
+      const searchingEl = document.getElementById('searchingText');
+      searchingInterval = setInterval(() => {
+        const randomName = politicianNames[Math.floor(Math.random() * politicianNames.length)];
+        searchingEl.innerText = `Searching ${randomName}`;
+      }, 700);
+
+      countdownInterval = setInterval(() => {
         countdown--;
         countdownEl.innerText = countdown;
         if (countdown <= 0) {
-          clearInterval(timerInterval);
+          clearInterval(countdownInterval);
         }
       }, 1000);
 
@@ -370,7 +378,6 @@
 
       try {
         const response = await fetch('/api/topcongress');
-        console.log("[DEBUG] Response status:", response.status);
         if (!response.ok) {
           const text = await response.text();
           throw new Error(`Failed to fetch data: ${response.status} - ${text}`);
@@ -380,33 +387,36 @@
           throw new Error("Invalid data format from API. Expected { data: [] }");
         }
         allData = jsonResponse.data;
-        console.log("[DEBUG] Total records fetched:", allData.length);
-
-        // Initially render with all data (no filter)
         renderTopStocks(allData);
+        // Show filters only after data has loaded
         document.getElementById('filterSection').style.display = 'block';
       } catch (error) {
-        console.error("[DEBUG] Error:", error);
+        console.error("Error:", error);
         alert("Error: " + error.message);
       } finally {
-        clearInterval(timerInterval);
+        clearInterval(countdownInterval);
+        clearInterval(searchingInterval);
         document.getElementById('loading').style.display = 'none';
       }
     });
 
-    // Apply filter by number of days, politician, and stock (client-side filtering)
+    // Apply filter by days, politician, and stock
     document.getElementById('applyFilter').addEventListener('click', () => {
-      const days = parseInt(document.getElementById('filterDays').value.trim()) || 90;
+      const daysInput = document.getElementById('filterDays').value.trim();
+      // If days field is blank, skip date filtering (set to null)
+      const days = daysInput === "" ? null : parseInt(daysInput);
       const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
       const stockFilter = document.getElementById('ticker').value.trim().toLowerCase();
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - days);
-      
+
       const filteredData = allData.filter(item => {
-        // Filter by days
-        if (!item.TransactionDate) return false;
-        const tradeDate = new Date(item.TransactionDate);
-        if (isNaN(tradeDate) || tradeDate < cutoff) return false;
+        // If date filtering is enabled, apply it
+        if (days !== null) {
+          if (!item.TransactionDate) return false;
+          const tradeDate = new Date(item.TransactionDate);
+          let cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - days);
+          if (isNaN(tradeDate) || tradeDate < cutoff) return false;
+        }
         // Filter by politician if provided
         if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
           return false;
@@ -418,7 +428,6 @@
         return true;
       });
       
-      console.log("[DEBUG] Records after filtering:", filteredData.length);
       renderTopStocks(filteredData);
       document.getElementById('detailsSection').style.display = 'none';
     });
@@ -427,11 +436,7 @@
     function showDetails(group) {
       const detailsSection = document.getElementById('detailsSection');
       const detailsEl = document.getElementById('details');
-
-      // Render the timeline graph (using all transactions for the ticker)
       renderTimelineGraph(group);
-
-      // Render the list of transactions
       let html = `
         <p><strong>Ticker:</strong> ${group.ticker}</p>
         <p><strong>Total Trades:</strong> ${group.tradeCount}</p>
@@ -468,13 +473,11 @@
 
     // Render a timeline graph for the selected ticker using Chart.js
     function renderTimelineGraph(group) {
-      // Group all trades (both purchase and sale) by TransactionDate
       const timeline = {};
       group.trades.forEach(trade => {
         if (!trade.TransactionDate) return;
         const dateStr = new Date(trade.TransactionDate).toLocaleDateString();
         const avg = getAverageFromRange(trade.Range);
-        // For purchases add positive, for sales subtract
         const value = (trade.Transaction && trade.Transaction.toLowerCase() === 'purchase') ? avg : -avg;
         if (!timeline[dateStr]) {
           timeline[dateStr] = 0;
@@ -483,13 +486,8 @@
       });
       const sortedDates = Object.keys(timeline).sort((a, b) => new Date(a) - new Date(b));
       const values = sortedDates.map(date => timeline[date]);
+      const absMax = Math.max(...values.map(val => Math.abs(val)));
 
-      // Compute symmetric bounds for Y-axis
-      const minVal = Math.min(...values);
-      const maxVal = Math.max(...values);
-      const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
-
-      // Create or update the chart
       const chartContainer = document.getElementById('chartContainer');
       chartContainer.innerHTML = '<canvas id="trendChart"></canvas>';
       const ctx = document.getElementById('trendChart').getContext('2d');
@@ -533,9 +531,9 @@
         }
       });
     }
-        /* ================= Autocomplete Integration ================= */
-     // Set up autocomplete for the ticker input.
-     document.addEventListener("DOMContentLoaded", () => {
+
+    /* ================= Autocomplete Integration ================= */
+    document.addEventListener("DOMContentLoaded", () => {
       const tickerInput = document.getElementById('ticker');
       tickerInput.addEventListener('input', () => {
         const query = tickerInput.value.trim();
@@ -549,10 +547,8 @@
           renderTickerSuggestions(suggestions);
         }, 300);
       });
-      // Clear any suggestions on load.
       clearSuggestions();
     });
-
   </script>
 </body>
 </html>
