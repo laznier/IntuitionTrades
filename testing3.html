@@ -197,22 +197,531 @@
   </div>
 
   <script>
-    // Global declaration for debounceTimeout and timer intervals
+    // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
-    // Global storage for fetched data
     let allData = [];
 
-    // List of 20+ politician names for the dynamic searching text
+    // Full list of congress and senate members from your provided list
     const politicianNames = [
-      "Senator Mitt Romney", "Senator Mark Warner", "Senator Rick Scott",
-      "Representative Nancy Pelosi", "Representative Darrell Issa",
-      "Senator Dianne Feinstein", "Senator Tim Scott", "Senator Marco Rubio",
-      "Representative Vern Buchanan", "Representative David Valadao",
-      "Representative Tom Cole", "Representative Kevin Hern",
-      "Senator Susan Collins", "Senator Ben Sasse", "Representative Jim Himes",
-      "Representative John Moolenaar", "Representative Adam Kinzinger",
-      "Representative Elise Stefanik", "Senator Chris Murphy", "Representative Andy Biggs"
+      "Adams, Alma",
+      "Aderholt, Robert",
+      "Aguilar, Pete",
+      "Alford, Mark",
+      "Allen, Rick",
+      "Alsobrooks, Angela",
+      "Amodei, Mark",
+      "Amo, Gabe",
+      "Ansari, Yassamin",
+      "Arrington, Jodey",
+      "Auchincloss, Jake",
+      "Babin, Brian",
+      "Bacon, Don",
+      "Baird, James",
+      "Balderson, Troy",
+      "Baldwin, Tammy",
+      "Balint, Becca",
+      "Banks, Jim",
+      "Barragán, Nanette",
+      "Barrasso, John",
+      "Barrett, Tom",
+      "Barr, Garland “Andy”",
+      "Baumgartner, Michael",
+      "Bean, Aaron",
+      "Beatty, Joyce",
+      "Begich, Nicholas",
+      "Bell, Wesley",
+      "Bennet, Michael",
+      "Bentz, Cliff",
+      "Bera, Ami",
+      "Bergman, Jack",
+      "Beyer, Donald",
+      "Bice, Stephanie",
+      "Biggs, Andy",
+      "Biggs, Sheri",
+      "Bilirakis, Gus",
+      "Bishop, Sanford",
+      "Blackburn, Marsha",
+      "Blumenthal, Richard",
+      "Blunt Rochester, Lisa",
+      "Boebert, Lauren",
+      "Bonamici, Suzanne",
+      "Booker, Cory",
+      "Boozman, John",
+      "Bost, Mike",
+      "Boyle, Brendan",
+      "Brecheen, Josh",
+      "Bresnahan, Robert",
+      "Britt, Katie",
+      "Brownley, Julia",
+      "Brown, Shontel",
+      "Buchanan, Vern",
+      "Budd, Ted",
+      "Budzinski, Nicole (Nikki)",
+      "Burchett, Tim",
+      "Burlison, Eric",
+      "Bynum, Janelle",
+      "Calvert, Ken",
+      "Cammack, Katherine “Kat”",
+      "Cantwell, Maria",
+      "Capito, Shelley",
+      "Carbajal, Salud",
+      "Carey, Mike",
+      "Carson, André",
+      "Carter, Earl “Buddy”",
+      "Carter, John R.",
+      "Carter, Troy",
+      "Casar, Gregorio",
+      "Case, Ed",
+      "Cassidy, Bill",
+      "Casten, Sean",
+      "Castor, Kathy",
+      "Castro, Joaquin",
+      "Cherfilus-McCormick, Sheila",
+      "Chu, Judy",
+      "Ciscomani, Juan",
+      "Cisneros, Gilbert",
+      "Clarke, Yvette",
+      "Clark, Katherine",
+      "Cleaver, Emanuel",
+      "Cline, Ben",
+      "Cloud, Michael",
+      "Clyburn, James “Jim”",
+      "Clyde, Andrew",
+      "Cohen, Steve",
+      "Cole, Tom",
+      "Collins, Mike",
+      "Collins, Susan",
+      "Comer, James",
+      "Conaway, Herbert",
+      "Connolly, Gerald",
+      "Coons, Christopher",
+      "Cornyn, John",
+      "Correa, Luis",
+      "Cortez Masto, Catherine",
+      "Costa, Jim",
+      "Cotton, Tom",
+      "Courtney, Joe",
+      "Craig, Angie",
+      "Cramer, Kevin",
+      "Crane, Eli",
+      "Crank, Jeff",
+      "Crapo, Michael “Mike”",
+      "Crawford, Eric “Rick”",
+      "Crenshaw, Dan",
+      "Crockett, Jasmine",
+      "Crow, Jason",
+      "Cruz, Ted",
+      "Cuellar, Henry",
+      "Curtis, John",
+      "Daines, Steve",
+      "Davidson, Warren",
+      "Davids, Sharice",
+      "Davis, Danny",
+      "Davis, Donald",
+      "Dean, Madeleine",
+      "DeGette, Diana",
+      "De La Cruz, Mónica",
+      "DeLauro, Rosa",
+      "DelBene, Suzan",
+      "Deluzio, Chris",
+      "DeSaulnier, Mark",
+      "DesJarlais, Scott",
+      "Dexter, Maxine",
+      "Diaz-Balart, Mario",
+      "Dingell, Debbie",
+      "Doggett, Lloyd",
+      "Donalds, Byron",
+      "Downing, Troy",
+      "Duckworth, Tammy",
+      "Dunn, Neal",
+      "Durbin, Richard",
+      "Edwards, Charles (Chuck)",
+      "Elfreth, Sarah",
+      "Ellzey, Jake",
+      "Emmer, Tom",
+      "Ernst, Joni",
+      "Escobar, Veronica",
+      "Espaillat, Adriano",
+      "Estes, Ron",
+      "Evans, Dwight",
+      "Evans, Gabe",
+      "Ezell, Mike",
+      "Fallon, Patrick “Pat”",
+      "Fedorchak, Julie",
+      "Feenstra, Randy",
+      "Fetterman, John",
+      "Fields, Cleo",
+      "Figures, Shomari",
+      "Finstad, Brad",
+      "Fischbach, Michelle",
+      "Fischer, Deb",
+      "Fitzgerald, Scott",
+      "Fitzpatrick, Brian",
+      "Fleischmann, Charles “Chuck”",
+      "Fletcher, Lizzie",
+      "Flood, Mike",
+      "Fong, Vince",
+      "Foster, Bill",
+      "Foushee, Valerie",
+      "Foxx, Virginia",
+      "Frankel, Lois",
+      "Franklin, Scott",
+      "Friedman, Laura",
+      "Frost, Maxwell",
+      "Fry, Russell",
+      "Fulcher, Russ",
+      "Gallego, Ruben",
+      "Garamendi, John",
+      "Garbarino, Andrew",
+      "García, Jesús “Chuy”",
+      "Garcia, Robert Julio",
+      "Garcia, Sylvia",
+      "Gill, Brandon",
+      "Gillen, Laura",
+      "Gillibrand, Kirsten",
+      "Gimenez, Carlos",
+      "Gluesenkamp Perez, Marie",
+      "Golden, Jared",
+      "Goldman, Craig",
+      "Goldman, Dan",
+      "Gomez, Jimmy",
+      "Gonzales, Ernest “Tony”",
+      "Gonzalez, Vicente",
+      "Gooden, Lance",
+      "Goodlander, Maggie",
+      "Gosar, Paul",
+      "Gottheimer, Josh",
+      "Graham, Lindsey",
+      "Grassley, Charles “Chuck”",
+      "Graves, Sam",
+      "Gray, Adam",
+      "Green, Al",
+      "Greene, Marjorie",
+      "Green, Mark E.",
+      "Griffith, Morgan",
+      "Grothman, Glenn",
+      "Guest, Michael",
+      "Guthrie, Brett",
+      "Hageman, Harriet",
+      "Hagerty, Bill",
+      "Hamadeh, Abraham",
+      "Harder, Josh",
+      "Haridopolos, Mike",
+      "Harrigan, Pat",
+      "Harris, Andy",
+      "Harris, Mark Everette",
+      "Harshbarger, Diana",
+      "Hassan, Margaret “Maggie”",
+      "Hawley, Joshua “Josh”",
+      "Hayes, Jahana",
+      "Heinrich, Martin",
+      "Hernández Rivera, Pablo José",
+      "Hern, Kevin",
+      "Hickenlooper, John",
+      "Higgins, Clay",
+      "Hill, French",
+      "Himes, James “Jim”",
+      "Hinson, Ashley",
+      "Hirono, Mazie",
+      "Hoeven, John",
+      "Horsford, Steven",
+      "Houchin, Erin",
+      "Houlahan, Chrissy",
+      "Hoyer, Steny",
+      "Hoyle, Valerie",
+      "Hudson, Richard",
+      "Huffman, Jared",
+      "Huizenga, Bill",
+      "Hunt, Wesley",
+      "Hurd, Jeff",
+      "Husted, Jon",
+      "Hyde-Smith, Cindy",
+      "Issa, Darrell",
+      "Ivey, Glenn",
+      "Jack, Brian",
+      "Jackson, Jonathan",
+      "Jackson, Ronny",
+      "Jacobs, Sara",
+      "James, John",
+      "Jayapal, Pramila",
+      "Jeffries, Hakeem",
+      "Johnson, Dusty",
+      "Johnson, Henry C. “Hank”",
+      "Johnson, Julie",
+      "Johnson, Mike",
+      "Johnson, Ron",
+      "Jordan, Jim",
+      "Joyce, David",
+      "Joyce, John",
+      "Justice, Jim",
+      "Kaine, Timothy “Tim”",
+      "Kamlager-Dove, Sydney",
+      "Kaptur, Marcy",
+      "Kean, Thomas",
+      "Keating, William R.",
+      "Kelly, Mark",
+      "Kelly, Mike",
+      "Kelly, Robin",
+      "Kelly, Trent",
+      "Kennedy, John Neely",
+      "Kennedy, Mike",
+      "Kennedy, Timothy",
+      "Khanna, Ro",
+      "Kiggans, Jennifer",
+      "Kiley, Kevin",
+      "Kim, Andy",
+      "Kim, Young",
+      "King, Angus",
+      "King-Hinds, Kimberlyn",
+      "Klobuchar, Amy",
+      "Knott, Brad",
+      "Krishnamoorthi, Raja",
+      "Kustoff, David",
+      "LaHood, Darin",
+      "LaLota, Nicolas",
+      "LaMalfa, Doug",
+      "Landsman, Greg",
+      "Langworthy, Nicholas",
+      "Lankford, James",
+      "Larsen, Rick",
+      "Larson, John",
+      "Latimer, George",
+      "Latta, Robert",
+      "Lawler, Michael",
+      "Lee, Laurel",
+      "Lee, Mike",
+      "Lee, Summer",
+      "Lee, Susie",
+      "Leger Fernandez, Teresa",
+      "Letlow, Julia",
+      "Levin, Mike",
+      "Liccardo, Sam",
+      "Lieu, Ted",
+      "Lofgren, Zoe",
+      "Loudermilk, Barry",
+      "Lucas, Frank",
+      "Luján, Ben",
+      "Lummis, Cynthia",
+      "Luna, Anna",
+      "Luttrell, Morgan",
+      "Lynch, Stephen",
+      "Mace, Nancy",
+      "Mackenzie, Ryan",
+      "Magaziner, Seth",
+      "Malliotakis, Nicole",
+      "Maloy, Celeste",
+      "Mannion, John",
+      "Mann, Tracey",
+      "Markey, Edward “Ed”",
+      "Marshall, Roger",
+      "Massie, Thomas",
+      "Mast, Brian",
+      "Matsui, Doris",
+      "McBath, Lucy",
+      "McBride, Sarah",
+      "McCaul, Michael",
+      "McClain, Lisa",
+      "McClellan, Jennifer",
+      "McClintock, Tom",
+      "McCollum, Betty",
+      "McConnell, Mitch",
+      "McCormick, Dave",
+      "McCormick, Rich",
+      "McDonald Rivet, Kristen",
+      "McDowell, Addison",
+      "McGarvey, Morgan",
+      "McGovern, James “Jim”",
+      "McGuire, John J.",
+      "McIver, LaMonica",
+      "Meeks, Gregory",
+      "Menendez, Robert Jacobsen",
+      "Meng, Grace",
+      "Merkley, Jeff",
+      "Messmer, Mark",
+      "Meuser, Daniel",
+      "Mfume, Kweisi",
+      "Miller, Carol",
+      "Miller, Mary",
+      "Miller, Max",
+      "Miller-Meeks, Mariannette",
+      "Mills, Cory",
+      "Min, Dave",
+      "Moody, Ashley",
+      "Moolenaar, John",
+      "Moore, Barry",
+      "Moore, Blake",
+      "Moore, Gwen",
+      "Moore, Riley",
+      "Moore, Tim",
+      "Moran, Jerry",
+      "Moran, Nathaniel",
+      "Morelle, Joseph",
+      "Moreno, Bernie",
+      "Morrison, Kelly",
+      "Moskowitz, Jared",
+      "Moulton, Seth",
+      "Moylan, James (Jim)",
+      "Mrvan, Frank",
+      "Mullin, Kevin",
+      "Mullin, Markwayne",
+      "Murkowski, Lisa",
+      "Murphy, Christopher",
+      "Murphy, Gregory",
+      "Murray, Patty",
+      "Nadler, Jerrold",
+      "Neal, Richard",
+      "Neguse, Joe",
+      "Nehls, Troy",
+      "Newhouse, Dan",
+      "Norcross, Donald",
+      "Norman, Ralph",
+      "Norton, Eleanor",
+      "Nunn, Zachary (Zach)",
+      "Obernolte, Jay",
+      "Pressley, Ayanna",
+      "Quigley, Mike",
+      "Radewagen, Aumua Amata",
+      "Ramirez, Delia",
+      "Randall, Emily",
+      "Raskin, Jamie",
+      "Reed, John F. “Jack”",
+      "Reschenthaler, Guy",
+      "Ricketts, Pete",
+      "Riley, Josh",
+      "Risch, James",
+      "Rivas, Luz",
+      "Rogers, Harold “Hal”",
+      "Rogers, Mike",
+      "Rose, John W.",
+      "Rosen, Jacky",
+      "Ross, Deborah",
+      "Rounds, Mike",
+      "Rouzer, David",
+      "Roy, Chip",
+      "Ruiz, Raul",
+      "Rulli, Michael",
+      "Rutherford, John",
+      "Ryan, Patrick",
+      "Salazar, Maria",
+      "Salinas, Andrea",
+      "Sánchez, Linda",
+      "Sanders, Bernard “Bernie”",
+      "Scalise, Steve",
+      "Scanlon, Mary",
+      "Schakowsky, Janice “Jan”",
+      "Schatz, Brian",
+      "Schiff, Adam",
+      "Schmidt, Derek",
+      "Schmitt, Eric",
+      "Schneider, Bradley “Brad”",
+      "Scholten, Hillary",
+      "Schrier, Kim",
+      "Schumer, Charles “Chuck”",
+      "Schweikert, David",
+      "Scott, Austin",
+      "Scott, David",
+      "Scott, Rick",
+      "Scott, Robert “Bobby”",
+      "Scott, Tim",
+      "Self, Keith",
+      "Sessions, Pete",
+      "Sewell, Terri",
+      "Shaheen, Jeanne",
+      "Sheehy, Tim",
+      "Sherman, Brad",
+      "Sherrill, Mikie",
+      "Shreve, Jefferson",
+      "Simon, Lateefah",
+      "Simpson, Michael “Mike”",
+      "Slotkin, Elissa",
+      "Smith, Adam",
+      "Smith, Adrian",
+      "Smith, Christopher “Chris”",
+      "Smith, Jason",
+      "Smith, Tina",
+      "Smucker, Lloyd",
+      "Sorensen, Eric",
+      "Soto, Darren",
+      "Spartz, Victoria",
+      "Stansbury, Melanie",
+      "Stanton, Greg",
+      "Stauber, Pete",
+      "Stefanik, Elise",
+      "Steil, Bryan",
+      "Steube, Gregory",
+      "Stevens, Haley",
+      "Strickland, Marilyn",
+      "Strong, Dale",
+      "Stutzman, Marlin",
+      "Subramanyam, Suhas",
+      "Sullivan, Dan",
+      "Suozzi, Thomas",
+      "Swalwell, Eric",
+      "Sykes, Emilia",
+      "Takano, Mark",
+      "Taylor, David",
+      "Tenney, Claudia",
+      "Thanedar, Shri",
+      "Thompson, Bennie",
+      "Thompson, Glenn",
+      "Thompson, Mike",
+      "Thune, John",
+      "Tiffany, Thomas",
+      "Tillis, Thom",
+      "Timmons, William",
+      "Titus, Dina",
+      "Tlaib, Rashida",
+      "Tokuda, Jill",
+      "Tonko, Paul",
+      "Torres, Norma",
+      "Torres, Ritchie",
+      "Trahan, Lori",
+      "Tran, Derek",
+      "Tuberville, Tommy",
+      "Turner, Michael",
+      "Underwood, Lauren",
+      "Valadao, David",
+      "Van Drew, Jefferson",
+      "Van Duyne, Beth",
+      "Van Hollen, Chris",
+      "Van Orden, Derrick",
+      "Vargas, Juan",
+      "Vasquez, Gabriel (Gabe)",
+      "Veasey, Marc",
+      "Velázquez, Nydia",
+      "Vindman, Eugene",
+      "Wagner, Ann",
+      "Walberg, Tim",
+      "Warner, Mark",
+      "Warnock, Raphael",
+      "Warren, Elizabeth",
+      "Wasserman Schultz, Debbie",
+      "Waters, Maxine",
+      "Watson Coleman, Bonnie",
+      "Weber, Randy",
+      "Webster, Daniel",
+      "Welch, Peter",
+      "Westerman, Bruce",
+      "Whitehouse, Sheldon",
+      "Whitesides, George",
+      "Wicker, Roger",
+      "Wied, Tony",
+      "Williams, Nikema",
+      "Williams, Roger",
+      "Wilson, Frederica",
+      "Wilson, Joe",
+      "Wittman, Robert",
+      "Womack, Steve",
+      "Wyden, Ron",
+      "Yakym, Rudy",
+      "Young, Todd",
+      "Zinke, Ryan"
     ];
+
+    // When loading starts, calculate interval time so that the entire list is cycled over 15 seconds.
+    // (Interval time in milliseconds = 15000 divided by the number of names.)
+    const totalCycleTime = 15000; // 15 seconds
+    const cycleInterval = totalCycleTime / politicianNames.length;
 
     /* ================= Autocomplete Functions ================= */
     function clearSuggestions() {
@@ -277,7 +786,6 @@
 
     // Render the top stocks from the filtered data
     function renderTopStocks(filteredData) {
-      // Group all trades by ticker
       function groupByTicker(trades) {
         const map = {};
         trades.forEach(trade => {
@@ -289,9 +797,7 @@
         });
         return Object.values(map);
       }
-
       const groups = groupByTicker(filteredData);
-
       groups.forEach(group => {
         let totalBuy = 0, totalSell = 0;
         group.trades.forEach(trade => {
@@ -307,14 +813,12 @@
         group.netDollars = totalBuy - totalSell;
         group.tradeCount = group.trades.length;
       });
-
       const topBuys = groups.filter(group => group.netDollars > 0)
                             .sort((a, b) => b.netDollars - a.netDollars)
                             .slice(0, 5);
       const topSells = groups.filter(group => group.netDollars < 0)
                              .sort((a, b) => a.netDollars - b.netDollars)
                              .slice(0, 5);
-
       const buyContainer = document.getElementById('buyContainer');
       buyContainer.innerHTML = '';
       topBuys.forEach(group => {
@@ -328,7 +832,6 @@
         div.addEventListener('click', () => showDetails(group));
         buyContainer.appendChild(div);
       });
-
       const sellContainer = document.getElementById('sellContainer');
       sellContainer.innerHTML = '';
       topSells.forEach(group => {
@@ -342,7 +845,6 @@
         div.addEventListener('click', () => showDetails(group));
         sellContainer.appendChild(div);
       });
-
       document.getElementById('buyCol').style.display = topBuys.length > 0 ? 'block' : 'none';
       document.getElementById('sellCol').style.display = topSells.length > 0 ? 'block' : 'none';
     }
@@ -351,23 +853,28 @@
     document.getElementById('fetchButton').addEventListener('click', async () => {
       document.getElementById('loading').style.display = 'block';
       
-      // Start the countdown timer from 15 seconds
       let countdown = 15;
       const countdownEl = document.getElementById('countdown');
       countdownEl.innerText = countdown;
       
-      // Update "Searching" text every 700ms with a random politician name from our list
+      // Cycle sequentially through the politicianNames array over a total of 15 seconds.
+      let currentIndex = 0;
       const searchingEl = document.getElementById('searchingText');
+      searchingEl.innerText = `Searching ${politicianNames[currentIndex]}`;
       searchingInterval = setInterval(() => {
-        const randomName = politicianNames[Math.floor(Math.random() * politicianNames.length)];
-        searchingEl.innerText = `Searching ${randomName}`;
-      }, 700);
+        currentIndex++;
+        if (currentIndex >= politicianNames.length) {
+          currentIndex = 0;
+        }
+        searchingEl.innerText = `Searching ${politicianNames[currentIndex]}`;
+      }, cycleInterval);
 
       countdownInterval = setInterval(() => {
         countdown--;
         countdownEl.innerText = countdown;
         if (countdown <= 0) {
           clearInterval(countdownInterval);
+          clearInterval(searchingInterval);
         }
       }, 1000);
 
@@ -403,13 +910,10 @@
     // Apply filter by days, politician, and stock
     document.getElementById('applyFilter').addEventListener('click', () => {
       const daysInput = document.getElementById('filterDays').value.trim();
-      // If days field is blank, skip date filtering (set to null)
       const days = daysInput === "" ? null : parseInt(daysInput);
       const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
       const stockFilter = document.getElementById('ticker').value.trim().toLowerCase();
-
       const filteredData = allData.filter(item => {
-        // If date filtering is enabled, apply it
         if (days !== null) {
           if (!item.TransactionDate) return false;
           const tradeDate = new Date(item.TransactionDate);
@@ -417,17 +921,14 @@
           cutoff.setDate(cutoff.getDate() - days);
           if (isNaN(tradeDate) || tradeDate < cutoff) return false;
         }
-        // Filter by politician if provided
         if (politicianFilter && item.Representative && item.Representative.toLowerCase().indexOf(politicianFilter) === -1) {
           return false;
         }
-        // Filter by stock if provided
         if (stockFilter && item.Ticker && item.Ticker.toLowerCase().indexOf(stockFilter) === -1) {
           return false;
         }
         return true;
       });
-      
       renderTopStocks(filteredData);
       document.getElementById('detailsSection').style.display = 'none';
     });
@@ -487,11 +988,9 @@
       const sortedDates = Object.keys(timeline).sort((a, b) => new Date(a) - new Date(b));
       const values = sortedDates.map(date => timeline[date]);
       const absMax = Math.max(...values.map(val => Math.abs(val)));
-
       const chartContainer = document.getElementById('chartContainer');
       chartContainer.innerHTML = '<canvas id="trendChart"></canvas>';
       const ctx = document.getElementById('trendChart').getContext('2d');
-
       new Chart(ctx, {
         type: 'line',
         data: {
