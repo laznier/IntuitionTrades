@@ -1463,6 +1463,7 @@ function updateMCSlider(val) {
         return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
       }
     }
+
     function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
   // Default any missing or invalid indicator to 50
   mc    = (typeof mc === 'number' && !isNaN(mc)) ? mc : 50;
@@ -1500,8 +1501,16 @@ function updateMCSlider(val) {
     }
   }
 }
+if (!data["Time Series (Daily)"]) {
+  console.warn("No valid historical data received; defaulting all historical-based indicators to 50.");
+  // Create a fallback prices array with a neutral price value, or set a flag to use defaults later.
+  // For example, you might set:
+  var prices = [{ date: new Date(), close: defaultPriceValue }]; // Ensure defaultPriceValue is defined.
+  // Alternatively, you could set a flag to bypass further historical calculations.
+} else {
+  let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+}
 
-    
     // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
     function showBufferOverlay() {
   const overlay = document.getElementById("countdownOverlay");
