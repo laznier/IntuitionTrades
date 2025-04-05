@@ -353,7 +353,7 @@
     let simulationReport = null;
     let globalFinalPrices = [];
     let bufferDotInterval;
-
+  
     // Auto-populate futureDate with next month's date
     (function setDefaultFutureDate() {
       const futureDateInput = document.getElementById('futureDate');
@@ -366,19 +366,19 @@
       const isoDate = nextMonthDate.toISOString().split('T')[0];
       futureDateInput.value = isoDate;
     })();
-
+  
     // Show/hide manual historical period
     document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
       document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
     });
-
+  
     // Show/hide manual weights
     const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
     const manualWeightsSection = document.getElementById("manualWeightsSection");
     useManualWeightsCheckbox.addEventListener("change", () => {
       manualWeightsSection.style.display = useManualWeightsCheckbox.checked ? "block" : "none";
     });
-
+  
     // If user changes the manualRegimeSelect
     document.getElementById("manualRegimeSelect").addEventListener("change", function(){
       const val = this.value;
@@ -409,7 +409,7 @@
         document.getElementById("manualScale").value = 0.50;
       }
     });
-
+  
     /***********************************************
      * UTILITY, FUNDAMENTALS, TECHNICAL, MONTE CARLO,
      * SENTIMENT, INSIDER, CONGRESS - same as user code
@@ -444,48 +444,48 @@
     function computeFundScores(data) {
       const norm = (val, min, max) => {
         if(!val || isNaN(val)) return 50;
-        let ratio= (val - min)/(max - min);
-        let scaled= ratio*100;
+        let ratio = (val - min) / (max - min);
+        let scaled = ratio * 100;
         return Math.max(0, Math.min(100, scaled));
       };
-      let margin = norm(parseFloat(data.ProfitMargin),0,0.25);
-      let opMarg = norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-      let roa    = norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-      let roe    = norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-      let profitability = (margin+ opMarg+ roa+ roe)/4;
-      let pe= parseFloat(data.PERatio);
-      let peScore= 100- norm(pe,5,40);
-      let peg= parseFloat(data.PEGRatio);
-      let pegScore= 100- norm(peg,0.5,2.5);
-      let ps= parseFloat(data.PriceToSalesRatioTTM);
-      let psScore= 100- norm(ps,1,10);
-      let pb= parseFloat(data.PriceToBookRatio);
-      let pbScore= 100- norm(pb,1,10);
-      let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
-      let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
-      let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
-      let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-      let ratio=0;
-      if(pRef>0 && data.AnalystTargetPrice){
-        ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
+      let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
+      let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
+      let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
+      let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
+      let profitability = (margin + opMarg + roa + roe) / 4;
+      let pe = parseFloat(data.PERatio);
+      let peScore = 100 - norm(pe, 5, 40);
+      let peg = parseFloat(data.PEGRatio);
+      let pegScore = 100 - norm(peg, 0.5, 2.5);
+      let ps = parseFloat(data.PriceToSalesRatioTTM);
+      let psScore = 100 - norm(ps, 1, 10);
+      let pb = parseFloat(data.PriceToBookRatio);
+      let pbScore = 100 - norm(pb, 1, 10);
+      let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+      let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+      let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+      let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
+      let ratio = 0;
+      if(pRef > 0 && data.AnalystTargetPrice){
+        ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
       }
-      let tgtScore= norm(ratio, 0, 0.5);
-      let growth= (rg+ eg+ tgtScore)/3;
-      let dy= norm(parseFloat(data.DividendYield),0,0.07);
-      let dps= norm(parseFloat(data.DividendPerShare),0,10);
-      let eps= norm(parseFloat(data.EPS),0,12);
-      let dividends= (dy+ dps+ eps)/3;
-      let ebitda= parseFloat(data.EBITDA);
-      let revTTM= parseFloat(data.RevenueTTM);
-      let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3):50;
-      let evEbitda= parseFloat(data.EVToEBITDA);
-      let evEbitdaScore= 100- norm(evEbitda,5,30);
-      let beta= parseFloat(data.Beta);
-      let betaScore= 50;
+      let tgtScore = norm(ratio, 0, 0.5);
+      let growth = (rg + eg + tgtScore) / 3;
+      let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
+      let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
+      let eps = norm(parseFloat(data.EPS), 0, 12);
+      let dividends = (dy + dps + eps) / 3;
+      let ebitda = parseFloat(data.EBITDA);
+      let revTTM = parseFloat(data.RevenueTTM);
+      let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+      let evEbitda = parseFloat(data.EVToEBITDA);
+      let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+      let beta = parseFloat(data.Beta);
+      let betaScore = 50;
       if(!isNaN(beta)){
-        betaScore= 100- norm(beta,0,2);
+        betaScore = 100 - norm(beta, 0, 2);
       }
-      let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
+      let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
       return {
         profitability,
         valuation,
@@ -495,57 +495,44 @@
       };
     }
     function plotFundamentalCategories(categories) {
-  const catNames = [];
-  const seriesData = [];
-  
-  for (const [key, value] of Object.entries(categories)) {
-    catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
-    seriesData.push({
-      y: value,
-      color: interpolateColor(value)  // Use the helper to compute a color.
-    });
-  }
-
-  Highcharts.chart('fundamentalCharts', {
-    chart: {
-      type: 'column',
-      backgroundColor: 'transparent'
-    },
-    title: {
-      text: 'Fundamental Categories',
-      style: { color: '#fff' }
-    },
-    xAxis: {
-      categories: catNames,
-      title: { text: null },
-      gridLineColor: '#444',
-      labels: { style: { color: '#fff' } }
-    },
-    yAxis: {
-      min: 0,
-      max: 100,
-      title: { text: 'Score', style: { color: '#fff' } },
-      gridLineColor: '#444',
-      labels: { style: { color: '#fff' } }
-    },
-    tooltip: {
-      formatter: function() {
-        return this.x + ": " + Highcharts.numberFormat(this.y, 1);
+      const catNames = [];
+      const seriesData = [];
+      
+      for (const [key, value] of Object.entries(categories)) {
+        catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
+        seriesData.push({
+          y: value,
+          color: interpolateColor(value)
+        });
       }
-    },
-    series: [{
-      name: 'Score',
-      data: seriesData
-    }],
-    legend: {
-      enabled: false
-    },
-    credits: { enabled: false }
-  });
-}
-
-
-
+    
+      Highcharts.chart('fundamentalCharts', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Fundamental Categories', style: { color: '#fff' } },
+        xAxis: {
+          categories: catNames,
+          title: { text: null },
+          gridLineColor: '#444',
+          labels: { style: { color: '#fff' } }
+        },
+        yAxis: {
+          min: 0,
+          max: 100,
+          title: { text: 'Score', style: { color: '#fff' } },
+          gridLineColor: '#444',
+          labels: { style: { color: '#fff' } }
+        },
+        tooltip: {
+          formatter: function() {
+            return this.x + ": " + Highcharts.numberFormat(this.y, 1);
+          }
+        },
+        series: [{ name: 'Score', data: seriesData }],
+        legend: { enabled: false },
+        credits: { enabled: false }
+      });
+    }
+    // (Other technical indicator functions remain unchanged...)
     function computeEMA(prices, period) {
       let ema = [];
       let multi = 2 / (period + 1);
@@ -720,202 +707,175 @@
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return finalScore;
     }
-    
     function updateTechChart(prices) {
-  // Compute technical indicators as before
-  let bands = computeBollingerBands(prices);
-  let wmas = computeWMA(prices);
-  let rsivals = computeRSI(prices, 14);
-  let macdData = computeMACD(prices);
-
-  // Helper to convert date/value pairs for Highcharts
-  const toTimeSeries = (data, valueKey) =>
-    data.map(item => [item.date.getTime(), item[valueKey]]);
-
-  // Prepare the series data for each indicator
-  const priceSeries = {
-    name: 'Historical',
-    data: toTimeSeries(prices, 'close'),
-    type: 'line',
-    zIndex: 3
-  };
-  const smaSeries = {
-    name: 'Bollinger SMA',
-    data: toTimeSeries(bands, 'sma'),
-    type: 'line',
-    dashStyle: 'Dash',
-    color: '#555',
-    zIndex: 2
-  };
-  const upperSeries = {
-    name: 'Upper Band',
-    data: toTimeSeries(bands, 'upper'),
-    type: 'line',
-    color: 'red',
-    zIndex: 1
-  };
-  const lowerSeries = {
-    name: 'Lower Band',
-    data: toTimeSeries(bands, 'lower'),
-    type: 'line',
-    color: 'red',
-    zIndex: 1
-  };
-  const wmaSeries = {
-    name: 'WMA',
-    data: toTimeSeries(wmas, 'wma'),
-    type: 'line',
-    color: 'orange',
-    zIndex: 2
-  };
-  // MACD line series
-  const macdSeries = {
-    name: 'MACD',
-    data: toTimeSeries(macdData.macdLine, 'macd'),
-    type: 'line',
-    yAxis: 1,
-    zIndex: 3
-  };
-  // Signal line series
-  const signalSeries = {
-    name: 'Signal',
-    data: toTimeSeries(macdData.signalLine, 'signal'),
-    type: 'line',
-    yAxis: 1,
-    zIndex: 3
-  };
-  // MACD Histogram series: now uses zones to color negative values red and positive values green
-  const macdHistogram = {
-    name: 'MACD Histogram',
-    data: macdData.macdLine.map((m, i) => {
-      let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
-      return [m.date.getTime(), m.macd - sig];
-    }),
-    type: 'column',
-    yAxis: 1,
-    zIndex: 1,
-    tooltip: { valueDecimals: 2 },
-    zones: [{
-      value: 0,      // values below 0 will use this zone
-      color: 'red'
-    }, {
-      color: 'green' // values 0 and above will use green
-    }]
-  };
-  const rsiSeries = {
-    name: 'RSI',
-    data: toTimeSeries(rsivals, 'rsi'),
-    type: 'line',
-    yAxis: 2,
-    zIndex: 2
-  };
-
-  // Build the Highcharts chart with three vertical panes.
-  // To make it wider, we set a specific width on the container element (#techChart) or directly here.
-  Highcharts.chart('techChart', {
-    chart: {
-      zoomType: 'x',
-      backgroundColor: 'transparent',
-      // Set a fixed width if desired (you can adjust 1200 to any value)
-      height: 1200
-    },
-    title: {
-      text: 'Combined Technical Indicators',
-      style: { color: '#fff' }
-    },
-    xAxis: {
-      type: 'datetime',
-      crosshair: true
-    },
-    yAxis: [{
-      // Price Pane: occupies the top portion
-      title: { text: 'Price', style: { color: '#fff' } },
-      height: '40%',
-      lineWidth: 2,
-      gridLineColor: '#444'
-    }, {
-      // MACD Pane: includes histogram and line series
-      title: { text: 'MACD', style: { color: '#fff' } },
-      top: '45%',
-      height: '25%',
-      offset: 0,
-      lineWidth: 2,
-      gridLineColor: '#444'
-    }, {
-      // RSI Pane: occupies the bottom portion
-      title: { text: 'RSI', style: { color: '#fff' } },
-      top: '75%',
-      height: '25%',
-      offset: 0,
-      lineWidth: 2,
-      gridLineColor: '#444',
-      plotLines: [{
-        value: 30,
-        color: 'red',
+      let bands = computeBollingerBands(prices);
+      let wmas = computeWMA(prices);
+      let rsivals = computeRSI(prices, 14);
+      let macdData = computeMACD(prices);
+      const toTimeSeries = (data, valueKey) =>
+        data.map(item => [item.date.getTime(), item[valueKey]]);
+      const priceSeries = {
+        name: 'Historical',
+        data: toTimeSeries(prices, 'close'),
+        type: 'line',
+        zIndex: 3
+      };
+      const smaSeries = {
+        name: 'Bollinger SMA',
+        data: toTimeSeries(bands, 'sma'),
+        type: 'line',
         dashStyle: 'Dash',
-        width: 1,
-        label: { text: '30', style: { color: 'red' } }
-      }, {
-        value: 70,
+        color: '#555',
+        zIndex: 2
+      };
+      const upperSeries = {
+        name: 'Upper Band',
+        data: toTimeSeries(bands, 'upper'),
+        type: 'line',
         color: 'red',
-        dashStyle: 'Dash',
-        width: 1,
-        label: { text: '70', style: { color: 'red' } }
-      }]
-    }],
-    tooltip: {
-      shared: true,
-      xDateFormat: '%Y-%m-%d'
-    },
-    legend: {
-      itemStyle: { color: '#fff' }
-    },
-    series: [
-      priceSeries,
-      smaSeries,
-      upperSeries,
-      lowerSeries,
-      wmaSeries,
-      macdHistogram, // histogram with zones
-      macdSeries,
-      signalSeries,
-      rsiSeries
-    ],
-    credits: { enabled: false },
-    plotOptions: {
-      series: {
-        marker: { enabled: false }
+        zIndex: 1
+      };
+      const lowerSeries = {
+        name: 'Lower Band',
+        data: toTimeSeries(bands, 'lower'),
+        type: 'line',
+        color: 'red',
+        zIndex: 1
+      };
+      const wmaSeries = {
+        name: 'WMA',
+        data: toTimeSeries(wmas, 'wma'),
+        type: 'line',
+        color: 'orange',
+        zIndex: 2
+      };
+      const macdSeries = {
+        name: 'MACD',
+        data: toTimeSeries(macdData.macdLine, 'macd'),
+        type: 'line',
+        yAxis: 1,
+        zIndex: 3
+      };
+      const signalSeries = {
+        name: 'Signal',
+        data: toTimeSeries(macdData.signalLine, 'signal'),
+        type: 'line',
+        yAxis: 1,
+        zIndex: 3
+      };
+      const macdHistogram = {
+        name: 'MACD Histogram',
+        data: macdData.macdLine.map((m, i) => {
+          let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+          return [m.date.getTime(), m.macd - sig];
+        }),
+        type: 'column',
+        yAxis: 1,
+        zIndex: 1,
+        tooltip: { valueDecimals: 2 },
+        zones: [{
+          value: 0,
+          color: 'red'
+        }, {
+          color: 'green'
+        }]
+      };
+      const rsiSeries = {
+        name: 'RSI',
+        data: toTimeSeries(rsivals, 'rsi'),
+        type: 'line',
+        yAxis: 2,
+        zIndex: 2
+      };
+    
+      Highcharts.chart('techChart', {
+        chart: {
+          zoomType: 'x',
+          backgroundColor: 'transparent',
+          height: 1200
+        },
+        title: {
+          text: 'Combined Technical Indicators',
+          style: { color: '#fff' }
+        },
+        xAxis: { type: 'datetime', crosshair: true },
+        yAxis: [{
+          title: { text: 'Price', style: { color: '#fff' } },
+          height: '40%',
+          lineWidth: 2,
+          gridLineColor: '#444'
+        }, {
+          title: { text: 'MACD', style: { color: '#fff' } },
+          top: '45%',
+          height: '25%',
+          offset: 0,
+          lineWidth: 2,
+          gridLineColor: '#444'
+        }, {
+          title: { text: 'RSI', style: { color: '#fff' } },
+          top: '75%',
+          height: '25%',
+          offset: 0,
+          lineWidth: 2,
+          gridLineColor: '#444',
+          plotLines: [{
+            value: 30,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 1,
+            label: { text: '30', style: { color: 'red' } }
+          }, {
+            value: 70,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 1,
+            label: { text: '70', style: { color: 'red' } }
+          }]
+        }],
+        tooltip: {
+          shared: true,
+          xDateFormat: '%Y-%m-%d'
+        },
+        legend: { itemStyle: { color: '#fff' } },
+        series: [
+          priceSeries,
+          smaSeries,
+          upperSeries,
+          lowerSeries,
+          wmaSeries,
+          macdHistogram,
+          macdSeries,
+          signalSeries,
+          rsiSeries
+        ],
+        credits: { enabled: false },
+        plotOptions: { series: { marker: { enabled: false } } },
+        style: { fontFamily: 'Arial, sans-serif' }
+      });
+    
+      // Compute technical score
+      if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
+        document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+        return 50;
       }
-    },
-    style: {
-      fontFamily: 'Arial, sans-serif'
+      let latestPrice = prices[prices.length - 1].close;
+      let prevPrice = prices[prices.length - 2].close;
+      let latestRSI = rsivals[rsivals.length - 1].rsi;
+      let prevRSI = rsivals[rsivals.length - 2].rsi;
+      let rsiScore = scoreRSI(latestRSI, prevRSI);
+      let latestBand = bands[bands.length - 1];
+      let prevBand = bands[bands.length - 2];
+      let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
+      let macdScore = computeNewMACDScore(prices);
+      let latestWMA = wmas[wmas.length - 1].wma;
+      let prevWMA = wmas[wmas.length - 2].wma;
+      let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
+      let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
+      document.getElementById('techDetails').innerText =
+        `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
+      return aggregatedScore;
     }
-  });
-
-  // Compute technical score as before
-  if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
-    document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-    return 50;
-  }
-  let latestPrice = prices[prices.length - 1].close;
-  let prevPrice = prices[prices.length - 2].close;
-  let latestRSI = rsivals[rsivals.length - 1].rsi;
-  let prevRSI = rsivals[rsivals.length - 2].rsi;
-  let rsiScore = scoreRSI(latestRSI, prevRSI);
-  let latestBand = bands[bands.length - 1];
-  let prevBand = bands[bands.length - 2];
-  let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
-  let macdScore = computeNewMACDScore(prices);
-  let latestWMA = wmas[wmas.length - 1].wma;
-  let prevWMA = wmas[wmas.length - 2].wma;
-  let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
-  let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
-  document.getElementById('techDetails').innerText =
-    `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-  return aggregatedScore;
-}
-
-
+    
     function randn_bm() {
       let u = 0, v = 0;
       while(u === 0) u = Math.random();
@@ -958,135 +918,86 @@
       return finals;
     }
     function updateMCChart(finalPrices, lastPrice) {
-  // Store finalPrices globally for slider use.
-  globalFinalPrices = finalPrices;
-
-  // Calculate histogram bin data.
-  const minPrice = Math.min(...finalPrices);
-  const maxPrice = Math.max(...finalPrices);
-  const binCount = 20;
-  const binWidth = (maxPrice - minPrice) / binCount;
-  let bins = new Array(binCount).fill(0);
-  for (let p of finalPrices) {
-    let bin = Math.floor((p - minPrice) / binWidth);
-    if (bin >= binCount) bin = binCount - 1;
-    bins[bin]++;
-  }
-  let binCenters = [];
-  for (let i = 0; i < binCount; i++) {
-    let center = minPrice + binWidth * (i + 0.5);
-    binCenters.push(center);
-  }
-  let histogramData = [];
-  for (let i = 0; i < binCount; i++){
-    histogramData.push([binCenters[i], bins[i]]);
-  }
-
-  // Render the histogram using Highcharts and store the chart instance globally.
-  window.mcChart = Highcharts.chart('mcChart', {
-  chart: {
-    type: 'column',
-    backgroundColor: 'transparent'
-  },
-  title: {
-    text: 'Monte Carlo Distribution of Final Prices',
-    style: { color: '#fff' }
-  },
-  xAxis: {
-  title: { text: null },
-  crosshair: false
-},
-plotOptions: {
-  series: {
-    states: {
-      hover: {
-        halo: { size: 0 }
+      globalFinalPrices = finalPrices;
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const binCount = 20;
+      const binWidth = (maxPrice - minPrice) / binCount;
+      let bins = new Array(binCount).fill(0);
+      for (let p of finalPrices) {
+        let bin = Math.floor((p - minPrice) / binWidth);
+        if (bin >= binCount) bin = binCount - 1;
+        bins[bin]++;
       }
+      let binCenters = [];
+      for (let i = 0; i < binCount; i++) {
+        let center = minPrice + binWidth * (i + 0.5);
+        binCenters.push(center);
+      }
+      let histogramData = [];
+      for (let i = 0; i < binCount; i++){
+        histogramData.push([binCenters[i], bins[i]]);
+      }
+      window.mcChart = Highcharts.chart('mcChart', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Monte Carlo Distribution of Final Prices', style: { color: '#fff' } },
+        xAxis: { title: { text: null }, crosshair: false },
+        yAxis: { title: { text: 'Frequency', style: { color: '#fff' } }, gridLineColor: '#444' },
+        tooltip: {
+          formatter: function() {
+            return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+          }
+        },
+        series: [{
+          name: 'Frequency',
+          data: histogramData,
+          color: 'gray'
+        }],
+        credits: { enabled: false }
+      });
+      let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
+      let bullishScore = (countCurrent / finalPrices.length) * 100;
+      document.getElementById('mcBullScore').innerText =
+        `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
+      let medianPrice = getMedian(finalPrices);
+      let sliderHTML = `
+        <label for="priceSlider">Select Target Price:</label>
+        <input type="range"
+               id="priceSlider"
+               min="${minPrice.toFixed(2)}"
+               max="${maxPrice.toFixed(2)}"
+               step="0.01"
+               value="${medianPrice.toFixed(2)}"
+               oninput="updateMCSlider(this.value)">
+        <span id="sliderValue">${medianPrice.toFixed(2)}</span>
+        <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
+      `;
+      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
+      updateMCSlider(medianPrice);
+      return bullishScore;
     }
-  }
-},
-
-  yAxis: {
-    title: { text: 'Frequency', style: { color: '#fff' } },
-    gridLineColor: '#444'
-  },
-  tooltip: {
-    formatter: function() {
-      return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
-    }
-  },
-  plotOptions: {
-    series: {
-      states: {
-        hover: {
-          halo: { size: 0 }
+    function updateMCSlider(val) {
+      val = parseFloat(val);
+      document.getElementById('sliderValue').textContent = val.toFixed(2);
+      let countTarget = globalFinalPrices.filter(p => p >= val).length;
+      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+      document.getElementById('mcSliderProb').innerText =
+        `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
+      if (window.mcChart) {
+        let axis = window.mcChart.xAxis[0];
+        if (axis.removePlotLine) {
+          axis.removePlotLine('targetPrice');
         }
+        axis.addPlotLine({
+          id: 'targetPrice',
+          value: val,
+          color: 'red',
+          width: 2,
+          zIndex: 5,
+          dashStyle: 'Solid'
+        });
       }
     }
-  },
-  series: [{
-    name: 'Frequency',
-    data: histogramData,
-    color: 'gray'
-  }],
-  credits: { enabled: false }
-});
-
-
-  // Compute and display the Monte Carlo bullish score.
-  let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
-  let bullishScore = (countCurrent / finalPrices.length) * 100;
-  document.getElementById('mcBullScore').innerText =
-    `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
-
-  // Prepare and display the slider for target price selection.
-  let medianPrice = getMedian(finalPrices);
-  let sliderHTML = `
-    <label for="priceSlider">Select Target Price:</label>
-    <input type="range"
-           id="priceSlider"
-           min="${minPrice.toFixed(2)}"
-           max="${maxPrice.toFixed(2)}"
-           step="0.01"
-           value="${medianPrice.toFixed(2)}"
-           oninput="updateMCSlider(this.value)">
-    <span id="sliderValue">${medianPrice.toFixed(2)}</span>
-    <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
-  `;
-  document.getElementById('mcSliderSection').innerHTML = sliderHTML;
-  updateMCSlider(medianPrice);
-  
-  return bullishScore;
-}
-
-
-function updateMCSlider(val) {
-  val = parseFloat(val);
-  document.getElementById('sliderValue').textContent = val.toFixed(2);
-  let countTarget = globalFinalPrices.filter(p => p >= val).length;
-  let sliderProb = (countTarget / globalFinalPrices.length) * 100;
-  document.getElementById('mcSliderProb').innerText =
-    `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
-  
-  // Update the plot line in the Highcharts chart.
-  if (window.mcChart) {
-    let axis = window.mcChart.xAxis[0];
-    // Remove existing plot line with id "targetPrice" if it exists.
-    if (axis.removePlotLine) {
-      axis.removePlotLine('targetPrice');
-    }
-    // Add new plot line at the selected target price.
-    axis.addPlotLine({
-      id: 'targetPrice',
-      value: val,
-      color: 'red',
-      width: 2,
-      zIndex: 5,
-      dashStyle: 'Solid'
-    });
-  }
-}
-
     function logisticBullish(slope) {
       const k = 0.3;
       let raw = 100 / (1 + Math.exp(-k * slope));
@@ -1124,99 +1035,67 @@ function updateMCSlider(val) {
       return sentiments;
     }
     function updateSentimentChart(sentiments) {
-  if (sentiments.length < 2) {
-    Highcharts.chart("sentChart", {
-      chart: {
-        type: "line",
-        backgroundColor: "transparent"
-      },
-      title: { text: "Sentiment Analysis", style: { color: "#fff" } },
-      xAxis: {
-        type: "datetime",
-        title: { text: "Date", style: { color: "#fff" } },
-        gridLineColor: "#444"
-      },
-      yAxis: {
-        title: { text: "Sentiment (0..100)", style: { color: "#fff" } },
-        gridLineColor: "#444"
-      },
-      series: [{
-        name: "Sentiment",
-        data: sentiments.map(s => [s.date.getTime(), s.sentiment]),
-        marker: { enabled: true }
-      }]
-    });
-    document.getElementById("sentDetails").innerText = "Insufficient data => 50.";
-    return 50;
-  }
-
-  // Calculate regression values using the raw sentiment values.
-  let firstDate = sentiments[0].date;
-  let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24)); // days since first date
-  let ys = sentiments.map(s => s.sentiment);
-  let n = xs.length;
-  let sumX = xs.reduce((a, b) => a + b, 0);
-  let sumY = ys.reduce((a, b) => a + b, 0);
-  let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
-  let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-  let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  let intercept = (sumY - slope * sumX) / n;
-
-  // Determine the trend line over the full time range.
-  let minDate = sentiments[0].date;
-  let maxDate = sentiments[sentiments.length - 1].date;
-  let trendYstart = intercept + slope * xs[0];
-  let trendYend = intercept + slope * xs[xs.length - 1];
-
-  // Prepare the data arrays for the two Highcharts series.
-  let rawData = sentiments.map(s => [s.date.getTime(), s.sentiment]);
-  let trendData = [
-    [minDate.getTime(), trendYstart],
-    [maxDate.getTime(), trendYend]
-  ];
-
-  Highcharts.chart("sentChart", {
-    chart: {
-      type: "line",
-      backgroundColor: "transparent"
-    },
-    title: { text: "Sentiment Analysis", style: { color: "#fff" } },
-    xAxis: {
-      type: "datetime",
-      title: { text: "Date", style: { color: "#fff" } },
-      gridLineColor: "#444"
-    },
-    yAxis: {
-      title: { text: "Sentiment (0..100)", style: { color: "#fff" } },
-      gridLineColor: "#444"
-    },
-    tooltip: {
-      shared: true,
-      xDateFormat: "%Y-%m-%d"
-    },
-    series: [{
-      name: "Sentiment",
-      data: rawData,
-      marker: { enabled: true }
-    }, {
-      name: "Trend",
-      data: trendData,
-      dashStyle: "Dash",
-      color: "red",
-      marker: { enabled: false }
-    }],
-    credits: { enabled: false },
-    legend: { itemStyle: { color: "#fff" } }
-  });
-
-  let slopeBull = logisticBullish(slope);
-  let avgSentiment = sumY / n;
-  let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
-  document.getElementById("sentDetails").innerText =
-    `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
-  return finalBullishScore;
-}
-
+      if (sentiments.length < 2) {
+        Highcharts.chart("sentChart", {
+          chart: { type: "line", backgroundColor: "transparent" },
+          title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+          xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+          yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+          series: [{
+            name: "Sentiment",
+            data: sentiments.map(s => [s.date.getTime(), s.sentiment]),
+            marker: { enabled: true }
+          }]
+        });
+        document.getElementById("sentDetails").innerText = "Insufficient data => 50.";
+        return 50;
+      }
+      let firstDate = sentiments[0].date;
+      let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24));
+      let ys = sentiments.map(s => s.sentiment);
+      let n = xs.length;
+      let sumX = xs.reduce((a, b) => a + b, 0);
+      let sumY = ys.reduce((a, b) => a + b, 0);
+      let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+      let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+      let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      let intercept = (sumY - slope * sumX) / n;
+      let minDate = sentiments[0].date;
+      let maxDate = sentiments[sentiments.length - 1].date;
+      let trendYstart = intercept + slope * xs[0];
+      let trendYend = intercept + slope * xs[xs.length - 1];
+      let rawData = sentiments.map(s => [s.date.getTime(), s.sentiment]);
+      let trendData = [
+        [minDate.getTime(), trendYstart],
+        [maxDate.getTime(), trendYend]
+      ];
+      Highcharts.chart("sentChart", {
+        chart: { type: "line", backgroundColor: "transparent" },
+        title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+        xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+        yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+        tooltip: { shared: true, xDateFormat: "%Y-%m-%d" },
+        series: [{
+          name: "Sentiment",
+          data: rawData,
+          marker: { enabled: true }
+        }, {
+          name: "Trend",
+          data: trendData,
+          dashStyle: "Dash",
+          color: "red",
+          marker: { enabled: false }
+        }],
+        credits: { enabled: false },
+        legend: { itemStyle: { color: "#fff" } }
+      });
+      let slopeBull = logisticBullish(slope);
+      let avgSentiment = sumY / n;
+      let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
+      document.getElementById("sentDetails").innerText =
+        `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
+      return finalBullishScore;
+    }
     async function fetchInsiderData(ticker, periodMonths, currentPrice) {
       const url = `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
       const resp = await fetch(url);
@@ -1241,56 +1120,41 @@ function updateMCSlider(val) {
       return { totalBuys, totalSells };
     }
     function updateInsiderChart(totalBuys, totalSells) {
-  const categories = ["Bought", "Sold"];
-  const data = [totalBuys, totalSells];
-
-  // Render the insider trading chart with Highcharts.
-  Highcharts.chart("insiderChart", {
-    chart: {
-      type: "column",
-      backgroundColor: "transparent"
-    },
-    title: {
-      text: "Shares",
-      style: { color: "#fff" }
-    },
-    xAxis: {
-      categories: categories,
-      title: { text: null },
-      gridLineColor: "#444",
-      labels: { style: { color: "#fff" } }
-    },
-    yAxis: {
-      title: { text: "Shares", style: { color: "#fff" } },
-      gridLineColor: "#444",
-      labels: { style: { color: "#fff" } }
-    },
-    tooltip: {
-      formatter: function() {
-        return this.x + ": " + this.y;
+      const categories = ["Bought", "Sold"];
+      const data = [totalBuys, totalSells];
+      Highcharts.chart("insiderChart", {
+        chart: { type: "column", backgroundColor: "transparent" },
+        title: { text: "Shares", style: { color: "#fff" } },
+        xAxis: {
+          categories: categories,
+          title: { text: null },
+          gridLineColor: "#444",
+          labels: { style: { color: "#fff" } }
+        },
+        yAxis: {
+          title: { text: "Shares", style: { color: "#fff" } },
+          gridLineColor: "#444",
+          labels: { style: { color: "#fff" } }
+        },
+        tooltip: { formatter: function() { return this.x + ": " + this.y; } },
+        series: [{
+          name: "Shares",
+          data: data,
+          colorByPoint: true,
+          colors: ["green", "red"]
+        }],
+        credits: { enabled: false },
+        legend: { enabled: false }
+      });
+      let sum = totalBuys + totalSells;
+      let insiderBull = 50;
+      if (sum > 0) {
+        insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
       }
-    },
-    series: [{
-      name: "Shares",
-      data: data,
-      // Apply specific colors: green for "Bought" and red for "Sold"
-      colorByPoint: true,
-      colors: ["green", "red"]
-    }],
-    credits: { enabled: false },
-    legend: { enabled: false }
-  });
-
-  // Calculate the insider bullish score.
-  let sum = totalBuys + totalSells;
-  let insiderBull = 50;
-  if (sum > 0) {
-    insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50;
-  }
-  document.getElementById("insiderDetails").innerText =
-    `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
-  return insiderBull;
-}
+      document.getElementById("insiderDetails").innerText =
+        `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
+      return insiderBull;
+    }
     async function fetchCongressData(ticker, periodMonths) {
       const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
       const resp = await fetch(url);
@@ -1312,71 +1176,52 @@ function updateMCSlider(val) {
       }
       return { totalPurchase, totalSale };
     }
-    
     function interpolateColor(value) {
-  // value should be between 0 and 100.
-  // Calculate the interpolation ratio (0 = red, 1 = green).
-  const ratio = Math.max(0, Math.min(1, value / 100));
-  const r = Math.round(255 * (1 - ratio));
-  const g = Math.round(255 * ratio);
-  return `rgb(${r},${g},0)`;
-}
-
-
+      const ratio = Math.max(0, Math.min(1, value / 100));
+      const r = Math.round(255 * (1 - ratio));
+      const g = Math.round(255 * ratio);
+      return `rgb(${r},${g},0)`;
+    }
     function updateCongressChart(totalPurchase, totalSale) {
-  const categories = ["Purchase Amount", "Sale Amount"];
-  const data = [totalPurchase, totalSale];
-
-  // Render the congress trading chart with Highcharts.
-  Highcharts.chart("congressChart", {
-    chart: {
-      type: "column",
-      backgroundColor: "transparent"
-    },
-    title: {
-      text: "(USD)",
-      style: { color: "#fff" }
-    },
-    xAxis: {
-      categories: categories,
-      title: { text: null },
-      gridLineColor: "#444",
-      labels: { style: { color: "#fff" } }
-    },
-    yAxis: {
-      title: { text: "Amount", style: { color: "#fff" } },
-      gridLineColor: "#444",
-      labels: { style: { color: "#fff" } }
-    },
-    tooltip: {
-  formatter: function() {
-    // No decimals, comma-separated dollars.
-    return this.x + ": $" + Highcharts.numberFormat(this.y, 0);
-  }
-
-    },
-    series: [{
-      name: "Amount",
-      data: data,
-      // Color each column: first green, second red
-      colorByPoint: true,
-      colors: ["green", "red"]
-    }],
-    credits: { enabled: false },
-    legend: { enabled: false }
-  });
-
-  // Calculate bullish score
-  let sum = totalPurchase + totalSale;
-  let congressBull = 50;
-  if (sum > 0) {
-    congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
-  }
-  document.getElementById("congressDetails").innerText =
-    `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
-  return congressBull;
-}
-
+      const categories = ["Purchase Amount", "Sale Amount"];
+      const data = [totalPurchase, totalSale];
+      Highcharts.chart("congressChart", {
+        chart: { type: "column", backgroundColor: "transparent" },
+        title: { text: "(USD)", style: { color: "#fff" } },
+        xAxis: {
+          categories: categories,
+          title: { text: null },
+          gridLineColor: "#444",
+          labels: { style: { color: "#fff" } }
+        },
+        yAxis: {
+          title: { text: "Amount", style: { color: "#fff" } },
+          gridLineColor: "#444",
+          labels: { style: { color: "#fff" } }
+        },
+        tooltip: {
+          formatter: function() {
+            return this.x + ": $" + Highcharts.numberFormat(this.y, 0);
+          }
+        },
+        series: [{
+          name: "Amount",
+          data: data,
+          colorByPoint: true,
+          colors: ["green", "red"]
+        }],
+        credits: { enabled: false },
+        legend: { enabled: false }
+      });
+      let sum = totalPurchase + totalSale;
+      let congressBull = 50;
+      if (sum > 0) {
+        congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50;
+      }
+      document.getElementById("congressDetails").innerText =
+        `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+      return congressBull;
+    }
     function computeSMAforRegime(priceArray, period) {
       if(!priceArray || priceArray.length < period) return null;
       let slice = priceArray.slice(-period);
@@ -1463,108 +1308,82 @@ function updateMCSlider(val) {
         return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
       }
     }
-
     function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
-  // Default any missing or invalid indicator to 50
-  mc    = (typeof mc === 'number' && !isNaN(mc)) ? mc : 50;
-  tech  = (typeof tech === 'number' && !isNaN(tech)) ? tech : 50;
-  sent  = (typeof sent === 'number' && !isNaN(sent)) ? sent : 50;
-  ins   = (typeof ins === 'number' && !isNaN(ins)) ? ins : 50;
-  fund  = (typeof fund === 'number' && !isNaN(fund)) ? fund : 50;
-  cong  = (typeof cong === 'number' && !isNaN(cong)) ? cong : 50;
-  
-  const manual = document.getElementById("useManualWeightsCheckbox").checked;
-  if (!manual) {
-    let auto = getAutoWeightsForRegime(regime);
-    let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent +
-              auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-    return (raw - 50) * auto.scale + 50;
-  } else {
-    const wMC   = parseFloat(document.getElementById("wMC").value) || 0;
-    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
-    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
-    const wIns  = parseFloat(document.getElementById("wIns").value) || 0;
-    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
-    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
-    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
-    let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
-    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-    let invalidScale = (sc < 0 || sc > 2);
-    if (invalidWeights || invalidScale) {
-      console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
-      let eq = (mc + tech + sent + ins + fund + cong) / 6;
-      return eq;
-    } else {
-      let raw = wMC * mc + wTech * tech + wSent * sent +
-                wIns * ins + wFund * fund + wCong * cong;
-      return (raw - 50) * sc + 50;
+      mc    = (typeof mc === 'number' && !isNaN(mc)) ? mc : 50;
+      tech  = (typeof tech === 'number' && !isNaN(tech)) ? tech : 50;
+      sent  = (typeof sent === 'number' && !isNaN(sent)) ? sent : 50;
+      ins   = (typeof ins === 'number' && !isNaN(ins)) ? ins : 50;
+      fund  = (typeof fund === 'number' && !isNaN(fund)) ? fund : 50;
+      cong  = (typeof cong === 'number' && !isNaN(cong)) ? cong : 50;
+      
+      const manual = document.getElementById("useManualWeightsCheckbox").checked;
+      if (!manual) {
+        let auto = getAutoWeightsForRegime(regime);
+        let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent +
+                  auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+        return (raw - 50) * auto.scale + 50;
+      } else {
+        const wMC   = parseFloat(document.getElementById("wMC").value) || 0;
+        const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+        const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+        const wIns  = parseFloat(document.getElementById("wIns").value) || 0;
+        const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+        const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+        let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+        let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+        let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+        let invalidScale = (sc < 0 || sc > 2);
+        if (invalidWeights || invalidScale) {
+          console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
+          let eq = (mc + tech + sent + ins + fund + cong) / 6;
+          return eq;
+        } else {
+          let raw = wMC * mc + wTech * tech + wSent * sent +
+                    wIns * ins + wFund * fund + wCong * cong;
+          return (raw - 50) * sc + 50;
+        }
+      }
     }
-  }
-}
-if (!data["Time Series (Daily)"]) {
-  console.warn("No valid historical data received; defaulting all historical-based indicators to 50.");
-  // Create a fallback prices array with a neutral price value, or set a flag to use defaults later.
-  // For example, you might set:
-  var prices = [{ date: new Date(), close: defaultPriceValue }]; // Ensure defaultPriceValue is defined.
-  // Alternatively, you could set a flag to bypass further historical calculations.
-} else {
-  let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-}
-
-    // NEW: Show Buffer Overlay with Spinning Circle and Animated Dots
+    
+    // Buffer overlay functions
     function showBufferOverlay() {
-  const overlay = document.getElementById("countdownOverlay");
-  overlay.style.display = "flex";
-  stepIndex = 0;
-
-  // Start the dot animation
-  dotCount = 0;
-  dotInterval = setInterval(() => {
-    dotCount = (dotCount + 1) % 4;
-    // Append the dots to the message
-    const baseText = loadingSteps[Math.min(stepIndex, loadingSteps.length - 1)].text;
-    document.getElementById("loadingText").innerText = baseText + ".".repeat(dotCount);
-  }, 500);
-
-  // Begin cycling through the steps
-  cycleSteps();
-}
-
-// This function goes through each step's duration, then moves to the next
-function cycleSteps() {
-  // If we've exceeded the steps array, remain on the last message indefinitely
-  if (stepIndex >= loadingSteps.length) {
-    return;
-  }
-  const currentStep = loadingSteps[stepIndex];
-  // Set the message text (the dot animation will keep appending the "...")
-  document.getElementById("loadingText").innerText = currentStep.text;
-
-  // Set a timeout for the step's duration
-  const t = setTimeout(() => {
-    stepIndex++;
-    cycleSteps();
-  }, currentStep.duration);
-
-  loadingTimeouts.push(t);
-}
-// Each step has a message and a duration in milliseconds
-const loadingSteps = [
-  { text: "Running 10,000 simulations", duration: 1500 },
-  { text: "Analyzing technical indicators", duration: 1000 },
-  { text: "Analyzing fundamental indicators", duration: 1000 },
-  { text: "Analyzing recent news articles", duration: 2000 },
-  { text: "Checking for insider trading", duration: 700 },
-  { text: "Analyzing political trades", duration: 2000 }
-];
-
-let stepIndex = 0;        // which step we're on
-let loadingTimeouts = []; // store timeouts so we can clear them if loading finishes
-let dotCount = 0;         // for "..." animation
-let dotInterval = null;   // store the setInterval for dot animation
-
-
-    // Run simulation immediately while showing the overlay.
+      const overlay = document.getElementById("countdownOverlay");
+      overlay.style.display = "flex";
+      stepIndex = 0;
+      dotCount = 0;
+      dotInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4;
+        const baseText = loadingSteps[Math.min(stepIndex, loadingSteps.length - 1)].text;
+        document.getElementById("loadingText").innerText = baseText + ".".repeat(dotCount);
+      }, 500);
+      cycleSteps();
+    }
+    function cycleSteps() {
+      if (stepIndex >= loadingSteps.length) {
+        return;
+      }
+      const currentStep = loadingSteps[stepIndex];
+      document.getElementById("loadingText").innerText = currentStep.text;
+      const t = setTimeout(() => {
+        stepIndex++;
+        cycleSteps();
+      }, currentStep.duration);
+      loadingTimeouts.push(t);
+    }
+    const loadingSteps = [
+      { text: "Running 10,000 simulations", duration: 1500 },
+      { text: "Analyzing technical indicators", duration: 1000 },
+      { text: "Analyzing fundamental indicators", duration: 1000 },
+      { text: "Analyzing recent news articles", duration: 2000 },
+      { text: "Checking for insider trading", duration: 700 },
+      { text: "Analyzing political trades", duration: 2000 }
+    ];
+    let stepIndex = 0;
+    let loadingTimeouts = [];
+    let dotCount = 0;
+    let dotInterval = null;
+    
+    // runSimulation function with updated historical data fallback logic
     async function runSimulation() {
       document.getElementById('loading').style.display = 'block';
       document.getElementById('aggregateSection').style.display = 'none';
@@ -1575,7 +1394,7 @@ let dotInterval = null;   // store the setInterval for dot animation
       document.getElementById('sentSection').style.display = 'none';
       document.getElementById('insiderSection').style.display = 'none';
       document.getElementById('congressSection').style.display = 'none';
-
+    
       let ticker = document.getElementById('ticker').value.trim();
       let futureDateStr = document.getElementById('futureDate').value;
       if(!ticker || !futureDateStr){
@@ -1614,25 +1433,21 @@ let dotInterval = null;   // store the setInterval for dot animation
           for(let k in categories){ catSum += categories[k]; nCats++; }
           fundBull = catSum / nCats;
         }
-        // Fetch historical data
-let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-let resp = await fetch(histUrl);
-let data = await resp.json();
-
-// If no valid time series is found, log a warning and set prices to null.
-let prices;
-if (!data["Time Series (Daily)"]) {
-  console.warn("No valid historical data received; defaulting all historical-based indicators to 50.");
-  prices = null;
-} else {
-  prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-}
-
-// If there isn’t enough data (or prices is null), warn and use defaults.
-if (prices === null || prices.length < 2) {
-  console.warn("Not enough historical data; defaulting technical and Monte Carlo indicators to 50.");
-}
-
+        // Fetch historical data once and apply fallback if needed
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+        let respHist = await fetch(histUrl);
+        let dataHist = await respHist.json();
+        let prices;
+        if (!dataHist["Time Series (Daily)"]) {
+          console.warn("No valid historical data received; defaulting all historical-based indicators to 50.");
+          prices = null;
+        } else {
+          prices = processHistoricalData(dataHist["Time Series (Daily)"], periodMonths);
+        }
+        if (prices === null || prices.length < 2) {
+          console.warn("Not enough historical data; defaulting technical and Monte Carlo indicators to 50.");
+        }
+    
         document.getElementById('aggregateSection').style.display = 'block';
         document.getElementById('descriptionSection').style.display = 'block';
         document.getElementById('companyDescription').innerText = companyDesc;
@@ -1642,22 +1457,46 @@ if (prices === null || prices.length < 2) {
           document.getElementById('fundamentalText').innerText =
             `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
         }
-        document.getElementById('techSection').style.display = 'block';
-        let techBull = updateTechChart(prices);
-        let mcStats = computeStats(prices);
-        let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
-        let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-        document.getElementById('mcSection').style.display = 'block';
-        let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+    
+        // Technical Indicators
+        let techBull;
+        if (prices === null || prices.length < 2) {
+          document.getElementById('techSection').style.display = 'block';
+          document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+          techBull = 50;
+        } else {
+          document.getElementById('techSection').style.display = 'block';
+          techBull = updateTechChart(prices);
+        }
+    
+        // Monte Carlo Simulation
+        let mcStats, mcBull;
+        if (prices === null || prices.length < 2) {
+          mcStats = { lastPrice: 50, mean: 0, stdDev: 0 };
+          mcBull = 50;
+          document.getElementById('mcSection').style.display = 'block';
+          document.getElementById('mcBullScore').innerText =
+            `Monte Carlo Bullish Score: ${mcBull.toFixed(2)}% (default)`;
+        } else {
+          mcStats = computeStats(prices);
+          let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
+          let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+          document.getElementById('mcSection').style.display = 'block';
+          mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+        }
+    
         let sentiments = await fetchSentimentData(ticker, periodMonths);
         document.getElementById('sentSection').style.display = 'block';
         let sentBull = updateSentimentChart(sentiments);
+    
         let insiderObj = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
         document.getElementById('insiderSection').style.display = 'block';
         let insiderBull = updateInsiderChart(insiderObj.totalBuys, insiderObj.totalSells);
+    
         let congressObj = await fetchCongressData(ticker, periodMonths);
         document.getElementById('congressSection').style.display = 'block';
         let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+    
         let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
         document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
         document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
@@ -1681,35 +1520,8 @@ if (prices === null || prices.length < 2) {
       }
       document.getElementById('loading').style.display = 'none';
     }
-    // Technical Indicators
-let techBull;
-if (prices === null || prices.length < 2) {
-  document.getElementById('techSection').style.display = 'block';
-  document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-  techBull = 50;
-} else {
-  document.getElementById('techSection').style.display = 'block';
-  techBull = updateTechChart(prices);
-}
-
-// Monte Carlo Simulation
-let mcStats, mcBull;
-if (prices === null || prices.length < 2) {
-  mcStats = { lastPrice: 50, mean: 0, stdDev: 0 };
-  mcBull = 50;
-  document.getElementById('mcSection').style.display = 'block';
-  document.getElementById('mcBullScore').innerText =
-    `Monte Carlo Bullish Score: ${mcBull.toFixed(2)}% (default)`;
-} else {
-  mcStats = computeStats(prices);
-  let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
-  let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-  document.getElementById('mcSection').style.display = 'block';
-  mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-}
-
-
-    // NEW: When the simulation button is clicked, show the buffer overlay immediately and start simulation concurrently.
+    
+    // When the simulation button is clicked, show overlay and run simulation concurrently.
     document.getElementById("simulateButton").addEventListener("click", () => {
       showBufferOverlay();
       runSimulation().then(() => {
@@ -1718,22 +1530,16 @@ if (prices === null || prices.length < 2) {
         hideBufferOverlay();
       });
     });
-
+    
     function hideBufferOverlay() {
-  const overlay = document.getElementById("countdownOverlay");
-  overlay.style.display = "none";
-
-  // Clear all timeouts
-  loadingTimeouts.forEach(t => clearTimeout(t));
-  loadingTimeouts = [];
-
-  // Stop the dot animation
-  clearInterval(dotInterval);
-  dotInterval = null;
-}
-
-
-    // Update link button texts dynamically based on ticker input.
+      const overlay = document.getElementById("countdownOverlay");
+      overlay.style.display = "none";
+      loadingTimeouts.forEach(t => clearTimeout(t));
+      loadingTimeouts = [];
+      clearInterval(dotInterval);
+      dotInterval = null;
+    }
+    
     function updateLinkButtonTexts(){
       const ticker = document.getElementById('ticker').value.trim();
       if(ticker){
@@ -1752,8 +1558,8 @@ if (prices === null || prices.length < 2) {
     }
     document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
     updateLinkButtonTexts();
-
-    // Link Buttons Event Listeners
+    
+    // Link button event listeners
     document.getElementById("sentimentLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
@@ -1763,52 +1569,46 @@ if (prices === null || prices.length < 2) {
       }
     });
     document.getElementById("technicalLinkButton").addEventListener("click", () => {
-  if (!simulationReport) {
-    alert("Please run a simulation first.");
-    return;
-  }
-  const ticker = simulationReport.ticker;
-  const periodMonths = simulationReport.periodMonths;
-  const url = "https://www.intuitiontrades.com/technical/?symbol=" 
-              + encodeURIComponent(ticker) 
-              + "&period=" + periodMonths
-              + "&autoFetch=true";
-  window.open(url, "_blank");
-});
-
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      const ticker = simulationReport.ticker;
+      const periodMonths = simulationReport.periodMonths;
+      const url = "https://www.intuitiontrades.com/technical/?symbol=" 
+                  + encodeURIComponent(ticker) 
+                  + "&period=" + periodMonths
+                  + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
     document.getElementById("insiderLinkButton").addEventListener("click", () => {
-  if (!simulationReport) {
-    alert("Please run a simulation first.");
-    return;
-  }
-  const ticker = simulationReport.ticker;
-  const periodMonths = simulationReport.periodMonths;
-  const days = periodMonths * 30;  // approximate conversion from months to days
-  const url = "https://www.intuitiontrades.com/insider/?symbol=" 
-            + encodeURIComponent(ticker) 
-            + "&days=" + days
-            + "&autoFetch=true"; // optional flag for auto-running the fetch
-  window.open(url, "_blank");
-});
-
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      const ticker = simulationReport.ticker;
+      const periodMonths = simulationReport.periodMonths;
+      const days = periodMonths * 30;
+      const url = "https://www.intuitiontrades.com/insider/?symbol=" 
+                + encodeURIComponent(ticker) 
+                + "&days=" + days
+                + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
     document.getElementById("congressLinkButton").addEventListener("click", () => {
-  if (!simulationReport) {
-    alert("Please run a simulation first.");
-    return;
-  }
-  // Use the ticker and period from the simulation report
-  let ticker = simulationReport.ticker;
-  let periodMonths = simulationReport.periodMonths;
-  // Convert period in months to days (approximate)
-  let days = periodMonths * 30;
-  // Construct the URL with query parameters: symbol, days, and autoFetch flag
-  let url = "https://www.intuitiontrades.com/congress/?symbol=" 
-            + encodeURIComponent(ticker) 
-            + "&days=" + days 
-            + "&autoFetch=true";
-  window.open(url, "_blank");
-});
-
+      if (!simulationReport) {
+        alert("Please run a simulation first.");
+        return;
+      }
+      let ticker = simulationReport.ticker;
+      let periodMonths = simulationReport.periodMonths;
+      let days = periodMonths * 30;
+      let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+                + encodeURIComponent(ticker) 
+                + "&days=" + days 
+                + "&autoFetch=true";
+      window.open(url, "_blank");
+    });
     document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
       if(ticker){
@@ -1818,13 +1618,11 @@ if (prices === null || prices.length < 2) {
       }
     });
     document.addEventListener("DOMContentLoaded", () => {
-  // Force the manual sections to use the checkbox state on load:
-  document.getElementById("manualPeriodDiv").style.display =
-    document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
-  document.getElementById("manualWeightsSection").style.display =
-    document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
-});
-
+      document.getElementById("manualPeriodDiv").style.display =
+        document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
+      document.getElementById("manualWeightsSection").style.display =
+        document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
+    });
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!simulationReport) {
         alert("Please run a simulation first.");
@@ -1836,7 +1634,7 @@ if (prices === null || prices.length < 2) {
         return;
       }
       let html = `<!DOCTYPE html>
-  <html lang="en">
+        <html lang="en">
   <head>
     <meta charset="UTF-8">
     <title>Detailed Simulation Report for ${simulationReport.ticker}</title>
@@ -2241,110 +2039,12 @@ Weighted Score = ( w_MC × MC_Bull
 
   </body>
   </html>`;
-
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-});
-
-  // Global variable for debouncing
-  let debounceTimeout;
-
-  // Clears the suggestions list and any displayed company full name
-  function clearSuggestions() {
-    const list = document.getElementById('ticker-suggestions');
-    if (list) {
-      list.innerHTML = '';
-      list.style.display = 'none';
-    }
-    const fullNameElem = document.getElementById('company-full-name');
-    if (fullNameElem) {
-      fullNameElem.innerText = '';
-    }
-  }
-
-  // Fetch ticker suggestions from your API endpoint (/api/ticker?query=...)
-  async function fetchTickerSuggestions(searchQuery) {
-    try {
-      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      return data.bestMatches || [];
-    } catch (error) {
-      console.error("Error fetching ticker suggestions:", error);
-      return [];
-    }
-  }
-
-  // Render the suggestion list into the <ul id="ticker-suggestions">
-  function renderTickerSuggestions(suggestions) {
-    const list = document.getElementById('ticker-suggestions');
-    list.innerHTML = ''; // Clear previous suggestions
-
-    if (!suggestions || suggestions.length === 0) {
-      list.style.display = 'none';
-      return;
-    }
-    list.style.display = 'block';
-    suggestions.forEach(item => {
-      const li = document.createElement('li');
-      // Display the ticker symbol and full company name
-      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
-      li.addEventListener('click', () => {
-        // Autofill the ticker input and show full company name in a side element (if present)
-        document.getElementById('ticker').value = item["1. symbol"];
-        const fullNameElem = document.getElementById('company-full-name');
-        if (fullNameElem) {
-          fullNameElem.innerText = item["2. name"];
-        }
-        clearSuggestions();
-      });
-      list.appendChild(li);
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
     });
-  }
-
-  // Initialize everything once the DOM is loaded
-  document.addEventListener("DOMContentLoaded", () => {
-    // --- URL Parameters & Simulation Initialization ---
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('ticker')) {
-      const tickerInput = document.getElementById('ticker');
-      if (tickerInput) {
-        tickerInput.value = urlParams.get('ticker');
-        updateLinkButtonTexts();
-      }
-      const simulateBtn = document.getElementById('simulateButton');
-      if (simulateBtn) {
-        setTimeout(() => {
-          simulateBtn.click();
-        }, 100);
-      }
-    }
-    
-    // --- Autocomplete Integration ---
-    const tickerInput = document.getElementById('ticker');
-    tickerInput.addEventListener('input', () => {
-      const query = tickerInput.value.trim();
-      if (query.length < 2) {
-        clearSuggestions();
-        return;
-      }
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(async () => {
-        const suggestions = await fetchTickerSuggestions(query);
-        renderTickerSuggestions(suggestions);
-      }, 300);
-    });
-    
-    // Clear any suggestions on load and update link buttons if needed.
-    clearSuggestions();
-    updateLinkButtonTexts();
-  });
-
-
-</script>
+  </script>
+  
 
 
 </body>
