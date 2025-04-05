@@ -1559,6 +1559,74 @@
     document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
     updateLinkButtonTexts();
     
+    // Clears the suggestions list and any displayed company full name
+function clearSuggestions() {
+  const list = document.getElementById('ticker-suggestions');
+  if (list) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+  }
+  const fullNameElem = document.getElementById('company-full-name');
+  if (fullNameElem) {
+    fullNameElem.innerText = '';
+  }
+}
+
+// Fetch ticker suggestions from your API endpoint
+async function fetchTickerSuggestions(searchQuery) {
+  try {
+    const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.bestMatches || [];
+  } catch (error) {
+    console.error("Error fetching ticker suggestions:", error);
+    return [];
+  }
+}
+
+// Render the suggestion list into the <ul id="ticker-suggestions">
+function renderTickerSuggestions(suggestions) {
+  const list = document.getElementById('ticker-suggestions');
+  list.innerHTML = ''; // Clear previous suggestions
+  if (!suggestions || suggestions.length === 0) {
+    list.style.display = 'none';
+    return;
+  }
+  list.style.display = 'block';
+  suggestions.forEach(item => {
+    const li = document.createElement('li');
+    // Display the ticker symbol and company name
+    li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+    li.addEventListener('click', () => {
+      document.getElementById('ticker').value = item["1. symbol"];
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = item["2. name"];
+      }
+      clearSuggestions();
+    });
+    list.appendChild(li);
+  });
+}
+
+// Attach a debounced event listener to the ticker input
+let debounceTimeout;
+document.getElementById('ticker').addEventListener('input', () => {
+  const query = document.getElementById('ticker').value.trim();
+  if (query.length < 2) {
+    clearSuggestions();
+    return;
+  }
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(async () => {
+    const suggestions = await fetchTickerSuggestions(query);
+    renderTickerSuggestions(suggestions);
+  }, 300);
+});
+
     // Link button event listeners
     document.getElementById("sentimentLinkButton").addEventListener("click", () => {
       let ticker = document.getElementById("ticker").value.trim();
@@ -2043,6 +2111,24 @@ Weighted Score = ( w_MC × MC_Bull
       win.document.write(html);
       win.document.close();
     });
+    document.addEventListener("DOMContentLoaded", () => {
+  // Check URL parameters for a ticker
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('ticker')) {
+    const tickerInput = document.getElementById('ticker');
+    if (tickerInput) {
+      tickerInput.value = urlParams.get('ticker');
+      updateLinkButtonTexts();
+    }
+    const simulateBtn = document.getElementById('simulateButton');
+    if (simulateBtn) {
+      setTimeout(() => {
+        simulateBtn.click();
+      }, 100);
+    }
+  }
+});
+
   </script>
   
 
