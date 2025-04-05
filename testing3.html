@@ -655,6 +655,39 @@ footer {
   display: flex;
   gap: 0.75rem;
 }
+.ticker-search-container {
+  margin-bottom: 1rem;
+}
+.dark-input {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.ticker-search-container input {
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.ticker-search-container button {
+  padding: 0.5rem 1rem;
+  margin-left: 0.5rem;
+  border-radius: var(--border-radius);
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.ticker-search-container button:hover {
+  background-color: #ddd;
+  color: #333;
+}
 
 /* Buttons for topics menu */
 .live-news-menu {
@@ -1021,18 +1054,16 @@ footer {
 <section id="live-news" class="live-news">
   <h2 class="live-news-header">
     Live News
+
     <!-- NEW: Ticker Search Box -->
-<div style="margin-bottom: 1rem;">
-    <input 
-      type="text" 
-      id="tickerInput" 
-      placeholder="Ticker" 
-      style="padding: 0.3rem; border-radius: 4px;"
+  <div class="ticker-search-container">
+    <input
+      type="text"
+      id="tickerSearchInput"
+      class="dark-input" 
+      placeholder="Ticker"
     />
-    <button 
-      id="tickerSearchButton" 
-      style="padding: 0.3rem 0.6rem; margin-left: 0.5rem; border-radius: 4px; cursor: pointer;"
-    >
+    <button id="tickerSearchButton" class="dark-input">
       Search
     </button>
   </div>
@@ -1732,10 +1763,10 @@ async function fetchAllSentimentDataByTicker(ticker) {
     }
     // Ticker search
 const tickerSearchButton = document.getElementById("tickerSearchButton");
-const tickerInput = document.getElementById("tickerInput");
+const tickerSearchInput = document.getElementById("tickerSearchInput");
 
 tickerSearchButton.addEventListener("click", async () => {
-  const ticker = tickerInput.value.trim().toUpperCase();
+  const ticker = tickerSearchInput.value.trim().toUpperCase();
   if (!ticker) {
     alert("Please enter a ticker symbol.");
     return;
@@ -1751,7 +1782,7 @@ tickerSearchButton.addEventListener("click", async () => {
 });
 
     document.addEventListener("DOMContentLoaded", () => {
-        attachTickerAutocomplete('#tickerInput');
+        attachTickerAutocomplete('#tickerSearchInput');
       // Topic menu
       const menuButtons = document.querySelectorAll("#liveNewsMenu button");
       menuButtons.forEach(btn => {
