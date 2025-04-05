@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Combined Fundamental Analysis</title>
-  <!-- Highcharts for graphs -->
+  <!-- Include Highcharts for graphs -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
-  <!-- (If you need additional modules, add them here) -->
+  <!-- (Include any other Highcharts modules if needed) -->
   <style>
     :root {
       --primary-bg: #111;
@@ -213,46 +213,80 @@
   </div>
 
   <script>
-  
-  // Declare global variables and functions first
-  let debounceTimeout;
-
-  function clearSuggestions() {
-    const list = document.getElementById('ticker-suggestions');
-    if (list) {
+    /*******************************************************
+     * GLOBAL VARIABLES & AUTOCOMPLETE FUNCTIONS
+     *******************************************************/
+    let debounceTimeout;
+    // Clear suggestions from autocomplete list and company name display.
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+    // Fetch ticker suggestions from the /api/ticker endpoint.
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+    // Render suggestions into the autocomplete <ul>.
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
       list.innerHTML = '';
-      list.style.display = 'none';
-    }
-    const fullNameElem = document.getElementById('company-full-name');
-    if (fullNameElem) {
-      fullNameElem.innerText = '';
-    }
-  }
-
-  // ... then add the rest of your code including event listeners ...
-  
-  document.addEventListener("DOMContentLoaded", () => {
-    const tickerInput = document.getElementById('ticker');
-    tickerInput.addEventListener('input', () => {
-      const query = tickerInput.value.trim();
-      if (query.length < 2) {
-        clearSuggestions();
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
         return;
       }
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(async () => {
-        const suggestions = await fetchTickerSuggestions(query);
-        renderTickerSuggestions(suggestions);
-      }, 300);
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      // Clear any suggestions on initial load.
+      clearSuggestions();
     });
-    clearSuggestions();
-  });
-
 
     /*******************************************************
      * 1) FUNDAMENTAL ANALYSIS & SCORE COMPUTATION
      *******************************************************/
-    // Compute category scores using normalization
     function computeScores(d) {
       const norm = (val, min, max) => {
         if (!val || isNaN(val)) return 50;
@@ -315,7 +349,6 @@
     /*******************************************************
      * 2) PLOTTING FUNCTIONS (Using Highcharts)
      *******************************************************/
-    // Plot a category score as a simple column chart using Highcharts
     function plotCategory(divId, label, score) {
       Highcharts.chart(divId, {
         chart: {
@@ -323,9 +356,7 @@
           backgroundColor: 'transparent',
           height: 200
         },
-        title: {
-          text: null
-        },
+        title: { text: null },
         xAxis: {
           categories: [label],
           visible: false
@@ -333,9 +364,7 @@
         yAxis: {
           min: 0,
           max: 100,
-          title: {
-            text: null
-          },
+          title: { text: null },
           labels: { enabled: false }
         },
         legend: { enabled: false },
@@ -351,12 +380,11 @@
       });
     }
 
-    // Populate the raw data table (excluding Description)
     function populateRawDataTable(data) {
       const table = document.getElementById('rawDataTable');
       table.innerHTML = '';
       for (const [key, value] of Object.entries(data)) {
-        if(key === "Description") continue;
+        if (key === "Description") continue;
         const row = document.createElement('tr');
         const cellKey = document.createElement('th');
         cellKey.textContent = key;
@@ -387,8 +415,7 @@
        });
 
       try {
-        // Fetch fundamental data from your API endpoint.
-        // (Adjust the URL if necessary.)
+        // Fetch fundamental data from your API endpoint (adjust the URL if needed)
         const url = `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
         const resp = await fetch(url);
         const data = await resp.json();
@@ -398,7 +425,7 @@
           return;
         }
 
-        // Show raw data (except Description)
+        // Show raw data (excluding Description)
         document.getElementById('rawDataSection').style.display = 'block';
         populateRawDataTable(data);
 
@@ -415,7 +442,7 @@
         document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
         document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
 
-        // Plot each category (if defined)
+        // Plot each category if defined
         if (profitability >= 0) {
           document.getElementById('profitSection').style.display = 'block';
           plotCategory('profitChart', 'Profitability', profitability);
@@ -449,29 +476,7 @@
     });
 
     /*******************************************************
-     * 4) TICKER AUTOCOMPLETE INTEGRATION
-     *******************************************************/
-    // Set up ticker autocomplete on page load.
-    document.addEventListener("DOMContentLoaded", () => {
-      const tickerInput = document.getElementById('ticker');
-      tickerInput.addEventListener('input', () => {
-        const query = tickerInput.value.trim();
-        if (query.length < 2) {
-          clearSuggestions();
-          return;
-        }
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(async () => {
-          const suggestions = await fetchTickerSuggestions(query);
-          renderTickerSuggestions(suggestions);
-        }, 300);
-      });
-      // Clear any suggestions initially.
-      clearSuggestions();
-    });
-
-    /*******************************************************
-     * 5) EXPLANATION PAGE BUTTON
+     * 4) EXPLANATION PAGE BUTTON
      *******************************************************/
     document.getElementById('explanationButton').addEventListener('click', () => {
       const w = window.open('', '_blank');
@@ -542,52 +547,51 @@
     }
   </style>
 </head>
-body{font-family:Segoe UI;max-width:800px;margin:20px auto;padding:20px;line-height:1.6;}h1{text-align:center;font-weight:600;}code{background:#eee;padding:2px 4px;}table{border-collapse:collapse;margin-top:1rem;width:100%;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}th{background:#f2f2f2;}p{text-align:justify;}</style></head><body>
-      <h1>Expanded Fundamental Analysis Explanation</h1>
-      <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
-      <ul>
-        <li><strong>Profitability</strong></li>
-        <li><strong>Valuation</strong></li>
-        <li><strong>Growth</strong></li>
-        <li><strong>Dividend & Return</strong></li>
-        <li><strong>Financial Health</strong></li>
-      </ul>
-      <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
-      <h2>Normalization Method</h2>
-      <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
-      <pre><code>ratio = (value - min) / (max - min)
+<body>
+  <h1>Expanded Fundamental Analysis Explanation</h1>
+  <p>This page calculates <strong>five fundamental category scores</strong> for a given ticker:</p>
+  <ul>
+    <li><strong>Profitability</strong></li>
+    <li><strong>Valuation</strong></li>
+    <li><strong>Growth</strong></li>
+    <li><strong>Dividend & Return</strong></li>
+    <li><strong>Financial Health</strong></li>
+  </ul>
+  <p>Each category includes multiple metrics pulled from the API. We <em>normalize</em> each metric to a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Finally, the category scores are averaged, and the final <em>aggregated fundamental score</em> is the average of all five categories.</p>
+  <h2>Normalization Method</h2>
+  <p>We use a simple linear normalization from <code>min</code> to <code>max</code>:</p>
+  <pre><code>ratio = (value - min) / (max - min)
 score = clamp(ratio * 100, 0, 100)</code></pre>
-      <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
-      <h2>Profitability</h2>
-      <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>, then averages the normalized values for a <strong>Profitability Score</strong>.</p>
-      <h2>Valuation</h2>
-      <p>We look at <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>, invert their scores, and average them to yield the <strong>Valuation Score</strong>.</p>
-      <h2>Growth</h2>
-      <p>Growth includes metrics such as <strong>Quarterly Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>, averaged for a <strong>Growth Score</strong>.</p>
-      <h2>Dividend &amp; Return</h2>
-      <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong> to yield the <strong>Dividend &amp; Return Score</strong>.</p>
-      <h2>Financial Health</h2>
-      <p>We compute a <strong>Financial Health Score</strong> from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
-      <h2>Final Aggregation</h2>
-      <p>The aggregated fundamental score is the average of the five category scores.</p>
-      <h2>Interpretation &amp; Disclaimer</h2>
-      <p>A higher score suggests a fundamentally stronger company by these basic metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
-      <p style='text-align:center;'><button onclick='window.close()'>Close</button></p>
-      </body>
+  <p>If a value is higher than <code>max</code>, it caps at 100; if below <code>min</code>, it bottoms out at 0.</p>
+  <h2>Profitability</h2>
+  <p>This category considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>ROA</strong>, and <strong>ROE</strong>.</p>
+  <h2>Valuation</h2>
+  <p>We examine <strong>P/E</strong>, <strong>PEG</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong> ratios (inverted as needed).</p>
+  <h2>Growth</h2>
+  <p>Growth is based on <strong>Revenue Growth</strong>, <strong>Earnings Growth</strong>, and the upside between the current price and the <strong>Analyst Target Price</strong>.</p>
+  <h2>Dividend & Return</h2>
+  <p>This category averages normalized values for <strong>Dividend Yield</strong>, <strong>DPS</strong>, and <strong>EPS</strong>.</p>
+  <h2>Financial Health</h2>
+  <p>This score is computed from <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (inverted).</p>
+  <h2>Final Aggregation</h2>
+  <p>The aggregated fundamental score is the average of all five category scores.</p>
+  <h2>Interpretation & Disclaimer</h2>
+  <p>A higher score suggests a fundamentally stronger company by these metrics. However, these are generic cutoffs and do not replace comprehensive research. Always conduct your own due diligence before investing.</p>
+  <p style="text-align:center;"><button onclick="window.close()">Close Explanation</button></p>
+</body>
 </html>`;
       w.document.write(html);
       w.document.close();
     });
-    
+
     /*******************************************************
-     * 6) URL PARAMETER INITIALIZATION (Optional)
+     * 5) URL PARAMETER INITIALIZATION (Optional)
      *******************************************************/
     window.onload = () => {
       const params = new URLSearchParams(window.location.search);
       const symbol = params.get('symbol');
       if (symbol) {
         document.getElementById('ticker').value = symbol;
-        // Optionally, trigger analysis automatically:
         setTimeout(() => {
           document.getElementById('runFundamental').click();
         }, 100);
