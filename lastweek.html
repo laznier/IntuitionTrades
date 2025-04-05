@@ -17,7 +17,8 @@
       --primary-bg: #333;
       --secondary-bg: #444;
       --section-bg: rgba(0, 0, 0, 0.33);
-      --accent-color: #16a34a;
+      --accent-color: #16a34a; /* Green */
+      --negative-color: #dc3545; /* Red */
       --base-font-size: 16px;
       --line-height: 1.5;
       --border-radius: 4px;
@@ -86,6 +87,7 @@
       text-align: center;
       margin-bottom: 2rem;
     }
+    /* Changed title below */
     #performance-summary h2 {
       font-size: 1.75rem;
       margin-bottom: 1rem;
@@ -114,7 +116,7 @@
       background-color: #28a745;
     }
     .negative-performance {
-      background-color: #dc3545;
+      background-color: var(--negative-color);
     }
     .non-clickable {
       cursor: default;
@@ -178,12 +180,12 @@
     .picks-card a:hover {
       opacity: 0.9;
     }
-    /* Default color for ticker links; these will be updated by JS */
+    /* Default styling for ticker links */
     .buy-default {
-      background-color: var(--accent-color);
+      background-color: var(--accent-color); /* Always green */
     }
     .sell-default {
-      background-color: #dc3545;
+      background-color: var(--negative-color); /* Always red */
     }
     .performance-button {
       margin-left: 1rem;
@@ -228,7 +230,8 @@
   <div class="content-wrapper">
     <!-- Performance Summary Section -->
     <section id="performance-summary">
-      <h2>Weekly Performance</h2>
+      <!-- Updated title below -->
+      <h2>Overall Performance Since 2025-03-28</h2>
       <div class="performance-summary-grid">
         <!-- Our Top Picks -->
         <button id="weeklyPicksButton">Our Top Picks</button>
@@ -297,8 +300,9 @@
   <script>
     const initialDate = "2025-03-28";
 
-    // Update ticker performance and adjust ticker link background color
-    function updateTickerPerformanceIntraday(ticker, buttonElement) {
+    // Update ticker performance and update performance button color.
+    // 'type' should be either "buy" or "short" to keep link background fixed.
+    function updateTickerPerformanceIntraday(ticker, buttonElement, type) {
       const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
       fetch(intradayUrl)
         .then(response => response.json())
@@ -313,7 +317,7 @@
           const initialTimestamp = initialTimestamps[0];
           const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
 
-          // Get most recent price
+          // Get the most recent price
           const now = new Date();
           const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
           if (!currentTimestamps.length) return;
@@ -332,21 +336,12 @@
             buttonElement.classList.add("negative-performance");
             buttonElement.classList.remove("positive-performance");
           }
-
-          // Also update the ticker link background color
-          const linkEl = document.getElementById("link-" + ticker);
-          if (linkEl) {
-            if (diff >= 0) {
-              linkEl.style.backgroundColor = "#16a34a"; // Green for positive
-            } else {
-              linkEl.style.backgroundColor = "#dc3545"; // Red for negative
-            }
-          }
+          // For ticker links, keep fixed color based on type; no change needed.
         })
         .catch(error => console.error("Error fetching data for", ticker, error));
     }
 
-    // Calculate average performance for top picks
+    // Calculate average performance for top picks.
     function calculateWeeklyPicksPerformance(buys, shorts) {
       let total = 0, count = 0;
       buys.forEach(ticker => {
@@ -366,7 +361,7 @@
       return count ? total / count : 0;
     }
 
-    // Update index performance (for SPY/QQQ)
+    // Update index performance for SPY and QQQ.
     function updateIndexPerformance(ticker, buttonElement) {
       const url = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
       fetch(url)
@@ -405,18 +400,27 @@
       const buys = ["OXY", "VRSN", "MMM"];
       const shorts = ["AOS", "ALB", "RPD"];
 
-      // Update performance for each ticker
-      [...buys, ...shorts].forEach(ticker => {
+      // Update performance for each ticker.
+      buys.forEach(ticker => {
         const btn = document.getElementById("performance-" + ticker);
         if (btn) {
-          updateTickerPerformanceIntraday(ticker, btn);
+          updateTickerPerformanceIntraday(ticker, btn, "buy");
+          btn.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
+        }
+      });
+      shorts.forEach(ticker => {
+        const btn = document.getElementById("performance-" + ticker);
+        if (btn) {
+          updateTickerPerformanceIntraday(ticker, btn, "short");
           btn.addEventListener('click', () => {
             window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
           });
         }
       });
 
-      // Update index performance for SPY and QQQ
+      // Update index performance for SPY and QQQ.
       updateIndexPerformance("SPY", document.getElementById("sp500Change"));
       updateIndexPerformance("QQQ", document.getElementById("nasdaqChange"));
 
@@ -427,7 +431,7 @@
         window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
       });
 
-      // Update Our Top Picks performance button
+      // Update Our Top Picks performance button.
       function updateWeeklyPicksButton() {
         const perf = calculateWeeklyPicksPerformance(buys, shorts);
         const picksBtn = document.getElementById("weeklyPicksChange");
@@ -441,7 +445,7 @@
         }
       }
 
-      // Explanation text toggle
+      // Explanation text toggle.
       function generateExplanation() {
         return "This number represents the average profit percentage if you had bought our top three recommended stocks (" + buys.join(", ") + ") and shorted our bottom three picks (" + shorts.join(", ") + ") starting on " + initialDate + ". It updates in real time based on intraday data.";
       }
