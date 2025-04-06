@@ -601,56 +601,64 @@
     // - Normalize using (raw + 100) / 2, so 0 becomes 50.
     // - Use weights: 25% Final MSPR, 50% Transaction Score, 25% Trend Component.
     function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells) {
-      // Fill timeline from insiderSentimentData.fromDateStr to insiderSentimentData.toDateStr
-      let fromDate = new Date(insiderSentimentData.fromDateStr);
-      let toDate = new Date(insiderSentimentData.toDateStr);
-      let filledData = [];
-      let currentDate = new Date(fromDate);
-      while (currentDate <= toDate) {
-        let year = currentDate.getFullYear();
-        let month = currentDate.getMonth() + 1; // 0-indexed in JS
-        let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
-        if (found) {
-          filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
-        } else {
-          // Missing data defaults to raw 0 (which normalizes to 50)
-          filledData.push({ year: year, month: month, mspr: 0 });
-        }
-        currentDate.setMonth(currentDate.getMonth() + 1);
-      }
-      // Final MSPR from the last month in the filled timeline
-      let finalMspr = filledData[filledData.length - 1].mspr;
-      let normalizedFinalMspr = (finalMspr + 100) / 2;
-      // Average MSPR over the filled timeline
-      let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
-      let avgMspr = sumMspr / filledData.length;
-      let normalizedAvgMspr = (avgMspr + 100) / 2;
-      // Compute regression slope using sequential month indices
-      let n = filledData.length;
-      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-      for (let i = 0; i < n; i++) {
-        let x = i + 1;
-        let y = filledData[i].mspr;
-        sumX += x;
-        sumY += y;
-        sumXY += x * y;
-        sumX2 += x * x;
-      }
-      let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-      let normalizedSlope = isNaN(slope) ? 50 : (slope + 100) / 2;
-      let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
-      // Transaction score
-      let transactionScore = 0;
-      let sumTransactions = transactionBuys + transactionSells;
-      if (sumTransactions > 0) {
-        transactionScore = ((transactionBuys - transactionSells) / sumTransactions) * 100;
-      }
-      let normalizedTransactionScore = (transactionScore + 100) / 2;
-      // Final insider score using weights:
-      // 25% from Final MSPR, 50% from Transaction Score, 25% from Trend Component.
-      let finalScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
-      return finalScore;
+  // Fill timeline from insiderSentimentData.fromDateStr to insiderSentimentData.toDateStr
+  let fromDate = new Date(insiderSentimentData.fromDateStr);
+  let toDate = new Date(insiderSentimentData.toDateStr);
+  let filledData = [];
+  let currentDate = new Date(fromDate);
+  while (currentDate <= toDate) {
+    let year = currentDate.getFullYear();
+    let month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed.
+    let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
+    if (found) {
+      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
+    } else {
+      // Missing data defaults to raw 0 (which normalizes to 50)
+      filledData.push({ year: year, month: month, mspr: 0 });
     }
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+  
+  // 1. Final MSPR Factor (25% weight): Use the MSPR of the last month in the filled timeline
+  let finalMspr = filledData[filledData.length - 1].mspr;
+  let normalizedFinalMspr = (finalMspr + 100) / 2;
+  
+  // 2. Trend Component (25% weight):
+  // Compute the average MSPR over the filled timeline
+  let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
+  let avgMspr = sumMspr / filledData.length;
+  let normalizedAvgMspr = (avgMspr + 100) / 2;
+  
+  // Compute regression slope using sequential month indices
+  let n = filledData.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    let x = i + 1;
+    let y = filledData[i].mspr;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+  }
+  let denominator = n * sumX2 - sumX * sumX;
+  let slope = (denominator === 0) ? 0 : (n * sumXY - sumX * sumY) / denominator;
+  let normalizedSlope = (isNaN(slope) || !isFinite(slope)) ? 50 : (slope + 100) / 2;
+  let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+  
+  // 3. Transaction Score Factor (50% weight):
+  let transactionScore = 0;
+  let sumTransactions = transactionBuys + transactionSells;
+  if (sumTransactions > 0) {
+    transactionScore = ((transactionBuys - transactionSells) / sumTransactions) * 100;
+  }
+  let normalizedTransactionScore = (transactionScore + 100) / 2;
+  
+  // Final insider score using weights:
+  // 25% from Final MSPR, 50% from Transaction Score, 25% from Trend Component.
+  let finalScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
+  return finalScore;
+}
+
 
     /*********************************************************
      * Fundamental
