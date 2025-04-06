@@ -1,11 +1,12 @@
 {
     "name": "IntuitionTrades",
     "version": "1.0.0",
-    "scripts": {
-    },
     "dependencies": {
       "express": "^4.18.2",
-      "node-fetch": "^2.6.7" 
+      "node-fetch": "^2.6.9"
+    },
+    "scripts": {
+      "start": "node api/server.js"
     }
   }
   
