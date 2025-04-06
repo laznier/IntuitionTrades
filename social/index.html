@@ -92,7 +92,7 @@
 
   <h1>Social Sentiment Viewer</h1>
   <p>
-    Enter a ticker symbol to load recent social sentiment data from StockTwits via our proxy.
+    Enter a ticker symbol to load recent social sentiment data from StockTwits.
     The tool groups messages by day, computes a sentiment score (0–100), and displays a trend line over time.
   </p>
 
@@ -107,7 +107,6 @@
     <div id="sentChart"></div>
   </div>
 
-  <!-- Optional extra details section -->
   <div id="articleSection" class="section" style="display:none;"></div>
 
   <script>
@@ -123,18 +122,18 @@
       return { slope, intercept };
     }
 
-    // Fetch sentiment data from the proxy endpoint.
+    // Fetch sentiment data directly from StockTwits.
     async function fetchSentimentData(ticker) {
-      const url = `/api/social?symbol=${ticker}`;
+      const url = `https://api.stocktwits.com/api/2/streams/symbol/${ticker}.json`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
       const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) {
+      if (!data.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
         throw new Error("No sentiment data found for this ticker.");
       }
-      return data;
+      return data.messages;
     }
 
     // Process StockTwits messages by grouping them by day and computing a sentiment score.
@@ -143,7 +142,7 @@
       messages.forEach(message => {
         if (!message.sentiment || !message.sentiment.basic) return;
         const date = new Date(message.created_at);
-        const day = date.toISOString().split('T')[0]; // format YYYY-MM-DD
+        const day = date.toISOString().split('T')[0]; // YYYY-MM-DD
         if (!dailyMap[day]) {
           dailyMap[day] = { bullish: 0, bearish: 0, total: 0 };
         }
@@ -216,7 +215,7 @@
       Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, { responsive: true });
     }
 
-    // Load sentiment data by fetching from the proxy and then processing it.
+    // Load sentiment data by fetching from StockTwits.
     async function loadSentimentData() {
       const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
       if (!ticker) {
