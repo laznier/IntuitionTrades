@@ -110,7 +110,60 @@
   <div id="articleSection" class="section" style="display:none;"></div>
 
   <script>
-    // 1) Compute linear regression on arrays xs and ys.
+    // Fetch data from your serverless proxy at /api/social
+    async function fetchSentimentData(ticker) {
+      // Ticker is already URI-encoded, but we do it again to be safe
+      const url = `/api/social?symbol=${encodeURIComponent(ticker)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Network response was not ok (HTTP ${response.status})`);
+      }
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("No sentiment data found for this ticker.");
+      }
+      return data; // array of message objects
+    }
+
+    // Group messages by day, compute daily sentiment
+    function processMessages(messages) {
+      const dailyMap = {};
+      for (const msg of messages) {
+        if (!msg.sentiment || !msg.sentiment.basic) continue;
+        const date = new Date(msg.created_at);
+        const day = date.toISOString().split('T')[0]; // format YYYY-MM-DD
+        if (!dailyMap[day]) {
+          dailyMap[day] = { bullish: 0, bearish: 0, total: 0 };
+        }
+        dailyMap[day].total++;
+        if (msg.sentiment.basic === "Bullish") {
+          dailyMap[day].bullish++;
+        } else if (msg.sentiment.basic === "Bearish") {
+          dailyMap[day].bearish++;
+        }
+      }
+
+      const dataPoints = [];
+      for (const day in dailyMap) {
+        const entry = dailyMap[day];
+        // Score = % of messages that are bullish
+        const score = (entry.total > 0)
+          ? (entry.bullish / entry.total) * 100
+          : 50; // fallback
+        dataPoints.push({
+          date: day,
+          bullishCount: entry.bullish,
+          bearishCount: entry.bearish,
+          total: entry.total,
+          score
+        });
+      }
+
+      dataPoints.sort((a, b) => new Date(a.date) - new Date(b.date));
+      return dataPoints;
+    }
+
+    // Simple linear regression for the trend line
     function computeLinearRegression(xs, ys) {
       const n = xs.length;
       const sumX = xs.reduce((a, b) => a + b, 0);
@@ -122,72 +175,18 @@
       return { slope, intercept };
     }
 
-    // 2) Fetch sentiment data from our Next.js API route at /api/social?symbol=...
-    async function fetchSentimentData(ticker) {
-      const url = `/api/social?symbol=${encodeURIComponent(ticker)}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Network response was not ok (status ${response.status})`);
-      }
-      const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error("No sentiment data found for this ticker.");
-      }
-      return data; // an array of message objects
-    }
-
-    // 3) Process the StockTwits messages: group them by day and compute a daily sentiment score
-    function processMessages(messages) {
-      const dailyMap = {};
-      for (const msg of messages) {
-        if (!msg.sentiment || !msg.sentiment.basic) continue;
-        const date = new Date(msg.created_at);
-        const day = date.toISOString().split('T')[0]; // format YYYY-MM-DD
-        if (!dailyMap[day]) {
-          dailyMap[day] = { bullish: 0, bearish: 0, total: 0 };
-        }
-        dailyMap[day].total += 1;
-        if (msg.sentiment.basic === "Bullish") {
-          dailyMap[day].bullish += 1;
-        } else if (msg.sentiment.basic === "Bearish") {
-          dailyMap[day].bearish += 1;
-        }
-      }
-
-      // Convert map to an array
-      const dataPoints = [];
-      for (const day in dailyMap) {
-        const entry = dailyMap[day];
-        // Score is percent of messages that are bullish
-        const score = (entry.total > 0)
-          ? (entry.bullish / entry.total) * 100
-          : 50; // fallback to 50 if no messages
-        dataPoints.push({
-          date: day,
-          bullishCount: entry.bullish,
-          bearishCount: entry.bearish,
-          total: entry.total,
-          score
-        });
-      }
-
-      // Sort by date
-      dataPoints.sort((a, b) => new Date(a.date) - new Date(b.date));
-      return dataPoints;
-    }
-
-    // 4) Plot the daily scores and a linear regression trend line using Plotly
+    // Plot the daily scores + linear regression
     function plotSentiment(dataPoints) {
       document.getElementById("sentimentSection").style.display = "block";
 
-      // Convert date strings to Date objects for plotting
+      // Convert date strings to Date objects
       dataPoints.forEach(dp => {
         dp.dateObj = new Date(dp.date);
       });
       const dates = dataPoints.map(dp => dp.dateObj);
       const scores = dataPoints.map(dp => dp.score);
 
-      // Compute linear regression
+      // Regression
       const firstDate = dates[0];
       const xs = dates.map(d => (d - firstDate) / (1000 * 60 * 60 * 24));
       const { slope, intercept } = computeLinearRegression(xs, scores);
@@ -196,7 +195,6 @@
       const y0 = intercept + slope * x0;
       const y1 = intercept + slope * x1;
 
-      // Plot the raw data
       const tracePoints = {
         x: dates,
         y: scores,
@@ -205,7 +203,6 @@
         hovertemplate: '%{x}<br>Score: %{y:.2f}<extra></extra>'
       };
 
-      // Plot the regression line
       const traceTrend = {
         x: [dates[0], dates[dates.length - 1]],
         y: [y0, y1],
@@ -214,7 +211,6 @@
         name: 'Trend'
       };
 
-      // Layout
       const layout = {
         title: "Social Sentiment Score Over Time",
         xaxis: { title: "Date" },
@@ -224,7 +220,7 @@
       Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, { responsive: true });
     }
 
-    // 5) High-Level function: fetch data, process it, plot it
+    // Main function: get ticker from user, load + plot
     async function loadSentimentData() {
       const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
       if (!ticker) {
@@ -245,7 +241,7 @@
       }
     }
 
-    // 6) Connect the button and auto-load if ?symbol=...
+    // Hook up the button, check for ?symbol=...
     document.getElementById("loadButton").addEventListener("click", loadSentimentData);
 
     window.onload = () => {

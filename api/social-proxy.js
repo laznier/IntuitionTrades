@@ -1,25 +1,33 @@
-// /api/social.js
-import fetch from 'node-fetch';
+// social-proxy.js: The Express router that fetches from StockTwits
+const { Router } = require('express');
+const fetch = require('node-fetch');
 
-export default async function handler(req, res) {
-  const { symbol } = req.query;
-  if (!symbol) {
-    res.status(400).json({ error: 'Symbol query parameter is required' });
-    return;
-  }
+const router = Router();
+
+// GET /social?symbol=XYZ
+router.get('/social', async (req, res) => {
   try {
+    const { symbol } = req.query;
+    if (!symbol) {
+      return res.status(400).json({ error: 'No "symbol" query parameter' });
+    }
+
     const url = `https://api.stocktwits.com/api/2/streams/symbol/${symbol}.json`;
     const response = await fetch(url);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Error from StockTwits [${response.status}]: ${errorText}`);
-      res.status(500).json({ error: `Error fetching data from StockTwits: ${response.status}` });
-      return;
+      console.error(`StockTwits error [${response.status}]: ${errorText}`);
+      return res.status(500).json({ error: `StockTwits error: ${response.status}` });
     }
+
     const data = await response.json();
-    res.status(200).json(data.messages);
+    // data.messages is typically an array
+    return res.status(200).json(data.messages || []);
   } catch (err) {
-    console.error("Proxy error:", err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
-}
+});
+
+module.exports = router;
