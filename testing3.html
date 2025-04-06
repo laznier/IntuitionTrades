@@ -674,7 +674,7 @@ footer {
 }
 
 .ticker-search-container button {
-  padding: 0.33rem 0.75rem;
+  padding: 0.33rem 1rem;
   margin-left: 0.5rem;
   border-radius: var(--border-radius);
   background-color: var(--primary-bg);
@@ -1094,22 +1094,22 @@ footer {
 <section id="live-news" class="live-news">
   <h2 class="live-news-header">
     Live News
-
-    <!-- NEW: Ticker Search Box -->
-    <div class="ticker-search-container">
-        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
+    <div class="live-news-top-bar">
+      <!-- Ticker Search Box -->
+      <div class="ticker-search-container">
+        <input type="text" id="TickerSearchInput" class="dark-input" placeholder="Ticker" />
         <ul id="ticker-suggestions" style="display:none;"></ul>
         <button id="tickerSearchButton" class="dark-input">Search</button>
       </div>
-      
-  
-    <!-- Controls: minimize, maximize, close -->
-    <div class="live-news-controls">
-      <span id="liveNewsMinimize" title="Minimize">-</span>
-      <span id="liveNewsMaximize" title="Maximize">▢</span>
-      <span id="liveNewsClose" title="Close">X</span>
+      <!-- Controls -->
+      <div class="live-news-controls">
+        <span id="liveNewsMinimize" title="Minimize">-</span>
+        <span id="liveNewsMaximize" title="Maximize">▢</span>
+        <span id="liveNewsClose" title="Close">X</span>
+      </div>
     </div>
   </h2>
+  
   <!-- News Topics for Desktop and Mobile -->
 <div class="live-news-topics">
   <div class="news-hamburger" id="newsHamburger">
