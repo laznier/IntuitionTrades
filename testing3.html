@@ -1689,7 +1689,7 @@ async function fetchAllSentimentData(topic) {
   }
 }
 async function fetchAllSentimentDataByTicker(ticker) {
-  const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${encodeURIComponent(ticker)}`;
+  const url = `https://www.intuitiontrades.com/api/sentiment?limit=1000&symbol=${encodeURIComponent(ticker)}`;
   const resp = await fetch(url);
   const data = await resp.json();
   if (!data.feed) {
