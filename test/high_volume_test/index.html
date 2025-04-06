@@ -503,7 +503,7 @@
      * Sentiment
      *********************************************************/
     async function fetchSentimentData(ticker, periodMonths, simDate) {
-      let url = `https://www.intuitiontrades\.vom/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let url = `https://intuitiontrades\.vom/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       let r = await fetch(url);
       let j = await r.json();
       if (!j.feed) throw new Error("No sentiment data from server.");
@@ -557,7 +557,7 @@
      *********************************************************/
     // Fetch insider transaction data (buys/sells)
     async function fetchInsiderData(ticker, periodMonths, simDate, currPrice) {
-      let url = `https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+      let url = `https://projectmanagerhelper.com/api/insider?symbol=${ticker}`;
       let r = await fetch(url);
       let j = await r.json();
       if (!j.data || !Array.isArray(j.data)) throw new Error("No insider data array found.");
@@ -587,7 +587,7 @@
       fromDate.setMonth(fromDate.getMonth() - periodMonths);
       let fromDateStr = fromDate.toISOString().slice(0, 10);
       let toDateStr = simDate.toISOString().slice(0, 10);
-      let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+      let url = `https://intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
       let r = await fetch(url);
       let j = await r.json();
       if (!j.data || !Array.isArray(j.data) || j.data.length === 0)
@@ -713,7 +713,7 @@
       return { profitability, valuation, growth, dividends, financial };
     }
     async function fetchFundamentalData(ticker) {
-      let url = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+      let url = `https://intuitiontrades.com/api/fundamental?symbol=${ticker}`;
       let r = await fetch(url);
       let data = await r.json();
       if (!data.Symbol) return 50;
@@ -901,7 +901,7 @@
      *********************************************************/
     async function determineSPYMarketRegime(simDate, futDate, histPeriod) {
       try {
-        let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+        let url = `https://intuitiontrades.com/api/historical?symbol=SPY`;
         let resp = await fetch(url);
         let j = await resp.json();
         if (!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
