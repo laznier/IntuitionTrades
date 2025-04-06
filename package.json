@@ -2,11 +2,10 @@
     "name": "your-project",
     "version": "1.0.0",
     "scripts": {
-      // your build/dev scripts
     },
     "dependencies": {
       "express": "^4.18.2",
-      "node-fetch": "^2.6.7"  // or higher
+      "node-fetch": "^2.6.7" 
     }
   }
   
