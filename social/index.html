@@ -122,19 +122,20 @@
       return { slope, intercept };
     }
 
-    // Fetch sentiment data directly from StockTwits.
+    // Fetch sentiment data from your proxy endpoint.
     async function fetchSentimentData(ticker) {
+      // Use your proxy endpoint hosted on intuitiontrades.com.
       const url = `https://www.intuitiontrades.com/api/social?symbol=${ticker}`;
-
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
       const data = await response.json();
-      if (!data.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
+      // Assuming your proxy returns an array of messages.
+      if (!Array.isArray(data) || data.length === 0) {
         throw new Error("No sentiment data found for this ticker.");
       }
-      return data.messages;
+      return data;
     }
 
     // Process StockTwits messages by grouping them by day and computing a sentiment score.
@@ -216,7 +217,7 @@
       Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, { responsive: true });
     }
 
-    // Load sentiment data by fetching from StockTwits.
+    // Load sentiment data by fetching from your proxy and then processing it.
     async function loadSentimentData() {
       const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
       if (!ticker) {
