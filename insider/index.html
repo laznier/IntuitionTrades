@@ -389,7 +389,7 @@
 
       try {
         // Fetch insider transactions data from your API endpoint.
-        const url = `https://www.ituitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+        const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error("Failed to fetch insider data. Try increasing day count. Status: " + response.status);
