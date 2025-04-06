@@ -9,6 +9,7 @@
   <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
   <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="api/ticker.js"></script>
 
 <style>
 :root {
@@ -654,6 +655,39 @@ footer {
   display: flex;
   gap: 0.75rem;
 }
+.ticker-search-container {
+  margin-bottom: 0.75rem;
+}
+.dark-input {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.ticker-search-container input {
+  padding: 0.33rem;
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+}
+
+.ticker-search-container button {
+  padding: 0.33rem 1rem;
+  margin-left: 0.5rem;
+  border-radius: var(--border-radius);
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.ticker-search-container button:hover {
+  background-color: #ddd;
+  color: #333;
+}
 
 /* Buttons for topics menu */
 .live-news-menu {
@@ -689,6 +723,46 @@ footer {
 }
 .live-news-controls span:hover {
   background-color: #555;
+}
+/* Autocomplete Suggestions Container */
+#ticker-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #222; /* dark background */
+  border: 1px solid #444; /* subtle border */
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* modern shadow */
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Each suggestion item */
+#ticker-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #ccc;
+}
+
+/* Hover state for suggestions */
+#ticker-suggestions li:hover {
+  background-color: #16a34a; /* accent color */
+  color: #fff;
+}
+
+/* Optional: Style the ticker symbol and company name differently */
+#ticker-suggestions li .ticker-symbol {
+  font-weight: bold;
+}
+#ticker-suggestions li .company-name {
+  font-size: 0.9rem;
+  opacity: 0.8;
 }
 
 /* News Feed container */
@@ -1020,6 +1094,15 @@ footer {
 <section id="live-news" class="live-news">
   <h2 class="live-news-header">
     Live News
+
+    <!-- NEW: Ticker Search Box -->
+    <div class="ticker-search-container">
+        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
+        <ul id="ticker-suggestions" style="display:none;"></ul>
+        <button id="tickerSearchButton" class="dark-input">Search</button>
+      </div>
+      
+  
     <!-- Controls: minimize, maximize, close -->
     <div class="live-news-controls">
       <span id="liveNewsMinimize" title="Minimize">-</span>
@@ -1605,6 +1688,16 @@ async function fetchAllSentimentData(topic) {
     return data.feed;
   }
 }
+async function fetchAllSentimentDataByTicker(ticker) {
+  const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if (!data.feed) {
+    throw new Error("No sentiment data returned for this ticker.");
+  }
+  return data.feed;
+}
+
 
   
     // Render a single news item in the feed
@@ -1704,17 +1797,26 @@ async function fetchAllSentimentData(topic) {
         console.error("Error refreshing news:", err);
       }
     }
-  
-    document.addEventListener("DOMContentLoaded", () => {
-      // Topic menu
-      const menuButtons = document.querySelectorAll("#liveNewsMenu button");
-      menuButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          selectedTopic = btn.getAttribute("data-topic") || "";
-          refreshNews();
-        });
-      });
-  
+    // Ticker search
+const tickerSearchButton = document.getElementById("tickerSearchButton");
+const tickerSearchInput = document.getElementById("tickerSearchInput");
+
+tickerSearchButton.addEventListener("click", async () => {
+  const ticker = tickerSearchInput.value.trim().toUpperCase();
+  if (!ticker) {
+    alert("Please enter a ticker symbol.");
+    return;
+  }
+
+  try {
+    const articles = await fetchAllSentimentDataByTicker(ticker);
+    updateNewsFeed(articles);
+  } catch (err) {
+    console.error("Error fetching ticker news:", err);
+    alert("Could not load news for ticker: " + ticker);
+  }
+});
+
       // Initial fetch
       refreshNews();
       // Refresh every 30 seconds
@@ -1760,7 +1862,6 @@ async function fetchAllSentimentData(topic) {
         liveNewsSection.style.display = "none";
         clearInterval(refreshInterval);
       });
-    });
   </script>
   
 </body>
