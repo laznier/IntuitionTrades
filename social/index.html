@@ -124,7 +124,8 @@
 
     // Fetch sentiment data directly from StockTwits.
     async function fetchSentimentData(ticker) {
-      const url = `https://api.stocktwits.com/api/2/streams/symbol/${ticker}.json`;
+      const url = `https://www.intuitiontrades.com/api/social?symbol=${ticker}`;
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error("Network response was not ok");
