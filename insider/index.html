@@ -238,11 +238,11 @@
       For example, an MSPR of 50 becomes 75, while an MSPR of -50 becomes 25.
     </p>
     <p>
-      <strong>Final MSPR Score (50% weight):</strong>
+      <strong>Final MSPR Score (25% weight):</strong>
       We take the most recent MSPR value (finalMspr) from the data and normalize it.
     </p>
     <p>
-      <strong>Original Insider Transaction Score (25% weight):</strong>
+      <strong>Original Insider Transaction Score (50% weight):</strong>
       This score is calculated as the percentage difference between total buys and sells:
       <br>
       <code>transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100</code>
@@ -263,8 +263,8 @@
       <strong>Final Insider Score:</strong>  
       The overall score is a weighted sum:
       <br>
-      - 50% Final MSPR Score  
-      - 25% Original Insider Transaction Score  
+      - 25% Final MSPR Score  
+      - 50% Original Insider Transaction Score  
       - 25% Trend Component  
       <br>
       Mathematically:
@@ -605,7 +605,7 @@ let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 let normalizedSlope = isNaN(slope) ? 50 : (slope + 100) / 2;
 let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
 
-// 3. Transaction Score Factor (25% weight):
+// 3. Transaction Score Factor (50% weight):
 // Calculate the net transaction score from insider buys and sells.
 let transactionScore = 0;
 if (totalBuys + totalSells > 0) {
@@ -614,14 +614,14 @@ if (totalBuys + totalSells > 0) {
 let normalizedTransactionScore = (transactionScore + 100) / 2;
 
 // --- Final Combined Insider Score ---
-const finalCombinedScore = 0.5 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
+const finalCombinedScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
 
 // Display the final insider score.
 document.getElementById('insiderScoreDisplay').innerHTML = `
   <p><strong>Final Insider Score:</strong> ${finalCombinedScore.toFixed(2)}</p>
   <p>
-    (Final MSPR: ${normalizedFinalMspr.toFixed(2)} [50%], 
-    Transaction Score: ${normalizedTransactionScore.toFixed(2)} [25%], 
+    (Final MSPR: ${normalizedFinalMspr.toFixed(2)} [25%], 
+    Transaction Score: ${normalizedTransactionScore.toFixed(2)} [50%], 
     Trend Component: ${trendComponent.toFixed(2)} [25%])
   </p>
 `;
