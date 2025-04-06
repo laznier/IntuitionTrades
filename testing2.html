@@ -24,11 +24,11 @@
       padding: 2rem;
       line-height: 1.6;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 20px;
       font-weight: 600;
     }
+    h1 { margin-bottom: 20px; }
     p, li {
       margin-bottom: 0.75em;
     }
@@ -70,11 +70,6 @@
       border-radius: 4px;
       background-color: var(--secondary-bg);
     }
-    .section h2 {
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    /* Two-column layout */
     .two-column {
       display: flex;
       gap: 2rem;
@@ -89,10 +84,6 @@
       background-color: var(--secondary-bg);
       padding: 1rem;
     }
-    .column h2 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
     .pickItem {
       border: 1px solid #555;
       border-radius: 4px;
@@ -104,15 +95,9 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    .bullish {
-      color: #16a34a;
-    }
-    .bearish {
-      color: #dc2626;
-    }
-    #statsSection p {
-      margin: 0.5rem 0;
-    }
+    .bullish { color: #16a34a; }
+    .bearish { color: #dc2626; }
+    #statsSection p, #scoreSection p { margin: 0.5rem 0; }
     /* Autocomplete styling */
     #ticker-suggestions {
       position: absolute;
@@ -135,18 +120,13 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    /* Ticker form container */
-    #tickerForm {
-      position: relative;
-      margin-bottom: 20px;
-    }
+    #tickerForm { position: relative; margin-bottom: 20px; }
     #company-full-name {
       margin-top: 5px;
       font-size: 1rem;
       color: var(--accent-color);
       text-align: center;
     }
-    /* Chart container */
     .chartContainer {
       margin-top: 20px;
       padding: 10px;
@@ -160,6 +140,22 @@
       color: var(--accent-color);
       display: none;
       text-align: center;
+    }
+    /* Explanation page styling */
+    #explanationPage {
+      display: none;
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #explanationPage h2 {
+      margin-bottom: 15px;
+    }
+    #explanationPage p {
+      margin-bottom: 1rem;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -186,6 +182,8 @@
 
   <!-- Button to fetch insider data -->
   <button id="insiderButton">Get Insider Data</button>
+  <!-- Explanation Button -->
+  <button id="explanationBtn" onclick="toggleExplanation()">Explanation</button>
 
   <div id="loading">Loading insider data...</div>
 
@@ -225,6 +223,55 @@
   <div id="summarySection" class="section" style="display:none;">
     <h2>Transaction Details</h2>
     <div id="summary"></div>
+  </div>
+
+  <!-- Explanation Page (hidden by default) -->
+  <div id="explanationPage">
+    <h2>Calculation Explanation</h2>
+    <p>
+      <strong>MSPR (Monthly Share Purchase Ratio):</strong>
+      MSPR is provided by Finnhub and ranges from -100 (most negative sentiment) to 100 (most positive sentiment).
+      To normalize this value to a 0–100 scale, we use:
+      <br>
+      <code>normalizedValue = (value + 100) / 2</code>
+      <br>
+      For example, an MSPR of 50 becomes 75, while an MSPR of -50 becomes 25.
+    </p>
+    <p>
+      <strong>Final MSPR Score (50% weight):</strong>
+      We take the most recent MSPR value (finalMspr) from the data and normalize it.
+    </p>
+    <p>
+      <strong>Original Insider Transaction Score (25% weight):</strong>
+      This score is calculated as the percentage difference between total buys and sells:
+      <br>
+      <code>transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100</code>
+      <br>
+      We then normalize it using the same formula.
+    </p>
+    <p>
+      <strong>Trend Component (25% weight):</strong>
+      This factor combines two elements:
+      <br>
+      1. <em>Regression Slope:</em> A measure of the trend of MSPR values over time. We normalize the slope.
+      <br>
+      2. <em>Average MSPR:</em> The average MSPR over the period, normalized.
+      <br>
+      The trend component is computed as the average of these two normalized values.
+    </p>
+    <p>
+      <strong>Final Insider Score:</strong>  
+      The overall score is a weighted sum:
+      <br>
+      - 50% Final MSPR Score  
+      - 25% Original Insider Transaction Score  
+      - 25% Trend Component  
+      <br>
+      Mathematically:
+      <br>
+      <code>finalScore = 0.5 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * ((normalizedSlope + normalizedAvgMspr) / 2)</code>
+    </p>
+    <button onclick="toggleExplanation()">Back</button>
   </div>
 
   <script>
@@ -405,7 +452,6 @@
           series: [{
             name: ticker.toUpperCase(),
             data: [totalBuys, totalSells],
-            // Using colorByPoint to differentiate buys and sells
             colorByPoint: true,
             colors: ['#16a34a', '#dc2626']
           }],
@@ -418,7 +464,7 @@
         showColumn(disposals, 'bearishCol', 'bearishContainer', false);
         
         /*************************************
-         * 3) FETCH & PROCESS INSIDER SENTIMENT
+         * 3) FETCH & PROCESS INSIDER SENTIMENT (Finnhub)
          *************************************/
         // Calculate from/to dates (format: YYYY-MM-DD)
         let today = new Date();
@@ -436,7 +482,6 @@
   
         // Prepare data for the sentiment chart.
         let sentimentCategories = sentimentJson.data.map((point, index) => {
-          // Create a label from year and month (e.g., "2021-03")
           return `${point.year}-${point.month.toString().padStart(2, '0')}`;
         });
         let sentimentValues = sentimentJson.data.map(point => parseFloat(point.mspr));
@@ -465,23 +510,46 @@
         document.getElementById('sentimentSection').style.display = 'block';
   
         /*************************************
-         * 4) CALCULATE FINAL INSIDER SCORE
+         * 4) CALCULATE FINAL COMBINED INSIDER SCORE
          *************************************/
-        // Compute a normalized transaction score: percentage difference between buys and sells.
+        // --- Final MSPR Factor (50%) ---
+        // Use the most recent MSPR value from the Finnhub data.
+        const finalMspr = parseFloat(sentimentJson.data[sentimentJson.data.length - 1].mspr);
+        const normalizedFinalMspr = (finalMspr + 100) / 2;
+  
+        // --- Trend Component (25%) ---
+        // Compute average MSPR across all data points.
+        let sumMspr = 0;
+        sentimentJson.data.forEach(point => {
+          sumMspr += parseFloat(point.mspr);
+        });
+        const averageMspr = sumMspr / sentimentJson.data.length;
+        const normalizedAvgMspr = (averageMspr + 100) / 2;
+  
+        // Normalize the regression slope.
+        const normalizedSlope = (sentimentJson.trend + 100) / 2;
+  
+        // Combine the normalized average and slope.
+        const trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+  
+        // --- Original Transaction Score Factor (25%) ---
         let transactionScore = 0;
         if (totalBuys + totalSells > 0) {
           transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
         }
-        // Sentiment trend (slope) from Finnhub API.
-        let sentimentTrend = sentimentJson.trend;
+        const normalizedTransactionScore = (transactionScore + 100) / 2;
   
-        // Final insider score: 50% weight to transaction score, 50% weight to sentiment trend.
-        let finalInsiderScore = 0.5 * transactionScore + 0.5 * sentimentTrend;
+        // --- Final Combined Insider Score ---
+        const finalCombinedScore = 0.5 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
   
         // Display the final insider score.
         document.getElementById('insiderScoreDisplay').innerHTML = `
-          <p><strong>Final Insider Score:</strong> ${finalInsiderScore.toFixed(2)}</p>
-          <p>(Transaction Score: ${transactionScore.toFixed(2)}, Sentiment Trend: ${sentimentTrend.toFixed(2)})</p>
+          <p><strong>Final Insider Score:</strong> ${finalCombinedScore.toFixed(2)}</p>
+          <p>
+            (Final MSPR: ${normalizedFinalMspr.toFixed(2)} [50%], 
+            Transaction Score: ${normalizedTransactionScore.toFixed(2)} [25%], 
+            Trend Component: ${trendComponent.toFixed(2)} [25%])
+          </p>
         `;
         document.getElementById('scoreSection').style.display = 'block';
   
@@ -568,6 +636,20 @@
         }, 100);
       }
     };
+
+    /*******************************************************
+     * 7) Explanation Toggle Function
+     *******************************************************/
+    function toggleExplanation() {
+      const expl = document.getElementById('explanationPage');
+      if (expl.style.display === 'none' || expl.style.display === '') {
+        expl.style.display = 'block';
+        window.scrollTo({ top: expl.offsetTop, behavior: 'smooth' });
+      } else {
+        expl.style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   </script>
 </body>
 </html>
