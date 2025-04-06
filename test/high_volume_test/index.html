@@ -1209,6 +1209,7 @@
       w.document.write(htmlDoc);
       w.document.close();
     }
+    let r = await fetch(url, { mode: 'cors' });
 
     // Attach event listeners
     document.getElementById("batchButton").addEventListener("click", runBatchBacktest);
