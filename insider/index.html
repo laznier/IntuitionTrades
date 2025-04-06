@@ -347,10 +347,10 @@
      *******************************************************/
     // Fetch last close price using historical data.
     async function fetchLastPrice(ticker) {
-      const histUrl = `https://www.projectmanagerhelper.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
+      const histUrl = `https://www.intuitiontrades.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
       const histResponse = await fetch(histUrl);
       if (!histResponse.ok) {
-        throw new Error("Failed to fetch historical data. Status: " + histResponse.status);
+        throw new Error("Failed to fetch historical data. Try again later. Status: " + histResponse.status);
       }
       const histData = await histResponse.json();
       const meta = histData["Meta Data"];
@@ -389,10 +389,10 @@
 
       try {
         // Fetch insider transactions data from your API endpoint.
-        const url = `https://www.projectmanagerhelper.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+        const url = `https://www.ituitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error("Failed to fetch insider data. Status: " + response.status);
+          throw new Error("Failed to fetch insider data. Try increasing day count. Status: " + response.status);
         }
         const data = await response.json();
         if (!data.data || !Array.isArray(data.data)) {
