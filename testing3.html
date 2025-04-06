@@ -553,75 +553,77 @@
     }
 
     /*********************************************************
-     * Insider
-     *********************************************************/
-    // Existing function for transaction data (buys/sells) remains
-    async function fetchInsiderData(ticker, periodMonths, simDate, currPrice) {
-      let url = `https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
-      let r = await fetch(url);
-      let j = await r.json();
-      if (!j.data || !Array.isArray(j.data)) throw new Error("No insider data array found.");
+ * Insider
+ *********************************************************/
+// Existing function to fetch insider transaction data (buys/sells) remains unchanged:
+async function fetchInsiderData(ticker, periodMonths, simDate, currPrice) {
+  let url = `https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+  let r = await fetch(url);
+  let j = await r.json();
+  if (!j.data || !Array.isArray(j.data)) throw new Error("No insider data array found.");
 
-      let cutoff = new Date(simDate);
-      cutoff.setMonth(cutoff.getMonth() - periodMonths);
+  let cutoff = new Date(simDate);
+  cutoff.setMonth(cutoff.getMonth() - periodMonths);
 
-      let totalBuy = 0, totalSell = 0;
-      for (let item of j.data) {
-        if (!item.transaction_date || !item.acquisition_or_disposal || !item.shares) continue;
-        if (!item.share_price || parseFloat(item.share_price) === 0) continue;
-        let tradePrice = parseFloat(item.share_price);
-        let lb = currPrice * 0.5, ub = currPrice * 1.5;
-        if (tradePrice < lb || tradePrice > ub) continue;
-        let dt = new Date(item.transaction_date);
-        if (isNaN(dt) || dt < cutoff || dt > simDate) continue;
-        let shares = parseFloat(item.shares);
-        if (item.acquisition_or_disposal === "A") totalBuy += shares;
-        else if (item.acquisition_or_disposal === "D") totalSell += shares;
-      }
-      return { totalBuys: totalBuy, totalSells: totalSell };
-    }
-    // New function to fetch insider sentiment data using the updated API
-    async function fetchInsiderSentiment(ticker, periodMonths, simDate) {
-      let fromDate = new Date(simDate);
-      fromDate.setMonth(fromDate.getMonth() - periodMonths);
-      let fromDateStr = fromDate.toISOString().slice(0, 10);
-      let toDateStr = simDate.toISOString().slice(0, 10);
-      let url = `https://www.projectmanagerhelper.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-      let r = await fetch(url);
-      let j = await r.json();
-      if (!j.data || !Array.isArray(j.data) || j.data.length === 0)
-        throw new Error("No insider sentiment data available.");
-      return j; // Contains { data: [...], trend: regressionSlope }
-    }
-    // New function to compute the updated insider score using three factors:
-    // 1. Final MSPR (50% weight)
-    // 2. Transaction Score from buys/sells (25% weight)
-    // 3. Trend Component (average of normalized average MSPR and normalized regression slope) (25% weight)
-    function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells) {
-      let sentimentArray = insiderSentimentData.data;
-      let trend = parseFloat(insiderSentimentData.trend);
-      // Most recent MSPR from sentiment data:
-      let finalMspr = parseFloat(sentimentArray[sentimentArray.length - 1].mspr);
-      // Compute average MSPR:
-      let sumMspr = 0;
-      sentimentArray.forEach(pt => { sumMspr += parseFloat(pt.mspr); });
-      let avgMspr = sumMspr / sentimentArray.length;
-      // Normalize (range: -100 to 100 mapped to 0 to 100):
-      let normalizedFinalMspr = (finalMspr + 100) / 2;
-      let normalizedAvgMspr = (avgMspr + 100) / 2;
-      let normalizedSlope = (trend + 100) / 2;
-      let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
-      // Transaction score based on buys and sells:
-      let transactionScore = 0;
-      let sum = transactionBuys + transactionSells;
-      if (sum > 0) {
-        transactionScore = ((transactionBuys - transactionSells) / sum) * 100;
-      }
-      let normalizedTransactionScore = (transactionScore + 100) / 2;
-      // Final insider score:
-      let finalScore = 0.50 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
-      return finalScore;
-    }
+  let totalBuy = 0, totalSell = 0;
+  for (let item of j.data) {
+    if (!item.transaction_date || !item.acquisition_or_disposal || !item.shares) continue;
+    if (!item.share_price || parseFloat(item.share_price) === 0) continue;
+    let tradePrice = parseFloat(item.share_price);
+    let lb = currPrice * 0.5, ub = currPrice * 1.5;
+    if (tradePrice < lb || tradePrice > ub) continue;
+    let dt = new Date(item.transaction_date);
+    if (isNaN(dt) || dt < cutoff || dt > simDate) continue;
+    let shares = parseFloat(item.shares);
+    if (item.acquisition_or_disposal === "A") totalBuy += shares;
+    else if (item.acquisition_or_disposal === "D") totalSell += shares;
+  }
+  return { totalBuys: totalBuy, totalSells: totalSell };
+}
+
+// New function to fetch insider sentiment data from your updated API endpoint:
+async function fetchInsiderSentiment(ticker, periodMonths, simDate) {
+  let fromDate = new Date(simDate);
+  fromDate.setMonth(fromDate.getMonth() - periodMonths);
+  let fromDateStr = fromDate.toISOString().slice(0, 10);
+  let toDateStr = simDate.toISOString().slice(0, 10);
+  let url = `https://www.projectmanagerhelper.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+  let r = await fetch(url);
+  let j = await r.json();
+  if (!j.data || !Array.isArray(j.data) || j.data.length === 0)
+    throw new Error("No insider sentiment data available.");
+  return j; // Returns an object like { data: [...], trend: regressionSlope }
+}
+
+// New function to compute the updated insider score using three normalized factors:
+// 1. Final MSPR (50% weight)
+// 2. Transaction Score from buys/sells (25% weight)
+// 3. Trend Component (average of normalized average MSPR and normalized regression slope) (25% weight)
+function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells) {
+  let sentimentArray = insiderSentimentData.data;
+  let trend = parseFloat(insiderSentimentData.trend);
+  // Most recent MSPR value
+  let finalMspr = parseFloat(sentimentArray[sentimentArray.length - 1].mspr);
+  // Compute average MSPR
+  let sumMspr = sentimentArray.reduce((sum, pt) => sum + parseFloat(pt.mspr), 0);
+  let avgMspr = sumMspr / sentimentArray.length;
+  // Normalize MSPR values (map from -100 to 100 into 0 to 100)
+  let normalizedFinalMspr = (finalMspr + 100) / 2;
+  let normalizedAvgMspr = (avgMspr + 100) / 2;
+  let normalizedSlope = (trend + 100) / 2;
+  let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+  // Transaction score from insider transactions:
+  let transactionScore = 0;
+  let sum = transactionBuys + transactionSells;
+  if (sum > 0) {
+    transactionScore = ((transactionBuys - transactionSells) / sum) * 100;
+  }
+  let normalizedTransactionScore = (transactionScore + 100) / 2;
+  // Final insider score calculation:
+  let finalScore = 0.50 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
+  return finalScore;
+}
+
 
     /*********************************************************
      * Fundamental
@@ -789,12 +791,13 @@
         let sentBull = computeSentimentBull(sentData);
 
         // 4) Insider (New Calculation)
-        // a) Get transaction data for buys and sells
-        let transactionData = await fetchInsiderData(ticker, histPeriod, simDate, stats.lastPrice);
-        // b) Get insider sentiment data (MSPR & regression slope)
-        let insiderSentimentData = await fetchInsiderSentiment(ticker, histPeriod, simDate);
-        // c) Compute the new insider score
-        let insiderScore = computeNewInsiderScore(insiderSentimentData, transactionData.totalBuys, transactionData.totalSells);
+// a) Retrieve transaction data (buys/sells)
+let transactionData = await fetchInsiderData(ticker, histPeriod, simDate, stats.lastPrice);
+// b) Retrieve insider sentiment data (MSPR and regression slope)
+let insiderSentimentData = await fetchInsiderSentiment(ticker, histPeriod, simDate);
+// c) Compute the new insider score using the new weighted formula
+let insiderScore = computeNewInsiderScore(insiderSentimentData, transactionData.totalBuys, transactionData.totalSells);
+
 
         // 5) Fundamental
         let fundamentalBull = await fetchFundamentalData(ticker);
@@ -836,22 +839,23 @@
 
         log(`${ticker}: Actual: ${actualRet.toFixed(2)}% (${actualDir}), Pred: ${finalRet.toFixed(2)}% (${predDir})`);
         return {
-          ticker,
-          componentScores: {
-            mc: mcBull,
-            tech: techBull,
-            sent: sentBull,
-            insider: insiderScore,
-            fundamental: fundamentalBull,
-            congress: congressBull
-          },
-          predictedReturn: finalRet,
-          actualReturn: actualRet,
-          actualDirection: actualDir,
-          predictedDirection: predDir,
-          correctPrediction: correct,
-          aggregatedBullEqual: 50 + finalRet
-        };
+  ticker,
+  componentScores: {
+    mc: mcBull,
+    tech: techBull,
+    sent: sentBull,
+    insider: insiderScore,  // <-- new insider score here
+    fundamental: fundamentalBull,
+    congress: congressBull
+  },
+  predictedReturn: finalRet,
+  actualReturn: actualRet,
+  actualDirection: actualDir,
+  predictedDirection: predDir,
+  correctPrediction: correct,
+  aggregatedBullEqual: 50 + finalRet
+};
+
       } catch (e) {
         log(`Error with ${ticker}: ${e.message}`);
         return null;
