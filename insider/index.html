@@ -509,49 +509,62 @@
         document.getElementById('sentimentChart').style.display = 'block';
         document.getElementById('sentimentSection').style.display = 'block';
   
-        /*************************************
-         * 4) CALCULATE FINAL COMBINED INSIDER SCORE
-         *************************************/
-        // --- Final MSPR Factor (50%) ---
-        // Use the most recent MSPR value from the Finnhub data.
-        const finalMspr = parseFloat(sentimentJson.data[sentimentJson.data.length - 1].mspr);
-        const normalizedFinalMspr = (finalMspr + 100) / 2;
+            /*************************************
+     * 4) CALCULATE FINAL COMBINED INSIDER SCORE
+     *************************************/
+    // --- Final MSPR Factor (50%) and Trend Component (25%) ---
+    // Use the Finnhub insider sentiment data (MSPR values and regression slope).
+    // If there is no sentiment data or fewer than 2 months, default the normalized values to 50.
+    let msprData = sentimentJson.data;
+    let normalizedFinalMspr, normalizedAvgMspr, normalizedSlope;
+    if (!msprData || msprData.length < 2) {
+      normalizedFinalMspr = 50;
+      normalizedAvgMspr = 50;
+      normalizedSlope = 50;
+    } else {
+      // Use the latest MSPR if available; if it's missing (NaN), default to 50.
+      let lastMspr = parseFloat(msprData[msprData.length - 1].mspr);
+      normalizedFinalMspr = isNaN(lastMspr) ? 50 : (lastMspr + 100) / 2;
   
-        // --- Trend Component (25%) ---
-        // Compute average MSPR across all data points.
-        let sumMspr = 0;
-        sentimentJson.data.forEach(point => {
-          sumMspr += parseFloat(point.mspr);
-        });
-        const averageMspr = sumMspr / sentimentJson.data.length;
-        const normalizedAvgMspr = (averageMspr + 100) / 2;
+      // Compute average MSPR using valid values; default to 50 if none available.
+      let validMspr = msprData.filter(point => !isNaN(parseFloat(point.mspr)));
+      if (validMspr.length === 0) {
+        normalizedAvgMspr = 50;
+      } else {
+        let sumMspr = validMspr.reduce((sum, point) => sum + parseFloat(point.mspr), 0);
+        let averageMspr = sumMspr / validMspr.length;
+        normalizedAvgMspr = (averageMspr + 100) / 2;
+      }
   
-        // Normalize the regression slope.
-        const normalizedSlope = (sentimentJson.trend + 100) / 2;
+      // Normalize the regression slope; if not available, default to 50.
+      let trendValue = parseFloat(sentimentJson.trend);
+      normalizedSlope = isNaN(trendValue) ? 50 : (trendValue + 100) / 2;
+    }
+    // Trend Component is the average of normalized average MSPR and normalized regression slope.
+    const trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
   
-        // Combine the normalized average and slope.
-        const trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+    // --- Original Transaction Score Factor (25%) ---
+    let transactionScore = 0;
+    if (totalBuys + totalSells > 0) {
+      transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
+    }
+    const normalizedTransactionScore = (transactionScore + 100) / 2;
   
-        // --- Original Transaction Score Factor (25%) ---
-        let transactionScore = 0;
-        if (totalBuys + totalSells > 0) {
-          transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
-        }
-        const normalizedTransactionScore = (transactionScore + 100) / 2;
+    // --- Final Combined Insider Score ---
+    // 50% weight to Final MSPR factor, 25% weight to Transaction Score, and 25% weight to Trend Component.
+    const finalCombinedScore = 0.5 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
   
-        // --- Final Combined Insider Score ---
-        const finalCombinedScore = 0.5 * normalizedFinalMspr + 0.25 * normalizedTransactionScore + 0.25 * trendComponent;
-  
-        // Display the final insider score.
-        document.getElementById('insiderScoreDisplay').innerHTML = `
-          <p><strong>Final Insider Score:</strong> ${finalCombinedScore.toFixed(2)}</p>
-          <p>
-            (Final MSPR: ${normalizedFinalMspr.toFixed(2)} [50%], 
-            Transaction Score: ${normalizedTransactionScore.toFixed(2)} [25%], 
-            Trend Component: ${trendComponent.toFixed(2)} [25%])
-          </p>
-        `;
-        document.getElementById('scoreSection').style.display = 'block';
+    // Display the final insider score.
+    document.getElementById('insiderScoreDisplay').innerHTML = `
+      <p><strong>Final Insider Score:</strong> ${finalCombinedScore.toFixed(2)}</p>
+      <p>
+        (Final MSPR: ${normalizedFinalMspr.toFixed(2)} [50%], 
+        Transaction Score: ${normalizedTransactionScore.toFixed(2)} [25%], 
+        Trend Component: ${trendComponent.toFixed(2)} [25%])
+      </p>
+    `;
+    document.getElementById('scoreSection').style.display = 'block';
+
   
       } catch (err) {
         console.error("Error retrieving insider data:", err);
