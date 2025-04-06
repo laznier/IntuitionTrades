@@ -236,6 +236,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Countdown Section */
+@media (max-width: 600px) {
+  .countdown-section .flip-clock {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1.2rem; /* Adjust overall scaling */
+    box-sizing: border-box;
+  }
+  .countdown-section .flip-number {
+    padding: 0.3rem 0.5rem;
+    font-size: 1rem;
+  }
+}
+
 .countdown-section {
   text-align: center;
   padding: var(--section-padding);
@@ -609,6 +622,25 @@ footer {
 }
 
 /* Live News Section Styles */
+@media (max-width: 600px) {
+  .ticker-search-container {
+    width: 100%;
+    box-sizing: border-box;
+    flex-direction: column; /* Stack input and button vertically */
+    gap: 0.5rem;
+  }
+  .ticker-search-container input,
+  .ticker-search-container button {
+    width: 100%;
+    font-size: 0.9rem;
+  }
+  .live-news-menu button {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.25rem 0;
+  }
+}
+
 .live-news {
   position: relative;
   padding: 1rem;
@@ -679,6 +711,7 @@ footer {
 
 .ticker-search-container button {
   padding: 0.33rem 1rem;
+  display: flex;
   margin-left: 0.5rem;
   border-radius: var(--border-radius);
   background-color: var(--primary-bg);
