@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Full Sentiment Viewer</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Insider Trading Insights</title>
+  <!-- Include Highcharts for graphs -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -28,237 +37,534 @@
       margin-top: 15px;
       font-weight: 500;
     }
-    input[type="text"] {
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
     }
+    /* Section styling */
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
     }
-    #sentChart {
-      width: 100%;
-      height: 400px;
-      border: 1px solid #e5e7eb;
+    /* Two-column layout */
+    .two-column {
+      display: flex;
+      gap: 2rem;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .column {
+      flex: 1;
+      min-width: 300px;
+      border: 1px solid #444;
       border-radius: 4px;
-      margin-top: 10px;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
     }
-    #articleSection {
-      margin-top: 20px;
-      display: none;
-    }
-    #articleSection h3 {
+    .column h2 {
+      text-align: center;
       margin-bottom: 10px;
     }
-    #articleSection p {
-      margin-bottom: 1em;
+    .pickItem {
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 8px 16px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .pickItem:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    .bullish {
+      color: #16a34a;
+    }
+    .bearish {
+      color: #dc2626;
+    }
+    #statsSection p {
+      margin: 0.5rem 0;
+    }
+    /* Autocomplete styling */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    /* Ticker form container */
+    #tickerForm {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    /* Chart container */
+    .chartContainer {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
     }
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
+      display: none;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <!-- Back to Main Page button -->
-  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
+  <!-- Back to Home Button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Market Sentiment Viewer</h1>
+  <h1>Insider Trading Insights</h1>
   <p>
-    Enter a ticker symbol to fetch social sentiment data from Financial Modeling Prep,
-    calculate a custom sentiment score (0-100), and view the sentiment trend over time.
+    Enter a ticker symbol (e.g., IBM) and a timeframe (in days) to retrieve insider trading data and insider sentiment.
+    Only transactions whose share price is within ±50% of the last close are considered.
   </p>
 
-  <label for="tickerInput">Ticker Symbol (e.g., AAPL):</label>
-  <input type="text" id="tickerInput" placeholder="AAPL" />
-
-  <button id="loadButton">Load Data</button>
-  <div id="loading" style="display:none;">Loading sentiment data...</div>
-
-  <div id="sentimentSection" class="section" style="display:none;">
-    <h2>Sentiment Chart</h2>
-    <div id="sentChart"></div>
+  <!-- Ticker Input Form with Autocomplete -->
+  <div id="tickerForm">
+    <label for="ticker">Ticker Symbol:</label>
+    <input type="text" id="ticker" placeholder="e.g. IBM" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
   </div>
 
-  <!-- Optional: Section for extra details (not used here) -->
-  <div id="articleSection" class="section"></div>
+  <label for="days">Timeframe (days):</label>
+  <input type="number" id="days" placeholder="e.g. 30" value="30" />
+
+  <!-- Button to fetch insider data -->
+  <button id="insiderButton">Get Insider Data</button>
+
+  <div id="loading">Loading insider data...</div>
+
+  <!-- Summary Section for Insider Transactions -->
+  <div id="statsSection" class="section" style="display:none;">
+    <h2>Insider Summary</h2>
+    <div id="statsSummary"></div>
+    <!-- Highcharts container for insider transactions summary -->
+    <div id="insiderChart" class="chartContainer" style="display:none;"></div>
+  </div>
+
+  <!-- Container for Insider Sentiment Chart -->
+  <div id="sentimentSection" class="section" style="display:none;">
+    <h2>Insider Sentiment Trend</h2>
+    <div id="sentimentChart" class="chartContainer" style="display:none;"></div>
+  </div>
+
+  <!-- Final Insider Score Section -->
+  <div id="scoreSection" class="section" style="display:none;">
+    <h2>Final Insider Score</h2>
+    <div id="insiderScoreDisplay"></div>
+  </div>
+
+  <!-- Two columns for Acquisitions and Disposals -->
+  <div class="two-column" style="margin-top: 20px;">
+    <div id="bullishCol" class="column" style="display:none;">
+      <h2>Acquisitions (Buy)</h2>
+      <div id="bullishContainer"></div>
+    </div>
+    <div id="bearishCol" class="column" style="display:none;">
+      <h2>Disposals (Sell)</h2>
+      <div id="bearishContainer"></div>
+    </div>
+  </div>
+
+  <!-- Transaction Details Section -->
+  <div id="summarySection" class="section" style="display:none;">
+    <h2>Transaction Details</h2>
+    <div id="summary"></div>
+  </div>
 
   <script>
-    // IMPORTANT: Replace with your actual Financial Modeling Prep API key.
-    const FMP_API_KEY = "YOUR_FMP_API_KEY";
-
-    // Normalize a value x within min and max to a 0-100 scale.
-    function normalize(x, min, max) {
-      if (max - min === 0) return 0;
-      let norm = 100 * ((x - min) / (max - min));
-      return Math.max(0, Math.min(100, norm));
-    }
-
-    // Calculate custom sentiment score from a data point.
-    // The data point is expected to have:
-    //   positiveMentions, negativeMentions, bullishPercent, bearishPercent, mentionChangePercent
-    function calculateScore(dataPoint) {
-      const pos = dataPoint.positiveMentions || 0;
-      const neg = dataPoint.negativeMentions || 0;
-      const total = (pos + neg) || 1; // avoid division by zero
-      const bullish = (dataPoint.bullishPercent || 0) / 100;
-      const bearish = (dataPoint.bearishPercent || 0) / 100;
-      const change = dataPoint.mentionChangePercent || 0;
-
-      const posRatio = pos / total;
-      const bullBearDiff = bullish - bearish;
-      const posNegRatio = pos / (neg + 1e-5);
-
-      // Weight factors: adjust as desired
-      const score = (0.4 * normalize(posRatio, 0, 1)) +
-                    (0.3 * normalize(bullBearDiff, -1, 1)) +
-                    (0.2 * normalize(change, -100, 100)) +
-                    (0.1 * normalize(posNegRatio, 0, 10));
-      return Math.round(score * 100) / 100;
-    }
-
-    // Compute linear regression on arrays xs and ys.
-    function computeLinearRegression(xs, ys) {
-      const n = xs.length;
-      const sumX = xs.reduce((a, b) => a + b, 0);
-      const sumY = ys.reduce((a, b) => a + b, 0);
-      const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
-      const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-      const intercept = (sumY - slope * sumX) / n;
-      return { slope, intercept };
-    }
-
-    // Fetch sentiment data for the given ticker from FMP.
-    async function fetchSentimentData(ticker) {
-      const url = `https://financialmodelingprep.com/api/v4/social-sentiment/${ticker}?apikey=${FMP_API_KEY}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
+    /*******************************************************
+     * GLOBAL VARIABLES & AUTOCOMPLETE FUNCTIONS
+     *******************************************************/
+    let debounceTimeout;
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
       }
-      const data = await response.json();
-      if (!Array.isArray(data) || data.length === 0) {
-        throw new Error("No sentiment data found for this ticker.");
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
       }
-      return data;
     }
-
-    // Plot the sentiment scores over time along with a trend line.
-    function plotSentiment(dataPoints) {
-      document.getElementById("sentimentSection").style.display = "block";
-
-      // Convert date strings to Date objects and sort data
-      dataPoints.forEach(dp => {
-        dp.dateObj = new Date(dp.date);
-      });
-      dataPoints.sort((a, b) => a.dateObj - b.dateObj);
-
-      // Calculate sentiment score for each data point.
-      dataPoints.forEach(dp => {
-        dp.score = calculateScore(dp);
-      });
-
-      // Prepare data for Plotly.
-      const dates = dataPoints.map(dp => dp.dateObj);
-      const scores = dataPoints.map(dp => dp.score);
-
-      // For regression, convert dates to day offsets.
-      const firstDate = dates[0];
-      const xs = dates.map(d => (d - firstDate) / (1000 * 60 * 60 * 24));
-      const { slope, intercept } = computeLinearRegression(xs, scores);
-      const x0 = 0;
-      const x1 = xs[xs.length - 1];
-      const y0 = intercept + slope * x0;
-      const y1 = intercept + slope * x1;
-
-      // Create scatter trace.
-      const tracePoints = {
-        x: dates,
-        y: scores,
-        mode: 'markers+lines',
-        name: 'Sentiment Score',
-        hovertemplate: '%{x}<br>Score: %{y:.2f}<extra></extra>'
-      };
-
-      // Create trend line trace.
-      const traceTrend = {
-        x: [dates[0], dates[dates.length - 1]],
-        y: [y0, y1],
-        mode: 'lines',
-        line: { dash: 'dash', color: 'red' },
-        name: 'Trend'
-      };
-
-      const layout = {
-        title: "Sentiment Score Over Time",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Sentiment Score (0-100)" }
-      };
-
-      Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, { responsive: true });
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
     }
-
-    // Load sentiment data and process it.
-    async function loadSentimentData() {
-      const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
-      if (!ticker) {
-        alert("Please enter a ticker symbol.");
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
         return;
       }
-      document.getElementById("loading").style.display = "block";
-      document.getElementById("sentimentSection").style.display = "none";
-      document.getElementById("articleSection").style.display = "none";
-      try {
-        const data = await fetchSentimentData(ticker);
-        // For our purposes, we assume each data object includes:
-        // date, positiveMentions, negativeMentions, bullishPercent, bearishPercent, mentionChangePercent
-        // (Check FMP documentation to confirm field names.)
-        plotSentiment(data);
-      } catch (err) {
-        alert("Error loading sentiment: " + err.message);
-      } finally {
-        document.getElementById("loading").style.display = "none";
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+
+    /*******************************************************
+     * 1) FETCHING & PROCESSING FUNCTIONS
+     *******************************************************/
+    // Fetch last close price using historical data.
+    async function fetchLastPrice(ticker) {
+      const histUrl = `https://www.projectmanagerhelper.com/api/historical?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${encodeURIComponent(ticker)}`;
+      const histResponse = await fetch(histUrl);
+      if (!histResponse.ok) {
+        throw new Error("Failed to fetch historical data. Status: " + histResponse.status);
       }
+      const histData = await histResponse.json();
+      const meta = histData["Meta Data"];
+      const timeSeries = histData["Time Series (Daily)"];
+      if (!meta || !timeSeries) {
+        throw new Error("Invalid historical data format.");
+      }
+      const lastRefreshed = meta["3. Last Refreshed"];
+      const lastRecord = timeSeries[lastRefreshed];
+      if (!lastRecord || !lastRecord["4. close"]) {
+        throw new Error("Could not determine last close price.");
+      }
+      return parseFloat(lastRecord["4. close"]);
     }
 
-    // Wire up the load button.
-    document.getElementById("loadButton").addEventListener("click", loadSentimentData);
+    /*******************************************************
+     * 2) INSIDER DATA FETCH & UI HANDLING
+     *******************************************************/
+    document.getElementById('insiderButton').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
+      const days = parseInt(document.getElementById('days').value.trim()) || 30;
+      if (!ticker) {
+        alert("Please enter a ticker symbol first.");
+        return;
+      }
+      
+      const loadingEl = document.getElementById('loading');
+      loadingEl.style.display = 'block';
+      document.getElementById('statsSection').style.display = 'none';
+      document.getElementById('sentimentSection').style.display = 'none';
+      document.getElementById('scoreSection').style.display = 'none';
+      document.getElementById('bullishCol').style.display = 'none';
+      document.getElementById('bearishCol').style.display = 'none';
+      document.getElementById('summarySection').style.display = 'none';
+      document.getElementById('summary').innerHTML = '';
 
-    // Optionally auto-populate ticker from URL parameter "symbol"
+      try {
+        // Fetch insider transactions data from your API endpoint.
+        const url = `https://www.projectmanagerhelper.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to fetch insider data. Status: " + response.status);
+        }
+        const data = await response.json();
+        if (!data.data || !Array.isArray(data.data)) {
+          throw new Error("Invalid insider data format.");
+        }
+        // Fetch last close price.
+        const lastPrice = await fetchLastPrice(ticker);
+        const lowerBound = lastPrice * 0.5;
+        const upperBound = lastPrice * 1.5;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const filtered = data.data.filter(item => {
+          const d = new Date(item.transaction_date);
+          if (isNaN(d) || d < cutoff) return false;
+          const sharePrice = parseFloat(item.share_price);
+          if (isNaN(sharePrice) || sharePrice === 0) return false;
+          return sharePrice >= lowerBound && sharePrice <= upperBound;
+        });
+        filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+        const acquisitions = filtered.filter(item => item.acquisition_or_disposal === 'A');
+        const disposals = filtered.filter(item => item.acquisition_or_disposal === 'D');
+        let totalBuys = 0, totalSells = 0;
+        filtered.forEach(item => {
+          const sharesNum = parseFloat(item.shares) || 0;
+          if (item.acquisition_or_disposal === 'A') totalBuys += sharesNum;
+          else if (item.acquisition_or_disposal === 'D') totalSells += sharesNum;
+        });
+        
+        // Render summary stats.
+        const statsSection = document.getElementById('statsSection');
+        const statsSummary = document.getElementById('statsSummary');
+        statsSummary.innerHTML = `
+          <p><strong>Timeframe:</strong> Last ${days} day(s)</p>
+          <p><strong>Total Buys:</strong> ${totalBuys.toLocaleString()} shares</p>
+          <p><strong>Total Sells:</strong> ${totalSells.toLocaleString()} shares</p>
+          <p><strong>Transactions Considered:</strong> ${filtered.length}</p>
+          <p><strong>Last Close Price:</strong> $${lastPrice.toFixed(2)}</p>
+          <p><strong>Valid Price Range:</strong> $${lowerBound.toFixed(2)} - $${upperBound.toFixed(2)}</p>
+        `;
+        statsSection.style.display = 'block';
+        
+        // Plot a Highcharts column chart for insider transactions summary.
+        Highcharts.chart('insiderChart', {
+          chart: {
+            type: 'column',
+            backgroundColor: 'var(--secondary-bg)'
+          },
+          title: { text: 'Insider Trading Summary' },
+          xAxis: {
+            categories: ['Total Buys', 'Total Sells'],
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          yAxis: {
+            title: { text: 'Shares' },
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          series: [{
+            name: ticker.toUpperCase(),
+            data: [totalBuys, totalSells],
+            // Using colorByPoint to differentiate buys and sells
+            colorByPoint: true,
+            colors: ['#16a34a', '#dc2626']
+          }],
+          credits: { enabled: false }
+        });
+        document.getElementById('insiderChart').style.display = 'block';
+        
+        // Render transaction columns.
+        showColumn(acquisitions, 'bullishCol', 'bullishContainer', true);
+        showColumn(disposals, 'bearishCol', 'bearishContainer', false);
+        
+        /*************************************
+         * 3) FETCH & PROCESS INSIDER SENTIMENT
+         *************************************/
+        // Calculate from/to dates (format: YYYY-MM-DD)
+        let today = new Date();
+        let pastDate = new Date();
+        pastDate.setDate(today.getDate() - days);
+        let fromDateStr = pastDate.toISOString().slice(0,10);
+        let toDateStr = today.toISOString().slice(0,10);
+  
+        const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
+        const sentimentResponse = await fetch(sentimentUrl);
+        if (!sentimentResponse.ok) {
+          throw new Error("Failed to fetch insider sentiment data. Status: " + sentimentResponse.status);
+        }
+        const sentimentJson = await sentimentResponse.json();
+  
+        // Prepare data for the sentiment chart.
+        let sentimentCategories = sentimentJson.data.map((point, index) => {
+          // Create a label from year and month (e.g., "2021-03")
+          return `${point.year}-${point.month.toString().padStart(2, '0')}`;
+        });
+        let sentimentValues = sentimentJson.data.map(point => parseFloat(point.mspr));
+  
+        Highcharts.chart('sentimentChart', {
+          chart: {
+            type: 'line',
+            backgroundColor: 'var(--secondary-bg)'
+          },
+          title: { text: 'Insider Sentiment Trend' },
+          xAxis: {
+            categories: sentimentCategories,
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          yAxis: {
+            title: { text: 'MSPR' },
+            labels: { style: { color: 'var(--text-color)' } }
+          },
+          series: [{
+            name: ticker.toUpperCase(),
+            data: sentimentValues
+          }],
+          credits: { enabled: false }
+        });
+        document.getElementById('sentimentChart').style.display = 'block';
+        document.getElementById('sentimentSection').style.display = 'block';
+  
+        /*************************************
+         * 4) CALCULATE FINAL INSIDER SCORE
+         *************************************/
+        // Compute a normalized transaction score: percentage difference between buys and sells.
+        let transactionScore = 0;
+        if (totalBuys + totalSells > 0) {
+          transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
+        }
+        // Sentiment trend (slope) from Finnhub API.
+        let sentimentTrend = sentimentJson.trend;
+  
+        // Final insider score: 50% weight to transaction score, 50% weight to sentiment trend.
+        let finalInsiderScore = 0.5 * transactionScore + 0.5 * sentimentTrend;
+  
+        // Display the final insider score.
+        document.getElementById('insiderScoreDisplay').innerHTML = `
+          <p><strong>Final Insider Score:</strong> ${finalInsiderScore.toFixed(2)}</p>
+          <p>(Transaction Score: ${transactionScore.toFixed(2)}, Sentiment Trend: ${sentimentTrend.toFixed(2)})</p>
+        `;
+        document.getElementById('scoreSection').style.display = 'block';
+  
+      } catch (err) {
+        console.error("Error retrieving insider data:", err);
+        alert("Error: " + err.message);
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    });
+  
+    function showColumn(list, colId, containerId, isBullish) {
+      const colEl = document.getElementById(colId);
+      const containerEl = document.getElementById(containerId);
+      containerEl.innerHTML = "";
+      if (list.length === 0) {
+        colEl.style.display = 'none';
+        return;
+      }
+      colEl.style.display = 'block';
+      list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.classList.add('pickItem');
+        div.classList.add(isBullish ? 'bullish' : 'bearish');
+        const sharesStr = parseFloat(item.shares).toLocaleString();
+        const dateStr = item.transaction_date || "N/A";
+        div.innerHTML = `<strong>${item.ticker}</strong> - ${sharesStr} shares on ${dateStr}`;
+        div.addEventListener('click', () => showSummary(item, idx + 1, isBullish));
+        containerEl.appendChild(div);
+      });
+    }
+  
+    function showSummary(item, rank, isBullish) {
+      document.getElementById('summarySection').style.display = 'block';
+      const summaryEl = document.getElementById('summary');
+      let html = `<p><strong>Transaction #${rank}: ${item.ticker}</strong> (${isBullish ? 'Buy' : 'Sell'})</p>`;
+      html += "<ul>";
+      html += `<li><strong>Date:</strong> ${item.transaction_date || 'N/A'}</li>`;
+      html += `<li><strong>Executive:</strong> ${item.executive || 'N/A'}</li>`;
+      html += `<li><strong>Title:</strong> ${item.executive_title || 'N/A'}</li>`;
+      html += `<li><strong>Share Price:</strong> $${parseFloat(item.share_price).toFixed(2)}</li>`;
+      html += `<li><strong>Shares:</strong> ${parseFloat(item.shares).toLocaleString()}</li>`;
+      html += "</ul>";
+      document.getElementById('summary').innerHTML = html;
+      document.getElementById('summary').scrollIntoView({ behavior: 'smooth' });
+    }
+  
+    /*******************************************************
+     * 5) TICKER AUTOCOMPLETE INTEGRATION
+     *******************************************************/
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+  
+    /*******************************************************
+     * 6) URL PARAMETER INITIALIZATION (Optional)
+     *******************************************************/
     window.onload = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const symbol = urlParams.get('symbol');
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const days = params.get('days');
       if (symbol) {
-        document.getElementById('tickerInput').value = symbol;
+        document.getElementById('ticker').value = symbol;
+      }
+      if (days) {
+        document.getElementById('days').value = days;
+      }
+      if (symbol) {
         setTimeout(() => {
-          document.getElementById('loadButton').click();
+          document.getElementById('insiderButton').click();
         }, 100);
       }
     };
