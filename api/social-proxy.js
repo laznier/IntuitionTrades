@@ -1,10 +1,9 @@
-// social-proxy.js: The Express router that fetches from StockTwits
+// social-proxy.js
 const { Router } = require('express');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // or remove if you use built-in fetch in Node 18+
 
 const router = Router();
 
-// GET /social?symbol=XYZ
 router.get('/social', async (req, res) => {
   try {
     const { symbol } = req.query;
@@ -23,10 +22,10 @@ router.get('/social', async (req, res) => {
 
     const data = await response.json();
     // data.messages is typically an array
-    return res.status(200).json(data.messages || []);
+    res.status(200).json(data.messages || []);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
