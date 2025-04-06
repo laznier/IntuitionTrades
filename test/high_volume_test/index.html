@@ -901,7 +901,7 @@
      *********************************************************/
     async function determineSPYMarketRegime(simDate, futDate, histPeriod) {
       try {
-        let url = `https://intuitiontrades.com/api/historical?symbol=SPY`;
+        let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
         let resp = await fetch(url);
         let j = await resp.json();
         if (!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
