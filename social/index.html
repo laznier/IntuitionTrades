@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Full Social Sentiment Viewer</title>
+  <!-- Include Plotly for Charting -->
+  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #f3f4f6, #ffffff);
+      color: #333;
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    p, li {
+      margin-bottom: 0.75em;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      transition: border-color 0.3s ease;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      background-color: #f9fafb;
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    #sentChart {
+      width: 100%;
+      height: 400px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    #articleSection {
+      margin-top: 20px;
+      display: none;
+    }
+    #articleSection h3 {
+      margin-bottom: 10px;
+    }
+    #articleSection p {
+      margin-bottom: 1em;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: #f97316;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back to Main Page button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
+
+  <h1>Social Sentiment Viewer</h1>
+  <p>
+    Enter a ticker symbol to load recent social sentiment data from Financial Modeling Prep. 
+    The tool calculates a custom sentiment score (0–100) and displays a trend line over time.
+  </p>
+
+  <label for="tickerInput">Ticker Symbol (e.g., AAPL):</label>
+  <input type="text" id="tickerInput" placeholder="AAPL" />
+
+  <button id="loadButton">Load Data</button>
+  <div id="loading" style="display:none;">Loading sentiment data...</div>
+
+  <div id="sentimentSection" class="section" style="display:none;">
+    <h2>Sentiment Chart</h2>
+    <div id="sentChart"></div>
+  </div>
+
+  <!-- Optional extra details section -->
+  <div id="articleSection" class="section" style="display:none;"></div>
+
+  <script>
+    // Normalize a value x between min and max to a 0–100 scale.
+    function normalize(x, min, max) {
+      if (max - min === 0) return 0;
+      let norm = 100 * ((x - min) / (max - min));
+      return Math.max(0, Math.min(100, norm));
+    }
+
+    // Calculate a custom sentiment score from a data point.
+    // The expected fields: positiveMentions, negativeMentions, bullishPercent, bearishPercent, mentionChangePercent
+    function calculateScore(dataPoint) {
+      const pos = dataPoint.positiveMentions || 0;
+      const neg = dataPoint.negativeMentions || 0;
+      const total = (pos + neg) || 1; // avoid division by zero
+      const bullish = (dataPoint.bullishPercent || 0) / 100;
+      const bearish = (dataPoint.bearishPercent || 0) / 100;
+      const change = dataPoint.mentionChangePercent || 0;
+
+      const posRatio = pos / total;
+      const bullBearDiff = bullish - bearish;
+      const posNegRatio = pos / (neg + 1e-5);
+
+      const score = (0.4 * normalize(posRatio, 0, 1)) +
+                    (0.3 * normalize(bullBearDiff, -1, 1)) +
+                    (0.2 * normalize(change, -100, 100)) +
+                    (0.1 * normalize(posNegRatio, 0, 10));
+      return Math.round(score * 100) / 100;
+    }
+
+    // Compute linear regression on arrays xs and ys.
+    function computeLinearRegression(xs, ys) {
+      const n = xs.length;
+      const sumX = xs.reduce((a, b) => a + b, 0);
+      const sumY = ys.reduce((a, b) => a + b, 0);
+      const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+      const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      const intercept = (sumY - slope * sumX) / n;
+      return { slope, intercept };
+    }
+
+    // Fetch sentiment data from the internal API (social.js) on Vercel.
+    async function fetchSentimentData(ticker) {
+      const url = `/api/social?symbol=${ticker}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error("No sentiment data found for this ticker.");
+      }
+      return data;
+    }
+
+    // Plot sentiment scores over time and add a trend line using Plotly.
+    function plotSentiment(dataPoints) {
+      document.getElementById("sentimentSection").style.display = "block";
+
+      // Convert date strings to Date objects and sort the data.
+      dataPoints.forEach(dp => {
+        dp.dateObj = new Date(dp.date);
+      });
+      dataPoints.sort((a, b) => a.dateObj - b.dateObj);
+
+      // Calculate custom sentiment score for each data point.
+      dataPoints.forEach(dp => {
+        dp.score = calculateScore(dp);
+      });
+
+      // Prepare arrays for dates and scores.
+      const dates = dataPoints.map(dp => dp.dateObj);
+      const scores = dataPoints.map(dp => dp.score);
+
+      // Compute a linear regression trend line.
+      const firstDate = dates[0];
+      const xs = dates.map(d => (d - firstDate) / (1000 * 60 * 60 * 24));
+      const { slope, intercept } = computeLinearRegression(xs, scores);
+      const x0 = 0;
+      const x1 = xs[xs.length - 1];
+      const y0 = intercept + slope * x0;
+      const y1 = intercept + slope * x1;
+
+      // Scatter plot trace.
+      const tracePoints = {
+        x: dates,
+        y: scores,
+        mode: 'markers+lines',
+        name: 'Sentiment Score',
+        hovertemplate: '%{x}<br>Score: %{y:.2f}<extra></extra>'
+      };
+
+      // Trend line trace.
+      const traceTrend = {
+        x: [dates[0], dates[dates.length - 1]],
+        y: [y0, y1],
+        mode: 'lines',
+        line: { dash: 'dash', color: 'red' },
+        name: 'Trend'
+      };
+
+      const layout = {
+        title: "Social Sentiment Score Over Time",
+        xaxis: { title: "Date" },
+        yaxis: { title: "Sentiment Score (0-100)" }
+      };
+
+      Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, { responsive: true });
+    }
+
+    // Load sentiment data by fetching from the internal endpoint.
+    async function loadSentimentData() {
+      const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
+      if (!ticker) {
+        alert("Please enter a ticker symbol.");
+        return;
+      }
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("sentimentSection").style.display = "none";
+      try {
+        const data = await fetchSentimentData(ticker);
+        plotSentiment(data);
+      } catch (err) {
+        alert("Error loading sentiment: " + err.message);
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    }
+
+    // Wire up the Load Data button.
+    document.getElementById("loadButton").addEventListener("click", loadSentimentData);
+
+    // Optionally auto-populate the ticker if provided as a URL parameter.
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const symbol = urlParams.get('symbol');
+      if (symbol) {
+        document.getElementById('tickerInput').value = symbol;
+        setTimeout(() => {
+          document.getElementById('loadButton').click();
+        }, 100);
+      }
+    };
+  </script>
+</body>
+</html>
