@@ -546,7 +546,7 @@ while (currentDate <= endFillDate) {
     filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
   } else {
     // If no data exists for this month, default the MSPR to 50.
-    filledData.push({ year: year, month: month, mspr: 50 });
+    filledData.push({ year: year, month: month, mspr: 0 });
   }
   // Move to the next month.
   currentDate.setMonth(currentDate.getMonth() + 1);
