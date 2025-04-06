@@ -419,7 +419,7 @@ function computeMCBull(lastPrice, finals){
  * Sentiment
  ***********************************************************************/
 async function fetchSentimentData(ticker, periodMonths){
-  const url=`https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+  const url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
   const r=await fetch(url);
   const j=await r.json();
   if(!j.feed) throw new Error("No sentiment data from server.");
@@ -471,7 +471,7 @@ function computeSentBull(arr){
  ***********************************************************************/
 // Fetch insider transaction data (buys/sells)
 async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
   const r=await fetch(url);
   const j=await r.json();
   if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
@@ -624,7 +624,7 @@ function computeFundScores(data){
   return { profitability, valuation, growth, dividends, financial };
 }
 async function fetchFundamentalData(ticker){
-  const url=`https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
   const r=await fetch(url);
   const j=await r.json();
   if(!j.Symbol)return 50;
@@ -669,7 +669,7 @@ function computeCongressBull(purchase,sale){
  ***********************************************************************/
 async function determineSPYMarketRegime(periodMonths){
   try {
-    let url=`https://www.projectmanagerhelper.com/api/historical?symbol=SPY`;
+    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
     let resp=await fetch(url);
     let j=await resp.json();
     if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
@@ -806,7 +806,7 @@ function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
  ***********************************************************************/
 // Fetch insider transaction data (buys/sells)
 async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
   const r=await fetch(url);
   const j=await r.json();
   if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
@@ -947,7 +947,7 @@ function computeFundScores(data){
   return { profitability, valuation, growth, dividends, financial };
 }
 async function fetchFundamentalData(ticker){
-  const url=`https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
   const r=await fetch(url);
   const j=await r.json();
   if(!j.Symbol)return 50;
@@ -990,7 +990,7 @@ function computeCongressBull(purchase,sale){
  ***********************************************************************/
 async function determineSPYMarketRegime(periodMonths){
   try {
-    let url=`https://www.projectmanagerhelper.com/api/historical?symbol=SPY`;
+    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
     let resp=await fetch(url);
     let j=await resp.json();
     if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
@@ -1072,7 +1072,7 @@ function classifyBySlope(slope){
 async function simulateOneTicker(ticker, periodMonths, regime){
   try {
     // fetch historical data
-    const histUrl= `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+    const histUrl= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
     const histResp= await fetch(histUrl);
     const histJson= await histResp.json();
     if(!histJson["Time Series (Daily)"]){
@@ -1106,7 +1106,7 @@ async function simulateOneTicker(ticker, periodMonths, regime){
     let insVal = computeNewInsiderScore(insiderSentimentData, transactionData.totalBuys, transactionData.totalSells);
 
     // Fundamental
-    const fundUrl= `https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+    const fundUrl= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
     const fundResp= await fetch(fundUrl);
     const fundJson= await fundResp.json();
     let fundVal=50;
