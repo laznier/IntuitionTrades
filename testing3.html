@@ -587,7 +587,7 @@ async function fetchInsiderSentiment(ticker, periodMonths, simDate) {
   fromDate.setMonth(fromDate.getMonth() - periodMonths);
   let fromDateStr = fromDate.toISOString().slice(0, 10);
   let toDateStr = simDate.toISOString().slice(0, 10);
-  let url = `https://www.projectmanagerhelper.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+  let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
   let r = await fetch(url);
   let j = await r.json();
   if (!j.data || !Array.isArray(j.data) || j.data.length === 0)

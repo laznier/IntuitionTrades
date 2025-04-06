@@ -476,7 +476,7 @@
         const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
         const sentimentResponse = await fetch(sentimentUrl);
         if (!sentimentResponse.ok) {
-          throw new Error("Failed to fetch insider sentiment data. Status: " + sentimentResponse.status);
+          throw new Error("Failed to fetch insider sentiment data. Try increasing day count. Status: " + sentimentResponse.status);
         }
         const sentimentJson = await sentimentResponse.json();
   
