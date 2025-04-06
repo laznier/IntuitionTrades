@@ -503,7 +503,7 @@
      * Sentiment
      *********************************************************/
     async function fetchSentimentData(ticker, periodMonths, simDate) {
-      let url = `https://intuitiontrades\.vom/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let url = `https://intuitiontrades\.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       let r = await fetch(url);
       let j = await r.json();
       if (!j.feed) throw new Error("No sentiment data from server.");
