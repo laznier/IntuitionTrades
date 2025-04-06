@@ -502,11 +502,11 @@
     /*********************************************************
      * Sentiment
      *********************************************************/
-    async function fetchSentimentData(ticker, periodMonths, simDate) {
-      let url = `https://intuitiontrades\.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-      let r = await fetch(url);
-      let j = await r.json();
-      if (!j.feed) throw new Error("No sentiment data from server.");
+     async function fetchSentimentData(ticker, periodMonths, simDate){
+      let url=`https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let r=await fetch(url);
+      let j=await r.json();
+      if(!j.feed) throw new Error("No sentiment data from server.");
 
       let cutoff = new Date(simDate);
       cutoff.setMonth(cutoff.getMonth() - periodMonths);
@@ -556,11 +556,11 @@
      * Insider
      *********************************************************/
     // Fetch insider transaction data (buys/sells)
-    async function fetchInsiderData(ticker, periodMonths, simDate, currPrice) {
-      let url = `https://projectmanagerhelper.com/api/insider?symbol=${ticker}`;
-      let r = await fetch(url);
-      let j = await r.json();
-      if (!j.data || !Array.isArray(j.data)) throw new Error("No insider data array found.");
+    async function fetchInsiderData(ticker, periodMonths, simDate, currPrice){
+      let url=`https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+      let r=await fetch(url);
+      let j=await r.json();
+      if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
 
       let cutoff = new Date(simDate);
       cutoff.setMonth(cutoff.getMonth() - periodMonths);
@@ -587,7 +587,7 @@
       fromDate.setMonth(fromDate.getMonth() - periodMonths);
       let fromDateStr = fromDate.toISOString().slice(0, 10);
       let toDateStr = simDate.toISOString().slice(0, 10);
-      let url = `https://intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+      let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
       let r = await fetch(url);
       let j = await r.json();
       if (!j.data || !Array.isArray(j.data) || j.data.length === 0)
@@ -712,25 +712,25 @@
 
       return { profitability, valuation, growth, dividends, financial };
     }
-    async function fetchFundamentalData(ticker) {
-      let url = `https://intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-      let r = await fetch(url);
-      let data = await r.json();
-      if (!data.Symbol) return 50;
-      let cat = computeFundScores(data);
-      let sum = 0, n = 0;
-      for (let k in cat) { sum += cat[k]; n++; }
-      return sum / n;
+    async function fetchFundamentalData(ticker){
+      let url=`https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+      let r=await fetch(url);
+      let data=await r.json();
+      if(!data.Symbol) return 50;
+      let cat=computeFundScores(data);
+      let sum=0, n=0;
+      for(let k in cat){ sum+=cat[k]; n++; }
+      return sum/n;
     }
 
     /*********************************************************
      * Congress
      *********************************************************/
-    async function fetchCongressData(ticker, periodMonths) {
-      const url = `../api/congress?ticker=${encodeURIComponent(ticker)}`;
-      const resp = await fetch(url);
-      const jsonResponse = await resp.json();
-      if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+     async function fetchCongressData(ticker, periodMonths){
+      const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
+      const resp=await fetch(url);
+      const jsonResponse=await resp.json();
+      if(!jsonResponse.data || !Array.isArray(jsonResponse.data)){
         throw new Error("Invalid congress data format.");
       }
       const rawData = jsonResponse.data;
@@ -793,13 +793,13 @@
     /*********************************************************
      * Single Ticker Logic
      *********************************************************/
-    async function runSimulationForTicker(ticker, simDate, futDate, histPeriod, regime) {
-      try {
+     async function runSimulationForTicker(ticker, simDate, futDate, histPeriod, regime){
+      try{
         log(`Processing ${ticker}...`);
-        let hUrl = `https://intuitiontrades.com/api/historical?symbol=${ticker}`;
-        let r = await fetch(hUrl);
-        let j = await r.json();
-        if (!j["Time Series (Daily)"]) throw new Error("No timeseries daily");
+        let hUrl=`https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let r=await fetch(hUrl);
+        let j=await r.json();
+        if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily");
 
         // Training & Test
         let training = processTrainingData(j["Time Series (Daily)"], simDate, histPeriod);
