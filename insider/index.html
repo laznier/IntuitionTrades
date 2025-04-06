@@ -512,30 +512,49 @@
     /*************************************
  * 4) CALCULATE FINAL COMBINED INSIDER SCORE
  *************************************/
-// --- Prepare Filled Sentiment Data ---
-// 'fromDateStr' and 'toDateStr' were computed earlier from the selected timeframe.
-let fromDate = new Date(fromDateStr);
-let toDate = new Date(toDateStr);
-let filledData = [];
-let currentDate = new Date(fromDate);
+// Determine the start of the fill period:
+// Use the requested fromDateStr, but if sentiment data exists and its earliest date is earlier, use that.
+let requestedFrom = new Date(fromDateStr);
+let sentimentStart;
+if (sentimentJson.data && sentimentJson.data.length > 0) {
+  // Sort the sentiment data by year and month in ascending order.
+  let sortedSentiment = sentimentJson.data.slice().sort((a, b) => {
+    let d1 = new Date(a.year, a.month - 1, 1);
+    let d2 = new Date(b.year, b.month - 1, 1);
+    return d1 - d2;
+  });
+  let firstData = sortedSentiment[0];
+  let firstDataDate = new Date(firstData.year, firstData.month - 1, 1);
+  // Choose the earlier date between the first available sentiment date and the requested from date.
+  sentimentStart = firstDataDate < requestedFrom ? firstDataDate : requestedFrom;
+} else {
+  sentimentStart = requestedFrom;
+}
 
-// Loop through each month between fromDate and toDate.
-while (currentDate <= toDate) {
+// End fill date is the requested toDate.
+let endFillDate = new Date(toDateStr);
+
+// Now fill the timeline month-by-month from sentimentStart to endFillDate.
+let filledData = [];
+let currentDate = new Date(sentimentStart);
+while (currentDate <= endFillDate) {
   let year = currentDate.getFullYear();
-  let month = currentDate.getMonth() + 1; // Months are 0-indexed in JS.
+  let month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed.
   // Try to find a data point for this month in the fetched sentiment data.
-  let found = sentimentJson.data.find(pt => pt.year === year && pt.month === month);
+  let found = sentimentJson.data && sentimentJson.data.find(pt => pt.year === year && pt.month === month);
   if (found) {
     filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
   } else {
-    // If no data for this month, assign a default MSPR score of 50.
+    // If no data exists for this month, default the MSPR to 50.
     filledData.push({ year: year, month: month, mspr: 50 });
   }
   // Move to the next month.
   currentDate.setMonth(currentDate.getMonth() + 1);
 }
 
-
+// Prepare categories and values for the sentiment chart.
+let filledSentimentCategories = filledData.map(pt => `${pt.year}-${pt.month.toString().padStart(2, '0')}`);
+let filledSentimentValues = filledData.map(pt => pt.mspr);
 
 // Plot the insider sentiment trend chart.
 Highcharts.chart('sentimentChart', {
@@ -545,7 +564,7 @@ Highcharts.chart('sentimentChart', {
   },
   title: { text: 'Insider Sentiment Trend' },
   xAxis: {
-    categories: sentimentCategories,
+    categories: filledSentimentCategories,
     labels: { style: { color: 'var(--text-color)' } }
   },
   yAxis: {
@@ -554,7 +573,7 @@ Highcharts.chart('sentimentChart', {
   },
   series: [{
     name: document.getElementById('ticker').value.toUpperCase(),
-    data: sentimentValues
+    data: filledSentimentValues
   }],
   credits: { enabled: false }
 });
@@ -562,18 +581,16 @@ document.getElementById('sentimentChart').style.display = 'block';
 document.getElementById('sentimentSection').style.display = 'block';
 
 // --- Compute Insider Score Factors ---
-
-// 1. Final MSPR Factor (50% weight): Use the MSPR of the last (latest) month.
+// 1. Final MSPR Factor (50% weight): Use the MSPR of the last (latest) month in the filled timeline.
 let finalMspr = filledData[filledData.length - 1].mspr;
 let normalizedFinalMspr = (finalMspr + 100) / 2;
 
 // 2. Trend Component (25% weight):
-// Calculate the average MSPR over the filled timeline.
+// Compute the average MSPR over the filled timeline.
 let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
 let avgMspr = sumMspr / filledData.length;
 let normalizedAvgMspr = (avgMspr + 100) / 2;
-
-// Compute regression slope on the filled data (using sequential indices as x-values).
+// Compute regression slope on the filled data (using sequential month indices as x-values).
 let n = filledData.length;
 let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
 for (let i = 0; i < n; i++) {
@@ -609,6 +626,7 @@ document.getElementById('insiderScoreDisplay').innerHTML = `
   </p>
 `;
 document.getElementById('scoreSection').style.display = 'block';
+
 
 
   
