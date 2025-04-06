@@ -1,7 +1,5 @@
 // social-proxy.js
 const { Router } = require('express');
-const fetch = require('node-fetch'); // or remove if you use built-in fetch in Node 18+
-
 const router = Router();
 
 router.get('/social', async (req, res) => {
