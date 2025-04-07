@@ -1,6 +1,6 @@
 // server.js: This creates an Express app and uses the router from social-proxy.js
 const express = require('express');
-const socialProxy = require('/social-proxy');
+const socialProxy = require('./social-proxy');
 
 const app = express();
 
