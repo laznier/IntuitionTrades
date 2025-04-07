@@ -1,1409 +1,1905 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Top 5 Analysis</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 2rem;
-      line-height: 1.5;
-      max-width: 1000px;
-    }
-    h1 { margin-bottom: 1rem; }
-    label, input, select {
-      display: block;
-      margin: 0.3rem 0;
-    }
-    .param-section {
-      border: 1px solid #ccc;
-      padding: 1rem;
-      border-radius: 4px;
-      background: #f9f9f9;
-      margin-bottom: 1rem;
-    }
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      margin-bottom: 1rem;
-    }
-    #status {
-      margin-top: 1rem;
-      white-space: pre-wrap;
-      font-family: monospace;
-      background: #f9fafb;
-      padding: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    #progressContainer {
-      margin-top: 1rem;
-      display: none;
-    }
-    #progressBar {
-      width: 100%;
-      height: 20px;
-    }
-    #progressText {
-      text-align: center;
-      margin-top: 5px;
-      font-weight: bold;
-    }
-  </style>
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
+  <meta name="google-site-verification" content="..." />
+  <meta charset="UTF-8">
+  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
+  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="api/ticker.js"></script>
+
+<style>
+:root {
+  /* Base typography and color variables */
+  --font-family: 'Arial', sans-serif;
+  --text-color: #fff;
+  --primary-bg: #333;
+  --secondary-bg: #444;
+  --section-bg: rgba(0, 0, 0, 0.33);
+  --accent-color: #16a34a; /* Example accent (you can change as needed) */
+  
+  /* Spacing and sizing */
+  --base-font-size: 16px;
+  --line-height: 1.5;
+  --heading-margin-bottom: 1rem;
+  --section-padding: 3rem 1rem;
+  --section-margin-bottom: 2rem;
+  --button-padding: 0.5rem 1rem;
+  --border-radius: 4px;
+  --transition-speed: 0.3s;
+}
+
+/* Global Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  font-size: var(--base-font-size);
+}
+body {
+  font-family: var(--font-family);
+  color: var(--text-color);
+  background-color: #111; /* Dark background */
+  line-height: var(--line-height);
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Normalize headings */
+h1, h2, h3, h4, h5, h6 {
+  margin-bottom: var(--heading-margin-bottom);
+  font-weight: normal;
+}
+
+/* Fixed Background Element */
+.background-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/images/hero-background.png') no-repeat center center;
+  background-size: cover;
+  z-index: -9999;
+  transform: translateZ(0);
+}
+@media (max-width: 768px) {
+  .background-fixed {
+    background: url('/images/hero-background.png') no-repeat center center;
+    background-size: cover;
+  }
+}
+
+/* Hero Section */
+.hero {
+  position: relative;
+  padding: var(--section-padding);
+  text-align: center;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 0;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+#heroChart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+#heroPrice {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  /* Change from 2rem to 2vw for responsive scaling */
+  font-size: 2vw;
+  font-weight: bold;
+  color: var(--text-color);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+@media (max-width: 600px) {
+  #heroPrice {
+    font-size: 3vw;
+  }
+}
+
+/* Top Navigation (Horizontal Scrolling) */
+.topnav {
+  background-color: var(--primary-bg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+.topnav ul {
+  display: flex;
+  list-style: none;
+}
+.topnav ul li {
+  position: relative;
+  flex: none;
+}
+.topnav ul li a {
+  display: block;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-color);
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+.topnav ul li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.dropdown-menu {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: none;
+  background-color: var(--primary-bg);
+  min-width: 9.375rem; /* 150px */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.dropdown-menu li a {
+  display: block;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-color);
+  background-color: var(--primary-bg);
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+.dropdown-menu li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Mobile Menu: Sliding Sidebar */
+.mobile-menu-toggle {
+  background: none;
+  border: none;
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  display: block;
+}
+.mobile-menu-toggle svg {
+  vertical-align: middle;
+}
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 80%;
+  max-width: 18.75rem; /* 300px */
+  height: 100%;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  overflow-y: auto;
+  transition: left var(--transition-speed) ease;
+  z-index: 1500;
+  padding-top: 1rem;
+}
+.mobile-menu.open {
+  left: 0;
+}
+.mobile-menu nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-menu nav ul li {
+  border-bottom: 0.0625rem solid #444;
+}
+.mobile-menu nav ul li a,
+.mobile-menu nav ul li .submenu-toggle {
+  display: block;
+  padding: 0.625rem 1.25rem;
+  color: var(--text-color);
+  cursor: pointer;
+}
+.mobile-menu nav ul li a:hover,
+.mobile-menu nav ul li .submenu-toggle:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.mobile-menu nav ul li ul.submenu {
+  display: none;
+  background-color: var(--secondary-bg);
+}
+.mobile-menu nav ul li ul.submenu li a {
+  padding-left: 2.5rem; /* 40px */
+}
+.mobile-menu .close-menu {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 1.5rem;
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  cursor: pointer;
+}
+
+/* Countdown Section */
+@media (max-width: 600px) {
+  .countdown-section .flip-clock {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1.2rem; /* Adjust overall scaling */
+    box-sizing: border-box;
+  }
+  .countdown-section .flip-number {
+    padding: 0.3rem 0.5rem;
+    font-size: 1rem;
+  }
+}
+
+.countdown-section {
+  text-align: center;
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+.countdown-title {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+.flip-clock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #222;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+.flip-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 0.5rem;
+}
+.flip-number {
+  font-size: 2rem;
+  background: var(--primary-bg);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.25rem;
+  min-width: 2ch;
+  text-align: center;
+  box-shadow: inset 0 -0.25rem 0 rgba(0,0,0,0.3);
+}
+.flip-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.flip-separator {
+  font-size: 2rem;
+  margin: 0 0.5rem;
+  user-select: none;
+}
+.newsletter-btn {
+  font-size: 0.9rem;
+  padding: var(--button-padding);
+  background-color: var(--secondary-bg);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  color: var(--text-color);
+}
+.newsletter-btn:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Weekly Stock Picks Section */
+#weekly-stock-picks {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+#weekly-stock-picks h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.stock-picks-container {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.stock-pick {
+  background: #000;
+  padding: 1rem;
+  border: 0.0625rem solid #444;
+  border-radius: 0.5rem;
+  width: 18.75rem; /* 300px */
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+}
+.stock-pick h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+.stock-pick ol {
+  text-align: left;
+  padding-left: 1.5rem;
+}
+
+/* Buy & Sell Tickers */
+.buy-ticker,
+.sell-ticker {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  transition: background-color var(--transition-speed), transform 0.2s;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.2);
+}
+.buy-ticker {
+  background-color: #28a745;
+  border: none;
+}
+.buy-ticker:hover {
+  background-color: #218838;
+  transform: translateY(-0.125rem);
+}
+.sell-ticker {
+  background-color: #dc3545;
+  border: none;
+}
+.sell-ticker:hover {
+  background-color: #c82333;
+  transform: translateY(-0.125rem);
+}
+
+/* Tools Section */
+#tools {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  margin-bottom: var(--section-margin-bottom);
+}
+#tools h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+}
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
+  gap: 1.5rem;
+  padding: 0 2rem;
+}
+.tool-card {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+  text-align: center;
+  padding-bottom: 1rem;
+  transition: transform 0.2s;
+}
+.tool-card:hover {
+  transform: translateY(-0.125rem);
+}
+.tool-card img {
+  width: 100%;
+  height: 9.375rem; /* 150px */
+  object-fit: cover;
+}
+.tool-card h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+.tool-card p {
+  margin: 0 1rem 1rem;
+}
+.tool-button {
+  display: inline-block;
+  padding: var(--button-padding);
+  background: #000;
+  border-radius: var(--border-radius);
+  transition: background var(--transition-speed);
+}
+.tool-button:hover {
+  background: #005fa3;
+}
+
+/* Newsletter Signup Section */
+#newsletter-signup {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+#newsletter-signup h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+#newsletter-signup form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 25rem;
+  margin: 0 auto;
+}
+#newsletter-signup input {
+  padding: 0.75rem;
+  width: 100%;
+  border: 0.0625rem solid #ccc;
+  border-radius: var(--border-radius);
+  color: #000;
+}
+#newsletter-signup button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-speed);
+}
+#newsletter-signup button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.news-thumbnail {
+  width: 50px;           /* Adjust as needed */
+  height: 50px;          /* Adjust as needed */
+  object-fit: cover;     /* Ensures the image fills the dimensions */
+  border-radius: 4px;    /* Optional: adds rounded corners */
+  margin-right: 10px;    /* Spacing between image and text */
+  display: block;        /* Or inline-block if you want it on the same line */
+}
+
+/* Feedback Section */
+#feedback-section {
+  text-align: center;
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  margin-top: var(--section-margin-bottom);
+}
+#feedback-section h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+#feedback-section p {
+  margin-bottom: 1.5rem;
+}
+#feedback-section a {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: 0.3125rem;
+  transition: background-color var(--transition-speed);
+}
+#feedback-section a:hover {
+  background-color: #555;
+}
+
+/* Back Button */
+.back-button {
+  display: inline-block;
+  margin: 1rem 0;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-speed);
+  cursor: pointer;
+}
+.back-button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: var(--section-bg);
+  margin-top: 2rem;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .mobile-menu-toggle { display: none; }
+  .mobile-menu { display: none; }
+  nav.header__inline-menu { display: block; }
+}
+@media (max-width: 767px) {
+  nav.header__inline-menu { display: none; }
+}
+@media (max-width: 768px) {
+  .tool-card { width: 90%; }
+}
+
+/* Performance Button & Summary Styles */
+.performance-button {
+  margin-left: 1.25rem;
+  padding: 0.3125rem 0.625rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  cursor: pointer;
+}
+.performance-green {
+  background-color: #28a745 !important;
+}
+.performance-red {
+  background-color: #dc3545 !important;
+}
+#performance-summary {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+}
+#performance-summary .performance-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+#performance-summary button {
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  color: var(--text-color);
+}
+#performance-summary button:hover {
+  opacity: 0.9;
+}
+.positive-performance {
+  background-color: #28a745;
+}
+.negative-performance {
+  background-color: #dc3545;
+}
+.explanation-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  max-width: 37.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+@media (max-width: 600px) {
+  #performance-summary button {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .explanation-box {
+    font-size: 0.9rem;
+    padding: 0.8rem;
+  }
+}
+.performance-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  max-width: 37.5rem;
+  margin: 0 auto;
+}
+.performance-summary-grid button {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+.performance-summary-grid .non-clickable {
+  cursor: default;
+}
+.performance-summary-grid button:nth-child(odd) {
+  background-color: var(--primary-bg);
+}
+
+/* Live News Section Styles */
+@media (max-width: 600px) {
+  .ticker-search-container {
+    box-sizing: border-box;
+    gap: 0.5rem;
+  }
+  .ticker-search-container input,
+  .ticker-search-container button {
+    width: 70%;
+    font-size: 0.9rem;
+  }
+  .live-news-menu button {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.25rem 0;
+  }
+}
+
+.live-news {
+  position: relative;
+  padding: 1rem;
+  /* Normal background: 33% transparent */
+  background-color: rgba(0, 0, 0, 0.33);
+  margin-bottom: 2rem;
+  transition: all 0.3s;
+}
+
+/* When minimized, just one line high. Hide feed & menu. */
+.live-news.minimized {
+  height: 5.5rem; /* Enough for the header line */
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+}
+.live-news.minimized .live-news-menu,
+.live-news.minimized .live-news-feed {
+  display: none;
+}
+
+/* When maximized, full screen overlay-like look */
+.live-news.maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 9999;
+  /* Darker overlay background */
+  background-color: rgba(0, 0, 0, 0.95);
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Title + Controls on same line */
+.live-news-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+
+}
+.live-news-header .live-news-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+.ticker-search-container {
+  margin-bottom: 0.60rem;
+
+  padding: 0.2;
+  padding-right: 3rem;
+  margin-right: .75rem;
+  margin-left: .75rem;
+}
+.dark-input {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.ticker-search-container input {
+  padding: 0.33rem;
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+}
+
+.ticker-search-container button {
+  padding: 0.33rem 1rem;
+  display: flex;
+  border-radius: var(--border-radius);
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  width: 70%;
+}
+
+.ticker-search-container button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Buttons for topics menu */
+.live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.live-news-menu button {
+  background-color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #fff;
+  transition: background-color 0.3s;
+}
+.live-news-menu button:hover {
+  background-color: #555;
+}
+
+/* Controls (Minimize, Maximize, Close) */
+.live-news-controls span {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.3rem 0.6rem;
+  background-color: #333;
+  border-radius: 4px;
+  color: #fff;
+  transition: background-color 0.3s;
+  user-select: none;
+}
+.live-news-controls span:hover {
+  background-color: #555;
+}
+/* Autocomplete Suggestions Container */
+#ticker-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #222; /* dark background */
+  border: 1px solid #444; /* subtle border */
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* modern shadow */
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Each suggestion item */
+#ticker-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #ccc;
+}
+
+/* Hover state for suggestions */
+#ticker-suggestions li:hover {
+  background-color: #16a34a; /* accent color */
+  color: #fff;
+}
+
+/* Optional: Style the ticker symbol and company name differently */
+#ticker-suggestions li .ticker-symbol {
+  font-weight: bold;
+}
+#ticker-suggestions li .company-name {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* News Feed container */
+.live-news-feed {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column; /* We'll prepend new items */
+}
+
+/* Custom scrollbar styling for a darker "wheel" look */
+.live-news-feed::-webkit-scrollbar {
+  width: 10px;
+}
+.live-news-feed::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 1px;
+}
+.live-news-feed::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Individual news item */
+.live-news-item {
+  background-color: rgba(0, 0, 0, 0.7);
+  margin-bottom: 0;
+  padding: 0.75rem;
+  border-radius: 1px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: background-color 0.3s;
+}
+
+/* Hover effect for item (optional) */
+.live-news-item:hover {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Title + timestamp row */
+.live-news-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+/* Timestamp on the left */
+.live-news-timestamp {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  min-width: 8rem; /* so it lines up nicely */
+}
+.live-news-title {
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: underline;
+  flex: 1; /* so it expands to fill leftover space */
+}
+
+/* Hidden summary that expands on click */
+.live-news-summary {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: none;
+}
+.live-news-summary a {
+  color: #16a34a;
+  text-decoration: underline;
+}
+
+/* Expanded item reveals the summary */
+.live-news-item.expanded .live-news-summary {
+  display: block;
+}
+/* Desktop styles: show the topics menu and hide the hamburger */
+.live-news-topics .news-hamburger {
+  display: none;
+}
+.live-news-topics .live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Mobile styles: show hamburger, hide topics menu by default */
+@media (max-width: 768px) {
+  .live-news-topics .news-hamburger {
+    display: block;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .live-news-topics .live-news-menu {
+    display: none;
+    flex-direction: column;
+  }
+  /* Optional: when active, display as a vertical list */
+  .live-news-topics .live-news-menu.active {
+    display: flex;
+  }
+}
+@keyframes rollUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Optional: style the container to ensure proper positioning */
+#heroPrice {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  font-size: 2vw;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+</style>
 </head>
 <body>
+  <!-- Fixed Background Element -->
+  <div class="background-fixed"></div>
 
-<h1>Top 5 Analysis</h1>
+  <!-- Mobile Header: Hamburger Toggle -->
+  <header>
+    <button class="mobile-menu-toggle" id="openMenu" aria-label="Open Menu">
+      <svg viewBox="0 0 18 16" width="24" height="24">
+        <rect y="2" width="18" height="2" fill="white"></rect>
+        <rect y="7" width="18" height="2" fill="white"></rect>
+        <rect y="12" width="18" height="2" fill="white"></rect>
+      </svg>
+    </button>
+  </header>
 
-<p>
-  This tool evaluates each ticker using Monte Carlo, Technical, Sentiment, Insider, Fundamental, and Congress signals.
-  If “Use Manual Weights &amp; Scaling” is unchecked, it auto‑detects SPY’s market regime (Bull/Bear/Neutral) and picks a weighting distribution.
-  If checked, you can pick Bear/Neutral/Bull to auto‑fill – or override any.
-  
-  At the end, it highlights the top 5 and bottom 5 aggregator scores.
-</p>
-
-<div class="param-section">
-  <label>
-    <input type="checkbox" id="manualModeCheckbox">
-    Use Manual Weights &amp; Scaling
-  </label>
-  <div id="manualInputs" style="display:none;">
-    <label>Select Market Regime (for quick auto-fill):
-      <select id="marketRegimeSelect">
-        <option value="Neutral">Neutral</option>
-        <option value="Bull">Bull</option>
-        <option value="Bear">Bear</option>
-      </select>
-    </label>
-
-    <label>Monte Carlo Weight (0..1): 
-      <input type="number" id="wMC" value="0.10" min="0" max="1" step="0.01">
-    </label>
-    <label>Technical Weight (0..1): 
-      <input type="number" id="wTech" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Sentiment Weight (0..1): 
-      <input type="number" id="wSent" value="0.20" min="0" max="1" step="0.01">
-    </label>
-    <label>Insider Weight (0..1): 
-      <input type="number" id="wInsider" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Fundamental Weight (0..1): 
-      <input type="number" id="wFund" value="0.25" min="0" max="1" step="0.01">
-    </label>
-    <label>Congress Weight (0..1): 
-      <input type="number" id="wCongress" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Overall Scaling Factor:
-      <input type="number" id="scalingFactor" value="1.00" step="0.01">
-    </label>
+  <!-- Mobile Sidebar Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li>
+          <span class="submenu-toggle">Tools &#9662;</span>
+          <ul class="submenu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+            <li><a href="congress/">Congress Trades</a></li>
+            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+            <li><a href="analyst/">Combined Analyst Ratings</a></li>
+            <li><a href="sentiment">Market Sentiment</a></li>
+            <li><a href="insider/">Insider Tracker</a></li>
+            <li><a href="technical/">Combined Technical Analysis</a></li>
+            <li><a href="MACD/">MACD Analysis</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+          </ul>
+        </li>
+        <li>
+          <span class="submenu-toggle">Tutorials &#9662;</span>
+          <ul class="submenu">
+            <li><a href="/tutorials/">Go to Tutorials</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
   </div>
-</div>
 
-<button onclick="runBatchAnalysis()">Run Batch Analysis</button>
+  <!-- Desktop Inline Menu for larger screens -->
+  <header>
+    <nav class="header__inline-menu topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="dropdown">
+          <a href="#tools" class="parent-link">Tools</a>
+          <ul class="dropdown-menu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+            <li><a href="congress/">Congress Trades</a></li>
+            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+            <li><a href="analyst/">Combined Analyst Ratings</a></li>
+            <li><a href="sentiment/">Market Sentiment</a></li>
+            <li><a href="insider/">Insider Tracker</a></li>
+            <li><a href="technical/">Combined Technical Analysis</a></li>
+            <li><a href="MACD/">MACD Analysis</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="/tutorials/" class="parent-link">Tutorials</a>
+          <ul class="dropdown-menu"></ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
 
-<div id="progressContainer">
-  <progress id="progressBar" value="0" max="100"></progress>
-  <div id="progressText">0% Completed</div>
-</div>
+  <!-- Hero Section -->
+  <header class="hero">
+    <div id="heroChart"></div>
+    <div id="heroPrice"></div>
+    <div class="hero-content">
+      <h1>Intuition Trades</h1>
+      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
+    </div>
+  </header>
+  
+  <!-- Countdown Section -->
+  <section class="countdown-section">
+    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
+    <div class="flip-clock" id="flipClock">
+      <div class="flip-unit">
+        <span class="flip-number" id="days">00</span>
+        <span class="flip-label">Days</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="hours">00</span>
+        <span class="flip-label">Hours</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="minutes">00</span>
+        <span class="flip-label">Minutes</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="seconds">00</span>
+        <span class="flip-label">Seconds</span>
+      </div>
+    </div>
+    <button class="newsletter-btn" id="scrollToSignup">
+      Receive Top Picks Earlier
+    </button>
+  </section>
 
-<div id="status"></div>
+  <!-- Weekly Stock Picks Section -->
+  <section id="weekly-stock-picks">
+    <h2>Weekly Stock Picks</h2>
+    <div class="stock-picks-container">
+      <!-- Top 3 Buys -->
+      <div class="stock-pick">
+        <h3>Top 3 Buys</h3>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
+        <ol>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VST">VST</a>
+            <button class="performance-button" id="performance-VST">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=WYNN">WYNN</a>
+            <button class="performance-button" id="performance-WYNN">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
+            <button class="performance-button" id="performance-OXY">Loading...</button>
+          </li>
+        </ol>
+      </div>
+      <!-- Top 3 Shorts -->
+      <div class="stock-pick">
+        <h3>Top 3 Shorts</h3>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
+        <ol>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=INTA">INTA</a>
+            <button class="performance-button" id="performance-INTA">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a>
+            <button class="performance-button" id="performance-AXON">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=LYV">LYV</a>
+            <button class="performance-button" id="performance-LYV">Loading...</button>
+          </li>
+        </ol>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 1rem;">
+      <a href="explanation.html" class="back-button">How We Select Weekly Stock Picks</a>
+    </div>
+  </section>
 
-<script>
-/***********************************************************************
- * EXAMPLE TICKER LIST
- * Replace with your real set of tickers.
- ***********************************************************************/
- const predeterminedTickers = [
-    "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AES", "AFL", "A", "APD", "ABNB", "AKAM", "ALB", "ARE", "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AMCR", "AEE", "AEP", "AXP", "AIG", "AMT", "AWK", "AMP", "AME", "AMGN", "APH", "ADI", "ANSS", "AON", "APA", "APO", "AAPL", "AMAT", "APTV", "ACGL", "ADM", "ANET", "AJG", "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "AXON", "BKR", "BALL", "BAC", "BAX", "BDX", "BRK.B", "BBY", "TECH", "BIIB", "BLK", "BX", "BK", "BA", "BKNG", "BSX", "BMY", "AVGO", "BR", "BRO", "BF.B", "BLDR", "BG", "BXP", "CHRW", "CDNS", "CZR", "CPT", "CPB", "COF", "CAH", "KMX", "CCL", "CARR", "CAT", "CBOE", "CBRE", "CDW", "COR", "CNC", "CNP", "CF", "CRL", "SCHW", "CHTR", "CVX", "CMG", "CB", "CHD", "CI", "CINF", "CTAS", "CSCO", "C", "CFG", "CLX", "CME", "CMS", "KO", "CTSH", "CL", "CMCSA", "CAG", "COP", "ED", "STZ", "CEG", "COO", "CPRT", "GLW", "CPAY", "CTVA", "CSGP", "COST", "CTRA", "CRWD", "CCI", "CSX", "CMI", "CVS", "DHR", "DRI", "DVA", "DAY", "DECK", "DE", "DELL", "DAL", "DVN", "DXCM", "FANG", "DLR", "DFS", "DG", "DLTR", "D", "DPZ", "DASH", "DOV", "DOW", "DHI", "DTE", "DUK", "DD", "EMN", "ETN", "EBAY", "ECL", "EIX", "EW", "EA", "ELV", "EMR", "ENPH", "ETR", "EOG", "EPAM", "EQT", "EFX", "EQIX", "EQR", "ERIE", "ESS", "EL", "EG", "EVRG", "ES", "EXC", "EXE", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FDS", "FICO", "FAST", "FRT", "FDX", "FIS", "FITB", "FSLR", "FE", "FI", "F", "FTNT", "FTV", "FOXA", "FOX", "BEN", "FCX", "GRMN", "IT", "GE", "GEHC", "GEV", "GEN", "GNRC", "GD", "GIS", "GM", "GPC", "GILD", "GPN", "GL", "GDDY", "GS", "HAL", "HIG", "HAS", "HCA", "DOC", "HSIC", "HSY", "HES", "HPE", "HLT", "HOLX", "HD", "HON", "HRL", "HST", "HWM", "HPQ", "HUBB", "HUM", "HBAN", "HII", "IBM", "IEX", "IDXX", "ITW", "INCY", "IR", "PODD", "INTC", "ICE", "IFF", "IP", "IPG", "INTU", "ISRG", "IVZ", "INVH", "IQV", "IRM", "JBHT", "JBL", "JKHY", "J", "JNJ", "JCI", "JPM", "JNPR", "K", "KVUE", "KDP", "KEY", "KEYS", "KMB", "KIM", "KMI", "KKR", "KLAC", "KHC", "KR", "LHX", "LH", "LRCX", "LW", "LVS", "LDOS", "LEN", "LII", "LLY", "LIN", "LYV", "LKQ", "LMT", "L", "LOW", "LULU", "LYB", "MTB", "MPC", "MKTX", "MAR", "MMC", "MLM", "MAS", "MA", "MTCH", "MKC", "MCD", "MCK", "MDT", "MRK", "META", "MET", "MTD", "MGM", "MCHP", "MU", "MSFT", "MAA", "MRNA", "MHK", "MOH", "TAP", "MDLZ", "MPWR", "MNST", "MCO", "MS", "MOS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX", "NEM", "NWSA", "NWS", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC", "NCLH", "NRG", "NUE", "NVDA", "NVR", "NXPI", "ORLY", "OXY", "ODFL", "OMC", "ON", "OKE", "ORCL", "OTIS", "PCAR", "PKG", "PLTR", "PANW", "PARA", "PH", "PAYX", "PAYC", "PYPL", "PNR", "PEP", "PFE", "PCG", "PM", "PSX", "PNW", "PNC", "POOL", "PPG", "PPL", "PFG", "PG", "PGR", "PLD", "PRU", "PEG", "PTC", "PSA", "PHM", "PWR", "QCOM", "DGX", "RL", "RJF", "RTX", "O", "REG", "REGN", "RF", "RSG", "RMD", "RVTY", "ROK", "ROL", "ROP", "ROST", "RCL", "SPGI", "CRM", "SBAC", "SLB", "STX", "SRE", "NOW", "SHW", "SPG", "SWKS", "SJM", "SW", "SNA", "SOLV", "SO", "LUV", "SWK", "SBUX", "STT", "STLD", "STE", "SYK", "SMCI", "SYF", "SNPS", "SYY", "TMUS", "TROW", "TTWO", "TPR", "TRGP", "TGT", "TEL", "TDY", "TER", "TSLA", "TXN", "TPL", "TXT", "TMO", "TJX", "TKO", "TSCO", "TT", "TDG", "TRV", "TRMB", "TFC", "TYL", "TSN", "USB", "UBER", "UDR", "ULTA", "UNP", "UAL", "UPS", "URI", "UNH", "UHS", "VLO", "VTR", "VLTO", "VRSN", "VRSK", "VZ", "VRTX", "VTRS", "VICI", "V", "VST", "VMC", "WRB", "GWW", "WAB", "WBA", "WMT", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC", "WY", "WSM", "WMB", "WTW", "WDAY", "WYNN", "XEL", "XYL", "YUM", "ZBRA", "ZBH", "ZTS", "SFM", "INSM", "FTAI", "CRS", "SSB", "PCVX", "AIT", "MLI", "XTSLA", "FN", "HALO", "HQY", "BECN", "CVLT", "EXLS", "AUR", "UMBF", "HIMS", "ENSG", "CRDO", "RKLB", "GTLS", "ONB", "CWST", "COOP", "LNTH", "EAT", "UFPI", "RVMD", "FLR", "ALTR", "NXT", "PRMB", "TRNO", "RMBS", "TMHC", "SPXC", "MDGL", "HLNE", "BPMC", "JBTM", "MMSI", "ESNT", "OPCH", "TGTX", "WTS", "ACIW", "RHP", "CHX", "EPRT", "BMI", "ALKS", "IDCC", "GATX", "GH", "CMC", "SIGI", "KNF", "JXN", "GPI", "HOMB", "CTRE", "LRN", "CYTK", "IONQ", "GKOS", "GBCI", "BCPC", "MTH", "BBIO", "SKY", "SPSC", "MOGA", "CWAN", "CSWI", "KRG", "MARA", "ITRI", "LUMN", "ZWS", "RDN", "QTWO", "TXNM", "NOVT", "NJR", "QLYS", "HWC", "CORT", "FFIN", "KRYS", "KTOS", "MOD", "ABG", "PIPR", "IRT", "AXSM", "UBSI", "FSS", "ADMA", "AHR", "CNX", "BE", "SWX", "DY", "CADE", "POR", "FCFS", "VRNS", "AROC", "CBT", "MAC", "WK", "SR", "UPST", "PECO", "VLY", "NSIT", "BIPC", "FELE", "SANM", "MATX", "MGY", "PTCT", "BOX", "TENB", "BKH", "MWA", "ESE", "BDC", "ESGR", "CNO", "IBP", "SLG", "SFBS", "PBH", "CVCO", "OGS", "SBRA", "ORA", "KAI", "EXPO", "HRI", "SLAB", "AEIS", "GLNG", "BCC", "STRL", "ACA", "KBH", "CNR", "ANF", "ASTS", "ASB", "ITGR", "CDE", "ATGE", "BCO", "ALE", "ENS", "MUR", "CALM", "SKYW", "ABCB", "STEP", "MMS", "NPO", "RNA", "GEO", "TDS", "SM", "TCBI", "ROAD", "BXMT", "AVNT", "IBOC", "SHAK", "AVAV", "KTB", "FUN", "SKT", "PCH", "PJT", "PLXS", "AX", "SNEX", "COMP", "KFY", "CBZ", "PRIM", "PLMR", "VRRM", "HL", "SITM", "ASO", "GVA", "NWE", "HASI", "RDNT", "MC", "LANC", "URBN", "RUSHA", "AKRO", "MGEE", "EBC", "OTTR", "SOUN", "SWTX", "BOOT", "INTA", "PTEN", "IRTC", "BNL", "FRSH", "CRNX", "NHI", "SATS", "DORM", "NE", "STNE", "OSIS", "ICUI", "MHO", "NSP", "MIR", "ATMU", "HAE", "AVA", "WDFC", "POWI", "ACLX", "RELY", "WHD", "GHC", "UCB", "APLE", "FLG", "PTGX", "CDP", "BWIN", "HEES", "NOG", "WAY", "CRC", "SMPL", "SXT", "TGNA", "BGC", "RXO", "FTDR", "TPH", "ABM", "CCOI", "FUL", "GMS", "SMTC", "UNF", "RYTM", "CRVL", "GFF", "JOBY", "BL", "NMIH", "CPRX", "FULT", "WSFS", "ACHR", "OSCR", "WSBC", "PATK", "CBU", "WD", "FCPT", "MGRC", "BUR", "CNK", "ZETA", "AWR", "ASGN", "PFSI", "CPK", "CARG", "TEX", "LTH", "HGV", "RIOT", "SRRK", "NUVL", "PRCT", "CWT", "ALRM", "REZI", "GT", "WNS", "GSHD", "AUB", "BHVN", "TWST", "VCTR", "SG", "FBP", "ENVA", "AI", "GNW", "ALIT", "LXP", "LAUR", "VIAV", "VCYT", "SYNA", "TBBK", "AKR", "CATY", "PTON", "INDB", "SIG", "TOWN", "SFNC", "TNET", "FOLD", "AZZ", "DOCN", "BRZE", "CVBF", "HP", "FORM", "CAKE", "APAM", "HURN", "UE", "HCC", "DRS", "BOH", "FRME", "VAL", "OUT", "PDCO", "PRVA", "FIBK", "IOSP", "TRN", "AIR", "BLKB", "CLSKW", "MRCY", "LBRT", "BKU", "TTMI", "GPOR", "ACVA", "VCEL", "CON", "EVTC", "RIG", "YOU", "TMDX", "EPAC", "PRGS", "YELP", "SLVM", "PRK", "HUBG", "IVT", "BANF", "CNS", "OII", "AEO", "UEC", "AIN", "LCII", "CURB", "SBCF", "KAR", "FFBC", "CALX", "VC", "RRR", "CXW", "VSEC", "WAFD", "LIVN", "IPAR", "BEAM", "ATKR", "SSRM", "HNI", "VSH", "TDW", "EFSC", "PAR", "AMBA", "DIOD", "ENR", "HBI", "PSMT", "NVCR", "MTX", "MQ", "RNST", "HWKN", "PI", "PAYO", "ACAD", "MYRG", "KNTK", "BANR", "NATL", "AVPT", "SHO", "STC", "LGND", "PBF", "SKWD", "EXTR", "SHOO", "IGT", "CCS", "VERX", "PPBI", "TARS", "TRMK", "LMND", "CHEF", "CRGY", "SXI", "JJSF", "BATRK", "KLIC", "DAN", "DEI", "HE", "BUSE", "ROCK", "NEOG", "PFS", "ALG", "SMMT", "PHIN", "BANC", "ACLS", "NBTB", "CRK", "IIPR", "GOLF", "CNMD", "SYBT", "SGRY", "TGI", "MIRM", "RPD", "OSW", "WERN", "ARQT", "SEM", "HI", "ARWR", "STRA", "OI", "POWL", "RGTI", "DNLI", "FBK", "GRBK", "AGIO", "KWR", "AGM", "DVAX", "MTRN", "WRBY", "CSGS", "RAMP", "ZD", "NTB", "BTU", "TVTX", "ARCB", "STNG", "WLY", "OFG", "HLMN", "KMT", "JBLU", "KGS", "PLUS", "ALHC", "DNOW", "AGYS", "CASH", "MBC", "NMRK", "LMAT", "UPWK", "SDRL", "EWTX", "CHCO", "RXRX", "ABR", "SMR", "SJW", "JOE", "LZB", "VSCO", "MGNI", "REVG", "DRH", "TGLS", "GBX", "ALKT", "PD", "CORZ", "NNI", "ATRC", "BCRX", "PGNY", "SUPN", "AGX", "NWN", "FBNC", "UNFI", "WKC", "GNL", "PRKS", "OMCL", "STR", "IDYA", "HMN", "APLD", "KYMR", "QBTS", "ICFI", "LTC", "ADUS", "NIC", "PHR", "CUBI", "NGVT", "LKFN", "GTY", "ROOT", "APGE", "PAGS", "CENTA", "IESC", "IART", "VYX", "TNC", "MCY", "TDOC", "NWBI", "NTCT", "UFPT", "CGON", "FCF", "AVDX", "ELME", "DBRG", "ADEA", "LGIH", "BHE", "HTH", "CSTM", "TWO", "SONO", "PRDO", "DHT", "PZZA", "ENVX", "CABO", "GEF", "AMR", "TFIN", "ANDE", "COCO", "EPC", "AMRX", "LADR", "ACMR", "RUN", "MNKD", "STEL", "KN", "INSW", "ARI", "WABC", "ASTH", "VSAT", "TCBK", "SASR", "NBHC", "AGL", "AESI", "UPBD", "ROG", "DESP", "LNN", "TNDM", "VRNT", "CWK", "PLAB", "STBA", "CLDX", "CODI", "MSGE", "XHR", "FL", "ALEX", "SABR", "UMH", "TALO", "RLJ", "LC", "MLKN", "WGS", "RDFN", "WOR", "UVV", "TRUP", "VRE", "HRMY", "PMT", "SOC", "JBGS", "NEO", "HOPE", "CTS", "VBTX", "DFIN", "APPN", "SLNO", "SPT", "SDGR", "VRTS", "PLUG", "UTI", "INOD", "VICR", "PEB", "UNIT", "MD", "COMM", "INMD", "BFH", "PRM", "AMC", "SCL", "ATEN", "BKE", "WT", "QCRH", "HLX", "ARDX", "FLYW", "ASAN", "WMK", "VERA", "THS", "IRON", "VECO", "HELE", "XMTR", "ADNT", "OCUL", "KLG", "ANIP", "CRAI", "NVAX", "SAFT", "SRCE", "TILE", "NTST", "DX", "SPNT", "AIV", "LZ", "HCI", "EFC", "IMAX", "PRG", "WWW", "VRDN", "NHC", "HLIO", "BKD", "AUPH", "CCB", "HUT", "ATSG", "BHLB", "GABC", "PCRX", "DCOM", "HLIT", "BLBD", "GSAT", "DBD", "IMVT", "MFA", "SNDX", "ESRT", "EVH", "FBMS", "DXPE", "OBK", "PWP", "UCTT", "PEBO", "EVRI", "CIM", "CNNE", "TPC", "LEU", "JAMF", "KALU", "JBI", "USPH", "FUBO", "GIII", "EIG", "ATEC", "FOXF", "PRA", "NEXT", "AMPH", "ACT", "BBSI", "CSR", "NAVI", "BLX", "NVEE", "DGII", "FBRT", "KOS", "MXL", "SGHC", "MSEX", "EYE", "ARLO", "DOLE", "APOG", "CXM", "SFL", "AHCO", "VITL", "ARR", "QNST", "DEA", "PENG", "BTSG", "KW", "GDYN", "GERN", "DYN", "AMSF", "DRVN", "MCRI", "USLM", "TPB", "AAT", "ETNB", "MRC", "SCS", "SWI", "COUR", "DK", "CENX", "CDNA", "NN", "PBI", "BFC", "THR", "CWH", "IOVA", "ADPT", "PCT", "FDP", "XPRO", "NRIX", "JANX", "OCFC", "AORT", "WTTR", "LQDA", "WGO", "LOB", "GBTG", "PRO", "MODG", "WVE", "GOGL", "COLL", "MDXG", "SAFE", "AAOI", "BLFS", "FSLY", "SAH", "THRM", "TRS", "NTLA", "NX", "PDM", "INVA", "LFST", "ERII", "TNK", "FIZZ", "LGFB", "BRKL", "AMWD", "WINA", "WULF", "HROW", "UVSP", "AMN", "RXST", "OXM", "PRLB", "HG", "CNOB", "AMPL", "SBH", "CBRL", "RVLV", "BY", "ICHR", "MYGN", "HSII", "KNSA", "SPHR", "KFRC", "TROX", "MMI", "LMB", "FMBH", "UTZ", "PL", "NXRT", "SCSC", "SBSI", "EXPI", "WS", "IMKTA", "ALGT", "XNCR", "BLND", "ARIS", "STAA", "RSI", "ECPG", "CTBI", "TMP", "NSSC", "RWT", "SPNS", "LILAK", "LPG", "XPEL", "FIHL", "FA", "ARRY", "UTL", "RC", "ASTE", "VVX", "PRAA", "VMEO", "ELVN", "XERS", "CDRE", "BELFB", "HLF", "BHRB", "COHU", "CARS", "NNE", "UDMY", "AMTB", "DCO", "UUUU", "BV", "OPEN", "PNTG", "IDT", "SXC", "BDN", "PARR", "NG", "AVDL", "MCW", "ML", "OEC", "PGRE", "HFWA", "BRSP", "VTOL", "AXGN", "DAVE", "MBWM", "MRTN", "PRSU", "OSBC", "ATRO", "CNXN", "SYRE", "AMSC", "ADTN", "RDUS", "REPL", "NBBK", "HCSG", "EMBC", "ECVT", "CAC", "CMPR", "AAMI", "HSTM", "CFFN", "DLX", "BBUC", "SEI", "FCBC", "CLB", "EOLS", "AVXL", "CECO", "PTVE", "EVER", "HBNC", "HCKT", "WSR", "MBIN", "ZYME", "BXC", "LQDT", "NTGR", "PAX", "GRC", "CVI", "MATW", "PTLO", "OMI", "NBN", "OLO", "REAL", "PLYM", "COGT", "EQBK", "PLAY", "DFH", "KREF", "YEXT", "VTLE", "IBCP", "CEVA", "RCKT", "BJRI", "BLMN", "FLNG", "IBTA", "XRX", "CRMD", "PUMP", "CIFR", "IAS", "BFST", "MLAB", "VIR", "FWRG", "TRNS", "THFF", "ORC", "AOSL", "GOOD", "SPTN", "PRAX", "FG", "SITC", "BZH", "AVNS", "SPRY", "GCMG", "PDFS", "MLNK", "RYI", "ETD", "DEC", "AHH", "UFCS", "INVX", "HTBK", "OSPN", "JBSS", "MCB", "MOFG", "FIGS", "CBL", "FNA", "AIOT", "PFBC", "RBCAA", "BOW", "CASS", "ORRF", "SHEN", "SIBN", "WASH", "ASIX", "RGR", "INN", "GLDD", "EGBN", "NYMT", "SEZL", "VTS", "MCBS", "PSFE", "HTB", "BASE", "SMBC", "TIPT", "IIIV", "CAL", "MBUU", "AMAL", "GNK", "OPK", "JACK", "CPF", "CCBG", "AVBP", "THRY", "DJCO", "KOP", "SMBK", "IVR", "IMNM", "BORR", "MTUS", "NVRI", "TREE", "HAFC", "HOV", "IE", "PRTA", "GDEN", "LGFA", "OFIX", "REX", "SHLS", "ARVN", "GSBC", "KURA", "CSTL", "SNCY", "PGC", "SLQT", "HIPO", "CTO", "NABL", "UVE", "STGW", "SBGI", "ENFN", "FARO", "ESQ", "DHC", "FSBC", "DAKT", "CCNE", "BHB", "PRCH", "PLOW", "EE", "MTAL", "FWRD", "TRST", "WLDN", "GOGO", "OUST", "SMP", "FMNB", "CMCO", "AXL", "TRTX", "FIP", "HY", "JELD", "IIIN", "WLFC", "RUSHB", "BGS", "ACEL", "RPAY", "HZO", "UHT", "ACCD", "ARHS", "MNMD", "GMRE", "CTKB", "FLOC", "CSV", "NAT", "AMRK", "CLMB", "OMER", "LYTS", "RCUS", "PX", "CAPR", "FISI", "NPKI", "CHCT", "AROW", "PKST", "MNRO", "ETWO", "WEAV", "ABUS", "CNDT", "NFBK", "MEG", "FPI", "SSTK", "MLR", "VREX", "STKL", "SHBI", "BBW", "SVC", "MPB", "WRLD", "DNUT", "CCRN", "WNC", "CTLP", "SPFI", "TRVI", "RES", "PPTA", "DNTH", "NLOP", "PACS", "GCI", "NPK", "KALV", "AGS", "ALX", "EBF", "OLP", "CRSR", "SCHL", "REAX", "CCSI", "PGY", "PAHC", "BATRA", "ALRS", "BSRR", "MTSR", "HONE", "ODC", "MYE", "GRND", "DAWN", "MLYS", "PFIS", "TTI", "ORIC", "CLBK", "FBIZ", "SAGE", "CGEM", "CMRE", "URGN", "NRIM", "LGTY", "ALT", "AKBA", "TWI", "ODP", "ASPN", "EBTC", "IBRX", "BIGC", "ZVRA", "SWBI", "LIF", "KELYA", "EHAB", "RDVT", "ZIP", "FOR", "HTZ", "CRNC", "SRDX", "HNST", "DHIL", "AMRC", "CARE", "NWPX", "TTGT", "IMXI", "TMCI", "HTLD", "GTN", "EYPT", "CCO", "BMRC", "AMBC", "AVO", "MCS", "FFIC", "EVLV", "ASC", "KRUS", "GRPN", "LINC", "NCMI", "KE", "ACCO", "MGPI", "ANAB", "AMBP", "HPP", "VERV", "TCBX", "KODK", "SLP", "RGNX", "KIDS", "LASR", "PUBM", "CLW", "SENEA", "CENT", "MITK", "EGY", "GLRE", "BMBL", "ITIC", "SCVL", "TRML", "HIFS", "LUNR", "RBBN", "SFIX", "SEMR", "YORW", "KRNY", "KLC", "INDI", "NBR", "RLAY", "CVGW", "BAND", "DIN", "MSFUT", "HBCP", "ANGO", "NGVC", "TITN", "WTBA", "UNTY", "CLFD", "NAGE", "BFS", "ATEX", "GCT", "HBT", "ACNB", "BVS", "AMPS", "HOUS", "CLDT", "KROS", "RICK", "CVLG", "LIND", "NUS", "ORGO", "MSBI", "BBAI", "DDD", "CRMT", "TK", "APEI", "RIGL", "PACB", "TALK", "CIVB", "LXU", "IRMD", "RYAM", "XPER", "MATV", "APPS", "CYH", "CMTG", "NUVB", "MGTX", "GNTY", "CZNC", "REPX", "CELC", "EVGO", "FMAO", "MTRX", "CBAN", "FLGT", "FRPH", "NECB", "CWBC", "FRBA", "CWCO", "RBB", "NRDS", "ALNT", "BCAL", "MTW", "NEWT", "LPRO", "LAB", "PLPC", "TBPH", "OOMA", "SD", "SVRA", "LENZ", "MVIS", "BOC", "GHM", "LAND", "HRTG", "HAIN", "CMP", "ALDX", "MXCT", "HNRG", "BYRN", "NNOX", "ARKO", "IPI", "ESPR", "GPRE", "FLIC", "AURA", "SANA", "FLNC", "TCMD", "ATLC", "TRC", "BWMN", "BCML", "ZEUS", "OIS", "BTBT", "DGICA", "ZIMV", "ARCT", "SHYF", "CBNK", "FNLC", "LXFR", "BKV", "ARDT", "FFWM", "CYRX", "USNA", "DOMO", "ACIC", "HVT", "UIS", "FC", "GDOT", "STOK", "KIND", "PLSE", "HUMA", "FSBW", "NVEC", "MAX", "EGHT", "VLGEA", "URG", "EU", "GIC", "BWB", "RM", "LMNR", "ATXS", "MCFT", "CTRI", "RMR", "DSGR", "TSHA", "AVAH", "GRNT", "CMPO", "SMLR", "CLNE", "GEFB", "MOV", "SSBK", "DCGO", "NVTS", "SFST", "CPS", "CZFS", "CERS", "LUNG", "HRTX", "SPOK", "OBT", "SWIM", "PBPB", "VPG", "PLBC", "LOCO", "ASLE", "ERAS", "OSUR", "SIGA", "HDSN", "RDW", "VSTM", "HCAT", "ACRE", "COFS", "ANNX", "CHPT", "TRDA", "REFI", "VNDA", "PCB", "WSBF", "TSBK", "PKBK", "BCAX", "LOVE", "BRY", "PACK", "QTRX", "WOW", "EAF", "INBK", "LEGH", "MBI", "AEHR", "ABSI", "CTOS", "MRVI", "PDLB", "CRCT", "GCO", "BLZE", "TERN", "PHAT", "CMPX", "CDXS", "CBLL", "PGEN", "ASPI", "ULCC", "AVIR", "TBCH", "BKSY", "RRBI", "METCV", "CADL", "FRST", "IMMR", "AQST", "MEI", "BYON", "GLUE", "ASUR", "RGP", "TSVT", "ZUMZ", "RCEL", "OABI", "HYLN", "PSTL", "VMD", "PKE", "TRAK", "ILPT", "FNKO", "BWFG", "AVNW", "WEST", "EVCM", "DMRC", "AIP", "CRDA", "FDBC", "SMRT", "NGS", "SKYT", "GAMB", "IBEX", "AMCX", "MVBF", "TDUP", "BLFY", "BRT", "MITT", "RNGR", "JAKK", "ATNI", "SB", "LFMD", "LILA", "IRWD", "ORN", "JMSB", "GETY", "OPFI", "ALLO", "NRC", "WOOF", "CIO", "RLGT", "CRDF", "IAUX", "MG", "SEAT", "ONIT", "BSVN", "FET", "INSE", "MBCN", "TYRA", "ONEW", "DSP", "TG", "USCB", "GNE", "TH", "PINE", "PHLT", "MAMA", "LCNB", "PCYO", "NVRO", "RMNI", "FVR", "BYND", "PAL", "XPOF", "LSEA", "NWFL", "FSTR", "SLRN", "ALCO", "PKOH", "ISTR", "SPIR", "SSP", "YMAB", "DENN", "BCBP", "ITOS", "INR", "EB", "CHMG", "ANIK", "KLTR", "CVRX", "TBI", "SEVN", "OLPX", "EVEX", "BBNX", "BHR", "IHRT", "PRTH", "BARK", "FDMT", "OCGN", "OVLY", "ULH", "FLXS", "HMST", "DC", "SSTI", "FULC", "HPK", "MFIN", "REI", "BPRN", "SAMG", "INGN", "ARAY", "QSI", "VABK", "KRO", "OLMA", "SLDP", "ATLO", "NPCE", "VYGR", "ADV", "PANL", "VEL", "NKSH", "KRT", "QUAD", "BLDE", "MED", "FSP", "TTSH", "MEC", "TE", "INBX", "MYFW", "CMCL", "BOOM", "ESSA", "FVCB", "RMAX", "PVBC", "GCBC", "RAPP", "ACDC", "SVV", "NATH", "HBB", "RNAC", "DBI", "LZM", "JRVR", "NGNE", "HSHP", "WTI", "DH", "LE", "WEYS", "NKTR", "TRUE", "OB", "OPRX", "LAZR", "PMTS", "XOMA", "TLS", "FFNW", "DSGN", "LFCR", "NATR", "FLWS", "FENC", "GRDN", "NXDT", "RELL", "PNRG", "ONTF", "SMID", "MNTK", "SNBR", "LESL", "BH", "HFFG", "CDZI", "SGC", "PEBK", "KRRO", "WBTN", "AMPY", "III", "PBYI", "GPMT", "RGCO", "CRGX", "MDWD", "TCX", "CTRN", "EPM", "ALTG", "NREF", "RSVR", "PBFS", "ESCA", "JYNT", "CCCC", "SRI", "RXT", "POWW", "CATX", "FLL", "ARQ", "MLP", "UPB", "RCKY", "LAW", "EWCZ", "EVC", "ZBIO", "SMTI", "LWLG", "SMHI", "NC", "BBCP", "ADCT", "AOMR", "LNKB", "ENTA", "ONL", "AFCG", "SKYH", "PLL", "GENC", "MGNX", "NRDY", "SEPN", "NNBR", "KOD", "ZNTL", "PESI", "EML", "EDIT", "NODK", "HOFT", "CURV", "PRME", "MYPS", "ADVM", "INFU", "BRCC", "SAVA", "SCPH", "FORR", "MAPS", "SERA", "AVD", "HLLY", "ALEC", "SUNS", "ACTG", "SLDB", "JILL", "INMB", "JOUT", "KFS", "GPRO", "VIRC", "BELFA", "LWAY", "SKIN", "STHO", "FF", "SBT", "OFLX", "UTMD", "PROK", "SNDA", "AEVA", "CDLX", "CHRS", "UP", "SPCE", "STRS", "IRBT", "TSQ", "CMT", "AEYE", "SGHT", "MRAM", "BTMD", "FHTX", "NMRA", "PLRX", "BLNK", "STXS", "FCEL", "CTGO", "ALTI", "NRGV", "LRMR", "ACHV", "CLAR", "RILY", "ATOS", "LXEO", "EVI", "FATE", "MAZE", "LYEL", "MASS", "LCTX", "OBIO", "REKR", "GWRS", "RGLS", "DXLG", "EGAN", "MBX", "QIPT", "TAYD", "CRBU", "PAYS", "EP", "VTYX", "QUIK", "TNGX", "NKTX", "GEOS", "CABA", "SES", "PAMT", "RENB", "TTEC", "TELO", "BMEA", "VERU", "NOTE", "RHLD", "WALD", "CPSS", "FRGE", "GRWG", "CHGG", "TWIN", "AMTX", "CTNM", "THRD", "CRBP", "NPWR", "ALMS", "GOCO", "BDTX", "ARTV", "NL", "NTIC", "APLT", "INO", "MPX", "DIBS", "STEM", "STRO", "IVVD", "MHLD", "VTSI", "GLSI", "ACRV", "EEX", "XBIT", "GYRE", "JSPR", "VRA", "COOK", "TCRX", "ZURA", "HQI", "STRW", "CLPR", "LVO", "PYXS", "ISPR", "INNV", "STKS", "KYTX", "LCUT", "BIOA", "ANRO", "XFOR", "CRVO", "HLVX", "INZY", "LNZA", "VHI", "RMBL", "STTK", "ABOS", "ULBI", "NAUT", "TUSK", "VCSA", "PRPL", "CSTE", "ATNM", "CVGI", "GUTS", "AVTE", "NOVA", "RAPT", "MGX", "AMPX", "LXRX", "AKYA", "AGEN", "MRSN", "METCB", "ADRO", "TLYS", "SKYE", "AISP", "TPIC", "TNYA", "BLUE", "ZYXI", "CLYM", "AIRS", "RDZN", "QRHC", "GMGI", "VALU", "INH", "LVWR", "TCI", "CBUS", "DLHC", "SVCO", "PROP", "OTLK", "HOWL", "CAMP", "OVID", "ZSPC", "SWKH", "CIX", "FBLG", "SMXT", "PEPG", "MKTW", "GBIO", "GALT", "ALXO", "IPSC", "HBIO", "MODV", "IGMS", "BOLD", "SCWO", "AFRI", "SLND", "GCTS", "ARL", "ELEV", "SCLX", "LYRA", "QTTB", "SST", "VGAS", "OPAD", "DTI", "UHG", "VRCA", "PRLD", "ADRO", "DTC", "BAER", "WLLBW", "CRML", "GTXI", "MARGIN_USD", "CAD", "ETD_USD", "PDLI", "P5N994", "RTYM5", "USD"
-    ];
+  <!-- Performance Summary Section (Updated) -->
+  <section id="performance-summary">
+    <h2>Weekly Performance</h2>
+    <div class="performance-summary-grid">
+      <!-- Row 1: Our Top Picks -->
+      <button id="weeklyPicksButton">Our Top Picks</button>
+      <button id="weeklyPicksChange" class="non-clickable">Loading...</button>
+      
+      <!-- Row 2: S&P 500 -->
+      <button id="sp500Button">SP500</button>
+      <button id="sp500Change" class="non-clickable">Loading...</button>
+      
+      <!-- Row 3: Nasdaq -->
+      <button id="nasdaqButton">NASDAQ</button>
+      <button id="nasdaqChange" class="non-clickable">Loading...</button>
+    </div>
+    <!-- Explanation Box (hidden by default) -->
+    <div id="weeklyExplanationBox" class="explanation-box" style="display: none;"></div>
+  </section>  
 
-/***********************************************************************
- * Show/hide manual inputs
- ***********************************************************************/
-const manualModeCheckbox = document.getElementById("manualModeCheckbox");
-const manualInputsDiv    = document.getElementById("manualInputs");
-manualModeCheckbox.addEventListener("change", () => {
-  manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none";
-});
+  <!-- Newsletter Signup Section -->
+  <section id="newsletter-signup">
+    <!-- MailerLite Universal Embed Code -->
+    <script>
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+      ml('account', '1422635');
+    </script>
+    <div class="ml-embedded" data-form="N78gvr"></div>
+  </section>
 
-/***********************************************************************
- * If user changes the <select> Market Regime in manual mode,
- * auto-fill the user fields
- ***********************************************************************/
-const regimeSelect = document.getElementById("marketRegimeSelect");
-regimeSelect.addEventListener("change", function(){
-  const val = this.value;
-  if(val==="Bear"){
-    document.getElementById("wMC").value      = 0.05;
-    document.getElementById("wTech").value    = 0.05;
-    document.getElementById("wSent").value    = 0.10;
-    document.getElementById("wInsider").value = 0.30;
-    document.getElementById("wFund").value    = 0.30;
-    document.getElementById("wCongress").value= 0.20;
-    document.getElementById("scalingFactor").value = 0.25;
-  } else if(val==="Bull"){
-    document.getElementById("wMC").value      = 0.20;
-    document.getElementById("wTech").value    = 0.25;
-    document.getElementById("wSent").value    = 0.15;
-    document.getElementById("wInsider").value = 0.15;
-    document.getElementById("wFund").value    = 0.15;
-    document.getElementById("wCongress").value= 0.10;
-    document.getElementById("scalingFactor").value = 1.00;
-  } else {
-    // Neutral
-    document.getElementById("wMC").value      = 0.15;
-    document.getElementById("wTech").value    = 0.20;
-    document.getElementById("wSent").value    = 0.15;
-    document.getElementById("wInsider").value = 0.15;
-    document.getElementById("wFund").value    = 0.20;
-    document.getElementById("wCongress").value= 0.15;
-    document.getElementById("scalingFactor").value = 0.50;
-  }
-});
+  <!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
 
-/***********************************************************************
- * Logging & Sleep
- ***********************************************************************/
-function logStatus(msg){
-  const s = document.getElementById("status");
-  s.textContent += msg + "\n";
-  s.scrollTop= s.scrollHeight;
-}
-function sleep(ms){
-  return new Promise(resolve=> setTimeout(resolve,ms));
-}
+    <!-- NEW: Ticker Search Box -->
+    <div class="ticker-search-container">
+        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
+        <ul id="ticker-suggestions" style="display:none;"></ul>
+        <button id="tickerSearchButton" class="dark-input">Search</button>
+      </div>
+      
+  
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
+    </div>
+  </h2>
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button>
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
 
-/***********************************************************************
- * math.js setup
- ***********************************************************************/
-const { create, all } = math;
-const mathInstance = create(all);
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
 
-/***********************************************************************
- * parseAlphaDate
- ***********************************************************************/
-function parseAlphaDate(str){
-  const year  = str.substring(0,4);
-  const month = str.substring(4,6);
-  const day   = str.substring(6,8);
-  const hour  = str.substring(9,11) || "00";
-  const min   = str.substring(11,13) || "00";
-  const sec   = str.substring(13,15) || "00";
-  return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
-}
+  
+  <main>
+    <!-- Tools Section -->
+    <section id="tools">
+      <h2>Tools</h2>
+      <div class="tool-grid">
+        <div class="tool-card">
+          <img src="images/intraday.PNG" alt="Live Stock Chart" />
+          <h2>Live Stock Chart</h2>
+          <p>View current stock price and historical charts.</p>
+          <a href="intraday/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
+          <h2>Stock Trend Forecast</h2>
+          <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
+          <a href="stocks/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/fundamental.PNG" alt="Combined Fundamental Analysis" />
+          <h2>Combined Fundamental Analysis</h2>
+          <p>Combine the top 5 fundamental categories to assess overall financial strength.</p>
+          <a href="fundamental/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/congress.PNG" alt="Congress Trades" />
+          <h2>Congress Trades</h2>
+          <p>Discover if politicians are trading your favorite stocks.</p>
+          <a href="congress/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/topcongress.PNG" alt="Top 5 Congress Stocks" />
+          <h2>Top 5 Congress Stocks</h2>
+          <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
+          <a href="topcongress/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/analyst.PNG" alt="Combined Analyst Ratings" />
+          <h2>Combined Analyst Ratings</h2>
+          <p>View current analyst ratings and target price.</p>
+          <a href="analyst/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/insider.PNG" alt="Insider Tracker" />
+          <h2>Insider Tracker</h2>
+          <p>Uncover insider activity on your favorite stocks.</p>
+          <a href="insider/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
+          <h2>Market Sentiment Viewer</h2>
+          <p>Analyze the latest news articles on your favorite stocks.</p>
+          <a href="sentiment/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/technical.PNG" alt="Combined Technical Analysis" />
+          <h2>Combined Technical Analysis</h2>
+          <p>Analyze the top 5 technicals to generate a combined bullish or bearish signal.</p>
+          <a href="technical/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/MACD.PNG" alt="MACD Analysis" />
+          <h2>MACD Analysis</h2>
+          <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
+          <a href="MACD/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card">
+          <img src="images/imchimoku.PNG" alt="Ichimoku Cloud Analysis" />
+          <h2>Ichimoku Cloud Analysis</h2>
+          <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
+          <a href="ichimoku/" class="tool-button">Open Tool</a>
+        </div>
+      </div>
+    </section>
+  
+    <!-- Feedback Section -->
+    <section id="feedback-section">
+      <h2>Your Feedback</h2>
+      <p>Help us improve our site. Share your requests or ideas.</p>
+      <a href="feedback.html">Leave Feedback</a>
+    </section>
+  </main>
 
-/***********************************************************************
- * processHistoricalData (for Monte Carlo and Technical)
- ***********************************************************************/
-function processHistoricalData(timeSeries, periodMonths){
-  const dates= Object.keys(timeSeries).sort((a,b)=> new Date(a)- new Date(b));
-  const endDate= new Date(dates[dates.length-1]);
-  const startDate= new Date(endDate);
-  startDate.setMonth(startDate.getMonth()- periodMonths);
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+  </footer>
 
-  let prices=[];
-  for(let date of dates){
-    let dt=new Date(date);
-    if(dt>=startDate && dt<=endDate){
-      prices.push({
-        date: dt,
-        close: parseFloat(timeSeries[date]["5. adjusted close"])
+  <!-- ============================================================
+       JavaScript Section
+  ============================================================ -->
+  <script>
+    // Desktop Dropdown & Mobile Menu Toggle
+    document.addEventListener("DOMContentLoaded", () => {
+      const canHover = window.matchMedia('(hover: hover)').matches;
+      const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
+      if (canHover) {
+        desktopDropdowns.forEach(drop => {
+          const dropdownMenu = drop.querySelector('.dropdown-menu');
+          drop.addEventListener('mouseenter', () => {
+            const rect = drop.getBoundingClientRect();
+            document.body.appendChild(dropdownMenu);
+            dropdownMenu.style.position = 'fixed';
+            dropdownMenu.style.top = rect.bottom + 'px';
+            dropdownMenu.style.left = rect.left + 'px';
+            dropdownMenu.style.display = 'block';
+            dropdownMenu.style.zIndex = '10000';
+          });
+          drop.addEventListener('mouseleave', () => {
+            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+          dropdownMenu.addEventListener('mouseleave', () => {
+            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+        });
+        window.addEventListener('scroll', () => {
+          desktopDropdowns.forEach(drop => {
+            const dropdownMenu = drop.querySelector('.dropdown-menu');
+            if (dropdownMenu.style.position === 'fixed') {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+        });
+      } else {
+        desktopDropdowns.forEach(drop => {
+          const parentLink = drop.querySelector('.parent-link');
+          const dropdownMenu = drop.querySelector('.dropdown-menu');
+          dropdownMenu.style.display = 'none';
+          parentLink.addEventListener('click', e => {
+            e.preventDefault();
+            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+          });
+        });
+      }
+    });
+    
+    const openMenuBtn = document.getElementById("openMenu");
+    const closeMenuBtn = document.getElementById("closeMenu");
+    const mobileMenu = document.getElementById("mobileMenu");
+    openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
+    closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
+    const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
+    submenuToggles.forEach(toggle => {
+      toggle.addEventListener("click", () => {
+        const submenu = toggle.nextElementSibling;
+        if (submenu.style.display === "block") {
+          submenu.style.display = "none";
+          toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
+        } else {
+          submenu.style.display = "block";
+          toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
+        }
       });
-    }
-  }
-  prices.sort((a,b)=> a.date- b.date);
-  return prices;
-}
+    });
+  </script>
 
-/***********************************************************************
- * Monte Carlo functions
- ***********************************************************************/
-function randn_bm(){
-  let u=0,v=0;
-  while(u===0) u=Math.random();
-  while(v===0) v=Math.random();
-  return Math.sqrt(-2.0*Math.log(u)) * Math.cos(2.0*Math.PI*v);
-}
-function computeStats(prices){
-  let logs=[];
-  for(let i=1;i<prices.length;i++){
-    let prev= prices[i-1].close;
-    let cur=  prices[i].close;
-    logs.push( Math.log(cur/ prev) );
-  }
-  if(!logs.length){
-    return { mean:0, stdDev:0, lastPrice: prices[prices.length-1].close };
-  }
-  let dailyMean= logs.reduce((a,b)=> a+b,0)/ logs.length;
-  let variance= logs.reduce((acc,v)=> acc+ (v-dailyMean)**2, 0)/(logs.length-1);
-  let dailyStd= Math.sqrt(variance);
-  let tradingDays=252;
-  return {
-    mean: dailyMean* tradingDays,
-    stdDev: dailyStd* Math.sqrt(tradingDays),
-    lastPrice: prices[prices.length-1].close
-  };
-}
-function runMC(lastPrice, mean, stdDev, T, sims=10000){
-  let finals=[];
-  for(let i=0;i<sims;i++){
-    let Z= randn_bm();
-    let ST= lastPrice* Math.exp((mean- 0.5*stdDev**2)* T + stdDev* Math.sqrt(T)* Z);
-    finals.push(ST);
-  }
-  return finals;
-}
-function computeMCBull(lastPrice, finals){
-  let cnt= finals.filter(x=> x>= lastPrice).length;
-  return (cnt/ finals.length)* 100;
-}
+  <script>
+    // This function fetches intraday data for a given ticker using 5min interval,
+    // finds the first available price on the initial date and the most recent price,
+    // then calculates and displays the percentage difference in the given buttonElement.
+    function updateTickerPerformanceIntraday(ticker, buttonElement) {
+      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(intradayUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
 
-/***********************************************************************
- * Technical (MACD) functions
- ***********************************************************************/
-function computeEMA(series, period){
-  if(series.length<period)return [];
-  let alpha=2/(period+1);
-  let sum=0;
-  for(let i=0;i<period;i++){
-    sum+= series[i].close;
-  }
-  let prevEma= sum/ period;
-  let out=[];
-  out[period-1]={ date: series[period-1].date, ema: prevEma };
-  for(let i=period;i<series.length;i++){
-    let cur= series[i].close;
-    let nxt=(cur- prevEma)* alpha + prevEma;
-    out[i]={ date: series[i].date, ema:nxt };
-    prevEma=nxt;
-  }
-  return out.filter(Boolean);
-}
-function computeMACD(series, fast=12, slow=26, signal=9){
-  let fEMA= computeEMA(series, fast);
-  let sEMA= computeEMA(series, slow);
-  let macdLine=[];
-  for(let i=0;i<sEMA.length;i++){
-    let dt=sEMA[i].date;
-    let match= fEMA.find(x=> x.date.getTime()=== dt.getTime());
-    if(match){
-      macdLine.push({ date: dt, macd: match.ema - sEMA[i].ema });
-    }
-  }
-  if(macdLine.length< signal) return { macdLine, signalLine:[] };
-  let m=2/(signal+1);
-  let sum=0;
-  for(let i=0;i<signal;i++){
-    sum+= macdLine[i].macd;
-  }
-  let prevSig= sum/signal;
-  let signalLine=[];
-  signalLine[signal-1]={ date: macdLine[signal-1].date, signal: prevSig };
-  for(let i=signal;i< macdLine.length;i++){
-    let s=(macdLine[i].macd - prevSig)* m + prevSig;
-    signalLine[i]={ date: macdLine[i].date, signal: s };
-    prevSig=s;
-  }
-  return { macdLine, signalLine: signalLine.filter(Boolean)};
-}
-function polynomialRegression(x,y,deg){
-  let X=[];
-  for(let i=0;i<x.length;i++){
-    let row=[];
-    for(let j=0;j<=deg;j++){
-      row.push( Math.pow(x[i], j) );
-    }
-    X.push(row);
-  }
-  let XT= mathInstance.transpose(X);
-  let XTX= mathInstance.multiply(XT, X);
-  let XTy= mathInstance.multiply(XT, y);
-  let sol= mathInstance.lusolve(XTX, XTy);
-  return sol.map(v=> v[0]);
-}
-function predictValue(coefs,xx){
-  return coefs.reduce((acc,c,i)=> acc+ c*Math.pow(xx,i), 0);
-}
-function computeMomentumScoreUsingRegression(hist){
-  if(hist.length<6)return 50;
-  let recent= hist.slice(-6);
-  let x=[1,2,3,4,5,6];
-  let coefs= polynomialRegression(x, recent,3);
-  let pred= predictValue(coefs,7);
-  let last= recent[recent.length-1];
-  let delta= pred- last;
-  let k=5;
-  let sc= 100/(1+ Math.exp(-k* delta));
-  return isNaN(sc)?50:sc;
-}
-function computeGapTrendScore(macdLine, signalLine){
-  if(macdLine.length<6|| signalLine.length<6)return { gapScore:50 };
-  let rMacd= macdLine.slice(-6).map(x=> x.macd);
-  let rSig=  signalLine.slice(-6).map(x=> x.signal);
-  let x=[1,2,3,4,5,6];
-  let macdCoefs= polynomialRegression(x, rMacd,3);
-  let sigCoefs=  polynomialRegression(x, rSig,3);
-  let predMACD= predictValue(macdCoefs,7);
-  let predSig=  predictValue(sigCoefs,7);
-  let predGap=  predMACD- predSig;
-  let curGap= macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
-  let delta= predGap- curGap;
-  let k=5;
-  let sc= 100/(1+ Math.exp(-k* delta));
-  return { gapScore: sc };
-}
-async function computeTechnical(prices){
-  if(prices.length<2)return 50;
-  let macdData= computeMACD(prices,12,26,9);
-  let macdLine= macdData.macdLine, signalLine= macdData.signalLine;
-  if(macdLine.length<2|| signalLine.length<2)return 50;
-  let len= Math.min(macdLine.length, signalLine.length);
-  let latestMACD= macdLine[len-1].macd;
-  let positionScore= 100/(1+ Math.exp(latestMACD));
-  let gapObj= computeGapTrendScore(macdLine, signalLine);
-  let gapScore= gapObj.gapScore||50;
-  let hist=[];
-  for(let i=0;i<len;i++){
-    hist.push( macdLine[i].macd - signalLine[i].signal );
-  }
-  let momentum= computeMomentumScoreUsingRegression(hist);
-  if(!momentum) momentum=50;
-  let final=(positionScore+ gapScore+ momentum)/3;
-  return final;
-}
+          // Adjust this date as needed
+          const initialDate = "2025-04-04";
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
 
-/***********************************************************************
- * computeStats for Monte Carlo
- ***********************************************************************/
-function computeStats(prices){
-  let logs=[];
-  for(let i=1;i<prices.length;i++){
-    let prev= prices[i-1].close;
-    let cur=  prices[i].close;
-    logs.push( Math.log(cur/ prev) );
-  }
-  if(!logs.length){
-    return { mean:0, stdDev:0, lastPrice: prices[prices.length-1].close };
-  }
-  let dMean= logs.reduce((a,b)=> a+b,0)/ logs.length;
-  let variance= logs.reduce((acc,v)=> acc+ (v-dMean)**2, 0)/(logs.length-1);
-  let dStd= Math.sqrt(variance);
-  let tradingDays=252;
-  return {
-    mean: dMean* tradingDays,
-    stdDev: dStd* Math.sqrt(tradingDays),
-    lastPrice: prices[prices.length-1].close
-  };
-}
-function runMC(lastPrice, mean, stdDev, T, sims=10000){
-  let finals=[];
-  for(let i=0;i<sims;i++){
-    let Z= randn_bm();
-    let ST= lastPrice* Math.exp((mean- 0.5*stdDev**2)* T + stdDev* Math.sqrt(T)* Z);
-    finals.push(ST);
-  }
-  return finals;
-}
-function computeMCBull(lastPrice, finals){
-  let cnt= finals.filter(x=> x>= lastPrice).length;
-  return (cnt/ finals.length)* 100;
-}
+          // Get the most recent timestamp (<= current time)
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
 
-/***********************************************************************
- * Sentiment
- ***********************************************************************/
-async function fetchSentimentData(ticker, periodMonths){
-  const url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.feed) throw new Error("No sentiment data from server.");
-  let cutoff= new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let byHour={};
-  for(let art of j.feed){
-    let dt= parseAlphaDate(art.time_published);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    if(!art.ticker_sentiment)continue;
-    let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
-    if(!tItem)continue;
-    let raw= parseFloat(tItem.ticker_sentiment_score);
-    if(isNaN(raw))continue;
-    let norm= ((raw+1)/2)* 100;
-    let hr= dt.toISOString().substring(0,13);
-    if(!byHour[hr]) byHour[hr]=[];
-    byHour[hr].push(norm);
-  }
-  let sentiments=[];
-  for(let hStr in byHour){
-    let arr= byHour[hStr];
-    let avg= arr.reduce((a,b)=> a+b,0)/ arr.length;
-    let dt=new Date(`${hStr}:00:00Z`);
-    sentiments.push({ date:dt, sentiment:avg });
-  }
-  sentiments.sort((a,b)=> a.date- b.date);
-  return sentiments;
-}
-function computeSentBull(arr){
-  if(arr.length<2)return 50;
-  let first= arr[0].date;
-  let xs= arr.map(d=> (d.date-first)/(1000*60*60*24));
-  let ys= arr.map(d=> d.sentiment);
-  let n= xs.length;
-  let sumX= xs.reduce((a,b)=> a+b,0);
-  let sumY= ys.reduce((a,b)=> a+b,0);
-  let sumXY= xs.reduce((acc,val,i)=> acc+ val* ys[i],0);
-  let sumX2= xs.reduce((acc,val)=> acc+ val* val,0);
-  let slope= (n* sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
-  let avg= sumY/n;
-  let k=0.3;
-  let slopeScore= 100/(1+ Math.exp(-k* slope));
-  return 0.5*slopeScore + 0.5* avg;
-}
+          // Calculate percentage difference
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          const diffFormatted = diff.toFixed(2) + '%';
 
-/***********************************************************************
- * Insider
- ***********************************************************************/
-// Fetch insider transaction data (buys/sells)
-async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
-  let cutoff= new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalBuy=0, totalSell=0;
-  for(let item of j.data){
-    if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
-    if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-    let tradePrice=parseFloat(item.share_price);
-    let lb= currentPrice*0.5, ub= currentPrice*1.5;
-    if(tradePrice< lb|| tradePrice> ub) continue;
-    let dt=new Date(item.transaction_date);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let shares= parseFloat(item.shares);
-    if(item.acquisition_or_disposal==="A") totalBuy+= shares;
-    else if(item.acquisition_or_disposal==="D") totalSell+= shares;
-  }
-  return { totalBuys: totalBuy, totalSells: totalSell };
-}
-
-// Fetch insider sentiment data from the updated API endpoint.
-// Returns an object containing: { data: [...], trend, fromDateStr, toDateStr }
-async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-  let fromDate = new Date(simDate);
-  fromDate.setMonth(fromDate.getMonth()- periodMonths);
-  let fromDateStr = fromDate.toISOString().slice(0,10);
-  let toDateStr = simDate.toISOString().slice(0,10);
-  let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-  let r = await fetch(url);
-  let j = await r.json();
-  if(!j.data || !Array.isArray(j.data) || j.data.length===0)
-    throw new Error("No insider sentiment data available.");
-  return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
-}
-
-// Compute new insider score using the insider tool method.
-// - Fill timeline between fromDateStr and toDateStr with raw MSPR; missing months default to 0 (neutral, normalized to 50).
-// - Normalize using (raw+100)/2.
-// - Weights: 25% Final MSPR, 50% Transaction Score, 25% Trend Component.
-function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-  // Fill timeline
-  let fromDate = new Date(insiderSentimentData.fromDateStr);
-  let toDate = new Date(insiderSentimentData.toDateStr);
-  let filledData = [];
-  let currentDate = new Date(fromDate);
-  while(currentDate <= toDate){
-    let year = currentDate.getFullYear();
-    let month = currentDate.getMonth()+1; // JS months are 0-indexed
-    let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
-    if(found){
-      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
-    } else {
-      // Missing data: raw value 0 -> normalized to 50
-      filledData.push({ year: year, month: month, mspr: 0 });
-    }
-    currentDate.setMonth(currentDate.getMonth()+1);
-  }
-  // Final MSPR: last month in timeline
-  let finalMspr = filledData[filledData.length-1].mspr;
-  let normalizedFinalMspr = (finalMspr+100)/2;
-  
-  // Average MSPR over timeline
-  let sumMspr = filledData.reduce((sum,pt)=> sum+pt.mspr, 0);
-  let avgMspr = sumMspr/ filledData.length;
-  let normalizedAvgMspr = (avgMspr+100)/2;
-  
-  // Regression slope using sequential month indices
-  let n = filledData.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for(let i=0;i<n;i++){
-    let x = i+1;
-    let y = filledData[i].mspr;
-    sumX += x;
-    sumY += y;
-    sumXY += x*y;
-    sumX2 += x*x;
-  }
-  let denominator = n* sumX2 - sumX* sumX;
-  let slope = (denominator===0) ? 0 : (n* sumXY - sumX* sumY)/ denominator;
-  let normalizedSlope = (isNaN(slope) || !isFinite(slope)) ? 50 : (slope+100)/2;
-  
-  let trendComponent = (normalizedAvgMspr+ normalizedSlope)/2;
-  
-  // Transaction score
-  let transactionScore = 0;
-  let totalTrans = transactionBuys+ transactionSells;
-  if(totalTrans>0){
-    transactionScore = ((transactionBuys- transactionSells)/ totalTrans)*100;
-  }
-  let normalizedTransactionScore = (transactionScore+100)/2;
-  
-  // Final combined insider score with weights: 25% Final MSPR, 50% Transaction, 25% Trend
-  let finalScore = 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
-  return finalScore;
-}
-
-/***********************************************************************
- * Fundamental
- ***********************************************************************/
-function computeFundScores(data){
-  const norm=(val,min,max)=>{
-    if(!val||isNaN(val))return 50;
-    let ratio=(val-min)/(max-min);
-    return Math.max(0,Math.min(100, ratio*100));
-  };
-  let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
-  let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-  let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-  let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-  let profitability=(margin+ opMarg+ roa+ roe)/4;
-
-  let pe=parseFloat(data.PERatio);
-  let peScore= 100- norm(pe,5,40);
-  let peg=parseFloat(data.PEGRatio);
-  let pegScore=100- norm(peg,0.5,2.5);
-  let ps= parseFloat(data.PriceToSalesRatioTTM);
-  let psScore=100- norm(ps,1,10);
-  let pb= parseFloat(data.PriceToBookRatio);
-  let pbScore=100- norm(pb,1,10);
-  let valuation=(peScore+ pegScore+ psScore+ pbScore)/4;
-
-  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2,0.3);
-  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3,0.3);
-  let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-  let ratio=0;
-  if(pRef>0 && data.AnalystTargetPrice){
-    ratio=(parseFloat(data.AnalystTargetPrice)/ pRef)-1;
-  }
-  let tgtScore= norm(ratio,0,0.5);
-  let growth=(rg+ eg+ tgtScore)/3;
-
-  let dy= norm(parseFloat(data.DividendYield),0,0.07);
-  let dps= norm(parseFloat(data.DividendPerShare),0,10);
-  let eps= norm(parseFloat(data.EPS),0,12);
-  let dividends=(dy+ dps+ eps)/3;
-
-  let ebitda=parseFloat(data.EBITDA);
-  let revTTM=parseFloat(data.RevenueTTM);
-  let ebitdaMarg= (ebitda&& revTTM)? norm(ebitda/revTTM,0,0.3):50;
-  let evEbitda= parseFloat(data.EVToEBITDA);
-  let evEbitdaScore= 100- norm(evEbitda,5,30);
-  let beta= parseFloat(data.Beta);
-  let betaScore=50;
-  if(!isNaN(beta)){
-    betaScore=100- norm(beta,0,2);
-  }
-  let financial=(ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-
-  return { profitability, valuation, growth, dividends, financial };
-}
-async function fetchFundamentalData(ticker){
-  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.Symbol)return 50;
-  let cat= computeFundScores(j);
-  let s=0,c=0;
-  for(let k in cat){ s+= cat[k]; c++; }
-  return s/c;
-}
-
-/***********************************************************************
- * Congress
- ***********************************************************************/
-async function fetchCongressData(ticker, periodMonths){
-  const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-  const resp=await fetch(url);
-  const j=await resp.json();
-  if(!j.data || !Array.isArray(j.data)){
-    throw new Error("Invalid congress data format.");
-  }
-  const rawData = j.data;
-  let cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalPurchase=0, totalSale=0;
-  for(let item of rawData){
-    if(!item.TransactionDate||!item.Transaction) continue;
-    let dt=new Date(item.TransactionDate);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let amt= parseFloat(item.Amount)||0;
-    if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
-    if(/sale/i.test(item.Transaction)) totalSale+= amt;
-  }
-  return { totalPurchase, totalSale };
-}
-function computeCongressBull(purchase,sale){
-  let sum= purchase+ sale;
-  if(sum<=0)return 50;
-  return ((purchase-sale)/ sum)*50 + 50;
-}
-
-/***********************************************************************
- * Market Regime detection
- ***********************************************************************/
-async function determineSPYMarketRegime(periodMonths){
-  try {
-    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-    let resp=await fetch(url);
-    let j=await resp.json();
-    if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
-
-    let shortWindow= periodMonths*5;
-    let longWindow=  periodMonths*15;
-    let totalDays= periodMonths*30;
-
-    let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-    let arr=[];
-    for(let d of allKeys){
-      let dt=new Date(d);
-      let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-      arr.push({ date:dt, close:c });
-    }
-    let end= arr[arr.length-1].date;
-    let start= new Date(end);
-    start.setDate(start.getDate()- totalDays);
-    let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-    if(filtered.length< Math.max(shortWindow, longWindow)){
-      logStatus("Not enough SPY data => neutral");
-      return "Neutral";
-    }
-    let shortSMA= computeSMA(filtered, shortWindow);
-    let longSMA= computeSMA(filtered, longWindow);
-    let smaSig= classifyBySMA(shortSMA, longSMA);
-    let slopeVal= computePriceSlope(filtered);
-    let slopeSig= classifyBySlope(slopeVal);
-    let votes=0;
-    if(smaSig==="Bull") votes++;
-    if(smaSig==="Bear") votes--;
-    if(slopeSig==="Bull") votes++;
-    if(slopeSig==="Bear") votes--;
-    if(votes>=2)  return "Bull";
-    if(votes<=-2) return "Bear";
-    return "Neutral";
-  } catch(e){
-    logStatus("Error in determineSPYMarketRegime => "+ e.message);
-    return "Neutral";
-  }
-}
-function computeSMA(priceArray, period){
-  if(!priceArray|| priceArray.length<period)return null;
-  let slice= priceArray.slice(-period);
-  let sum=0;
-  for(let p of slice){ sum+= p.close; }
-  return sum/period;
-}
-function classifyBySMA(shortSMA, longSMA){
-  if(!shortSMA|| !longSMA)return "Neutral";
-  let ratio= shortSMA/ longSMA;
-  if(ratio>1.01)return "Bull";
-  if(ratio<0.99)return "Bear";
-  return "Neutral";
-}
-function computePriceSlope(prices){
-  let n= prices.length;
-  if(n<2)return 0;
-  let sumX=0, sumY=0, sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    sumX+= i;
-    sumY+= prices[i].close;
-    sumXY+= i* prices[i].close;
-    sumX2+= i*i;
-  }
-  let numerator= n* sumXY - sumX* sumY;
-  let denominator= n* sumX2 - sumX* sumX;
-  if(denominator===0)return 0;
-  return numerator/ denominator;
-}
-function classifyBySlope(slope){
-  let bullThr=0.2, bearThr=-0.2;
-  if(slope> bullThr)return "Bull";
-  if(slope< bearThr)return "Bear";
-  return "Neutral";
-}
-
-/***********************************************************************
- * getAutoWeightsForRegime => returns { wMC, wTech, wSent, wIns, wFund, wCong, scale }
- ***********************************************************************/
-function getAutoWeightsForRegime(regime){
-  if(regime==="Bear"){
-    return {
-      wMC: 0.05,  wTech:0.05, wSent:0.10, wIns:0.30,
-      wFund:0.30, wCong:0.20, scale:0.25
-    };
-  } else if(regime==="Bull"){
-    return {
-      wMC: 0.20,  wTech:0.25, wSent:0.15, wIns:0.15,
-      wFund:0.15, wCong:0.10, scale:1.00
-    };
-  } else {
-    return {
-      wMC: 0.15,  wTech:0.20, wSent:0.15, wIns:0.15,
-      wFund:0.20, wCong:0.15, scale:0.50
-    };
-  }
-}
-
-/***********************************************************************
- * aggregatorFinal => picks auto or manual
- ***********************************************************************/
-function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
-  const manual= document.getElementById("manualModeCheckbox").checked;
-  if(manual){
-    const wMC    = parseFloat(document.getElementById("wMC").value)||0;
-    const wTech  = parseFloat(document.getElementById("wTech").value)||0;
-    const wSent  = parseFloat(document.getElementById("wSent").value)||0;
-    const wIns   = parseFloat(document.getElementById("wInsider").value)||0;
-    const wFund  = parseFloat(document.getElementById("wFund").value)||0;
-    const wCong  = parseFloat(document.getElementById("wCongress").value)||0;
-    let sc= parseFloat(document.getElementById("scalingFactor").value)||1.0;
-    const sumW= wMC+wTech+wSent+wIns+wFund+wCong;
-    let invalidWeights= (Math.abs(sumW-1)>1e-9);
-    let invalidScale  = (sc<0 || sc>2);
-    if(invalidWeights || invalidScale){
-      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling is outside [0..2]. Fallback to EQUAL weighting + scale=1.0.");
-      let eq= (mc+ tech+ sent+ ins+ fund+ cong)/6;
-      return eq;
-    } else {
-      let raw= wMC*mc + wTech*tech + wSent*sent + wIns*ins + wFund*fund + wCong*cong;
-      return (raw- 50)* sc + 50;
-    }
-  } else {
-    let auto= getAutoWeightsForRegime(regime);
-    let raw= auto.wMC*mc + auto.wTech*tech + auto.wSent*sent +
-             auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
-    return (raw- 50)* auto.scale + 50;
-  }
-}
-
-/***********************************************************************
- * INSIDER FUNCTIONS (UPDATED)
- ***********************************************************************/
-// Fetch insider transaction data (buys/sells)
-async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
-  let cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalBuy=0, totalSell=0;
-  for(let item of j.data){
-    if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
-    if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-    let tradePrice=parseFloat(item.share_price);
-    let lb= currentPrice*0.5, ub= currentPrice*1.5;
-    if(tradePrice< lb|| tradePrice> ub) continue;
-    let dt=new Date(item.transaction_date);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let shares= parseFloat(item.shares);
-    if(item.acquisition_or_disposal==="A") totalBuy+= shares;
-    else if(item.acquisition_or_disposal==="D") totalSell+= shares;
-  }
-  return { totalBuys: totalBuy, totalSells: totalSell };
-}
-
-// Fetch insider sentiment data from updated API endpoint
-async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-  let fromDate = new Date(simDate);
-  fromDate.setMonth(fromDate.getMonth()- periodMonths);
-  let fromDateStr = fromDate.toISOString().slice(0,10);
-  let toDateStr = simDate.toISOString().slice(0,10);
-  let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-  let r = await fetch(url);
-  let j = await r.json();
-  if(!j.data || !Array.isArray(j.data) || j.data.length===0)
-    throw new Error("No insider sentiment data available.");
-  return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
-}
-
-// Compute new insider score using insider tool logic:
-// - Fill timeline from fromDateStr to toDateStr; missing months get raw 0 (neutral, normalized to 50).
-// - Normalize raw MSPR using (raw+100)/2.
-// - Weights: 25% Final MSPR, 50% Transaction Score, 25% Trend Component.
-function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-  let fromDate = new Date(insiderSentimentData.fromDateStr);
-  let toDate = new Date(insiderSentimentData.toDateStr);
-  let filledData = [];
-  let currentDate = new Date(fromDate);
-  while(currentDate <= toDate){
-    let year = currentDate.getFullYear();
-    let month = currentDate.getMonth()+1;
-    let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
-    if(found){
-      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
-    } else {
-      // Missing data: default raw MSPR = 0 (normalized to 50)
-      filledData.push({ year: year, month: month, mspr: 0 });
-    }
-    currentDate.setMonth(currentDate.getMonth()+1);
-  }
-  // Final MSPR: last month in timeline
-  let finalMspr = filledData[filledData.length-1].mspr;
-  let normalizedFinalMspr = (finalMspr+100)/2;
-  // Average MSPR over timeline
-  let sumMspr = filledData.reduce((sum, pt)=> sum+pt.mspr, 0);
-  let avgMspr = sumMspr/ filledData.length;
-  let normalizedAvgMspr = (avgMspr+100)/2;
-  // Regression slope using sequential month indices
-  let n = filledData.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for(let i=0;i<n;i++){
-    let x = i+1;
-    let y = filledData[i].mspr;
-    sumX += x;
-    sumY += y;
-    sumXY += x*y;
-    sumX2 += x*x;
-  }
-  let denominator = n* sumX2 - sumX* sumX;
-  let slope = (denominator===0) ? 0 : (n* sumXY - sumX* sumY)/ denominator;
-  let normalizedSlope = (isNaN(slope) || !isFinite(slope)) ? 50 : (slope+100)/2;
-  let trendComponent = (normalizedAvgMspr+ normalizedSlope)/2;
-  // Transaction score
-  let transactionScore = 0;
-  let totalTrans = transactionBuys+ transactionSells;
-  if(totalTrans>0){
-    transactionScore = ((transactionBuys- transactionSells)/ totalTrans)*100;
-  }
-  let normalizedTransactionScore = (transactionScore+100)/2;
-  // Final combined insider score:
-  let finalScore = 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
-  return finalScore;
-}
-
-/***********************************************************************
- * Fundamental functions
- ***********************************************************************/
-function computeFundScores(data){
-  const norm=(val,min,max)=>{
-    if(!val|| isNaN(val))return 50;
-    let ratio=(val-min)/(max-min);
-    return Math.max(0,Math.min(100, ratio*100));
-  };
-  let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
-  let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-  let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-  let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-  let profitability=(margin+ opMarg+ roa+ roe)/4;
-  let pe=parseFloat(data.PERatio);
-  let peScore= 100- norm(pe,5,40);
-  let peg=parseFloat(data.PEGRatio);
-  let pegScore=100- norm(peg,0.5,2.5);
-  let ps= parseFloat(data.PriceToSalesRatioTTM);
-  let psScore=100- norm(ps,1,10);
-  let pb= parseFloat(data.PriceToBookRatio);
-  let pbScore=100- norm(pb,1,10);
-  let valuation=(peScore+ pegScore+ psScore+ pbScore)/4;
-  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2,0.3);
-  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3,0.3);
-  let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-  let ratio=0;
-  if(pRef>0 && data.AnalystTargetPrice){
-    ratio=(parseFloat(data.AnalystTargetPrice)/ pRef)-1;
-  }
-  let tgtScore= norm(ratio,0,0.5);
-  let growth=(rg+ eg+ tgtScore)/3;
-  let dy= norm(parseFloat(data.DividendYield),0,0.07);
-  let dps= norm(parseFloat(data.DividendPerShare),0,10);
-  let eps= norm(parseFloat(data.EPS),0,12);
-  let dividends=(dy+ dps+ eps)/3;
-  let ebitda=parseFloat(data.EBITDA);
-  let revTTM=parseFloat(data.RevenueTTM);
-  let ebitdaMarg= (ebitda&& revTTM)? norm(ebitda/revTTM,0,0.3):50;
-  let evEbitda= parseFloat(data.EVToEBITDA);
-  let evEbitdaScore= 100- norm(evEbitda,5,30);
-  let beta= parseFloat(data.Beta);
-  let betaScore=50;
-  if(!isNaN(beta)){
-    betaScore=100- norm(beta,0,2);
-  }
-  let financial=(ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-  return { profitability, valuation, growth, dividends, financial };
-}
-async function fetchFundamentalData(ticker){
-  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.Symbol)return 50;
-  let cat= computeFundScores(j);
-  let s=0,c=0;
-  for(let k in cat){ s+= cat[k]; c++; }
-  return s/c;
-}
-
-/***********************************************************************
- * Congress functions
- ***********************************************************************/
-async function fetchCongressData(ticker, periodMonths){
-  const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-  const resp=await fetch(url);
-  const j=await resp.json();
-  if(!j.data || !Array.isArray(j.data)) throw new Error("Invalid congress data format.");
-  const rawData = j.data;
-  let cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalPurchase=0, totalSale=0;
-  for(let item of rawData){
-    if(!item.TransactionDate||!item.Transaction) continue;
-    let dt=new Date(item.TransactionDate);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let amt= parseFloat(item.Amount)||0;
-    if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
-    if(/sale/i.test(item.Transaction)) totalSale+= amt;
-  }
-  return { totalPurchase, totalSale };
-}
-function computeCongressBull(purchase,sale){
-  let sum= purchase+ sale;
-  if(sum<=0)return 50;
-  return ((purchase-sale)/ sum)*50 + 50;
-}
-
-/***********************************************************************
- * Market Regime detection
- ***********************************************************************/
-async function determineSPYMarketRegime(periodMonths){
-  try {
-    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-    let resp=await fetch(url);
-    let j=await resp.json();
-    if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
-    let shortWindow= periodMonths*5;
-    let longWindow=  periodMonths*15;
-    let totalDays= periodMonths*30;
-    let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-    let arr=[];
-    for(let d of allKeys){
-      let dt=new Date(d);
-      let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-      arr.push({ date:dt, close:c });
-    }
-    let end= arr[arr.length-1].date;
-    let start= new Date(end);
-    start.setDate(start.getDate()- totalDays);
-    let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-    if(filtered.length< Math.max(shortWindow, longWindow)){
-      logStatus("Not enough SPY data => neutral");
-      return "Neutral";
-    }
-    let shortSMA= computeSMA(filtered, shortWindow);
-    let longSMA= computeSMA(filtered, longWindow);
-    let smaSig= classifyBySMA(shortSMA, longSMA);
-    let slopeVal= computePriceSlope(filtered);
-    let slopeSig= classifyBySlope(slopeVal);
-    let votes=0;
-    if(smaSig==="Bull") votes++;
-    if(smaSig==="Bear") votes--;
-    if(slopeSig==="Bull") votes++;
-    if(slopeSig==="Bear") votes--;
-    if(votes>=2)  return "Bull";
-    if(votes<=-2) return "Bear";
-    return "Neutral";
-  } catch(e){
-    logStatus("Error in determineSPYMarketRegime => "+ e.message);
-    return "Neutral";
-  }
-}
-function computeSMA(priceArray, period){
-  if(!priceArray|| priceArray.length<period)return null;
-  let slice= priceArray.slice(-period);
-  let sum=0;
-  for(let p of slice){ sum+= p.close; }
-  return sum/period;
-}
-function classifyBySMA(shortSMA, longSMA){
-  if(!shortSMA|| !longSMA)return "Neutral";
-  let ratio= shortSMA/ longSMA;
-  if(ratio>1.01)return "Bull";
-  if(ratio<0.99)return "Bear";
-  return "Neutral";
-}
-function computePriceSlope(prices){
-  let n= prices.length;
-  if(n<2)return 0;
-  let sumX=0, sumY=0, sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    sumX+= i;
-    sumY+= prices[i].close;
-    sumXY+= i* prices[i].close;
-    sumX2+= i*i;
-  }
-  let numerator= n* sumXY - sumX* sumY;
-  let denominator= n* sumX2 - sumX* sumX;
-  if(denominator===0)return 0;
-  return numerator/ denominator;
-}
-function classifyBySlope(slope){
-  let bullThr=0.2, bearThr=-0.2;
-  if(slope> bullThr)return "Bull";
-  if(slope< bearThr)return "Bear";
-  return "Neutral";
-}
-
-/***********************************************************************
- * Single Ticker Logic
- ***********************************************************************/
-async function simulateOneTicker(ticker, periodMonths, regime){
-  try {
-    // fetch historical data
-    const histUrl= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-    const histResp= await fetch(histUrl);
-    const histJson= await histResp.json();
-    if(!histJson["Time Series (Daily)"]){
-      logStatus(`No daily data for ${ticker}`);
-      return { ticker, aggregator:50 };
-    }
-    let prices= processHistoricalData(histJson["Time Series (Daily)"], periodMonths);
-    if(prices.length<2){
-      logStatus(`Not enough historical data for ${ticker}`);
-      return { ticker, aggregator:50 };
+          // Update button text and styling
+          buttonElement.textContent = diffFormatted;
+          if (diff >= 0) {
+            buttonElement.classList.add('positive-performance');
+            buttonElement.classList.remove('negative-performance');
+          } else {
+            buttonElement.classList.add('negative-performance');
+            buttonElement.classList.remove('positive-performance');
+          }
+        })
+        .catch(error => console.error("Error fetching intraday data for", ticker, error));
     }
 
-    // Monte Carlo
-    let mcStats= computeStats(prices);
-    const T= 1/12;
-    let finals= runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T, 5000);
-    let mcBull= computeMCBull(mcStats.lastPrice, finals);
+    // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV) and the initial date
+    document.addEventListener('DOMContentLoaded', () => {
+      const initialDate = "2025-04-04";
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
 
-    // Technical
-    let techVal= await computeTechnical(prices);
+      const tickers = ["VST", "WYNN", "OXY", "INTA", "AXON", "LYV"];
+      tickers.forEach(ticker => {
+        const perfEl = document.getElementById(`performance-${ticker}`);
+        if (perfEl) {
+          updateTickerPerformanceIntraday(ticker, perfEl);
+          // Make each performance button clickable to see intraday chart
+          perfEl.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
+        }
+      });
+    });
+  </script>
 
-    // Sentiment
-    let sentData= await fetchSentimentData(ticker, periodMonths);
-    let sentVal= (sentData.length<2)? 50: computeSentBull(sentData);
+  <script>
+    // Calculate and display the average performance of top picks and short picks in the Performance Summary
+    document.addEventListener("DOMContentLoaded", function() {
+      // We'll use QQQ for NASDAQ, SPY for S&P 500
+      updateTickerPerformanceIntraday("SPY", document.getElementById("sp500Change"));
+      updateTickerPerformanceIntraday("QQQ", document.getElementById("nasdaqChange"));
 
-    // Insider (UPDATED: use new combined insider score)
-    // Use the last historical date as the simDate for insider sentiment
-    let simDateForInsider = prices[prices.length-1].date;
-    let transactionData = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
-    let insiderSentimentData = await fetchInsiderSentiment(ticker, periodMonths, simDateForInsider);
-    let insVal = computeNewInsiderScore(insiderSentimentData, transactionData.totalBuys, transactionData.totalSells);
+      // Make the left buttons clickable to intraday pages
+      document.getElementById("sp500Button").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
+      });
+      document.getElementById("nasdaqButton").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
+      });
 
-    // Fundamental
-    const fundUrl= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-    const fundResp= await fetch(fundUrl);
-    const fundJson= await fundResp.json();
-    let fundVal=50;
-    if(fundJson.Symbol){
-      let cat= computeFundScores(fundJson);
-      let s=0,c=0;
-      for(let k in cat){ s+= cat[k]; c++; }
-      fundVal= s/c;
-    }
+      // Top 3 Buys & Top 3 Shorts
+      const topBuys = ["VST", "WYNN", "OXY"];
+      const bottomShorts = ["INTA", "AXON", "LYV"];
 
-    // Congress
-    let congObj= await fetchCongressData(ticker, periodMonths);
-    let congVal= computeCongressBull(congObj.totalPurchase, congObj.totalSale);
+      function generateExplanation() {
+        return (
+          "This number represents the average profit percentage if you had " +
+          "bought our top three recommended stocks (" + topBuys.join(", ") + ") and " +
+          "shorted our bottom three picks (" + bottomShorts.join(", ") + ") as of " +
+          "2025-04-04. It updates in real time based on intraday data."
+        );
+      }
 
-    // Aggregator using either manual or auto weights
-    let aggregator= aggregatorFinal(mcBull, techVal, sentVal, insVal, fundVal, congVal, regime);
-    return { ticker, aggregator };
-  } catch(e){
-    logStatus(`Error with ${ticker}: ${e.message}`);
-    return { ticker, aggregator:50 };
-  }
-}
-
-/***********************************************************************
- * Batch Analysis
- ***********************************************************************/
-async function runBatchAnalysis(){
-  document.getElementById("status").textContent="";
-  const progressContainer= document.getElementById("progressContainer");
-  const progressBar= document.getElementById("progressBar");
-  const progressText= document.getElementById("progressText");
-  progressContainer.style.display="block";
-  progressBar.value=0;
-  progressBar.max=100;
-  progressText.textContent="0% Completed";
-  logStatus("Detecting SPY market regime...");
-  let regime= await determineSPYMarketRegime(4);
-  logStatus(`Detected Market Regime => ${regime}\n`);
-  let results=[];
-  let processed=0;
-  let total= predeterminedTickers.length;
-  let batchSize=70;
-  for(let i=0;i<total;i+= batchSize){
-    let batch= predeterminedTickers.slice(i, i+ batchSize);
-    logStatus(`Processing batch #${Math.floor(i/batchSize)+1}: ${batch.join(", ")}`);
-    for(let tk of batch){
-      let one= await simulateOneTicker(tk, 4, regime);
-      results.push(one);
-      processed++;
-      logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
-      let pct= Math.round((processed/ total)*100);
-      progressBar.value= pct;
-      progressText.textContent= `${pct}% Completed`;
-    }
-    if(i+ batchSize< total){
-      logStatus("Waiting 60s before next batch...");
-      await sleep(60000);
-    }
-  }
-  results.sort((a,b)=> a.aggregator- b.aggregator);
-  let top5= results.slice(-5).reverse();
-  let bottom5= results.slice(0,5);
-  logStatus("\n=== Final Results ===");
-  logStatus("Top 5:");
-  top5.forEach(item=>{
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus("Bottom 5:");
-  bottom5.forEach(item=>{
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus(`Done! Processed ${processed} tickers.`);
-}
-
-/***********************************************************************
- * aggregatorFinal (manual/auto)
- ***********************************************************************/
-function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
-  const manual= document.getElementById("manualModeCheckbox").checked;
-  if(manual){
-    const wMC    = parseFloat(document.getElementById("wMC").value)||0;
-    const wTech  = parseFloat(document.getElementById("wTech").value)||0;
-    const wSent  = parseFloat(document.getElementById("wSent").value)||0;
-    const wIns   = parseFloat(document.getElementById("wInsider").value)||0;
-    const wFund  = parseFloat(document.getElementById("wFund").value)||0;
-    const wCong  = parseFloat(document.getElementById("wCongress").value)||0;
-    let sc= parseFloat(document.getElementById("scalingFactor").value)||1.0;
-    const sumW= wMC+wTech+wSent+wIns+wFund+wCong;
-    let invalidWeights= (Math.abs(sumW-1)>1e-9);
-    let invalidScale  = (sc<0 || sc>2);
-    if(invalidWeights || invalidScale){
-      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling is outside [0..2]. Fallback to EQUAL weighting + scale=1.0.");
-      let eq= (mc+ tech+ sent+ ins+ fund+ cong)/6;
-      return eq;
-    } else {
-      let raw= wMC*mc + wTech*tech + wSent*sent + wIns*ins + wFund*fund + wCong*cong;
-      return (raw- 50)* sc + 50;
-    }
-  } else {
-    let auto= getAutoWeightsForRegime(regime);
-    let raw= auto.wMC*mc + auto.wTech*tech + auto.wSent*sent +
-             auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
-    return (raw- 50)* auto.scale + 50;
-  }
-}
-
-/***********************************************************************
- * Optimize Weights By Direction
- ***********************************************************************/
-function optimizeWeightsByDirection(results) {
-  if (!results || !results.length) {
-    return { wMC: 1 / 6, wTech: 1 / 6, wSent: 1 / 6, wIns: 1 / 6, wFund: 1 / 6, wCong: 1 / 6 };
-  }
-  let bestAcc = -Infinity, bestErr = Infinity;
-  let bestW = { wMC: 1 / 6, wTech: 1 / 6, wSent: 1 / 6, wIns: 1 / 6, wFund: 1 / 6, wCong: 1 / 6 };
-  let step = 0.1;
-  for (let wMC = 0; wMC <= 1; wMC += step) {
-    for (let wTech = 0; wTech <= 1; wTech += step) {
-      for (let wSent = 0; wSent <= 1; wSent += step) {
-        for (let wIns = 0; wIns <= 1; wIns += step) {
-          for (let wFund = 0; wFund <= 1; wFund += step) {
-            for (let wCong = 0; wCong <= 1; wCong += step) {
-              let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
-              if (Math.abs(sumW - 1) > 1e-9) continue;
-              let c = 0, e = 0, u = 0;
-              for (let r of results) {
-                if (!r) continue;
-                let agg = wMC * r.componentScores.mc + wTech * r.componentScores.tech
-                  + wSent * r.componentScores.sent + wIns * r.componentScores.insider
-                  + wFund * r.componentScores.fundamental + wCong * r.componentScores.congress;
-                let ret = agg - 50;
-                let d = (ret > 0) ? "Positive" : "Negative";
-                if (d === r.actualDirection) c++;
-                e += Math.abs(ret - r.actualReturn);
-                u++;
-              }
-              let acc = (u > 0) ? (c / u) : 0;
-              let avgErr = (u > 0) ? (e / u) : 999999;
-              if (acc > bestAcc) {
-                bestAcc = acc; bestErr = avgErr;
-                bestW = { wMC, wTech, wSent, wIns, wFund, wCong };
-              } else if (Math.abs(acc - bestAcc) < 1e-12 && avgErr < bestErr) {
-                bestAcc = acc; bestErr = avgErr;
-                bestW = { wMC, wTech, wSent, wIns, wFund, wCong };
-              }
+      function calculateWeeklyPicksPerformance() {
+        let total = 0;
+        let count = 0;
+        // Buys
+        topBuys.forEach(ticker => {
+          const el = document.getElementById("performance-" + ticker);
+          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+            const val = parseFloat(el.textContent.replace('%', ''));
+            if (!isNaN(val)) {
+              total += val;
+              count++;
             }
           }
+        });
+        // Shorts
+        bottomShorts.forEach(ticker => {
+          const el = document.getElementById("performance-" + ticker);
+          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+            const val = parseFloat(el.textContent.replace('%', ''));
+            if (!isNaN(val)) {
+              // For shorts, invert the sign
+              total += -val;
+              count++;
+            }
+          }
+        });
+        return count ? total / count : 0;
+      }
+
+      function updateWeeklyPicksButton() {
+        const performance = calculateWeeklyPicksPerformance();
+        const performanceText = performance.toFixed(2) + '%';
+
+        // Left button: "Our Top Picks"
+        const picksBtn = document.getElementById("weeklyPicksButton");
+        picksBtn.textContent = "Our Top Picks";
+
+        // Right button: actual performance
+        const picksChangeBtn = document.getElementById("weeklyPicksChange");
+        picksChangeBtn.textContent = performanceText;
+
+        if (performance >= 0) {
+          picksChangeBtn.classList.add("positive-performance");
+          picksChangeBtn.classList.remove("negative-performance");
+        } else {
+          picksChangeBtn.classList.add("negative-performance");
+          picksChangeBtn.classList.remove("positive-performance");
         }
       }
+
+      // Update weekly picks performance after a short delay, then periodically
+      setTimeout(updateWeeklyPicksButton, 3000);
+      setInterval(updateWeeklyPicksButton, 60000);
+
+      // Toggle explanation box on "Our Top Picks" button click
+      const weeklyPicksButton = document.getElementById("weeklyPicksButton");
+      const explanationBox = document.getElementById("weeklyExplanationBox");
+      weeklyPicksButton.addEventListener("click", function() {
+        explanationBox.textContent = generateExplanation();
+        explanationBox.style.display =
+          (explanationBox.style.display === "none" || explanationBox.style.display === "")
+            ? "block"
+            : "none";
+      });
+    });
+  </script>
+
+  <!-- SPY Chart (Hero Section) -->
+  <script>
+    async function fetchSPYData() {
+      try {
+        const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        console.error("Error fetching SPY data:", err);
+        return null;
+      }
     }
+    
+    function parseSPYData(data) {
+      const seriesKey = "Time Series (1min)";
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"])
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    
+    async function plotHeroChart() {
+      const rawData = await fetchSPYData();
+      if (!rawData) return;
+      const points = parseSPYData(rawData);
+      
+      // Filter today's data
+      const now = new Date();
+const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+const recentPoints = points.filter(p => p.x >= twentyFourHoursAgo.getTime());
+if (recentPoints.length === 0) return;
+      
+      // Determine line color based on performance
+      const firstPrice = recentPoints[0].y;
+      const lastPrice = recentPoints[recentPoints.length - 1].y;
+      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+      
+  // After determining firstPrice and lastPrice:
+const heroPriceEl = document.getElementById('heroPrice');
+const newPriceText = `SPY ${lastPrice.toFixed(2)}`;
+// Set the color: green if up, red if down
+const newColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+
+// Create a new element for the animated price update
+const newPriceEl = document.createElement('span');
+newPriceEl.textContent = newPriceText;
+newPriceEl.style.color = newColor;
+newPriceEl.style.display = 'block';
+newPriceEl.style.animation = 'rollUp 0.5s forwards';
+
+// Replace the old price by clearing out the container and appending the new element
+heroPriceEl.innerHTML = '';
+heroPriceEl.appendChild(newPriceEl);
+
+
+      Highcharts.stockChart('heroChart', {
+        chart: {
+          backgroundColor: 'transparent',
+          margin: [20, 20, 40, 20],
+          spacing: [0, 0, 0, 0],
+          events: {
+            contextmenu: function (e) {
+              e.preventDefault();
+            }
+          }
+        },
+        exporting: {
+          enabled: false,
+          buttons: {
+            contextButton: { enabled: false }
+          }
+        },
+        time: { useUTC: false },
+        rangeSelector: { enabled: false },
+        title: { text: null },
+        xAxis: { visible: false },
+        yAxis: { visible: false },
+        tooltip: { enabled: false },
+        credits: { enabled: false },
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
+        series: [{
+          name: 'SPY',
+          data: recentPoints.map(p => [p.x, p.y]),
+          type: 'line',
+          color: lineColor,
+          lineWidth: 2,
+          marker: { enabled: false },
+          enableMouseTracking: false
+        }]
+      });
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      plotHeroChart();
+      setInterval(plotHeroChart, 60000);
+    });
+
+    // Countdown
+    document.addEventListener('DOMContentLoaded', () => {
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay();
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
+        } else {
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
+        }
+      }
+      function updateCountdown() {
+        const now = new Date();
+        const target = getNextMondayTarget();
+        const diff = target - now;
+        if (diff <= 0) {
+          document.getElementById('days').textContent = '00';
+          document.getElementById('hours').textContent = '00';
+          document.getElementById('minutes').textContent = '00';
+          document.getElementById('seconds').textContent = '00';
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        document.getElementById('days').textContent = days.toString().padStart(2, '0');
+        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+      }
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+
+  <!-- ==========================
+       Live News JavaScript
+  =========================== -->
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const newsHamburger = document.getElementById("newsHamburger");
+  const liveNewsMenu = document.getElementById("liveNewsMenu");
+  const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+
+  newsHamburger.addEventListener("click", () => {
+    liveNewsMenu.classList.toggle("active");
+  });
+
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedTopic = btn.getAttribute("data-topic") || "";
+      refreshNews();
+      // Auto-close the hamburger menu if it is open
+      if (liveNewsMenu.classList.contains("active")) {
+        liveNewsMenu.classList.remove("active");
+      }
+    });
+  });
+});
+
+
+async function fetchAllSentimentData(topic) {
+  // If topic is "economy", we request each subtopic separately.
+  if (topic === "economy") {
+    const subTopics = ["economy_macro", "economy_monetary", "economy_fiscal"];
+    
+    // Create an array of fetch promises for each subtopic.
+    const fetchPromises = subTopics.map(async (subTopic) => {
+      const url = `https://www.intuitiontrades.com/api/sentiment?limit=20&topic=${subTopic}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      // Return feed array; if none, return an empty array.
+      return data.feed || [];
+    });
+
+    // Wait for all fetches to complete.
+    const feeds = await Promise.all(fetchPromises);
+    // Combine the feeds from each subtopic.
+    let combinedFeed = feeds.flat();
+
+    // Sort the combined feed from newest to oldest.
+    // This example assumes each news item has a 'time_published' property.
+    // Adjust the comparison if you need to parse dates.
+    combinedFeed.sort((a, b) => b.time_published.localeCompare(a.time_published));
+    
+    return combinedFeed;
+  } else {
+    // For non-economy topics (or when topic is empty), use a single fetch.
+    let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
+    if (topic) {
+      url += `&topic=${topic}`;
+    }
+    
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!data.feed) {
+      throw new Error("No sentiment data from server.");
+    }
+    return data.feed;
   }
-  return bestW;
+}
+async function fetchAllSentimentDataByTicker(ticker) {
+  const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if (!data.feed) {
+    throw new Error("No sentiment data returned for this ticker.");
+  }
+  return data.feed;
 }
 
-/***********************************************************************
- * Detailed Analysis
- ***********************************************************************/
-function viewDetailedAnalysis() {
-  if (!allResults.length) {
-    alert("No simulation results. Run the backtest first.");
+
+  
+    // Render a single news item in the feed
+    function renderNewsItem(item) {
+  const rawTime = item.time_published || "";
+  const displayTime = formatTimePublished(rawTime);
+
+  // Create container for the news item
+  const container = document.createElement("div");
+  container.classList.add("live-news-item");
+
+  // Add image thumbnail if available
+  if (item.banner_image) {
+    const imgEl = document.createElement("img");
+    imgEl.src = item.banner_image;
+    imgEl.alt = item.title || "News Thumbnail";
+    imgEl.classList.add("news-thumbnail");
+    container.appendChild(imgEl);
+  }
+
+  // Create a row for the timestamp and title
+  const row = document.createElement("div");
+  row.classList.add("live-news-row");
+
+  const timeEl = document.createElement("div");
+  timeEl.classList.add("live-news-timestamp");
+  timeEl.textContent = displayTime;
+
+  const titleEl = document.createElement("div");
+  titleEl.classList.add("live-news-title");
+  titleEl.textContent = item.title || "Untitled";
+
+  row.appendChild(timeEl);
+  row.appendChild(titleEl);
+  container.appendChild(row);
+
+  // Create the summary element
+  const summaryEl = document.createElement("div");
+  summaryEl.classList.add("live-news-summary");
+  summaryEl.innerHTML = `
+    <p>${item.summary || "No summary available."}</p>
+    <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
+  `;
+  container.appendChild(summaryEl);
+
+  // Toggle summary visibility on title click
+  titleEl.addEventListener("click", () => {
+    container.classList.toggle("expanded");
+  });
+
+  return container;
+}
+
+  
+    // Helper to format the time_published string from Alpha Vantage
+    function formatTimePublished(timeStr) {
+      // e.g. "20250403T152533" => "2025-04-03 15:25"
+      if (!timeStr || timeStr.length < 8) return "";
+      const year = timeStr.slice(0, 4);
+      const month = timeStr.slice(4, 6);
+      const day = timeStr.slice(6, 8);
+      let hour = "00";
+      let minute = "00";
+      if (timeStr.length >= 13) {
+        hour = timeStr.slice(9, 11);
+        minute = timeStr.slice(11, 13);
+      }
+      return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+  
+    function updateNewsFeed(articles) {
+  const feedContainer = document.getElementById("liveNewsFeed");
+  feedContainer.innerHTML = ""; // Clear out old items
+  
+  // Sort articles so that newer items come first:
+  articles.sort((a, b) => {
+    // Compare time strings in descending order
+    return b.time_published.localeCompare(a.time_published);
+  });
+  
+  // Append items in the sorted order (newest first)
+  articles.forEach(article => {
+    const itemEl = renderNewsItem(article);
+    feedContainer.appendChild(itemEl);
+  });
+}
+
+  
+    let selectedTopic = ""; // default all news
+    let refreshInterval = null;
+  
+    async function refreshNews() {
+      try {
+        const articles = await fetchAllSentimentData(selectedTopic);
+        updateNewsFeed(articles);
+      } catch (err) {
+        console.error("Error refreshing news:", err);
+      }
+    }
+    // Ticker search
+const tickerSearchButton = document.getElementById("tickerSearchButton");
+const tickerSearchInput = document.getElementById("tickerSearchInput");
+
+tickerSearchButton.addEventListener("click", async () => {
+  const ticker = tickerSearchInput.value.trim().toUpperCase();
+  if (!ticker) {
+    alert("Please enter a ticker symbol.");
     return;
   }
-  let correctEq = allResults.filter(r => r && r.correctPrediction).length;
-  let incorrectEq = allResults.length - correctEq;
-  let eqAccuracy = (correctEq / allResults.length) * 100;
-  let best = optimizeWeightsByDirection(allResults);
-  let used = 0, cOpt = 0, sumErr = 0;
-  for (let r of allResults) {
-    if (!r) continue;
-    let agg = best.wMC * r.componentScores.mc + best.wTech * r.componentScores.tech
-      + best.wSent * r.componentScores.sent + best.wIns * r.componentScores.insider
-      + best.wFund * r.componentScores.fundamental + best.wCong * r.componentScores.congress;
-    let ret = agg - 50;
-    let d = ret > 0 ? "Positive" : "Negative";
-    if (d === r.actualDirection) cOpt++;
-    sumErr += Math.abs(ret - r.actualReturn);
-    used++;
-  }
-  let optAccuracy = (cOpt / used) * 100;
-  let optIncorrect = used - cOpt;
-  let optMAE = (used > 0) ? (sumErr / used) : 0;
-  let detailHTML = `
-    <h1>Detailed Analysis</h1>
-    <p>Number of Tickers Processed: ${allResults.length}</p>
-    <h2>Auto Weighted & Scaled</h2>
-    <p>Correct Predictions: ${correctEq}, Incorrect: ${incorrectEq}</p>
-    <p>Directional Accuracy: ${eqAccuracy.toFixed(2)}%</p>
-    <h3>Suggested Scaling Factor (Strict "Auto" aggregator)</h3>
-    <p>
-      Best scaling factor in [0..2]: <strong>${best.scale ? best.scale.toFixed(2) : "N/A"}</strong><br>
-      (For auto aggregator, please refer to the optimal scaling computed in the batch results.)
-    </p>
-    <h2>Optimized Weights (All Tickers)</h2>
-    <p>
-      Monte Carlo: ${(best.wMC * 100).toFixed(0)}%, 
-      Technical: ${(best.wTech * 100).toFixed(0)}%,
-      Sentiment: ${(best.wSent * 100).toFixed(0)}%,
-      Insider: ${(best.wIns * 100).toFixed(0)}%,
-      Fundamental: ${(best.wFund * 100).toFixed(0)}%,
-      Congress: ${(best.wCong * 100).toFixed(0)}%
-    </p>
-    <p>Correct: ${cOpt}, Incorrect: ${optIncorrect}, Accuracy: ${optAccuracy.toFixed(2)}%</p>
-    <p>Mean Absolute Error (Tie-breaker): ${optMAE.toFixed(2)}%</p>
-  `;
-  let w = window.open("", "_blank");
-  if (!w) {
-    alert("Please allow popups for the detailed analysis.");
-    return;
-  }
-  let htmlDoc = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Detailed Analysis</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #f9fafb;
-        color: #333;
-        margin: 0 auto;
-        max-width: 900px;
-        padding: 2rem;
-        line-height: 1.6;
-      }
-      h1, h2, h3 {
-        text-align: center;
-      }
-      a {
-        color: #2563eb;
-      }
-    </style>
-  </head>
-  <body>
-    ${detailHTML}
-    <div style="text-align:center; margin-top:20px;">
-      <p><a href="#" onclick="window.close();return false;">Close Window</a></p>
-    </div>
-  </body>
-  </html>
-  `;
-  w.document.open();
-  w.document.write(htmlDoc);
-  w.document.close();
-}
 
-/***********************************************************************
- * Run Batch Analysis
- ***********************************************************************/
-async function runBatchAnalysis(){
-  document.getElementById("status").textContent = "";
-  const progressContainer = document.getElementById("progressContainer");
-  const progressBar = document.getElementById("progressBar");
-  const progressText = document.getElementById("progressText");
-  progressContainer.style.display = "block";
-  progressBar.value = 0;
-  progressBar.max = 100;
-  progressText.textContent = "0% Completed";
-  logStatus("Detecting SPY market regime...");
-  let regime = await determineSPYMarketRegime(4);
-  logStatus(`Detected Market Regime => ${regime}\n`);
-  let results = [];
-  let processed = 0;
-  let total = predeterminedTickers.length;
-  let batchSize = 70;
-  for (let i = 0; i < total; i += batchSize) {
-    let batch = predeterminedTickers.slice(i, i + batchSize);
-    logStatus(`Processing batch #${Math.floor(i / batchSize) + 1}: ${batch.join(", ")}`);
-    for (let tk of batch) {
-      let one = await simulateOneTicker(tk, 4, regime);
-      results.push(one);
-      processed++;
-      logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
-      let pct = Math.round((processed / total) * 100);
-      progressBar.value = pct;
-      progressText.textContent = `${pct}% Completed`;
-    }
-    if (i + batchSize < total) {
-      logStatus("Waiting 60s before next batch...");
-      await sleep(60000);
-    }
+  try {
+    const articles = await fetchAllSentimentDataByTicker(ticker);
+    updateNewsFeed(articles);
+  } catch (err) {
+    console.error("Error fetching ticker news:", err);
+    alert("Could not load news for ticker: " + ticker);
   }
-  results.sort((a, b) => a.aggregator - b.aggregator);
-  let top5 = results.slice(-5).reverse();
-  let bottom5 = results.slice(0, 5);
-  logStatus("\n=== Final Results ===");
-  logStatus("Top 5:");
-  top5.forEach(item => {
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus("Bottom 5:");
-  bottom5.forEach(item => {
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus(`Done! Processed ${processed} tickers.`);
-}
-</script>
+});
 
+      // Initial fetch
+      refreshNews();
+      // Refresh every 30 seconds
+      refreshInterval = setInterval(refreshNews, 120000);
+  
+      // Minimize / Maximize / Close
+      const liveNewsSection = document.getElementById("live-news");
+      const minimizeBtn = document.getElementById("liveNewsMinimize");
+      const maximizeBtn = document.getElementById("liveNewsMaximize");
+      const closeBtn = document.getElementById("liveNewsClose");
+  
+      // Track if minimized or not
+      let isMinimized = false;
+  
+      minimizeBtn.addEventListener("click", () => {
+        if (!isMinimized) {
+          // Minimizing
+          liveNewsSection.classList.add("minimized");
+          minimizeBtn.textContent = "+"; // switch icon to plus
+          isMinimized = true;
+        } else {
+          // Restoring from minimized
+          liveNewsSection.classList.remove("minimized");
+          minimizeBtn.textContent = "-"; // switch icon back
+          isMinimized = false;
+        }
+      });
+  
+      maximizeBtn.addEventListener("click", () => {
+        const isMaximized = liveNewsSection.classList.contains("maximized");
+        if (isMaximized) {
+          // Exit full-screen
+          liveNewsSection.classList.remove("maximized");
+          document.body.style.overflow = ""; // restore body scroll if needed
+        } else {
+          // Go full-screen
+          liveNewsSection.classList.add("maximized");
+          document.body.style.overflow = "hidden"; // disable body scroll behind overlay
+        }
+      });
+  
+      closeBtn.addEventListener("click", () => {
+        liveNewsSection.style.display = "none";
+        clearInterval(refreshInterval);
+      });
+  </script>
+  
 </body>
 </html>
