@@ -425,6 +425,18 @@ h1, h2, h3, h4, h5, h6 {
 .tool-button:hover {
   background: #005fa3;
 }
+.non-clickable {
+  /* Disable any pointer events so the button won’t respond */
+  pointer-events: none;
+  /* Set the cursor to default so it doesn't change on hover */
+  cursor: default;
+}
+
+/* Optional: Override hover styling in case any global hover rules are applied */
+.non-clickable:hover {
+  background-color: inherit;
+  color: inherit;
+}
 
 /* Newsletter Signup Section */
 #newsletter-signup {
