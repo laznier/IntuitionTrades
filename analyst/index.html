@@ -4,13 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Analyst Bullish Score | Intuition Trades</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Include Highcharts for Charting -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -30,32 +38,56 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+      transition: border-color var(--transition-speed);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
+    }
+    /* Autocomplete suggestions for ticker */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
     }
     /* Meter styling used for Combined Score */
     .meter-section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .meter-section h2 {
       margin-bottom: 10px;
@@ -73,7 +105,7 @@
       top: 0;
       width: 2px;
       height: 100%;
-      background: black;
+      background: #fff;
     }
     .score-text {
       position: absolute;
@@ -81,55 +113,56 @@
       text-align: center;
       line-height: 30px;
       font-weight: bold;
-      color: #fff;
+      color: var(--text-color);
       text-shadow: 1px 1px 2px #000;
     }
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
       text-align: center;
+      display: none;
     }
-    /* Section for analyst rating breakdown */
+    /* Analyst Ratings Breakdown Section */
     .breakdown-section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .breakdown-section table {
       width: 100%;
       border-collapse: collapse;
     }
     .breakdown-section th, .breakdown-section td {
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       padding: 6px;
       text-align: left;
     }
     .breakdown-section th {
-      background: #f2f2f2;
+      background: #222;
     }
     /* Price Comparison Chart Section */
     .chart-section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     /* Explanation Button */
     .explanation-btn {
       display: block;
       margin: 30px auto 0;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     .explanation-btn:hover {
       background: #1e3a8a;
@@ -137,28 +170,6 @@
     /* Back to Home Button */
     #backHome {
       margin-bottom: 20px;
-    }
-    /* Mobile-specific adjustments */
-    @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-        font-size: 0.9rem;
-      }
-      h1 {
-        font-size: 1.5rem;
-        margin-bottom: 10px;
-      }
-      input[type="text"] {
-        padding: 6px;
-      }
-      button, .explanation-btn {
-        font-size: 0.9rem;
-        padding: 8px 16px;
-      }
-      .meter-section, .breakdown-section, .chart-section {
-        padding: 10px;
-        margin-top: 15px;
-      }
     }
   </style>
 </head>
@@ -171,11 +182,13 @@
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
+  <!-- Autocomplete suggestions will appear here -->
+  <ul id="ticker-suggestions"></ul>
 
   <button id="runAnalysis">Run Analysis</button>
-  <div id="loading" style="display:none;">Loading data and computing scores...</div>
+  <div id="loading">Loading data and computing scores...</div>
 
-  <!-- Combined Analyst Bullish Score Meter (0–100%) -->
+  <!-- Combined Analyst Bullish Score Meter -->
   <div class="meter-section" id="combinedSection" style="display:none;">
     <h2>Combined Analyst Bullish Score</h2>
     <div class="meter" id="combinedMeter">
@@ -225,16 +238,75 @@
   <button class="explanation-btn" id="explanationButton">View Detailed Explanation</button>
 
   <script>
-    // Global object to store report details after analysis.
+    // Global variables
     let techReport = null;
+    let debounceTimeout;
 
-    // Helper: Logistic function.
+    // --- Autocomplete Functions ---
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+    }
+
+    async function fetchTickerSuggestions(query) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+          throw new Error('Error fetching ticker suggestions');
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item["1. symbol"]}</span> - <span>${item["2. name"]}</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+
+    // --- Utility & Calculation Functions ---
     function logistic(x, c) {
       return 1 / (1 + Math.exp(-c * x));
     }
 
     // Compute normalized recommendation score R from analyst ratings.
-    // Ratings: Strong Buy = +2, Buy = +1, Hold = 0, Sell = -1, Strong Sell = -2.
     function computeRecommendationScore(data) {
       const SB = parseFloat(data.AnalystRatingStrongBuy) || 0;
       const B  = parseFloat(data.AnalystRatingBuy) || 0;
@@ -242,7 +314,7 @@
       const S  = parseFloat(data.AnalystRatingSell) || 0;
       const SS = parseFloat(data.AnalystRatingStrongSell) || 0;
       const total = SB + B + Hold + S + SS;
-      if(total === 0) return 0.5; // Neutral if no ratings.
+      if(total === 0) return 0.5;
       const avgRating = (2 * SB + 1 * B - 1 * S - 2 * SS) / total;
       return (avgRating + 2) / 4;
     }
@@ -259,7 +331,7 @@
       return (R + P) / 2;
     }
 
-    // Update a meter element: marker and text for a given score (0–1).
+    // Update the meter element: adjust marker position and display percentage.
     function updateMeter(meterId, markerId, textId, score) {
       const percent = score * 100;
       document.getElementById(markerId).style.left = percent + "%";
@@ -267,31 +339,45 @@
       document.getElementById(meterId).parentElement.style.display = 'block';
     }
 
-    // Hide element by id.
-    function hideElement(id) {
-      document.getElementById(id).style.display = 'none';
-    }
-    // Show element by id.
+    // Simple helper functions to show/hide elements.
     function showElement(id) {
       document.getElementById(id).style.display = 'block';
     }
+    function hideElement(id) {
+      document.getElementById(id).style.display = 'none';
+    }
 
-    // Plot a simple bar chart comparing current price and target price using Plotly.
+    // --- Highcharts Price Comparison ---
     function plotPriceComparison(currentPrice, targetPrice) {
-      const data = [{
-        x: ["Current Price", "Target Price"],
-        y: [currentPrice, parseFloat(targetPrice)],
-        type: 'bar',
-        marker: {
-          color: ['#2563eb', '#16a34a']
+      Highcharts.chart('priceChart', {
+        chart: {
+          type: 'column',
+          backgroundColor: 'transparent'
+        },
+        title: {
+          text: 'Price Comparison'
+        },
+        xAxis: {
+          categories: ['Current Price', 'Target Price']
+        },
+        yAxis: {
+          title: {
+            text: 'Price (USD)'
+          }
+        },
+        series: [{
+          name: 'Price',
+          data: [currentPrice, parseFloat(targetPrice)],
+          colorByPoint: true,
+          colors: [
+            getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(), 
+            '#1e3a8a'
+          ]
+        }],
+        credits: {
+          enabled: false
         }
-      }];
-      const layout = {
-        title: "Price Comparison",
-        yaxis: { title: "Price (USD)" },
-        margin: { t: 40 }
-      };
-      Plotly.newPlot("priceChart", data, layout);
+      });
       showElement('priceChartSection');
     }
 
@@ -305,7 +391,7 @@
       showElement('ratingBreakdownSection');
     }
 
-    // Main analysis event handler.
+    // --- Main Analysis Function ---
     document.getElementById('runAnalysis').addEventListener('click', async () => {
       const ticker = document.getElementById('ticker').value.trim();
       if (!ticker) {
@@ -325,6 +411,7 @@
         if (!fundData || !fundData.Symbol) {
           throw new Error("No fundamental data found.");
         }
+
         // Fetch historical data to get current price.
         const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         const histResp = await fetch(histUrl);
@@ -347,7 +434,7 @@
         // Populate the analyst ratings breakdown.
         populateRatingBreakdown(fundData);
 
-        // Plot the price comparison chart.
+        // Plot the price comparison chart using Highcharts.
         plotPriceComparison(currentPrice, fundData.AnalystTargetPrice);
 
         // Store all relevant data in techReport for the explanation page.
@@ -359,7 +446,6 @@
           P: P,
           combined: combinedScore
         };
-
       } catch (err) {
         alert("Error: " + err.message);
         console.error(err);
@@ -367,7 +453,7 @@
       hideElement('loading');
     });
 
-    // Explanation Button: Open a new window with a detailed explanation.
+    // --- Explanation Button ---
     document.getElementById('explanationButton').addEventListener('click', () => {
       if (!techReport) {
         alert("Please run an analysis first.");
@@ -382,10 +468,18 @@
   <title>Analyst Bullish Score Explanation | Intuition Trades</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: #f9fafb;
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -406,13 +500,13 @@
       margin-bottom: 0.75em;
     }
     pre {
-      background: #eee;
+      background: #222;
       padding: 1rem;
       border-radius: 4px;
       overflow-x: auto;
     }
     code {
-      background: #ddd;
+      background: #444;
       padding: 2px 4px;
       border-radius: 3px;
     }
@@ -422,49 +516,27 @@
       margin-top: 1rem;
     }
     th, td {
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       padding: 8px;
       text-align: left;
     }
     th {
-      background: #f2f2f2;
+      background: #333;
     }
     .close-btn {
       display: block;
       margin: 30px auto;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     .close-btn:hover {
       background: #1e3a8a;
-    }
-    @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-        font-size: 0.9rem;
-      }
-      h1 {
-        font-size: 1.5rem;
-      }
-      h2 {
-        font-size: 1.25rem;
-      }
-      pre {
-        font-size: 0.85rem;
-      }
-      table, th, td {
-        font-size: 0.85rem;
-      }
-      .close-btn {
-        font-size: 0.9rem;
-        padding: 8px 16px;
-      }
     }
   </style>
 </head>
@@ -566,8 +638,9 @@ Analyst Bullish Score = (0.70 + 0.57) / 2 ≈ 0.635
   <p>
     The tool uses these calculations to provide a balanced view of analyst sentiment.
   </p>
-
-  <p style="text-align:center;"><button class="close-btn" onclick="window.history.back()">Go Back</button></p>
+<section style="text-align:center;">
+      <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
+    </section>
 </body>
 </html>
       `;
