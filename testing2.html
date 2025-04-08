@@ -126,6 +126,15 @@
       color: var(--accent-color);
       text-align: center;
     }
+    #articleSection a {
+  color: var(--accent-color); /* or any color you prefer */
+  text-decoration: none;
+}
+
+#articleSection a:hover {
+  text-decoration: underline;
+}
+
   </style>
 </head>
 <body>
@@ -262,13 +271,17 @@
       return { slope, intercept };
     }
 
-    // Plot sentiment data using Highcharts with a trend line and point click events
+    // Plot sentiment data using Highcharts with defined points and a trend line.
     function plotSentiment(articles) {
       const sentimentSection = document.getElementById("sentimentSection");
       sentimentSection.style.display = "block";
 
-      // Prepare data points: [timestamp, sentiment]
-      const dataPoints = articles.map(a => [a.date.getTime(), a.sentiment]);
+      // Prepare the sentiment data points as objects, including the title property for hover info.
+      const dataPoints = articles.map(a => ({
+        x: a.date.getTime(),
+        y: a.sentiment,
+        title: a.title || "No Title"
+      }));
 
       // Prepare for regression: use days offset from the first date
       const firstDate = articles[0].date;
@@ -300,12 +313,16 @@
           labels: { style: { color: 'var(--text-color)' } }
         },
         tooltip: {
-          xDateFormat: '%Y-%m-%d',
-          shared: true
+          formatter: function() {
+            return '<b>' + this.point.title + '</b><br/>' +
+                   'Sentiment: ' + this.point.y.toFixed(2) + '<br/>' +
+                   'Date: ' + Highcharts.dateFormat('%Y-%m-%d', this.x);
+          }
         },
         plotOptions: {
           series: {
             cursor: 'pointer',
+            marker: { enabled: true, radius: 4 },
             point: {
               events: {
                 click: function() {
@@ -320,9 +337,8 @@
         series: [{
           name: document.getElementById('ticker').value.toUpperCase(),
           data: dataPoints,
-          marker: { radius: 4 },
           lineWidth: 2,
-          color: varAccent = 'var(--accent-color)'
+          color: 'var(--accent-color)'
         }, {
           name: 'Trend',
           data: trendPoints,
@@ -348,7 +364,6 @@
         <p>${summary}</p>
         <p><a href="${url}" target="_blank">Read Original</a></p>
       `;
-      // Scroll to the article section
       articleSection.scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -367,7 +382,7 @@
       try {
         const feed = await fetchAllSentimentData(ticker);
 
-        // Convert feed articles into plot-friendly objects
+        // Convert feed articles into plot-friendly objects and store in globalArticles
         globalArticles = feed.map(article => {
           const dt = parseAlphaDate(article.time_published);
           let sentimentVal = 0;

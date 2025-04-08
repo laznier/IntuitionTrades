@@ -1,25 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Full Sentiment Viewer</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Include Highcharts for charting -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
       line-height: 1.6;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 20px;
       font-weight: 600;
     }
+    h1 { margin-bottom: 20px; }
     p, li {
       margin-bottom: 0.75em;
     }
@@ -32,21 +41,22 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
@@ -54,18 +64,17 @@
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
-      font-weight: 600;
     }
     #sentChart {
       width: 100%;
       height: 400px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
       margin-top: 10px;
     }
@@ -82,22 +91,69 @@
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
+      display: none;
     }
+    /* Autocomplete styles */
+    #tickerForm {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 1rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    #articleSection a {
+  color: var(--accent-color); /* or any color you prefer */
+  text-decoration: none;
+}
+
+#articleSection a:hover {
+  text-decoration: underline;
+}
+
   </style>
 </head>
 <body>
-  <!-- Back to Main Page button -->
+  <!-- Back to Main Page Button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 
   <h1>Market Sentiment Viewer</h1>
-  <p>Enter a ticker to load all recent news articles, view a trend line, and click on any article point to read it below.</p>
+  <p>Enter a ticker symbol to load recent news articles, view a sentiment trend chart, and click on any article point to read more below.</p>
 
-  <label for="tickerInput">Ticker Symbol (e.g. AAPL):</label>
-  <input type="text" id="tickerInput" placeholder="AAPL" />
+  <!-- Ticker Input Form with Autocomplete -->
+  <div id="tickerForm">
+    <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+    <input type="text" id="ticker" placeholder="e.g. AAPL" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+  </div>
 
   <button id="loadButton">Load Data</button>
-  <div id="loading" style="display:none;">Loading sentiment data...</div>
+  <div id="loading">Loading sentiment data...</div>
 
   <div id="sentimentSection" class="section" style="display:none;">
     <h2>Sentiment Chart</h2>
@@ -105,16 +161,85 @@
   </div>
 
   <div id="articleSection" class="section">
-    <!-- This will be populated when a user clicks a point on the chart -->
+    <!-- Article content will be populated here -->
   </div>
 
   <script>
-    // We'll store the articles here so we can reference them when a point is clicked.
+    /*******************************************************
+     * AUTO-COMPLETE FUNCTIONS & GLOBAL VARIABLES
+     *******************************************************/
+    let debounceTimeout;
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+      const fullNameElem = document.getElementById('company-full-name');
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
+    }
+    async function fetchTickerSuggestions(searchQuery) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+    
+    /*******************************************************
+     * SENTIMENT VIEWER FUNCTIONS & VARIABLES
+     *******************************************************/
+    // Global articles array for reference when a point is clicked
     let globalArticles = [];
 
-    // Helper: parseAlphaDate from the previous code
+    // Helper to parse date strings (example: "20230315T000000")
     function parseAlphaDate(str) {
-      // Example str: "20230315T000000"
       const year  = str.substring(0, 4);
       const month = str.substring(4, 6);
       const day   = str.substring(6, 8);
@@ -124,8 +249,7 @@
       return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
     }
 
-    // Function to fetch "all" sentiment data for a ticker
-    // We'll do a large periodMonths so we (hopefully) get all data.
+    // Fetch the full sentiment data feed for a ticker
     async function fetchAllSentimentData(ticker) {
       const periodMonths = 9999; // Large enough to cover all available data
       const url = `https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
@@ -135,100 +259,117 @@
       return data.feed;
     }
 
-    // Compute a simple linear regression on the (x, y) arrays
-    // x is numeric (in days from first date), y is sentiment (0..100)
+    // Compute linear regression for given arrays xs and ys
     function computeLinearRegression(xs, ys) {
       const n = xs.length;
       const sumX = xs.reduce((a, b) => a + b, 0);
       const sumY = ys.reduce((a, b) => a + b, 0);
       const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
       const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-
       const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
       const intercept = (sumY - slope * sumX) / n;
       return { slope, intercept };
     }
 
-    // Plot the sentiment data and a trend line using Plotly
+    // Plot sentiment data using Highcharts with defined points and a trend line.
     function plotSentiment(articles) {
       const sentimentSection = document.getElementById("sentimentSection");
       sentimentSection.style.display = "block";
 
-      // Convert date to a numeric day offset for regression
+      // Prepare the sentiment data points as objects, including the title property for hover info.
+      const dataPoints = articles.map(a => ({
+        x: a.date.getTime(),
+        y: a.sentiment,
+        title: a.title || "No Title"
+      }));
+
+      // Prepare for regression: use days offset from the first date
       const firstDate = articles[0].date;
       const xs = articles.map(a => (a.date - firstDate) / (1000 * 60 * 60 * 24));
       const ys = articles.map(a => a.sentiment);
-
-      // Create the main trace (scatter points + line)
-      const tracePoints = {
-        x: articles.map(a => a.date),
-        y: ys,
-        mode: 'markers+lines',
-        name: 'Sentiment',
-        text: articles.map(a => a.title || ""), // For hover info
-        hovertemplate: '%{text}<br>%{y:.2f}<extra></extra>'
-      };
-
-      // Compute linear regression for a trend line
       const { slope, intercept } = computeLinearRegression(xs, ys);
-      // For the trend line, we only need the min and max date
-      const xMin = articles[0].date;
-      const xMax = articles[articles.length - 1].date;
-      const x0 = 0; // since xMin is the first date, offset=0
-      const x1 = (articles[articles.length - 1].date - firstDate) / (1000 * 60 * 60 * 24);
-      const y0 = intercept + slope * x0;
-      const y1 = intercept + slope * x1;
+      const lastDate = articles[articles.length - 1].date;
+      const x1 = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
+      const trendPoints = [
+        [firstDate.getTime(), intercept],
+        [lastDate.getTime(), intercept + slope * x1]
+      ];
 
-      const traceTrend = {
-        x: [xMin, xMax],
-        y: [y0, y1],
-        mode: 'lines',
-        line: { dash: 'dash', color: 'red' },
-        name: 'Trend'
-      };
-
-      const layout = {
-        title: "Sentiment Over Time",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Sentiment (0..100)" }
-      };
-
-      const config = { responsive: true };
-      Plotly.newPlot("sentChart", [tracePoints, traceTrend], layout, config);
-
-      // Add a click event so that when a user clicks a dot, we show the article
-      const sentChart = document.getElementById("sentChart");
-      sentChart.on('plotly_click', function(data) {
-        // data.points is an array of clicked points (usually length=1 for single click)
-        const pointIndex = data.points[0].pointIndex;
-        const article = globalArticles[pointIndex];
-        showArticle(article);
+      Highcharts.chart('sentChart', {
+        chart: {
+          type: 'line',
+          backgroundColor: 'var(--secondary-bg)'
+        },
+        title: {
+          text: 'Sentiment Over Time'
+        },
+        xAxis: {
+          type: 'datetime',
+          title: { text: 'Date' },
+          labels: { style: { color: 'var(--text-color)' } }
+        },
+        yAxis: {
+          title: { text: 'Sentiment (0..100)' },
+          labels: { style: { color: 'var(--text-color)' } }
+        },
+        tooltip: {
+          formatter: function() {
+            return '<b>' + this.point.title + '</b><br/>' +
+                   'Sentiment: ' + this.point.y.toFixed(2) + '<br/>' +
+                   'Date: ' + Highcharts.dateFormat('%Y-%m-%d', this.x);
+          }
+        },
+        plotOptions: {
+          series: {
+            cursor: 'pointer',
+            marker: { enabled: true, radius: 4 },
+            point: {
+              events: {
+                click: function() {
+                  // Use the point index to fetch the corresponding article
+                  const article = globalArticles[this.index];
+                  showArticle(article);
+                }
+              }
+            }
+          }
+        },
+        series: [{
+          name: document.getElementById('ticker').value.toUpperCase(),
+          data: dataPoints,
+          lineWidth: 2,
+          color: 'var(--accent-color)'
+        }, {
+          name: 'Trend',
+          data: trendPoints,
+          dashStyle: 'Dash',
+          color: 'red',
+          marker: { enabled: false },
+          enableMouseTracking: false
+        }],
+        credits: { enabled: false }
       });
     }
 
-    // Show the article in the bottom section
+    // Display article details when a data point is clicked
     function showArticle(article) {
       const articleSection = document.getElementById("articleSection");
       articleSection.style.display = "block";
-
-      // We'll build a simple HTML structure with the article's info
-      // The feed might have different fields; adapt as needed.
-      // We'll assume there's a 'title', 'summary', and 'url'.
       const title = article.title || "No Title";
       const summary = article.summary || "No Summary Available";
       const url = article.url || "#";
-
       articleSection.innerHTML = `
         <h3>${title}</h3>
         <p><strong>Published:</strong> ${article.date.toLocaleString()}</p>
         <p>${summary}</p>
-        <p><a href="${url}" target="_blank">Read original</a></p>
+        <p><a href="${url}" target="_blank">Read Original</a></p>
       `;
+      articleSection.scrollIntoView({ behavior: 'smooth' });
     }
 
-    // Main function to load data and display chart
+    // Main function: load sentiment data and render the chart
     async function loadSentimentData() {
-      const ticker = document.getElementById("tickerInput").value.trim();
+      const ticker = document.getElementById("ticker").value.trim();
       if (!ticker) {
         alert("Please enter a ticker symbol.");
         return;
@@ -239,50 +380,39 @@
       document.getElementById("articleSection").innerHTML = "";
 
       try {
-        // Fetch the entire feed
         const feed = await fetchAllSentimentData(ticker);
 
-        // Convert each article into a plot‐friendly format
-        // We'll treat each article as an individual point (rather than hourly aggregation).
-        // We'll store them in globalArticles for click reference.
-        globalArticles = feed.map((article) => {
+        // Convert feed articles into plot-friendly objects and store in globalArticles
+        globalArticles = feed.map(article => {
           const dt = parseAlphaDate(article.time_published);
-          let sentimentVal = 0; 
+          let sentimentVal = 0;
           let title = article.title || "";
           let summary = article.summary || "";
           let url = article.url || "";
-
           if (article.ticker_sentiment && article.ticker_sentiment.length > 0) {
-            // Find the sentiment for the matching ticker
-            const tItem = article.ticker_sentiment.find(
-              ts => ts.ticker.toUpperCase() === ticker.toUpperCase()
-            );
+            const tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
             if (tItem) {
               const raw = parseFloat(tItem.ticker_sentiment_score);
-              // normalized to 0..100
               if (!isNaN(raw)) {
                 sentimentVal = ((raw + 1) / 2) * 100;
               }
             }
           }
-
           return {
             date: dt,
             sentiment: sentimentVal,
             title: title,
             summary: summary,
             url: url,
-            original: article // Keep the raw article if needed
+            original: article
           };
-        })
-        .filter(a => !isNaN(a.date) && a.date.getFullYear() > 1970) // filter out invalid dates
-        .sort((a, b) => a.date - b.date);
+        }).filter(a => !isNaN(a.date) && a.date.getFullYear() > 1970)
+          .sort((a, b) => a.date - b.date);
 
         if (globalArticles.length < 2) {
           alert("Not enough sentiment data for this ticker.");
           return;
         }
-        // Plot them
         plotSentiment(globalArticles);
       } catch (err) {
         alert("Error loading sentiment: " + err.message);
@@ -291,22 +421,20 @@
       }
     }
 
-    // Wire up the button
+    // Wire up the load button click event
     document.getElementById("loadButton").addEventListener("click", loadSentimentData);
 
-  // Auto-populate the ticker and run sentiment analysis if "symbol" is provided in the URL.
-  window.onload = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const symbol = urlParams.get('symbol');
-    if (symbol) {
-      document.getElementById('tickerInput').value = symbol;
-      // Delay the click slightly to ensure all elements are loaded.
-      setTimeout(() => {
-        document.getElementById('loadButton').click();
-      }, 100);
-    }
-  };
-
+    // Auto-populate the ticker if "symbol" exists in the URL params, then load data
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const symbol = urlParams.get('symbol');
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+        setTimeout(() => {
+          document.getElementById('loadButton').click();
+        }, 100);
+      }
+    };
   </script>
 </body>
 </html>
