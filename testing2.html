@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Full Sentiment Viewer</title>
-  <!-- Include Highcharts for charting -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analyst Bullish Score | Intuition Trades</title>
+  <!-- Include Highcharts for Charting -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
     :root {
@@ -28,14 +28,11 @@
       text-align: center;
       font-weight: 600;
     }
-    h1 { margin-bottom: 20px; }
-    p, li {
-      margin-bottom: 0.75em;
+    h1 {
+      margin-bottom: 20px;
     }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: 500;
+    p, label {
+      margin-bottom: 0.75em;
     }
     input[type="text"] {
       width: 100%;
@@ -46,6 +43,7 @@
       font-size: 0.95rem;
       background-color: var(--secondary-bg);
       color: var(--text-color);
+      transition: border-color var(--transition-speed);
     }
     button {
       margin-top: 20px;
@@ -61,44 +59,7 @@
     button:hover {
       background: #1e3a8a;
     }
-    .section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    .section h2 {
-      margin-bottom: 10px;
-    }
-    #sentChart {
-      width: 100%;
-      height: 400px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      margin-top: 10px;
-    }
-    #articleSection {
-      margin-top: 20px;
-      display: none;
-    }
-    #articleSection h3 {
-      margin-bottom: 10px;
-    }
-    #articleSection p {
-      margin-bottom: 1em;
-    }
-    #loading {
-      margin-top: 10px;
-      font-style: italic;
-      color: var(--accent-color);
-      display: none;
-    }
-    /* Autocomplete styles */
-    #tickerForm {
-      position: relative;
-      margin-bottom: 20px;
-    }
+    /* Autocomplete suggestions for ticker */
     #ticker-suggestions {
       position: absolute;
       background-color: var(--secondary-bg);
@@ -120,71 +81,181 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    #company-full-name {
-      margin-top: 5px;
-      font-size: 1rem;
+    /* Meter styling used for Combined Score */
+    .meter-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    .meter-section h2 {
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .meter {
+      position: relative;
+      background: linear-gradient(to right, red, green);
+      height: 30px;
+      border-radius: 15px;
+      margin: 10px 0;
+    }
+    .marker {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #fff;
+    }
+    .score-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      color: var(--text-color);
+      text-shadow: 1px 1px 2px #000;
+    }
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
       color: var(--accent-color);
       text-align: center;
+      display: none;
     }
-    #articleSection a {
-  color: var(--accent-color); /* or any color you prefer */
-  text-decoration: none;
-}
-
-#articleSection a:hover {
-  text-decoration: underline;
-}
-
+    /* Analyst Ratings Breakdown Section */
+    .breakdown-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    .breakdown-section table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .breakdown-section th, .breakdown-section td {
+      border: 1px solid #555;
+      padding: 6px;
+      text-align: left;
+    }
+    .breakdown-section th {
+      background: #222;
+    }
+    /* Price Comparison Chart Section */
+    .chart-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    /* Explanation Button */
+    .explanation-btn {
+      display: block;
+      margin: 30px auto 0;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    .explanation-btn:hover {
+      background: #1e3a8a;
+    }
+    /* Back to Home Button */
+    #backHome {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <!-- Back to Main Page Button -->
-  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
+  <!-- Back to Home Button -->
+  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Market Sentiment Viewer</h1>
-  <p>Enter a ticker symbol to load recent news articles, view a sentiment trend chart, and click on any article point to read more below.</p>
+  <h1>Analyst Bullish Score</h1>
+  <p>Enter a ticker symbol to compute the overall analyst bullish score, view the breakdown of ratings, and compare the current price to the analyst target price.</p>
 
-  <!-- Ticker Input Form with Autocomplete -->
-  <div id="tickerForm">
-    <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-    <input type="text" id="ticker" placeholder="e.g. AAPL" />
-    <ul id="ticker-suggestions"></ul>
-    <div id="company-full-name"></div>
+  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+  <input type="text" id="ticker" value="AAPL">
+  <!-- Autocomplete suggestions will appear here -->
+  <ul id="ticker-suggestions"></ul>
+
+  <button id="runAnalysis">Run Analysis</button>
+  <div id="loading">Loading data and computing scores...</div>
+
+  <!-- Combined Analyst Bullish Score Meter -->
+  <div class="meter-section" id="combinedSection" style="display:none;">
+    <h2>Combined Analyst Bullish Score</h2>
+    <div class="meter" id="combinedMeter">
+      <div class="marker" id="combinedMarker"></div>
+      <div class="score-text" id="combinedScoreText"></div>
+    </div>
   </div>
 
-  <button id="loadButton">Load Data</button>
-  <div id="loading">Loading sentiment data...</div>
-
-  <div id="sentimentSection" class="section" style="display:none;">
-    <h2>Sentiment Chart</h2>
-    <div id="sentChart"></div>
+  <!-- Analyst Ratings Breakdown Section -->
+  <div class="breakdown-section" id="ratingBreakdownSection" style="display:none;">
+    <h2>Analyst Ratings Breakdown</h2>
+    <table>
+      <tr>
+        <th>Rating</th>
+        <th>Count</th>
+      </tr>
+      <tr>
+        <td>Strong Buy</td>
+        <td id="ratingSB"></td>
+      </tr>
+      <tr>
+        <td>Buy</td>
+        <td id="ratingB"></td>
+      </tr>
+      <tr>
+        <td>Hold</td>
+        <td id="ratingHold"></td>
+      </tr>
+      <tr>
+        <td>Sell</td>
+        <td id="ratingS"></td>
+      </tr>
+      <tr>
+        <td>Strong Sell</td>
+        <td id="ratingSS"></td>
+      </tr>
+    </table>
   </div>
 
-  <div id="articleSection" class="section">
-    <!-- Article content will be populated here -->
+  <!-- Price Comparison Chart Section -->
+  <div class="chart-section" id="priceChartSection" style="display:none;">
+    <h2>Current Price vs. Analyst Target Price</h2>
+    <div id="priceChart"></div>
   </div>
+
+  <!-- Explanation Button -->
+  <button class="explanation-btn" id="explanationButton">View Detailed Explanation</button>
 
   <script>
-    /*******************************************************
-     * AUTO-COMPLETE FUNCTIONS & GLOBAL VARIABLES
-     *******************************************************/
+    // Global variables
+    let techReport = null;
     let debounceTimeout;
+
+    // --- Autocomplete Functions ---
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
         list.innerHTML = '';
         list.style.display = 'none';
       }
-      const fullNameElem = document.getElementById('company-full-name');
-      if (fullNameElem) {
-        fullNameElem.innerText = '';
-      }
     }
-    async function fetchTickerSuggestions(searchQuery) {
+
+    async function fetchTickerSuggestions(query) {
       try {
-        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
         if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+          throw new Error('Error fetching ticker suggestions');
         }
         const data = await response.json();
         return data.bestMatches || [];
@@ -193,6 +264,7 @@
         return [];
       }
     }
+
     function renderTickerSuggestions(suggestions) {
       const list = document.getElementById('ticker-suggestions');
       list.innerHTML = '';
@@ -203,18 +275,15 @@
       list.style.display = 'block';
       suggestions.forEach(item => {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+        li.innerHTML = `<span>${item["1. symbol"]}</span> - <span>${item["2. name"]}</span>`;
         li.addEventListener('click', () => {
           document.getElementById('ticker').value = item["1. symbol"];
-          const fullNameElem = document.getElementById('company-full-name');
-          if (fullNameElem) {
-            fullNameElem.innerText = item["2. name"];
-          }
           clearSuggestions();
         });
         list.appendChild(li);
       });
     }
+
     document.addEventListener("DOMContentLoaded", () => {
       const tickerInput = document.getElementById('ticker');
       tickerInput.addEventListener('input', () => {
@@ -231,210 +300,351 @@
       });
       clearSuggestions();
     });
-    
-    /*******************************************************
-     * SENTIMENT VIEWER FUNCTIONS & VARIABLES
-     *******************************************************/
-    // Global articles array for reference when a point is clicked
-    let globalArticles = [];
 
-    // Helper to parse date strings (example: "20230315T000000")
-    function parseAlphaDate(str) {
-      const year  = str.substring(0, 4);
-      const month = str.substring(4, 6);
-      const day   = str.substring(6, 8);
-      const hour  = str.substring(9, 11) || "00";
-      const min   = str.substring(11, 13) || "00";
-      const sec   = str.substring(13, 15) || "00";
-      return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+    // --- Utility & Calculation Functions ---
+    function logistic(x, c) {
+      return 1 / (1 + Math.exp(-c * x));
     }
 
-    // Fetch the full sentiment data feed for a ticker
-    async function fetchAllSentimentData(ticker) {
-      const periodMonths = 9999; // Large enough to cover all available data
-      const url = `https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (!data.feed) throw new Error("No sentiment data from server.");
-      return data.feed;
+    // Compute normalized recommendation score R from analyst ratings.
+    function computeRecommendationScore(data) {
+      const SB = parseFloat(data.AnalystRatingStrongBuy) || 0;
+      const B  = parseFloat(data.AnalystRatingBuy) || 0;
+      const Hold = parseFloat(data.AnalystRatingHold) || 0;
+      const S  = parseFloat(data.AnalystRatingSell) || 0;
+      const SS = parseFloat(data.AnalystRatingStrongSell) || 0;
+      const total = SB + B + Hold + S + SS;
+      if(total === 0) return 0.5;
+      const avgRating = (2 * SB + 1 * B - 1 * S - 2 * SS) / total;
+      return (avgRating + 2) / 4;
     }
 
-    // Compute linear regression for given arrays xs and ys
-    function computeLinearRegression(xs, ys) {
-      const n = xs.length;
-      const sumX = xs.reduce((a, b) => a + b, 0);
-      const sumY = ys.reduce((a, b) => a + b, 0);
-      const sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
-      const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
-      const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-      const intercept = (sumY - slope * sumX) / n;
-      return { slope, intercept };
+    // Compute the target premium score P using a logistic function.
+    function computePremiumScore(targetPrice, currentPrice, c = 10) {
+      if(currentPrice === 0) return 0.5;
+      const ratio = (parseFloat(targetPrice) / parseFloat(currentPrice)) - 1;
+      return logistic(ratio, c);
     }
 
-    // Plot sentiment data using Highcharts with defined points and a trend line.
-    function plotSentiment(articles) {
-      const sentimentSection = document.getElementById("sentimentSection");
-      sentimentSection.style.display = "block";
+    // Combined Score is the average of R and P.
+    function computeCombinedScore(R, P) {
+      return (R + P) / 2;
+    }
 
-      // Prepare the sentiment data points as objects, including the title property for hover info.
-      const dataPoints = articles.map(a => ({
-        x: a.date.getTime(),
-        y: a.sentiment,
-        title: a.title || "No Title"
-      }));
+    // Update the meter element: adjust marker position and display percentage.
+    function updateMeter(meterId, markerId, textId, score) {
+      const percent = score * 100;
+      document.getElementById(markerId).style.left = percent + "%";
+      document.getElementById(textId).innerText = percent.toFixed(1) + "%";
+      document.getElementById(meterId).parentElement.style.display = 'block';
+    }
 
-      // Prepare for regression: use days offset from the first date
-      const firstDate = articles[0].date;
-      const xs = articles.map(a => (a.date - firstDate) / (1000 * 60 * 60 * 24));
-      const ys = articles.map(a => a.sentiment);
-      const { slope, intercept } = computeLinearRegression(xs, ys);
-      const lastDate = articles[articles.length - 1].date;
-      const x1 = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
-      const trendPoints = [
-        [firstDate.getTime(), intercept],
-        [lastDate.getTime(), intercept + slope * x1]
-      ];
+    // Simple helper functions to show/hide elements.
+    function showElement(id) {
+      document.getElementById(id).style.display = 'block';
+    }
+    function hideElement(id) {
+      document.getElementById(id).style.display = 'none';
+    }
 
-      Highcharts.chart('sentChart', {
+    // --- Highcharts Price Comparison ---
+    function plotPriceComparison(currentPrice, targetPrice) {
+      Highcharts.chart('priceChart', {
         chart: {
-          type: 'line',
-          backgroundColor: 'var(--secondary-bg)'
+          type: 'column',
+          backgroundColor: 'transparent'
         },
         title: {
-          text: 'Sentiment Over Time'
+          text: 'Price Comparison'
         },
         xAxis: {
-          type: 'datetime',
-          title: { text: 'Date' },
-          labels: { style: { color: 'var(--text-color)' } }
+          categories: ['Current Price', 'Target Price']
         },
         yAxis: {
-          title: { text: 'Sentiment (0..100)' },
-          labels: { style: { color: 'var(--text-color)' } }
-        },
-        tooltip: {
-          formatter: function() {
-            return '<b>' + this.point.title + '</b><br/>' +
-                   'Sentiment: ' + this.point.y.toFixed(2) + '<br/>' +
-                   'Date: ' + Highcharts.dateFormat('%Y-%m-%d', this.x);
-          }
-        },
-        plotOptions: {
-          series: {
-            cursor: 'pointer',
-            marker: { enabled: true, radius: 4 },
-            point: {
-              events: {
-                click: function() {
-                  // Use the point index to fetch the corresponding article
-                  const article = globalArticles[this.index];
-                  showArticle(article);
-                }
-              }
-            }
+          title: {
+            text: 'Price (USD)'
           }
         },
         series: [{
-          name: document.getElementById('ticker').value.toUpperCase(),
-          data: dataPoints,
-          lineWidth: 2,
-          color: 'var(--accent-color)'
-        }, {
-          name: 'Trend',
-          data: trendPoints,
-          dashStyle: 'Dash',
-          color: 'red',
-          marker: { enabled: false },
-          enableMouseTracking: false
+          name: 'Price',
+          data: [currentPrice, parseFloat(targetPrice)],
+          colorByPoint: true,
+          colors: [
+            getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(), 
+            '#1e3a8a'
+          ]
         }],
-        credits: { enabled: false }
+        credits: {
+          enabled: false
+        }
       });
+      showElement('priceChartSection');
     }
 
-    // Display article details when a data point is clicked
-    function showArticle(article) {
-      const articleSection = document.getElementById("articleSection");
-      articleSection.style.display = "block";
-      const title = article.title || "No Title";
-      const summary = article.summary || "No Summary Available";
-      const url = article.url || "#";
-      articleSection.innerHTML = `
-        <h3>${title}</h3>
-        <p><strong>Published:</strong> ${article.date.toLocaleString()}</p>
-        <p>${summary}</p>
-        <p><a href="${url}" target="_blank">Read Original</a></p>
-      `;
-      articleSection.scrollIntoView({ behavior: 'smooth' });
+    // Populate the rating breakdown table.
+    function populateRatingBreakdown(data) {
+      document.getElementById('ratingSB').innerText = data.AnalystRatingStrongBuy || 0;
+      document.getElementById('ratingB').innerText = data.AnalystRatingBuy || 0;
+      document.getElementById('ratingHold').innerText = data.AnalystRatingHold || 0;
+      document.getElementById('ratingS').innerText = data.AnalystRatingSell || 0;
+      document.getElementById('ratingSS').innerText = data.AnalystRatingStrongSell || 0;
+      showElement('ratingBreakdownSection');
     }
 
-    // Main function: load sentiment data and render the chart
-    async function loadSentimentData() {
-      const ticker = document.getElementById("ticker").value.trim();
+    // --- Main Analysis Function ---
+    document.getElementById('runAnalysis').addEventListener('click', async () => {
+      const ticker = document.getElementById('ticker').value.trim();
       if (!ticker) {
         alert("Please enter a ticker symbol.");
         return;
       }
-      document.getElementById("loading").style.display = "block";
-      document.getElementById("sentimentSection").style.display = "none";
-      document.getElementById("articleSection").style.display = "none";
-      document.getElementById("articleSection").innerHTML = "";
+      showElement('loading');
+      hideElement('combinedSection');
+      hideElement('ratingBreakdownSection');
+      hideElement('priceChartSection');
 
       try {
-        const feed = await fetchAllSentimentData(ticker);
-
-        // Convert feed articles into plot-friendly objects and store in globalArticles
-        globalArticles = feed.map(article => {
-          const dt = parseAlphaDate(article.time_published);
-          let sentimentVal = 0;
-          let title = article.title || "";
-          let summary = article.summary || "";
-          let url = article.url || "";
-          if (article.ticker_sentiment && article.ticker_sentiment.length > 0) {
-            const tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
-            if (tItem) {
-              const raw = parseFloat(tItem.ticker_sentiment_score);
-              if (!isNaN(raw)) {
-                sentimentVal = ((raw + 1) / 2) * 100;
-              }
-            }
-          }
-          return {
-            date: dt,
-            sentiment: sentimentVal,
-            title: title,
-            summary: summary,
-            url: url,
-            original: article
-          };
-        }).filter(a => !isNaN(a.date) && a.date.getFullYear() > 1970)
-          .sort((a, b) => a.date - b.date);
-
-        if (globalArticles.length < 2) {
-          alert("Not enough sentiment data for this ticker.");
-          return;
+        // Fetch fundamental data.
+        const fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+        const fundResp = await fetch(fundUrl);
+        const fundData = await fundResp.json();
+        if (!fundData || !fundData.Symbol) {
+          throw new Error("No fundamental data found.");
         }
-        plotSentiment(globalArticles);
+
+        // Fetch historical data to get current price.
+        const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+        const histResp = await fetch(histUrl);
+        const histData = await histResp.json();
+        if (!histData["Time Series (Daily)"]) {
+          throw new Error("No historical data found.");
+        }
+        const dates = Object.keys(histData["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
+        const latestDate = dates[dates.length - 1];
+        const currentPrice = parseFloat(histData["Time Series (Daily)"][latestDate]["5. adjusted close"]);
+
+        // Compute scores.
+        const R = computeRecommendationScore(fundData);
+        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice);
+        const combinedScore = computeCombinedScore(R, P);
+
+        // Update Combined Score meter.
+        updateMeter('combinedMeter', 'combinedMarker', 'combinedScoreText', combinedScore);
+
+        // Populate the analyst ratings breakdown.
+        populateRatingBreakdown(fundData);
+
+        // Plot the price comparison chart using Highcharts.
+        plotPriceComparison(currentPrice, fundData.AnalystTargetPrice);
+
+        // Store all relevant data in techReport for the explanation page.
+        techReport = {
+          ticker: ticker,
+          fundamentalData: fundData,
+          currentPrice: currentPrice,
+          R: R,
+          P: P,
+          combined: combinedScore
+        };
       } catch (err) {
-        alert("Error loading sentiment: " + err.message);
-      } finally {
-        document.getElementById("loading").style.display = "none";
+        alert("Error: " + err.message);
+        console.error(err);
       }
+      hideElement('loading');
+    });
+
+    // --- Explanation Button ---
+    document.getElementById('explanationButton').addEventListener('click', () => {
+      if (!techReport) {
+        alert("Please run an analysis first.");
+        return;
+      }
+      let win = window.open("", "_blank");
+      let html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Analyst Bullish Score Explanation | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
     }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
+      margin: 0 auto;
+      max-width: 900px;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      text-align: center;
+      font-weight: 600;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+    p, li {
+      margin-bottom: 0.75em;
+    }
+    pre {
+      background: #222;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #444;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #333;
+    }
+    .close-btn {
+      display: block;
+      margin: 30px auto;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    .close-btn:hover {
+      background: #1e3a8a;
+    }
+  </style>
+</head>
+<body>
+  <h1>Analyst Bullish Score Explanation</h1>
+  <p>
+    This tool calculates an overall Analyst Bullish Score by combining two key components: the normalized analyst recommendations and the normalized target premium.
+  </p>
 
-    // Wire up the load button click event
-    document.getElementById("loadButton").addEventListener("click", loadSentimentData);
+  <h2>1. Normalize the Analyst Recommendations</h2>
+  <p>
+    First, we assign numerical values to each rating:
+  </p>
+  <ul>
+    <li><code>Strong Buy = +2</code></li>
+    <li><code>Buy = +1</code></li>
+    <li><code>Hold = 0</code></li>
+    <li><code>Sell = -1</code></li>
+    <li><code>Strong Sell = -2</code></li>
+  </ul>
+  <p>
+    Next, we compute the average rating using:
+  </p>
+  <pre>
+Average Rating = (2 × N_SB + 1 × N_B - 1 × N_S - 2 × N_SS) / N_Total
+  </pre>
+  <p>
+    Because the average rating will fall between –2 and +2, we then shift and scale it to a 0–1 range:
+  </p>
+  <pre>
+R = (Average Rating + 2) / 4
+  </pre>
+  <p>
+    For example, if the weighted average rating is 0.8:
+  </p>
+  <pre>
+R = (0.8 + 2) / 4 = 2.8 / 4 = 0.70
+  </pre>
+  <p>
+    Here, <strong>R = 0.70</strong> indicates a moderately bullish consensus.
+  </p>
 
-    // Auto-populate the ticker if "symbol" exists in the URL params, then load data
-    window.onload = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const symbol = urlParams.get('symbol');
-      if (symbol) {
-        document.getElementById('ticker').value = symbol;
-        setTimeout(() => {
-          document.getElementById('loadButton').click();
-        }, 100);
-      }
-    };
+  <h2>2. Normalize the Target Premium</h2>
+  <p>
+    The target premium is defined as the percentage difference between the analyst target price and the current price. We normalize it using a logistic function:
+  </p>
+  <pre>
+P = 1 / (1 + exp(-c × ((Target Price / Current Price) - 1)))
+  </pre>
+  <p>
+    In this equation, <code>c</code> is a sensitivity constant (for example, c = 10). When the current price equals the target price, the term (Target Price/Current Price - 1) is 0, yielding:
+  </p>
+  <pre>
+P = 1 / (1 + exp(0)) = 0.5
+  </pre>
+  <p>
+    For example, if the target price is 3% above the current price:
+  </p>
+  <pre>
+P = 1 / (1 + exp(-10 × (1.03 - 1))) ≈ 0.57
+  </pre>
+  <p>
+    Here, <strong>P ≈ 0.57</strong> indicates a slightly bullish price premium.
+  </p>
+
+  <h2>3. Combine the Two Scores</h2>
+  <p>
+    Finally, we combine the two normalized scores by assigning weights <code>w_R</code> and <code>w_P</code> to the recommendation score and the premium score respectively. With equal weights (w_R = w_P = 1), the overall score is:
+  </p>
+  <pre>
+Analyst Bullish Score = (R + P) / 2
+  </pre>
+  <p>
+    For example, if R = 0.70 and P = 0.57:
+  </p>
+  <pre>
+Analyst Bullish Score = (0.70 + 0.57) / 2 ≈ 0.635
+  </pre>
+  <p>
+    Converting to a percentage, the overall score is approximately 63.5%.
+  </p>
+
+  <h2>Summary</h2>
+  <ol>
+    <li><strong>R</strong>: Normalized recommendation score based on analyst ratings (0 = most bearish, 1 = most bullish).</li>
+    <li><strong>P</strong>: Normalized target premium score using a logistic function.</li>
+    <li>The overall Analyst Bullish Score is the simple average of R and P.</li>
+  </ol>
+  <p>
+    For the ticker <strong>${techReport.ticker}</strong>:
+  </p>
+  <ul>
+    <li>Current Price: $${techReport.currentPrice.toFixed(2)}</li>
+    <li>Analyst Target Price: $${techReport.fundamentalData.AnalystTargetPrice}</li>
+    <li>Recommendation Score (R): ${(techReport.R * 100).toFixed(1)}%</li>
+    <li>Premium Score (P): ${(techReport.P * 100).toFixed(1)}%</li>
+    <li>Combined Analyst Bullish Score: ${(techReport.combined * 100).toFixed(1)}%</li>
+  </ul>
+  <p>
+    The tool uses these calculations to provide a balanced view of analyst sentiment.
+  </p>
+  <p style="text-align:center;"><button class="close-btn" onclick="window.history.back()">Go Back</button></p>
+</body>
+</html>
+      `;
+      win.document.write(html);
+      win.document.close();
+    });
   </script>
 </body>
 </html>
