@@ -7,7 +7,7 @@
   
   <!-- Highcharts for visualization -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
-  <!-- Math.js for any extra math operations (if needed) -->
+  <!-- Math.js for any advanced math (if needed) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   
   <style>
@@ -63,12 +63,12 @@
     #chartSection {
       display: none;
     }
-    /* Remove fixed height for riskMetrics to let it auto-adjust */
+    /* Let riskMetrics auto-size according to its content */
     #riskMetrics {
       padding: 10px;
       margin-bottom: 15px;
     }
-    /* Give the chart container a fixed height */
+    /* Fixed height for chart container */
     #chartContainer {
       height: 350px;
     }
@@ -76,7 +76,9 @@
 </head>
 <body>
   <h1>dbHJ Risk Assessment Tool</h1>
-  <p>This tool uses a double Heston stochastic volatility jump‐diffusion (dbHJ) model with jump‐risk mitigation calibrated via live options pricing to estimate the risk of a given stock over a future time horizon.</p>
+  <p>
+    This tool uses a double Heston stochastic volatility jump‐diffusion (dbHJ) model with jump‐risk mitigation calibrated via live options pricing to estimate the risk of a given stock over a future time horizon.
+  </p>
   
   <!-- Input Section -->
   <div class="section" id="inputSection">
@@ -95,10 +97,10 @@
   <!-- Chart and Risk Metrics Section -->
   <div class="section" id="chartSection">
     <h2>Simulation Outcome Distribution</h2>
-    <!-- Highcharts will render the histogram here -->
+    <!-- Highcharts will render the histogram in this container -->
     <div id="chartContainer"></div>
     
-    <!-- Risk Metrics Box (auto-adjust height) -->
+    <!-- Risk Metrics Box (auto-sizing) -->
     <div id="riskMetrics"></div>
     
     <!-- Interactive slider for target threshold -->
@@ -107,7 +109,7 @@
     <span id="targetValue"></span>
     <div id="sliderProb" style="margin-top:10px; font-weight:600;"></div>
     
-    <!-- Separate Explanation Button -->
+    <!-- Separate Detailed Explanation Button -->
     <button id="explanationButton" style="margin-top:20px;">Detailed Explanation</button>
   </div>
   
@@ -115,7 +117,7 @@
     /***********************************************
      * Utility Functions & Data Fetching
      ***********************************************/
-    // Set a default future date (e.g., one month ahead)
+    // Set a default future date (e.g. one month ahead)
     (function setDefaultDate() {
       const futureDateInput = document.getElementById('futureDate');
       const today = new Date();
@@ -123,30 +125,36 @@
       futureDateInput.value = nextMonth.toISOString().split('T')[0];
     })();
 
-    // Fetch historical daily adjusted data from Alpha Vantage.
+    // Fetch historical daily adjusted data from your internal endpoint.
     async function fetchHistoricalData(symbol) {
-      const apiKey = 'demo'; // Replace with your API key or point to your internal endpoint.
-      const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&outputsize=full&apikey=${apiKey}`;
+      // Calls your own /api/historical endpoint (assumed to hide your real API key)
+      const url = `/api/historical?symbol=${symbol}`;
       const response = await fetch(url);
       const data = await response.json();
-      if (!data["Time Series (Daily)"]) throw new Error("Unable to fetch historical data.");
+      // Assume the endpoint returns a JSON object with a "Time Series (Daily)" property
+      if (!data["Time Series (Daily)"]) {
+        throw new Error("Historical endpoint did not return expected data.");
+      }
       const timeSeries = data["Time Series (Daily)"];
       const prices = Object.keys(timeSeries).map(dateStr => ({
         date: new Date(dateStr),
         close: parseFloat(timeSeries[dateStr]["5. adjusted close"])
       }));
+      // Sort prices in ascending order
       prices.sort((a, b) => a.date - b.date);
       return prices;
     }
 
-    // Fetch live options IV from our internal liveoptions endpoint.
+    // Fetch live options implied volatility from your internal liveoptions.js endpoint.
     async function fetchOptionsIV(symbol) {
       try {
         const url = `/api/liveoptions?symbol=${symbol}&require_greeks=true`;
         const response = await fetch(url);
         const data = await response.json();
         if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+          // For calibration, select a contract (for instance, the first contract in the chain).
           const contract = data.data[0];
+          // Assume the IV is provided in an "impliedVolatility" field.
           return parseFloat(contract.impliedVolatility) || null;
         }
       } catch (error) {
@@ -155,7 +163,7 @@
       return null;
     }
 
-    // Compute log returns and basic statistics from historical prices.
+    // Compute log returns and statistics based on historical prices.
     function computeStats(prices) {
       let logReturns = [];
       for (let i = 1; i < prices.length; i++) {
@@ -172,23 +180,23 @@
       };
     }
 
-    // Generate a standard normal random number (Box-Muller).
+    // Generate a standard normal random number using Box-Muller.
     function randn() {
       let u = 0, v = 0;
-      while(u === 0) u = Math.random();
-      while(v === 0) v = Math.random();
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
       return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
     }
 
     /***********************************************
      * dbHJ Simulation: Double Heston with Jump Diffusion
      ***********************************************/
-    // This function simulates stock prices using a double Heston stochastic volatility jump-diffusion model.
+    // This function simulates stock prices using a double Heston jump-diffusion model.
     function runDBHJSimulation(S0, v10, v20, mu,
-                                 kappa1, theta1, sigma1, rho1,
-                                 kappa2, theta2, sigma2, rho2,
-                                 lambda, jumpMean, jumpStd,
-                                 T, dt, sims) {
+                               kappa1, theta1, sigma1, rho1,
+                               kappa2, theta2, sigma2, rho2,
+                               lambda, jumpMean, jumpStd,
+                               T, dt, sims) {
       const steps = Math.floor(T / dt);
       let finalPrices = [];
       for (let i = 0; i < sims; i++) {
@@ -196,7 +204,7 @@
         let v1 = v10;
         let v2 = v20;
         for (let j = 0; j < steps; j++) {
-          // Generate independent normal variables.
+          // Generate independent standard normals.
           let Z1 = randn();
           let Z2 = randn();
           let Z3 = randn();
@@ -205,17 +213,19 @@
           const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
           const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
           
-          // Update variance processes, ensuring non-negativity.
-          v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1,0)) * dW_v1, 0);
-          v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2,0)) * dW_v2, 0);
+          // Update variance processes, ensuring they stay non-negative.
+          v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
+          v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
           
-          // Total instantaneous variance is the sum of both.
+          // Aggregate instantaneous variance.
           const totalVariance = v1 + v2;
-          // Determine jump multiplier.
+          
+          // Jump process: if a jump occurs (with intensity lambda), update the price accordingly.
           let jumpMultiplier = 1;
           if (Math.random() < lambda * dt) {
             jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
           }
+          
           // Update stock price.
           S = S * jumpMultiplier * Math.exp((mu - 0.5 * totalVariance) * dt + Math.sqrt(totalVariance) * dW_a);
         }
@@ -224,7 +234,7 @@
       return finalPrices;
     }
 
-    // Compute risk metrics: VaR and CVaR at the 5th percentile.
+    // Compute risk metrics: Value at Risk (VaR) and Conditional VaR (CVaR) at the 5th percentile.
     function computeRiskMetrics(finalPrices, currentPrice) {
       const sorted = finalPrices.slice().sort((a, b) => a - b);
       const idx = Math.floor(0.05 * sorted.length);
@@ -269,7 +279,7 @@
           min: minPrice,
           max: maxPrice,
           labels: { style: { color: '#fff' } },
-          // Initial red dashed plot line at currentPrice.
+          // Initial red dashed target line at currentPrice.
           plotLines: [{
             id: 'targetLine',
             color: 'red',
@@ -299,7 +309,7 @@
       });
     }
 
-    // Update the slider probability text and update the target line on the chart.
+    // Update slider target probability text and update target line on chart.
     function updateSliderProb(finalPrices) {
       const slider = document.getElementById("targetSlider");
       const targetDisplay = document.getElementById("targetValue");
@@ -310,7 +320,7 @@
       const prob = 100 * count / finalPrices.length;
       probDisplay.innerText = "Probability above target: " + prob.toFixed(2) + "%";
       
-      // Update the vertical line on the chart.
+      // Update the red dashed vertical line on the chart.
       if (window.mcChart && window.mcChart.xAxis[0]) {
         window.mcChart.xAxis[0].removePlotLine('targetLine');
         window.mcChart.xAxis[0].addPlotLine({
@@ -326,7 +336,7 @@
     }
 
     /***********************************************
-     * Detailed Explanation: Open New Page
+     * Detailed Explanation: Open in a New Window
      ***********************************************/
     document.getElementById("explanationButton").addEventListener("click", function() {
       const explanationWindow = window.open("", "_blank", "width=800,height=600,scrollbars=yes");
@@ -364,50 +374,54 @@
           <h1>Detailed Explanation</h1>
           <h2>Double Heston Jump-Diffusion (dbHJ) Model</h2>
           <p>
-            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk. The model combines two separate Heston processes—each with their own variance dynamics—with a Poisson-driven jump component.
+            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk. The model combines two independent Heston processes—each modeling a different aspect of the volatility—with a Poisson jump process to capture sudden large price moves.
           </p>
           <h3>Model Components</h3>
           <ul>
             <li>
-              <strong>Double Heston Volatility:</strong> Two variance processes, \(v_1\) and \(v_2\), are modeled as:
+              <strong>Double Heston Volatility:</strong>
+              <br>The two variance processes, \(v_1\) and \(v_2\), follow:
               <br><br>
-              \(dv_i = \kappa_i (\theta_i - v_i) dt + \sigma_i \sqrt{v_i}\, dW_{v_i}\) for \(i=1,2\)
+              \(dv_i = \kappa_i (\theta_i - v_i)\,dt + \sigma_i \sqrt{v_i}\,dW_{v_i}\) for \(i = 1, 2\)
               <br>
               where:
               <ul>
                 <li>\(\kappa_i\): Mean reversion speed</li>
-                <li>\(\theta_i\): Long-run variance level</li>
+                <li>\(\theta_i\): Long-run variance</li>
                 <li>\(\sigma_i\): Volatility of volatility</li>
-                <li>\(dW_{v_i}\): Brownian motion for the variance process</li>
+                <li>\(dW_{v_i}\): Brownian increments</li>
               </ul>
             </li>
             <li>
-              <strong>Jump-Diffusion:</strong> In addition to the continuous diffusion, a Poisson jump process is added. If a jump occurs over a time interval \(dt\) with intensity \(\lambda\), the stock price is multiplied by a jump factor drawn from a lognormal distribution:
+              <strong>Jump-Diffusion:</strong>
+              <br>
+              A Poisson jump process is added so that if a jump occurs (with intensity \(\lambda\)), the stock price is multiplied by a jump factor:
               <br><br>
-              \(J = \exp(\mu_J + \sigma_J Z)\) where \(Z\) is standard normal.
+              \(J = \exp(\mu_J + \sigma_J Z)\), with \(Z\) being a standard normal variable.
             </li>
           </ul>
           <h3>Parameter Calibration</h3>
           <p>
-            Live options data (via our internal endpoint) is used to extract the implied volatility, which helps set the initial variance values for the two Heston processes. Other parameters are set by default:
+            Live options data (via our internal endpoint) is used to estimate the implied volatility and set the initial variances \(v_{10}\) and \(v_{20}\). Default parameters are used for the remaining model inputs:
           </p>
           <pre>
-    // Example parameter defaults:
-    kappa1 = 2.0,  theta1 = v10,  sigma1 = 0.5,  rho1 = -0.7
+    // Example defaults:
+    kappa1 = 2.0,  theta1 = v10,      sigma1 = 0.5,  rho1 = -0.7
     kappa2 = 1.5,  theta2 = 0.5 * v10,  sigma2 = 0.3,  rho2 = -0.3
     lambda = 0.2,  mu_J = -0.1,  sigma_J = 0.2
           </pre>
           <h3>Risk Metrics</h3>
           <p>
-            The simulation produces a distribution of stock prices at the target future date. From this distribution:
+            The simulation produces a distribution of stock prices at the target date. Risk is then quantified by:
             <br>
-            <strong>VaR (Value at Risk):</strong> The 5th percentile price, representing the worst expected outcome in 95% of cases.
+            <strong>VaR (Value at Risk):</strong> The 5th percentile price, representing the worst-case outcome in 95% of scenarios.
             <br>
-            <strong>CVaR (Conditional Value at Risk):</strong> The average outcome of the worst 5% cases.
+            <strong>CVaR (Conditional Value at Risk):</strong> The average price among the worst 5% of outcomes.
           </p>
           <h3>Interactive Features</h3>
           <p>
-            Users can adjust a slider to set a target price threshold. A red dashed vertical line on the histogram shows this threshold, and the tool calculates the probability that the stock price exceeds that value.
+            An adjustable slider sets a target price threshold. A red dashed vertical line on the simulation histogram indicates this target,
+            and the tool calculates the probability that the stock price exceeds the threshold.
           </p>
           <p style="text-align:center;">
             <a href="#" onclick="window.close(); return false;">Close Explanation</a>
@@ -457,18 +471,18 @@
       if (!optionsIV) {
         optionsIV = stats.sigma;
       }
-      // For dbHJ, set the initial variances.
-      const v10 = optionsIV * optionsIV;   // from options implied volatility.
-      const v20 = v10 * 0.5;                // second variance component as a fraction.
-
-      // Set default parameters for double Heston processes.
+      // Set initial variances for dbHJ.
+      const v10 = optionsIV * optionsIV;  // Primary variance from options IV.
+      const v20 = v10 * 0.5;               // Secondary variance component.
+      
+      // Set default parameters for the double Heston processes.
       const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
       const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
-      // Jump parameters.
+      // Set jump parameters.
       const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
-
+      
       // Run the dbHJ simulation.
-      const dt = 1 / 252; // daily time step.
+      const dt = 1 / 252;  // Daily time step.
       const finalPrices = runDBHJSimulation(stats.lastPrice, v10, v20, stats.mu,
                                              kappa1, theta1, sigma1, rho1,
                                              kappa2, theta2, sigma2, rho2,
@@ -488,7 +502,7 @@
       renderChart(finalPrices, stats.lastPrice);
       document.getElementById("chartSection").style.display = "block";
 
-      // Set up the target slider.
+      // Setup the target slider.
       const slider = document.getElementById("targetSlider");
       slider.min = Math.min(...finalPrices).toFixed(2);
       slider.max = Math.max(...finalPrices).toFixed(2);
