@@ -1402,11 +1402,11 @@ function updateInsiderCharts(insiderData) {
       type: 'datetime', 
       labels: { style: { color: 'var(--text-color)' } }
     },
-      yAxis: {
-  title: { text: 'Shares / MSPR' },
-  // no 'min:' => Highcharts will auto-scale below zero if negative data is present
-},
-
+    yAxis: {
+    min: -100,  // Let it drop to –100 so negative values appear
+    title: { text: 'Shares / MSPR' },
+      labels: { style: { color: 'var(--text-color)' } }
+    },
     tooltip: {
       shared: true,
       formatter: function() {
