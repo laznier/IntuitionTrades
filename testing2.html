@@ -1645,20 +1645,21 @@ function updateInsiderCharts(insiderData) {
   /***********************************************
    * runSimulation() – Main Controller
    ***********************************************/
-  async function runSimulation() {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('aggregateSection').style.display = 'none';
-    document.getElementById('descriptionSection').style.display = 'none';
-    document.getElementById('fundamentalSection').style.display = 'none';
-    document.getElementById('techSection').style.display = 'none';
-    document.getElementById('mcSection').style.display = 'none';
-    document.getElementById('sentSection').style.display = 'none';
-    document.getElementById('insiderSection').style.display = 'none';
-    document.getElementById('congressSection').style.display = 'none';
+   async function runSimulation() {
+  document.getElementById('loading').style.display = 'block';
+  // Hide sections...
+  document.getElementById('aggregateSection').style.display = 'none';
+  document.getElementById('descriptionSection').style.display = 'none';
+  document.getElementById('fundamentalSection').style.display = 'none';
+  document.getElementById('techSection').style.display = 'none';
+  document.getElementById('mcSection').style.display = 'none';
+  document.getElementById('sentSection').style.display = 'none';
+  document.getElementById('insiderSection').style.display = 'none';
+  document.getElementById('congressSection').style.display = 'none';
 
-    let ticker = document.getElementById('ticker').value.trim();
+  let ticker = document.getElementById('ticker').value.trim();
   let futureDateStr = document.getElementById('futureDate').value;
-  if(!ticker || !futureDateStr){
+  if (!ticker || !futureDateStr) {
     alert("Please enter both a ticker symbol and a future date.");
     document.getElementById('loading').style.display = 'none';
     return;
@@ -1667,12 +1668,12 @@ function updateInsiderCharts(insiderData) {
   let currentDate = new Date();
   let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
                      (futureDate.getMonth() - currentDate.getMonth());
-  if(diffInMonths < 1) diffInMonths = 1;
+  if (diffInMonths < 1) diffInMonths = 1;
   let recommendedPeriod = diffInMonths * 4;
   let periodMonths;
-  if(document.getElementById('manualOverrideCheckbox').checked){
+  if (document.getElementById('manualOverrideCheckbox').checked) {
     periodMonths = parseInt(document.getElementById('manualPeriod').value);
-    if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
+    if (isNaN(periodMonths) || periodMonths < recommendedPeriod) {
       alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
       periodMonths = recommendedPeriod;
     }
@@ -1681,97 +1682,99 @@ function updateInsiderCharts(insiderData) {
   }
 
   try {
-      let regime = await determineSPYMarketRegime(4);
-      console.log("Detected SPY Market Regime => ", regime);
-      let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-      let fundResp = await fetch(fundUrl);
-      let fundamentalData = await fundResp.json();
-      let companyDesc = fundamentalData.Description || "No description available.";
-      let fundBull = 50;
-      let categories = null;
-      if(fundamentalData.Symbol){
-        categories = computeFundScores(fundamentalData);
-        let catSum = 0, nCats = 0;
-        for(let k in categories){ catSum += categories[k]; nCats++; }
-        fundBull = catSum / nCats;
-      }
-      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-      let resp = await fetch(histUrl);
-      let data = await resp.json();
-      if(!data["Time Series (Daily)"]){
-        throw new Error("Unable to retrieve valid historical data.");
-      }
-      let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-      if(prices.length < 2){
-        alert("Not enough historical data.");
-        document.getElementById('loading').style.display = 'none';
-        return;
-      }
-      document.getElementById('aggregateSection').style.display = 'block';
-      document.getElementById('descriptionSection').style.display = 'block';
-      document.getElementById('companyDescription').innerText = companyDesc;
-      if(categories){
-        document.getElementById('fundamentalSection').style.display = 'block';
-        plotFundamentalCategories(categories);
-        document.getElementById('fundamentalText').innerText =
-          `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
-      }
-      document.getElementById('techSection').style.display = 'block';
-      let techBull = updateTechChart(prices);
-      let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
-let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-document.getElementById('mcSection').style.display = 'block';
-let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-let sentiments = await fetchSentimentData(ticker, periodMonths);
-document.getElementById('sentSection').style.display = 'block';
-let sentBull = updateSentimentChart(sentiments);
-    
+    let regime = await determineSPYMarketRegime(4);
+    console.log("Detected SPY Market Regime => ", regime);
+    let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+    let fundResp = await fetch(fundUrl);
+    let fundamentalData = await fundResp.json();
+    let companyDesc = fundamentalData.Description || "No description available.";
+    let fundBull = 50;
+    let categories = null;
+    if (fundamentalData.Symbol) {
+      categories = computeFundScores(fundamentalData);
+      let catSum = 0, nCats = 0;
+      for (let k in categories) { catSum += categories[k]; nCats++; }
+      fundBull = catSum / nCats;
+    }
+    let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+    let resp = await fetch(histUrl);
+    let data = await resp.json();
+    if (!data["Time Series (Daily)"]) {
+      throw new Error("Unable to retrieve valid historical data.");
+    }
+    let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+    if (prices.length < 2) {
+      alert("Not enough historical data.");
+      document.getElementById('loading').style.display = 'none';
+      return;
+    }
 
-// Use mcStats.lastPrice instead of undefined lastPrice.
-let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
-document.getElementById('insiderSection').style.display = 'block';
-let insiderBull = updateInsiderCharts(insiderData);
+    // **Compute mcStats here so that mcStats.lastPrice is defined.**
+    let mcStats = computeStats(prices);
 
-      let congressObj = await fetchCongressData(ticker, periodMonths);
-      document.getElementById('congressSection').style.display = 'block';
-      let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
-      let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
-      document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
-      document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
-      simulationReport = {
-        ticker,
-        periodMonths,
-        futureDate: futureDate.toDateString(),
-        mcBull,
-        techBull,
-        sentBull,
-        insiderBull,
-        congressBull,
-        fundamentalBull: fundBull,
-        aggregatedBull,
-        mcStats,
-        description: companyDesc,
-        regime,
-        // Store overall Ichimoku Score for the explanation page:
-        ichimokuScore: (function(){
-          // Compute Ichimoku score from the latest pane calculation
-          let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
-          let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
-          let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
-          let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
-          let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
-          let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
-          let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
-          let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
-          let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
-          return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-        })()
-      };
-    } catch(err) {
+    document.getElementById('aggregateSection').style.display = 'block';
+    document.getElementById('descriptionSection').style.display = 'block';
+    document.getElementById('companyDescription').innerText = companyDesc;
+    if (categories) {
+      document.getElementById('fundamentalSection').style.display = 'block';
+      plotFundamentalCategories(categories);
+      document.getElementById('fundamentalText').innerText =
+        `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
+    }
+    document.getElementById('techSection').style.display = 'block';
+    let techBull = updateTechChart(prices);
+    let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
+    let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+    document.getElementById('mcSection').style.display = 'block';
+    let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+    let sentiments = await fetchSentimentData(ticker, periodMonths);
+    document.getElementById('sentSection').style.display = 'block';
+    let sentBull = updateSentimentChart(sentiments);
+
+    // Use mcStats.lastPrice (which is now defined) in your insider function:
+    let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+    document.getElementById('insiderSection').style.display = 'block';
+    let insiderBull = updateInsiderCharts(insiderData);
+
+    let congressObj = await fetchCongressData(ticker, periodMonths);
+    document.getElementById('congressSection').style.display = 'block';
+    let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+    let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+    document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
+    document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+    simulationReport = {
+      ticker,
+      periodMonths,
+      futureDate: futureDate.toDateString(),
+      mcBull,
+      techBull,
+      sentBull,
+      insiderBull,
+      congressBull,
+      fundamentalBull: fundBull,
+      aggregatedBull,
+      mcStats,
+      description: companyDesc,
+      regime,
+      ichimokuScore: (function(){
+        let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
+        let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
+        let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
+        let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
+        let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
+        let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
+        let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
+        let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
+        let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+        return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+      })()
+    };
+  } catch(err) {
     alert("Error: " + err.message);
   }
   document.getElementById('loading').style.display = 'none';
 }
+
 
   // Run simulation with overlay on button click
   document.getElementById("simulateButton").addEventListener("click", () => {
