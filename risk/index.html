@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dbHJ Risk Assessment Tool</title>
+  
+  <!-- Highcharts for visualization -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <!-- Math.js for additional math functions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  
+  <style>
+    /* Dark theme styling */
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+    }
+    body {
+      background-color: var(--primary-bg);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, button, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+      font-size: 1rem;
+    }
+    button {
+      background: var(--accent-color);
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #chartSection {
+      display: none;
+    }
+    /* Let riskMetrics auto-size according to its content */
+    #riskMetrics {
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    /* Fixed height for chart container */
+    #chartContainer {
+      height: 350px;
+    }
+    /* Ticker suggestions dropdown styling */
+    #ticker-suggestions {
+      position: absolute;
+      background: var(--secondary-bg);
+      border: 1px solid #555;
+      list-style: none;
+      margin-top: 0;
+      padding: 0;
+      width: 96%; /* slightly less than the input width */
+      z-index: 10;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background: var(--accent-color);
+      color: #fff;
+    }
+    /* A small container for displaying the company name (if desired) */
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: var(--accent-color);
+    }
+  </style>
+</head>
+<body>
+  <h1>dbHJ Risk Assessment Tool</h1>
+  <p>
+    This tool uses a double Heston stochastic volatility jump‐diffusion (dbHJ) model—with jump‐risk mitigation calibrated via live options pricing—to estimate the risk and profit potential of a given stock over a future time horizon.
+  </p>
+  
+  <!-- Input Section -->
+  <div class="section" id="inputSection">
+    <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+    <input type="text" id="ticker" value="IBM" autocomplete="off" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+    
+    <label for="futureDate">Future Date for Simulation (YYYY-MM-DD):</label>
+    <input type="date" id="futureDate" />
+
+    <label for="numSims">Number of Simulations:</label>
+    <input type="number" id="numSims" value="5000" min="1000" step="1000" />
+
+    <button id="simulateButton">Run Risk Simulation</button>
+  </div>
+  
+  <!-- Chart and Risk Metrics Section -->
+  <div class="section" id="chartSection">
+    <h2>Simulation Outcome Distribution</h2>
+    <div id="chartContainer"></div>
+    <!-- Risk metrics box auto-adjusts its height -->
+    <div id="riskMetrics"></div>
+    <!-- Interactive slider for target threshold -->
+    <label for="targetSlider">Set a Target Price Threshold:</label>
+    <input type="range" id="targetSlider" min="0" max="100" step="0.01" value="0" />
+    <span id="targetValue"></span>
+    <div id="sliderProb" style="margin-top:10px; font-weight:600;"></div>
+    
+    <!-- Button to open Detailed Explanation in a new window -->
+    <button id="explanationButton" style="margin-top:20px;">Detailed Explanation</button>
+  </div>
+  
+  <script>
+    /***********************************************
+     * Autocomplete for Ticker Input
+     ***********************************************/
+    async function fetchTickerSuggestions(query) {
+      try {
+        // Assume an internal endpoint that returns ticker suggestions as JSON.
+        // For example, your endpoint might be: /api/ticker?query=...
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        // Assume "bestMatches" field holds suggestion objects.
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+
+    function renderTickerSuggestions(suggestions) {
+      const ul = document.getElementById("ticker-suggestions");
+      ul.innerHTML = "";
+      if (!suggestions || suggestions.length === 0) {
+        ul.style.display = "none";
+        return;
+      }
+      suggestions.forEach(item => {
+        // Assume each suggestion object has fields "1. symbol" and "2. name"
+        const li = document.createElement("li");
+        li.textContent = `${item["1. symbol"]} (${item["2. name"]})`;
+        li.addEventListener("click", () => {
+          document.getElementById("ticker").value = item["1. symbol"];
+          // Optionally, display the full company name.
+          document.getElementById("company-full-name").textContent = item["2. name"];
+          ul.style.display = "none";
+        });
+        ul.appendChild(li);
+      });
+      ul.style.display = "block";
+    }
+
+    let autocompleteTimeout;
+    document.getElementById("ticker").addEventListener("input", function() {
+      const query = this.value.trim();
+      clearTimeout(autocompleteTimeout);
+      if (query.length < 2) {
+        document.getElementById("ticker-suggestions").style.display = "none";
+        return;
+      }
+      autocompleteTimeout = setTimeout(async () => {
+        const suggestions = await fetchTickerSuggestions(query);
+        renderTickerSuggestions(suggestions);
+      }, 300);
+    });
+
+    /***********************************************
+     * Utility Functions & Data Fetching
+     ***********************************************/
+    // Set default future date (one month ahead).
+    (function setDefaultDate() {
+      const futureDateInput = document.getElementById('futureDate');
+      const today = new Date();
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      futureDateInput.value = nextMonth.toISOString().split('T')[0];
+    })();
+
+    // Fetch historical price data via your internal endpoint.
+    async function fetchHistoricalData(symbol) {
+      const url = `/api/historical?symbol=${symbol}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data["Time Series (Daily)"]) {
+        throw new Error("Historical endpoint did not return expected data.");
+      }
+      const timeSeries = data["Time Series (Daily)"];
+      const prices = Object.keys(timeSeries).map(dateStr => ({
+        date: new Date(dateStr),
+        close: parseFloat(timeSeries[dateStr]["5. adjusted close"])
+      }));
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
+    }
+
+    // Fetch live options implied volatility via your internal liveoptions endpoint.
+    async function fetchOptionsIV(symbol) {
+      try {
+        const url = `/api/liveoptions?symbol=${symbol}&require_greeks=true`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+          const contract = data.data[0];
+          return parseFloat(contract.impliedVolatility) || null;
+        }
+      } catch (error) {
+        console.error("Error fetching options IV:", error);
+      }
+      return null;
+    }
+
+    // Compute log returns and basic statistics from historical prices.
+    function computeStats(prices) {
+      let logReturns = [];
+      for (let i = 1; i < prices.length; i++) {
+        logReturns.push(Math.log(prices[i].close / prices[i - 1].close));
+      }
+      const meanDaily = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+      const variance = logReturns.reduce((sum, r) => sum + Math.pow(r - meanDaily, 2), 0) / (logReturns.length - 1);
+      const stdDaily = Math.sqrt(variance);
+      const tradingDays = 252;
+      return {
+        mu: meanDaily * tradingDays,                     // Annual drift.
+        sigma: stdDaily * Math.sqrt(tradingDays),          // Annual volatility.
+        lastPrice: prices[prices.length - 1].close
+      };
+    }
+
+    // Generate a standard normal random number (Box-Muller transform).
+    function randn() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    /***********************************************
+     * dbHJ Simulation: Double Heston with Jump Diffusion
+     ***********************************************/
+    // Simulate stock prices using a double Heston jump-diffusion (dbHJ) model.
+    function runDBHJSimulation(S0, v10, v20, mu,
+                               kappa1, theta1, sigma1, rho1,
+                               kappa2, theta2, sigma2, rho2,
+                               lambda, jumpMean, jumpStd,
+                               T, dt, sims) {
+      const steps = Math.floor(T / dt);
+      let finalPrices = [];
+      for (let i = 0; i < sims; i++) {
+        let S = S0;
+        let v1 = v10;
+        let v2 = v20;
+        for (let j = 0; j < steps; j++) {
+          let Z1 = randn();
+          let Z2 = randn();
+          let Z3 = randn();
+          const dW_a = Math.sqrt(dt) * Z1;
+          const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
+          const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
+          
+          v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
+          v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
+          
+          const totalVariance = v1 + v2;
+          let jumpMultiplier = 1;
+          if (Math.random() < lambda * dt) {
+            jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
+          }
+          S = S * jumpMultiplier * Math.exp((mu - 0.5 * totalVariance) * dt + Math.sqrt(totalVariance) * dW_a);
+        }
+        finalPrices.push(S);
+      }
+      return finalPrices;
+    }
+
+    // Compute risk metrics: VaR and CVaR at the 5th percentile.
+    function computeRiskMetrics(finalPrices, currentPrice) {
+      const sorted = finalPrices.slice().sort((a, b) => a - b);
+      const idx = Math.floor(0.05 * sorted.length);
+      const var95 = sorted[idx];
+      const tail = sorted.slice(0, idx + 1);
+      const cvar95 = tail.reduce((sum, p) => sum + p, 0) / tail.length;
+      return {
+        varPrice: var95,
+        varPct: 100 * (currentPrice - var95) / currentPrice,
+        cvarPrice: cvar95,
+        cvarPct: 100 * (currentPrice - cvar95) / currentPrice
+      };
+    }
+
+    /***********************************************
+     * Profit/Risk Score Calculation
+     ***********************************************/
+    // Calculate a combined profit/risk score based on simulation outputs.
+    function calculateProfitRiskScore(finalPrices, stats, riskMetrics) {
+      const totalSim = finalPrices.length;
+      // Proportion of simulations where final price exceeds current price.
+      const countGain = finalPrices.filter(S => S > stats.lastPrice).length;
+      const P_gain = countGain / totalSim;
+      
+      // Median return as a fraction.
+      const sortedPrices = finalPrices.slice().sort((a, b) => a - b);
+      const medianPrice = sortedPrices[Math.floor(totalSim / 2)];
+      const U = medianPrice / stats.lastPrice - 1;
+      
+      // Downside risk from CVaR: riskMetrics.cvarPct is expressed as percentage loss.
+      const D = riskMetrics.cvarPct / 100;
+      
+      // Net factor: expected weighted upside minus weighted downside.
+      const f = (P_gain * U) - ((1 - P_gain) * D);
+      
+      // Scale f so that f=0 gives a score of 50, f=0.2 yields 100 and f=-0.2 yields 0.
+      let rawScore = 50 + (f / 0.2) * 50;
+      rawScore = Math.max(0, Math.min(100, rawScore));
+      return rawScore;
+    }
+
+    /***********************************************
+     * Visualization with Highcharts
+     ***********************************************/
+    function renderChart(finalPrices, currentPrice) {
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const numBins = 20;
+      const binWidth = (maxPrice - minPrice) / numBins;
+      let bins = new Array(numBins).fill(0);
+      let binCenters = [];
+      finalPrices.forEach(price => {
+        let index = Math.floor((price - minPrice) / binWidth);
+        if(index >= numBins) index = numBins - 1;
+        bins[index]++;
+      });
+      for (let i = 0; i < numBins; i++) {
+        const center = minPrice + binWidth * (i + 0.5);
+        binCenters.push(center);
+      }
+      const seriesData = binCenters.map((center, idx) => [center, bins[idx]]);
+      
+      window.mcChart = Highcharts.chart('chartContainer', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Simulated Final Prices Distribution', style: { color: '#fff' } },
+        xAxis: {
+          type: 'linear',
+          title: { text: 'Price', style: { color: '#fff' } },
+          min: minPrice,
+          max: maxPrice,
+          labels: { style: { color: '#fff' } },
+          plotLines: [{
+            id: 'targetLine',
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2,
+            value: currentPrice,
+            zIndex: 5,
+            label: { text: 'Target', style: { color: 'red' } }
+          }]
+        },
+        yAxis: {
+          title: { text: 'Frequency', style: { color: '#fff' } },
+          labels: { style: { color: '#fff' } },
+          gridLineColor: '#444'
+        },
+        tooltip: {
+          formatter: function() {
+            return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+          }
+        },
+        series: [{
+          name: 'Frequency',
+          data: seriesData,
+          color: '#888'
+        }],
+        credits: { enabled: false }
+      });
+    }
+
+    // Update slider target probability text and update vertical target line.
+    function updateSliderProb(finalPrices) {
+      const slider = document.getElementById("targetSlider");
+      const targetDisplay = document.getElementById("targetValue");
+      const probDisplay = document.getElementById("sliderProb");
+      const target = parseFloat(slider.value);
+      targetDisplay.textContent = target.toFixed(2);
+      const count = finalPrices.filter(p => p >= target).length;
+      const prob = 100 * count / finalPrices.length;
+      probDisplay.innerText = "Probability above target: " + prob.toFixed(2) + "%";
+      
+      if (window.mcChart && window.mcChart.xAxis[0]) {
+        window.mcChart.xAxis[0].removePlotLine('targetLine');
+        window.mcChart.xAxis[0].addPlotLine({
+          id: 'targetLine',
+          value: target,
+          color: 'red',
+          dashStyle: 'Dash',
+          width: 2,
+          zIndex: 5,
+          label: { text: 'Target', style: { color: 'red' } }
+        });
+      }
+    }
+
+    /***********************************************
+     * Detailed Explanation: Open in a New Window
+     ***********************************************/
+    document.getElementById("explanationButton").addEventListener("click", function() {
+      const explanationWindow = window.open("", "_blank", "width=800,height=600,scrollbars=yes");
+      const explanationHTML = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Detailed Explanation - dbHJ Risk Tool</title>
+          <style>
+            body {
+              background: #111;
+              color: #fff;
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              padding: 20px;
+              line-height: 1.6;
+            }
+            h1, h2, h3 {
+              text-align: center;
+            }
+            pre {
+              background: #333;
+              padding: 10px;
+              overflow-x: auto;
+              border-radius: 4px;
+            }
+            a {
+              color: #16a34a;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Detailed Explanation</h1>
+          <h2>Double Heston Jump-Diffusion (dbHJ) Model</h2>
+          <p>
+            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk. The model combines two independent Heston processes—each modeling a different aspect of volatility—with a Poisson jump component to capture sudden large price moves.
+          </p>
+          <h3>Model Components</h3>
+          <ul>
+            <li>
+              <strong>Double Heston Volatility:</strong>
+              <br>
+              Two variance processes, \(v_1\) and \(v_2\), are modeled as:
+              <br><br>
+              \(dv_i = \kappa_i (\theta_i - v_i)\,dt + \sigma_i \sqrt{v_i}\,dW_{v_i}\)  for \(i = 1, 2\)
+              <br>
+              where:
+              <ul>
+                <li>\(\kappa_i\): Mean reversion speed</li>
+                <li>\(\theta_i\): Long-run variance</li>
+                <li>\(\sigma_i\): Volatility of volatility</li>
+                <li>\(dW_{v_i}\): Brownian increments</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Jump-Diffusion:</strong>
+              <br>
+              A Poisson jump process is added such that if a jump occurs (with intensity \(\lambda\)), the stock price is multiplied by a jump factor:
+              <br><br>
+              \(J = \exp(\mu_J + \sigma_J Z)\)
+              <br>
+              with \(Z\) being a standard normal variable.
+            </li>
+          </ul>
+          <h3>Parameter Calibration</h3>
+          <p>
+            Live options data (via our internal endpoint) is used to extract the implied volatility, which sets the initial variances \(v_{10}\) and \(v_{20}\). The following default parameters are used:
+          </p>
+          <pre>
+    // Example defaults:
+    kappa1 = 2.0,  theta1 = v10,      sigma1 = 0.5,  rho1 = -0.7
+    kappa2 = 1.5,  theta2 = 0.5*v10,    sigma2 = 0.3,  rho2 = -0.3
+    lambda = 0.2,  mu_J = -0.1,  sigma_J = 0.2
+          </pre>
+          <h3>Risk Metrics</h3>
+          <p>
+            The simulation produces a distribution of stock prices at the target date. From this distribution:
+            <br>
+            <strong>VaR (Value at Risk):</strong> The 5th percentile price, representing the worst-case outcome in 95% of scenarios.
+            <br>
+            <strong>CVaR (Conditional Value at Risk):</strong> The average outcome of the worst 5% of simulations.
+          </p>
+          <h3>Profit/Risk Score</h3>
+          <p>
+            In addition to risk metrics, a combined Profit/Risk Score is generated. This score considers:
+          </p>
+          <ul>
+            <li>
+              The probability that the stock ends above the current price,
+            </li>
+            <li>
+              The median percentage gain (the typical upside),
+            </li>
+            <li>
+              And the downside risk as represented by CVaR.
+            </li>
+          </ul>
+          <p>
+            The net factor \(f\) is defined as:
+            <br>
+            \(f = P_{gain} \times U - (1 - P_{gain}) \times D\)
+            <br>
+            where:
+            <br>
+            - \(P_{gain}\) is the probability of gain,
+            <br>
+            - \(U\) is the median return (as a fraction),
+            <br>
+            - \(D\) is the downside risk (CVaR, as a fraction of loss).
+          </p>
+          <p>
+            This factor is then scaled so that a neutral stock (f = 0) gets a score of 50, strongly favorable stocks approach 100, and strongly unfavorable stocks approach 0.
+          </p>
+          <h3>Interactive Features</h3>
+          <p>
+            An adjustable slider sets a target price threshold. A red dashed vertical line on the histogram marks this target, and the tool calculates the probability that the stock price exceeds it.
+          </p>
+          <p style="text-align:center;">
+            <a href="#" onclick="window.close(); return false;">Close Explanation</a>
+          </p>
+        </body>
+        </html>
+      `;
+      explanationWindow.document.open();
+      explanationWindow.document.write(explanationHTML);
+      explanationWindow.document.close();
+    });
+
+    /***********************************************
+     * Main Simulation Handler
+     ***********************************************/
+    document.getElementById("simulateButton").addEventListener("click", async () => {
+      const ticker = document.getElementById("ticker").value.trim();
+      const futureDateStr = document.getElementById("futureDate").value;
+      const numSims = parseInt(document.getElementById("numSims").value, 10);
+
+      if (!ticker || !futureDateStr) {
+        alert("Please provide a ticker and a future date.");
+        return;
+      }
+      // Calculate time horizon T (in years).
+      const futureDate = new Date(futureDateStr);
+      const now = new Date();
+      const T = (futureDate - now) / (365 * 24 * 60 * 60 * 1000);
+      if (T <= 0) {
+        alert("The future date must be in the future.");
+        return;
+      }
+
+      // Fetch historical price data.
+      let prices;
+      try {
+        prices = await fetchHistoricalData(ticker);
+      } catch (err) {
+        alert("Error fetching historical data: " + err.message);
+        return;
+      }
+      const stats = computeStats(prices);
+      console.log("Historical stats:", stats);
+
+      // Fetch live options data to calibrate the implied volatility.
+      let optionsIV = await fetchOptionsIV(ticker);
+      if (!optionsIV) {
+        optionsIV = stats.sigma;
+      }
+      // For dbHJ, set initial variances.
+      const v10 = optionsIV * optionsIV;  // Primary variance.
+      const v20 = v10 * 0.5;               // Secondary variance component.
+      
+      // Set default parameters for the double Heston processes.
+      const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
+      const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
+      // Set jump parameters.
+      const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+      
+      // Run the dbHJ simulation.
+      const dt = 1 / 252;  // Daily time step.
+      const finalPrices = runDBHJSimulation(stats.lastPrice, v10, v20, stats.mu,
+                                             kappa1, theta1, sigma1, rho1,
+                                             kappa2, theta2, sigma2, rho2,
+                                             lambda, jumpMean, jumpStd,
+                                             T, dt, numSims);
+      
+      // Compute risk metrics.
+      const riskMetrics = computeRiskMetrics(finalPrices, stats.lastPrice);
+      const profitRiskScore = calculateProfitRiskScore(finalPrices, stats, riskMetrics);
+      const riskHTML = `
+        <p><strong>Current Price:</strong> ${stats.lastPrice.toFixed(2)}</p>
+        <p><strong>VaR (5th percentile):</strong> ${riskMetrics.varPrice.toFixed(2)} (${riskMetrics.varPct.toFixed(2)}% loss)</p>
+        <p><strong>CVaR (Expected Shortfall):</strong> ${riskMetrics.cvarPrice.toFixed(2)} (${riskMetrics.cvarPct.toFixed(2)}% loss)</p>
+        <p><strong>Profit/Risk Score:</strong> ${profitRiskScore.toFixed(2)}</p>
+      `;
+      document.getElementById("riskMetrics").innerHTML = riskHTML;
+
+      // Render the simulation histogram.
+      renderChart(finalPrices, stats.lastPrice);
+      document.getElementById("chartSection").style.display = "block";
+
+      // Set up the target slider.
+      const slider = document.getElementById("targetSlider");
+      slider.min = Math.min(...finalPrices).toFixed(2);
+      slider.max = Math.max(...finalPrices).toFixed(2);
+      slider.value = stats.lastPrice.toFixed(2);
+      updateSliderProb(finalPrices);
+      slider.oninput = () => updateSliderProb(finalPrices);
+    });
+  </script>
+</body>
+</html>
