@@ -371,7 +371,7 @@
       const f = (P_gain * U) - ((1 - P_gain) * D);
       
       // Scale f so that f=0 gives a score of 50, f=0.2 yields 100, and f=-0.2 yields 0.
-      let rawScore = 50 + (f / 0.5) * 50;
+      let rawScore = 50 + (f / 0.6) * 50;
       rawScore = Math.max(0, Math.min(100, rawScore));
       return rawScore;
     }
