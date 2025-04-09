@@ -1396,55 +1396,58 @@ function updateInsiderCharts(insiderData) {
   });
 
   Highcharts.chart('insiderChart', {
-    chart: { backgroundColor: 'var(--secondary-bg)' },
-    title: { text: 'Combined Insider Transactions & MSPR Trend', style: { color: 'var(--text-color)' } },
-    xAxis: { 
-      type: 'datetime', 
-      labels: { style: { color: 'var(--text-color)' } }
-    },
-    yAxis: {
-    min: -100,  // Let it drop to –100 so negative values appear
+  chart: { backgroundColor: 'var(--secondary-bg)' },
+  title: { text: 'Combined Insider Transactions & MSPR Trend', style: { color: 'var(--text-color)' } },
+  xAxis: { 
+    type: 'datetime', 
+    labels: { style: { color: 'var(--text-color)' } }
+  },
+  yAxis: {
+    min: -100,     // Explicitly set the minimum
+    floor: -100,   // Force the axis to not go above this floor
     title: { text: 'Shares / MSPR' },
-      labels: { style: { color: 'var(--text-color)' } }
+    labels: { style: { color: 'var(--text-color)' } }
+  },
+  tooltip: {
+    shared: true,
+    formatter: function() {
+      let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
+      this.points.forEach(point => {
+        if (point.series.type === 'column') {
+          tooltip += point.series.name + ': ' + point.y + '<br/>';
+        } else if (point.series.type === 'spline') {
+          tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
+        }
+      });
+      return tooltip;
+    }
+  },
+  series: [
+    {
+      type: 'column',
+      name: 'Buys',
+      data: buyData,  // Assume these are already numeric
+      color: '#16a34a'
     },
-    tooltip: {
-      shared: true,
-      formatter: function() {
-        let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
-        this.points.forEach(point => {
-          if (point.series.type === 'column') {
-            tooltip += point.series.name + ': ' + point.y + '<br/>';
-          } else if (point.series.type === 'spline') {
-            tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
-          }
-        });
-        return tooltip;
-      }
+    {
+      type: 'column',
+      name: 'Sells',
+      data: sellData, // Assume these are already numeric
+      color: '#dc2626'
     },
-    series: [
-      {
-        type: 'column',
-        name: 'Buys',
-        data: buyData,
-        color: '#16a34a'
-      },
-      {
-        type: 'column',
-        name: 'Sells',
-        data: sellData,
-        color: '#dc2626'
-      },
-      {
-        type: 'spline',
-        name: 'Insider MSPR Trend',
-        data: trendData,
-        color: 'yellow',
-        marker: { enabled: true }
-      }
-    ],
-    credits: { enabled: false },
-    legend: { itemStyle: { color: 'var(--text-color)' } }
-  });
+    {
+      type: 'spline',
+      name: 'Insider MSPR Trend',
+      // Convert the second element to number in case it is a string:
+      data: trendData.map(point => [ point[0], parseFloat(point[1]) ]),
+      color: 'yellow',
+      marker: { enabled: true }
+    }
+  ],
+  credits: { enabled: false },
+  legend: { itemStyle: { color: 'var(--text-color)' } }
+});
+
   
   // Update the insider details element with the overall insider score.
   document.getElementById('insiderDetails').innerText = 
