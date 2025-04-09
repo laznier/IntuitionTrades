@@ -902,39 +902,76 @@
         type: 'datetime',
         crosshair: true
       },
-      yAxis: [
-        {
-          title: { text: 'Price', style: { color: '#fff' } },
-          height: '40%',
-          lineWidth: 2,
-          gridLineColor: '#444'
-        },
-        {
-          title: { text: 'MACD', style: { color: '#fff' } },
-          top: '40%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444'
-        },
-        {
-          title: { text: 'Ichimoku', style: { color: '#fff' } },
-          top: '60%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444'
-        },
-        {
-          title: { text: 'RSI', style: { color: '#fff' } },
-          top: '80%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444',
-          plotLines: [
-            { value: 30, color: 'red', dashStyle: 'Dash', width: 1, label: { text: '30', style: { color: 'red' } } },
-            { value: 70, color: 'red', dashStyle: 'Dash', width: 1, label: { text: '70', style: { color: 'red' } } }
-          ]
-        }
-      ],
+      
+  yAxis: [
+  {
+    title: { text: 'Price', style: { color: '#fff' } },
+    height: '40%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',  // You may choose 'left' if you prefer
+      x: -5,           // Adjust as needed
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'MACD', style: { color: '#fff' } },
+    top: '40%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'Ichimoku', style: { color: '#fff' } },
+    top: '60%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'RSI', style: { color: '#fff' } },
+    top: '80%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    },
+    plotLines: [
+      {
+        value: 30,
+        color: 'red',
+        dashStyle: 'Dash',
+        width: 1,
+        label: { text: '30', style: { color: 'red' } }
+      },
+      {
+        value: 70,
+        color: 'red',
+        dashStyle: 'Dash',
+        width: 1,
+        label: { text: '70', style: { color: 'red' } }
+      }
+    ]
+  }
+],
       tooltip: {
         shared: true,
         xDateFormat: '%Y-%m-%d'
