@@ -2267,19 +2267,50 @@ Score = 0.5 × (100 / [1 + e^(-k × slope)]) + 0.5 × (average sentiment)
       </p>
     </section>
     
-    <!-- Insider Trading Section -->
-    <section>
-      <h2>Insider Trading Analysis</h2>
-      <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
-      <pre>
-Insider Score = ((Total Buys - Total Sells) / (Total Buys + Total Sells)) × 50 + 50
-      </pre>
-      <p>
-        The system filters insider transactions by date (within the historical period) and share price 
-        (within ±50% of the current price). Acquisitions add to "buys" and dispositions add to "sells." 
-        A net positive means more buying than selling, increasing the bullish score above 50.
-      </p>
-    </section>
+<!-- Insider Trading Section -->
+<section>
+  <h2>Insider Trading Analysis</h2>
+  <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
+  <pre>
+Final Insider Score = (0.25 × Normalized Final MSPR) 
+                     + (0.50 × Normalized Transaction Score) 
+                     + (0.25 × Trend Component)
+  </pre>
+  <p>
+    This methodology integrates both insider transaction data from Alpha Vantage API and insider sentiment (MSPR) data from Finnhub API. The process is as follows:
+  </p>
+  <ol>
+    <li>
+      <strong>Data Filtering and Aggregation:</strong> Insider transactions are filtered by date (only those within the historical period)
+      and share price (only those within ±50% of the most recent closing price). Transactions are then aggregated by day—acquisitions (“buys”) and
+      dispositions (“sells”) are separately totaled. These volume figures are represented as columns on the right-hand side y-axis.
+    </li>
+    <li>
+      <strong>Insider Sentiment (MSPR):</strong> Simultaneously, insider sentiment data (known as MSPR) is fetched via our API.
+      The MSPR values are calculated on a monthly basis and are plotted as a spline on the left-hand y-axis that is scaled from –100 to +100.
+      Negative MSPR values indicate predominantly selling sentiment and positive MSPR values indicate buying sentiment.
+    </li>
+    <li>
+      <strong>Score Calculations:</strong>
+      <br>
+      • The <em>Normalized Final MSPR</em> is derived from the most recent monthly MSPR value on a –100 to +100 scale.
+      <br>
+      • The <em>Normalized Transaction Score</em> is calculated as: 
+      <br>
+        ((Total Buys – Total Sells) / (Total Buys + Total Sells)) × 100, then normalized to a scale of 0 to 100.
+      <br>
+      • The <em>Trend Component</em> is computed by applying a regression to the monthly MSPR values over the historical period and normalizing the resulting slope.
+    </li>
+  </ol>
+  <p>
+    The final Insider Bullish Score is a weighted average, reflecting both the raw transactions and the insider sentiment trend.
+    A score above 50 signals a net buying sentiment (bullish), while a score below 50 indicates net selling sentiment (bearish).
+  </p>
+  <p>
+    In the chart, the left y-axis plots the Insider MSPR Trend (–100 to +100), while the right y-axis shows the volume of insider shares bought or sold.
+  </p>
+</section>
+
     
     <!-- Congress Trading Section -->
     <section>

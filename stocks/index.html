@@ -1245,49 +1245,228 @@
       `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
     return finalBullishScore;
   }
-  async function fetchInsiderData(ticker, periodMonths, currentPrice) {
-    const url = `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
-    if(!data.data || !Array.isArray(data.data)) throw new Error("No insider data array found.");
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - periodMonths);
-    let totalBuys = 0, totalSells = 0;
-    data.data.forEach(item => {
-      if(!item.transaction_date || !item.acquisition_or_disposal || !item.shares) return;
-      if(!item.share_price || parseFloat(item.share_price) === 0) return;
-      const tradePrice = parseFloat(item.share_price);
-      const lb = currentPrice * 0.5, ub = currentPrice * 1.5;
-      if(tradePrice < lb || tradePrice > ub) return;
-      const dt = new Date(item.transaction_date);
-      if(dt >= cutoff && !isNaN(dt)){
-        const shares = parseFloat(item.shares);
-        if(item.acquisition_or_disposal === "A") totalBuys += shares;
-        else if(item.acquisition_or_disposal === "D") totalSells += shares;
-      }
-    });
-    return { totalBuys, totalSells };
+  async function fetchAndProcessInsiderData(ticker, periodMonths, lastPrice) {
+  // --- Fetch Insider Transactions ---
+  const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch insider data. Status: " + response.status);
   }
-  function updateInsiderChart(totalBuys, totalSells) {
-    const categories = ["Bought", "Sold"];
-    const data = [totalBuys, totalSells];
-    Highcharts.chart("insiderChart", {
-      chart: { type: "column", backgroundColor: "transparent" },
-      title: { text: "Shares", style: { color: "#fff" } },
-      xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
-      yAxis: { title: { text: "Shares", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
-      tooltip: { formatter: function() { return this.x + ": " + this.y; } },
-      series: [{ name: "Shares", data: data, colorByPoint: true, colors: ["green", "red"] }],
-      credits: { enabled: false },
-      legend: { enabled: false }
-    });
-    let sum = totalBuys + totalSells;
-    let insiderBull = 50;
-    if (sum > 0) { insiderBull = ((totalBuys - totalSells) / sum) * 50 + 50; }
-    document.getElementById("insiderDetails").innerText =
-      `Insider Bullish Score: ${insiderBull.toFixed(2)}%`;
-    return insiderBull;
+  const data = await response.json();
+  if (!data.data || !Array.isArray(data.data)) {
+    throw new Error("Invalid insider data format.");
   }
+  const lowerBound = lastPrice * 0.5;
+  const upperBound = lastPrice * 1.5;
+  const cutoff = new Date();
+  // Use periodMonths here (months based cutoff)
+  cutoff.setMonth(cutoff.getMonth() - periodMonths);
+  
+  const filtered = data.data.filter(item => {
+    const d = new Date(item.transaction_date);
+    if (isNaN(d) || d < cutoff) return false;
+    const sharePrice = parseFloat(item.share_price);
+    if (isNaN(sharePrice) || sharePrice === 0) return false;
+    return sharePrice >= lowerBound && sharePrice <= upperBound;
+  });
+  filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+
+  let totalBuys = 0, totalSells = 0;
+  filtered.forEach(item => {
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') totalBuys += shares;
+    else if (item.acquisition_or_disposal === 'D') totalSells += shares;
+  });
+
+  // --- Aggregate Transactions by Day (for charting) ---
+  let aggregatedTimeSeries = {};
+  filtered.forEach(item => {
+    const d = new Date(item.transaction_date);
+    const dateStr = d.toISOString().substring(0,10);
+    if (!aggregatedTimeSeries[dateStr]) {
+      aggregatedTimeSeries[dateStr] = { date: new Date(dateStr), buys: 0, sells: 0 };
+    }
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') aggregatedTimeSeries[dateStr].buys += shares;
+    else if (item.acquisition_or_disposal === 'D') aggregatedTimeSeries[dateStr].sells += shares;
+  });
+  let timeSeriesArray = Object.values(aggregatedTimeSeries).sort((a, b) => a.date - b.date);
+
+  // --- Compute Transaction Score Factor ---
+  let transactionScore = 0;
+  if (totalBuys + totalSells > 0) {
+    transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
+  }
+  let normalizedTransactionScore = (transactionScore + 100) / 2;
+
+  // --- Fetch Insider Sentiment (MSPR) Data ---
+  let today = new Date();
+  let pastDate = new Date();
+  // Use months here as well:
+  pastDate.setMonth(today.getMonth() - periodMonths);
+  let fromDateStr = pastDate.toISOString().slice(0,10);
+  let toDateStr = today.toISOString().slice(0,10);
+  const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
+  const sentimentResponse = await fetch(sentimentUrl);
+  if (!sentimentResponse.ok) {
+    throw new Error("Failed to fetch insider sentiment data. Status: " + sentimentResponse.status);
+  }
+  const sentimentJson = await sentimentResponse.json();
+
+  // --- Fill the Timeline for MSPR Data ---
+  let requestedFrom = new Date(fromDateStr);
+  let sentimentStart;
+  if (sentimentJson.data && sentimentJson.data.length > 0) {
+    let sortedSentiment = sentimentJson.data.slice().sort((a, b) => {
+      let d1 = new Date(a.year, a.month - 1, 1);
+      let d2 = new Date(b.year, b.month - 1, 1);
+      return d1 - d2;
+    });
+    let firstData = sortedSentiment[0];
+    let firstDataDate = new Date(firstData.year, firstData.month - 1, 1);
+    sentimentStart = firstDataDate < requestedFrom ? firstDataDate : requestedFrom;
+  } else {
+    sentimentStart = requestedFrom;
+  }
+  let endFillDate = new Date(toDateStr);
+  let filledData = [];
+  let currentDateForSentiment = new Date(sentimentStart);
+  while (currentDateForSentiment <= endFillDate) {
+    let year = currentDateForSentiment.getFullYear();
+    let month = currentDateForSentiment.getMonth() + 1; // JavaScript months are 0-indexed
+    let found = sentimentJson.data && sentimentJson.data.find(pt => pt.year === year && pt.month === month);
+    if (found) {
+      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
+    } else {
+      // If no data exists for this month, default the MSPR to 0
+      filledData.push({ year: year, month: month, mspr: 0 });
+    }
+    currentDateForSentiment.setMonth(currentDateForSentiment.getMonth() + 1);
+  }
+  let filledSentimentCategories = filledData.map(pt => `${pt.year}-${pt.month.toString().padStart(2, '0')}`);
+  let filledSentimentValues = filledData.map(pt => pt.mspr);
+
+  // --- Compute Insider Sentiment Components ---
+  let finalMspr = filledData[filledData.length - 1].mspr;
+  let normalizedFinalMspr = (finalMspr + 100) / 2;
+  let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
+  let avgMspr = sumMspr / filledData.length;
+  let normalizedAvgMspr = (avgMspr + 100) / 2;
+  let n = filledData.length, sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    let x = i + 1;
+    let y = filledData[i].mspr;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+  }
+  let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  let normalizedSlope = isNaN(slope) ? 50 : (slope + 100) / 2;
+  let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+
+  // --- Final Insider Score Calculation ---
+  const finalInsiderScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
+
+  return {
+    totalBuys: totalBuys,
+    totalSells: totalSells,
+    transactionScore: normalizedTransactionScore,
+    timeSeries: timeSeriesArray,
+    sentimentCategories: filledSentimentCategories,
+    sentimentValues: filledSentimentValues,
+    finalMspr: normalizedFinalMspr,
+    trendComponent: trendComponent,
+    insiderScore: finalInsiderScore
+  };
+}
+
+
+
+function updateInsiderCharts(insiderData) {
+  // Create column series for buys and sells from the aggregated time series.
+  const buyData = insiderData.timeSeries.map(item => [item.date.getTime(), item.buys]);
+  const sellData = insiderData.timeSeries.map(item => [item.date.getTime(), item.sells]);
+
+  // Create a spline series for the insider sentiment trend.
+  // Convert each filled sentiment category (formatted as YYYY-MM) into a timestamp (using the 1st of the month).
+  const trendData = insiderData.sentimentCategories.map((cat, i) => {
+    let d = new Date(cat + "-01");
+    return [d.getTime(), insiderData.sentimentValues[i]];
+  });
+
+  Highcharts.chart('insiderChart', {
+  chart: { backgroundColor: 'var(--secondary-bg)' },
+  title: { text: 'Combined Insider Transactions & MSPR Trend', style: { color: 'var(--text-color)' } },
+  xAxis: { 
+    type: 'datetime', 
+    labels: { style: { color: 'var(--text-color)' } }
+  },
+  yAxis: [
+    { // Left axis for MSPR scores
+      min: -100,
+      max: 100,
+      title: { text: 'Insider MSPR Score (-100 to +100)' },
+      labels: { style: { color: 'var(--text-color)' } }
+    },
+    { // Right axis for number of shares
+      title: { text: 'Number of Shares' },
+      opposite: true,
+      labels: { style: { color: 'var(--text-color)' } }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    formatter: function() {
+      let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
+      this.points.forEach(point => {
+        if (point.series.options.yAxis === 1) {
+          tooltip += point.series.name + ': ' + point.y + '<br/>';
+        } else if (point.series.options.yAxis === 0) {
+          tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
+        }
+      });
+      return tooltip;
+    }
+  },
+  series: [
+    {
+      type: 'column',
+      name: 'Buys',
+      data: buyData,
+      color: '#16a34a',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'column',
+      name: 'Sells',
+      data: sellData,
+      color: '#dc2626',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'spline',
+      name: 'Insider MSPR Trend',
+      // Ensure the second value is a number; if needed use parseFloat.
+      data: trendData.map(point => [ point[0], parseFloat(point[1]) ]),
+      color: 'yellow',
+      marker: { enabled: true },
+      yAxis: 0 // plot on left axis
+    }
+  ],
+  credits: { enabled: false },
+  legend: { itemStyle: { color: 'var(--text-color)' } }
+});
+
+
+  
+  // Update the insider details element with the overall insider score.
+  document.getElementById('insiderDetails').innerText = 
+      `Insider Bullish Score: ${insiderData.insiderScore.toFixed(2)}%`;
+  return insiderData.insiderScore;
+}
+
+
   async function fetchCongressData(ticker, periodMonths) {
     const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
     const resp = await fetch(url);
@@ -1486,129 +1665,138 @@
   /***********************************************
    * runSimulation() – Main Controller
    ***********************************************/
-  async function runSimulation() {
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('aggregateSection').style.display = 'none';
-    document.getElementById('descriptionSection').style.display = 'none';
-    document.getElementById('fundamentalSection').style.display = 'none';
-    document.getElementById('techSection').style.display = 'none';
-    document.getElementById('mcSection').style.display = 'none';
-    document.getElementById('sentSection').style.display = 'none';
-    document.getElementById('insiderSection').style.display = 'none';
-    document.getElementById('congressSection').style.display = 'none';
+   async function runSimulation() {
+  document.getElementById('loading').style.display = 'block';
+  // Hide sections...
+  document.getElementById('aggregateSection').style.display = 'none';
+  document.getElementById('descriptionSection').style.display = 'none';
+  document.getElementById('fundamentalSection').style.display = 'none';
+  document.getElementById('techSection').style.display = 'none';
+  document.getElementById('mcSection').style.display = 'none';
+  document.getElementById('sentSection').style.display = 'none';
+  document.getElementById('insiderSection').style.display = 'none';
+  document.getElementById('congressSection').style.display = 'none';
 
-    let ticker = document.getElementById('ticker').value.trim();
-    let futureDateStr = document.getElementById('futureDate').value;
-    if(!ticker || !futureDateStr){
-      alert("Please enter both a ticker symbol and a future date.");
+  let ticker = document.getElementById('ticker').value.trim();
+  let futureDateStr = document.getElementById('futureDate').value;
+  if (!ticker || !futureDateStr) {
+    alert("Please enter both a ticker symbol and a future date.");
+    document.getElementById('loading').style.display = 'none';
+    return;
+  }
+  let futureDate = new Date(futureDateStr);
+  let currentDate = new Date();
+  let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
+                     (futureDate.getMonth() - currentDate.getMonth());
+  if (diffInMonths < 1) diffInMonths = 1;
+  let recommendedPeriod = diffInMonths * 4;
+  let periodMonths;
+  if (document.getElementById('manualOverrideCheckbox').checked) {
+    periodMonths = parseInt(document.getElementById('manualPeriod').value);
+    if (isNaN(periodMonths) || periodMonths < recommendedPeriod) {
+      alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
+      periodMonths = recommendedPeriod;
+    }
+  } else {
+    periodMonths = recommendedPeriod;
+  }
+
+  try {
+    let regime = await determineSPYMarketRegime(4);
+    console.log("Detected SPY Market Regime => ", regime);
+    let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+    let fundResp = await fetch(fundUrl);
+    let fundamentalData = await fundResp.json();
+    let companyDesc = fundamentalData.Description || "No description available.";
+    let fundBull = 50;
+    let categories = null;
+    if (fundamentalData.Symbol) {
+      categories = computeFundScores(fundamentalData);
+      let catSum = 0, nCats = 0;
+      for (let k in categories) { catSum += categories[k]; nCats++; }
+      fundBull = catSum / nCats;
+    }
+    let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+    let resp = await fetch(histUrl);
+    let data = await resp.json();
+    if (!data["Time Series (Daily)"]) {
+      throw new Error("Unable to retrieve valid historical data.");
+    }
+    let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+    if (prices.length < 2) {
+      alert("Not enough historical data.");
       document.getElementById('loading').style.display = 'none';
       return;
     }
-    let futureDate = new Date(futureDateStr);
-    let currentDate = new Date();
-    let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
-                       (futureDate.getMonth() - currentDate.getMonth());
-    if(diffInMonths < 1) diffInMonths = 1;
-    let recommendedPeriod = diffInMonths * 4;
-    let periodMonths;
-    if(document.getElementById('manualOverrideCheckbox').checked){
-      periodMonths = parseInt(document.getElementById('manualPeriod').value);
-      if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
-        alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
-        periodMonths = recommendedPeriod;
-      }
-    } else {
-      periodMonths = recommendedPeriod;
+
+    // **Compute mcStats here so that mcStats.lastPrice is defined.**
+    let mcStats = computeStats(prices);
+
+    document.getElementById('aggregateSection').style.display = 'block';
+    document.getElementById('descriptionSection').style.display = 'block';
+    document.getElementById('companyDescription').innerText = companyDesc;
+    if (categories) {
+      document.getElementById('fundamentalSection').style.display = 'block';
+      plotFundamentalCategories(categories);
+      document.getElementById('fundamentalText').innerText =
+        `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
     }
-    try {
-      let regime = await determineSPYMarketRegime(4);
-      console.log("Detected SPY Market Regime => ", regime);
-      let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-      let fundResp = await fetch(fundUrl);
-      let fundamentalData = await fundResp.json();
-      let companyDesc = fundamentalData.Description || "No description available.";
-      let fundBull = 50;
-      let categories = null;
-      if(fundamentalData.Symbol){
-        categories = computeFundScores(fundamentalData);
-        let catSum = 0, nCats = 0;
-        for(let k in categories){ catSum += categories[k]; nCats++; }
-        fundBull = catSum / nCats;
-      }
-      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-      let resp = await fetch(histUrl);
-      let data = await resp.json();
-      if(!data["Time Series (Daily)"]){
-        throw new Error("Unable to retrieve valid historical data.");
-      }
-      let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-      if(prices.length < 2){
-        alert("Not enough historical data.");
-        document.getElementById('loading').style.display = 'none';
-        return;
-      }
-      document.getElementById('aggregateSection').style.display = 'block';
-      document.getElementById('descriptionSection').style.display = 'block';
-      document.getElementById('companyDescription').innerText = companyDesc;
-      if(categories){
-        document.getElementById('fundamentalSection').style.display = 'block';
-        plotFundamentalCategories(categories);
-        document.getElementById('fundamentalText').innerText =
-          `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
-      }
-      document.getElementById('techSection').style.display = 'block';
-      let techBull = updateTechChart(prices);
-      let mcStats = computeStats(prices);
-      let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
-      let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-      document.getElementById('mcSection').style.display = 'block';
-      let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-      let sentiments = await fetchSentimentData(ticker, periodMonths);
-      document.getElementById('sentSection').style.display = 'block';
-      let sentBull = updateSentimentChart(sentiments);
-      let insiderObj = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
-      document.getElementById('insiderSection').style.display = 'block';
-      let insiderBull = updateInsiderChart(insiderObj.totalBuys, insiderObj.totalSells);
-      let congressObj = await fetchCongressData(ticker, periodMonths);
-      document.getElementById('congressSection').style.display = 'block';
-      let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
-      let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
-      document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
-      document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
-      simulationReport = {
-        ticker,
-        periodMonths,
-        futureDate: futureDate.toDateString(),
-        mcBull,
-        techBull,
-        sentBull,
-        insiderBull,
-        congressBull,
-        fundamentalBull: fundBull,
-        aggregatedBull,
-        mcStats,
-        description: companyDesc,
-        regime,
-        // Store overall Ichimoku Score for the explanation page:
-        ichimokuScore: (function(){
-          // Compute Ichimoku score from the latest pane calculation
-          let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
-          let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
-          let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
-          let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
-          let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
-          let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
-          let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
-          let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
-          let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
-          return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-        })()
-      };
-    } catch(err) {
-      alert("Error: " + err.message);
-    }
-    document.getElementById('loading').style.display = 'none';
+    document.getElementById('techSection').style.display = 'block';
+    let techBull = updateTechChart(prices);
+    let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
+    let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+    document.getElementById('mcSection').style.display = 'block';
+    let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+    let sentiments = await fetchSentimentData(ticker, periodMonths);
+    document.getElementById('sentSection').style.display = 'block';
+    let sentBull = updateSentimentChart(sentiments);
+
+    
+// Use mcStats.lastPrice (which is now defined from computeStats)
+let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+document.getElementById('insiderSection').style.display = 'block';
+let insiderBull = updateInsiderCharts(insiderData);
+
+
+    let congressObj = await fetchCongressData(ticker, periodMonths);
+    document.getElementById('congressSection').style.display = 'block';
+    let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+    let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+    document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
+    document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+    simulationReport = {
+      ticker,
+      periodMonths,
+      futureDate: futureDate.toDateString(),
+      mcBull,
+      techBull,
+      sentBull,
+      insiderBull,
+      congressBull,
+      fundamentalBull: fundBull,
+      aggregatedBull,
+      mcStats,
+      description: companyDesc,
+      regime,
+      ichimokuScore: (function(){
+        let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
+        let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
+        let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
+        let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
+        let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
+        let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
+        let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
+        let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
+        let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+        return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+      })()
+    };
+  } catch(err) {
+    alert("Error: " + err.message);
   }
+  document.getElementById('loading').style.display = 'none';
+}
+
 
   // Run simulation with overlay on button click
   document.getElementById("simulateButton").addEventListener("click", () => {
@@ -2079,19 +2267,50 @@ Score = 0.5 × (100 / [1 + e^(-k × slope)]) + 0.5 × (average sentiment)
       </p>
     </section>
     
-    <!-- Insider Trading Section -->
-    <section>
-      <h2>Insider Trading Analysis</h2>
-      <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
-      <pre>
-Insider Score = ((Total Buys - Total Sells) / (Total Buys + Total Sells)) × 50 + 50
-      </pre>
-      <p>
-        The system filters insider transactions by date (within the historical period) and share price 
-        (within ±50% of the current price). Acquisitions add to "buys" and dispositions add to "sells." 
-        A net positive means more buying than selling, increasing the bullish score above 50.
-      </p>
-    </section>
+<!-- Insider Trading Section -->
+<section>
+  <h2>Insider Trading Analysis</h2>
+  <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
+  <pre>
+Final Insider Score = (0.25 × Normalized Final MSPR) 
+                     + (0.50 × Normalized Transaction Score) 
+                     + (0.25 × Trend Component)
+  </pre>
+  <p>
+    This methodology integrates both insider transaction data from Alpha Vantage API and insider sentiment (MSPR) data from Finnhub API. The process is as follows:
+  </p>
+  <ol>
+    <li>
+      <strong>Data Filtering and Aggregation:</strong> Insider transactions are filtered by date (only those within the historical period)
+      and share price (only those within ±50% of the most recent closing price). Transactions are then aggregated by day—acquisitions (“buys”) and
+      dispositions (“sells”) are separately totaled. These volume figures are represented as columns on the right-hand side y-axis.
+    </li>
+    <li>
+      <strong>Insider Sentiment (MSPR):</strong> Simultaneously, insider sentiment data (known as MSPR) is fetched via our API.
+      The MSPR values are calculated on a monthly basis and are plotted as a spline on the left-hand y-axis that is scaled from –100 to +100.
+      Negative MSPR values indicate predominantly selling sentiment and positive MSPR values indicate buying sentiment.
+    </li>
+    <li>
+      <strong>Score Calculations:</strong>
+      <br>
+      • The <em>Normalized Final MSPR</em> is derived from the most recent monthly MSPR value on a –100 to +100 scale.
+      <br>
+      • The <em>Normalized Transaction Score</em> is calculated as: 
+      <br>
+        ((Total Buys – Total Sells) / (Total Buys + Total Sells)) × 100, then normalized to a scale of 0 to 100.
+      <br>
+      • The <em>Trend Component</em> is computed by applying a regression to the monthly MSPR values over the historical period and normalizing the resulting slope.
+    </li>
+  </ol>
+  <p>
+    The final Insider Bullish Score is a weighted average, reflecting both the raw transactions and the insider sentiment trend.
+    A score above 50 signals a net buying sentiment (bullish), while a score below 50 indicates net selling sentiment (bearish).
+  </p>
+  <p>
+    In the chart, the left y-axis plots the Insider MSPR Trend (–100 to +100), while the right y-axis shows the volume of insider shares bought or sold.
+  </p>
+</section>
+
     
     <!-- Congress Trading Section -->
     <section>
