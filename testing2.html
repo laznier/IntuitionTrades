@@ -2194,7 +2194,57 @@ Score_WMA = Base_WMA × (1 + 0.5 × dx)
         </li>
       </ul>
       <p>
-        <em>Technical Bullish Score</em> = (RSI + Bollinger + MACD + WMA) / 4
+        <section>
+  <h2>Ichimoku Cloud Analysis</h2>
+  <p>
+    The Ichimoku Cloud indicator provides a multifaceted view of price action by defining support and resistance,
+    identifying trend direction, and revealing momentum. It is composed of the following components:
+  </p>
+  <ul>
+    <li>
+      <strong>Tenkan-sen (Conversion Line):</strong> The average of the highest high and lowest low over the past 9 periods.
+    </li>
+    <li>
+      <strong>Kijun-sen (Base Line):</strong> The average of the highest high and lowest low over the past 26 periods.
+    </li>
+    <li>
+      <strong>Senkou Span A (Leading Span A):</strong> The average of the Tenkan-sen and Kijun-sen, shifted 26 periods forward.
+    </li>
+    <li>
+      <strong>Senkou Span B (Leading Span B):</strong> The average of the highest high and lowest low over the past 52 periods, shifted 26 periods forward.
+    </li>
+    <li>
+      <strong>Chikou Span (Lagging Span):</strong> The current closing price shifted 26 periods back.
+    </li>
+  </ul>
+  <p><strong>Scoring Method:</strong></p>
+  <pre>
+Cloud Score:
+  Score = 100 / (1 + exp(-1 × (Price - Senkou Span A)))
+  
+Tenkan/Kijun Cross Score:
+  Score = 100 / (1 + exp(-0.2 × (Tenkan-sen - Kijun-sen)))
+  
+Chikou Span Score:
+  Score = 100 / (1 + exp(-0.1 × (Price - Price 26 periods ago)))
+  
+Senkou Cross Score:
+  Score = 100 / (1 + exp(-3 × ((Senkou Span A - Senkou Span B) / ((Senkou Span A + Senkou Span B)/2))))
+  
+Overall Ichimoku Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
+  </pre>
+  <p>
+    In our analysis, these individual scores are combined to form the overall Ichimoku signal. This signal is then
+    averaged with the scores from RSI, Bollinger Bands, MACD, and WMA to yield the final technical bullish score.
+  </p>
+  <p>
+    Overall, the Ichimoku Cloud signal in this report is shown as <strong>
+    ${techReport.ichimokuScores ? techReport.overallIchimoku.toFixed(2) : 'N/A'}%
+    </strong>.
+  </p>
+</section>
+
+        <em>Technical Bullish Score</em> = (RSI + Bollinger + MACD + WMA + Ichimoku) / 5
       </p>
     </section>
     
