@@ -276,7 +276,13 @@
       const gapScore = 100 / (1 + Math.exp(-k * delta));
       return { gapScore, delta, currentGap, predictedGap };
     }
-    
+    console.log("Last six histogram values:", lastSixHistogramValues);
+console.log("Polynomial regression coefficients:", coeffs);
+console.log("Predicted histogram value:", predicted);
+console.log("Last actual histogram value:", lastValue);
+console.log("Delta:", delta);
+console.log("Momentum Score:", momentumScore);
+
     // Compute the overall MACD score using Position Score, Gap Trend Score, and Momentum Score.
     function computeNewMACDScore(prices) {
       const macdData = computeMACD(prices);
