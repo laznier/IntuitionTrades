@@ -1718,21 +1718,19 @@ function updateInsiderCharts(insiderData) {
       }
       document.getElementById('techSection').style.display = 'block';
       let techBull = updateTechChart(prices);
-      let mcStats = computeStats(prices);
-      let T = (futureDate - prices[prices.length-1].date) / (365*24*60*60*1000);
-      let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-      document.getElementById('mcSection').style.display = 'block';
-      let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-      let sentiments = await fetchSentimentData(ticker, periodMonths);
-      document.getElementById('sentSection').style.display = 'block';
-      let sentBull = updateSentimentChart(sentiments);
+      let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
+let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+document.getElementById('mcSection').style.display = 'block';
+let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+let sentiments = await fetchSentimentData(ticker, periodMonths);
+document.getElementById('sentSection').style.display = 'block';
+let sentBull = updateSentimentChart(sentiments);
     
 
-// Use the same historical period as the entire app.
-let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, lastPrice);
-    document.getElementById('insiderSection').style.display = 'block';
-    let insiderBull = updateInsiderCharts(insiderData);
-
+// Use mcStats.lastPrice instead of undefined lastPrice.
+let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+document.getElementById('insiderSection').style.display = 'block';
+let insiderBull = updateInsiderCharts(insiderData);
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
       document.getElementById('congressSection').style.display = 'block';
