@@ -1402,20 +1402,27 @@ function updateInsiderCharts(insiderData) {
     type: 'datetime', 
     labels: { style: { color: 'var(--text-color)' } }
   },
-  yAxis: {
-    min: -100,     // Explicitly set the minimum
-    floor: -100,   // Force the axis to not go above this floor
-    title: { text: 'Shares / MSPR' },
-    labels: { style: { color: 'var(--text-color)' } }
-  },
+  yAxis: [
+    { // Left axis for MSPR scores
+      min: -100,
+      max: 100,
+      title: { text: 'Insider MSPR Score (-100 to +100)' },
+      labels: { style: { color: 'var(--text-color)' } }
+    },
+    { // Right axis for number of shares
+      title: { text: 'Number of Shares' },
+      opposite: true,
+      labels: { style: { color: 'var(--text-color)' } }
+    }
+  ],
   tooltip: {
     shared: true,
     formatter: function() {
       let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
       this.points.forEach(point => {
-        if (point.series.type === 'column') {
+        if (point.series.options.yAxis === 1) {
           tooltip += point.series.name + ': ' + point.y + '<br/>';
-        } else if (point.series.type === 'spline') {
+        } else if (point.series.options.yAxis === 0) {
           tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
         }
       });
@@ -1426,27 +1433,31 @@ function updateInsiderCharts(insiderData) {
     {
       type: 'column',
       name: 'Buys',
-      data: buyData,  // Assume these are already numeric
-      color: '#16a34a'
+      data: buyData,
+      color: '#16a34a',
+      yAxis: 1 // plot on right axis
     },
     {
       type: 'column',
       name: 'Sells',
-      data: sellData, // Assume these are already numeric
-      color: '#dc2626'
+      data: sellData,
+      color: '#dc2626',
+      yAxis: 1 // plot on right axis
     },
     {
       type: 'spline',
       name: 'Insider MSPR Trend',
-      // Convert the second element to number in case it is a string:
+      // Ensure the second value is a number; if needed use parseFloat.
       data: trendData.map(point => [ point[0], parseFloat(point[1]) ]),
       color: 'yellow',
-      marker: { enabled: true }
+      marker: { enabled: true },
+      yAxis: 0 // plot on left axis
     }
   ],
   credits: { enabled: false },
   legend: { itemStyle: { color: 'var(--text-color)' } }
 });
+
 
   
   // Update the insider details element with the overall insider score.
