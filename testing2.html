@@ -954,15 +954,144 @@ function computeIchimoku(prices) {
   let wmas = computeWMA(prices);
   let rsivals = computeRSI(prices, 14);
   let macdData = computeMACD(prices);
-  
-  // --- New: Compute Ichimoku Cloud Data ---
+
+  // --- Compute Ichimoku Cloud Data ---
   let ichimokuData = computeIchimoku(prices);
 
-  // Helper to convert date/value pairs for Highcharts
+  // Helper: Convert an array of objects into a Highcharts time series array.
   const toTimeSeries = (data, valueKey) =>
     data.map(item => [item.date.getTime(), item[valueKey]]);
-  
-  // Render chart using Highcharts (existing multi-pane layout)
+
+  // Series for the price and moving averages (Price Pane, yAxis 0)
+  const priceSeries = {
+    name: 'Historical',
+    data: toTimeSeries(prices, 'close'),
+    type: 'line',
+    zIndex: 3,
+    yAxis: 0
+  };
+  const smaSeries = {
+    name: 'Bollinger SMA',
+    data: toTimeSeries(bands, 'sma'),
+    type: 'line',
+    dashStyle: 'Dash',
+    color: '#555',
+    zIndex: 2,
+    yAxis: 0
+  };
+  const upperSeries = {
+    name: 'Upper Band',
+    data: toTimeSeries(bands, 'upper'),
+    type: 'line',
+    color: 'red',
+    zIndex: 1,
+    yAxis: 0
+  };
+  const lowerSeries = {
+    name: 'Lower Band',
+    data: toTimeSeries(bands, 'lower'),
+    type: 'line',
+    color: 'red',
+    zIndex: 1,
+    yAxis: 0
+  };
+  const wmaSeries = {
+    name: 'WMA',
+    data: toTimeSeries(wmas, 'wma'),
+    type: 'line',
+    color: 'orange',
+    zIndex: 2,
+    yAxis: 0
+  };
+
+  // --- New: Ichimoku Cloud Series (all plotted on the Price pane, yAxis 0) ---
+  const tenkanSeries = {
+    name: 'Tenkan-sen',
+    data: toTimeSeries(ichimokuData.tenkan, 'value'),
+    type: 'line',
+    color: 'blue',
+    zIndex: 4,
+    yAxis: 0
+  };
+  const kijunSeries = {
+    name: 'Kijun-sen',
+    data: toTimeSeries(ichimokuData.kijun, 'value'),
+    type: 'line',
+    color: 'red',
+    zIndex: 4,
+    yAxis: 0
+  };
+  const senkouASeries = {
+    name: 'Senkou Span A',
+    data: toTimeSeries(ichimokuData.senkouA, 'value'),
+    type: 'line',
+    color: 'green',
+    zIndex: 3,
+    yAxis: 0
+  };
+  const senkouBSeries = {
+    name: 'Senkou Span B',
+    data: toTimeSeries(ichimokuData.senkouB, 'value'),
+    type: 'line',
+    color: 'brown',
+    zIndex: 3,
+    yAxis: 0
+  };
+  const chikouSeries = {
+    name: 'Chikou Span',
+    data: toTimeSeries(ichimokuData.chikou, 'value'),
+    type: 'line',
+    color: 'purple',
+    zIndex: 2,
+    yAxis: 0
+  };
+
+  // Series for MACD indicators (MACD pane, yAxis 1)
+  const macdSeries = {
+    name: 'MACD',
+    data: toTimeSeries(macdData.macdLine, 'macd'),
+    type: 'line',
+    yAxis: 1,
+    zIndex: 3
+  };
+  const signalSeries = {
+    name: 'Signal',
+    data: toTimeSeries(macdData.signalLine, 'signal'),
+    type: 'line',
+    yAxis: 1,
+    zIndex: 3
+  };
+  const macdHistogram = {
+    name: 'MACD Histogram',
+    data: macdData.macdLine.map((m, i) => {
+      let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+      return [m.date.getTime(), m.macd - sig];
+    }),
+    type: 'column',
+    yAxis: 1,
+    zIndex: 1,
+    tooltip: { valueDecimals: 2 },
+    zones: [{
+      value: 0, // below zero => red
+      color: 'red'
+    }, {
+      color: 'green'
+    }]
+  };
+
+  // Series for RSI (RSI pane, yAxis 2)
+  const rsiSeries = {
+    name: 'RSI',
+    data: toTimeSeries(rsivals, 'rsi'),
+    type: 'line',
+    yAxis: 2,
+    zIndex: 2
+  };
+
+  // Build the Highcharts chart with three vertical panes:
+  // - yAxis 0: Price pane (with Ichimoku overlay)
+  // - yAxis 1: MACD pane
+  // - yAxis 2: RSI pane
   Highcharts.chart('techChart', {
     chart: {
       zoomType: 'x',
@@ -1018,26 +1147,20 @@ function computeIchimoku(prices) {
       itemStyle: { color: '#fff' }
     },
     series: [
-      { name: 'Historical', data: toTimeSeries(prices, 'close'), type: 'line', zIndex: 3 },
-      { name: 'Bollinger SMA', data: toTimeSeries(bands, 'sma'), type: 'line', dashStyle: 'Dash', color: '#555', zIndex: 2 },
-      { name: 'Upper Band', data: toTimeSeries(bands, 'upper'), type: 'line', color: 'red', zIndex: 1 },
-      { name: 'Lower Band', data: toTimeSeries(bands, 'lower'), type: 'line', color: 'red', zIndex: 1 },
-      { name: 'WMA', data: toTimeSeries(wmas, 'wma'), type: 'line', color: 'orange', zIndex: 2 },
-      { name: 'MACD', data: toTimeSeries(macdData.macdLine, 'macd'), type: 'line', yAxis: 1, zIndex: 3 },
-      { name: 'Signal', data: toTimeSeries(macdData.signalLine, 'signal'), type: 'line', yAxis: 1, zIndex: 3 },
-      { 
-        name: 'MACD Histogram', 
-        data: macdData.macdLine.map((m, i) => {
-          let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
-          return [m.date.getTime(), m.macd - sig];
-        }), 
-        type: 'column', 
-        yAxis: 1, 
-        zIndex: 1, 
-        tooltip: { valueDecimals: 2 },
-        zones: [{ value: 0, color: 'red' }, { color: 'green' }]
-      },
-      { name: 'RSI', data: toTimeSeries(rsivals, 'rsi'), type: 'line', yAxis: 2, zIndex: 2 }
+      priceSeries,
+      smaSeries,
+      upperSeries,
+      lowerSeries,
+      wmaSeries,
+      tenkanSeries,
+      kijunSeries,
+      senkouASeries,
+      senkouBSeries,
+      chikouSeries,
+      macdHistogram,
+      macdSeries,
+      signalSeries,
+      rsiSeries
     ],
     credits: { enabled: false },
     plotOptions: {
@@ -1046,31 +1169,24 @@ function computeIchimoku(prices) {
     style: { fontFamily: 'Arial, sans-serif' }
   });
 
-  // Check for enough data to compute scores.
+  // --- Compute individual scores for technical aggregated score ---
   if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
     document.getElementById('techDetails').innerText = "Not enough data => default 50.";
     return 50;
   }
-  
-  // Calculate individual scores.
   let latestPrice = prices[prices.length - 1].close;
   let prevPrice = prices[prices.length - 2].close;
-  
   let latestRSI = rsivals[rsivals.length - 1].rsi;
   let prevRSI = rsivals[rsivals.length - 2].rsi;
   let rsiScore = scoreRSI(latestRSI, prevRSI);
-  
   let latestBand = bands[bands.length - 1];
   let prevBand = bands[bands.length - 2];
   let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
-  
   let macdScore = computeNewMACDScore(prices);
-  
   let latestWMA = wmas[wmas.length - 1].wma;
   let prevWMA = wmas[wmas.length - 2].wma;
   let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
-  
-  // --- New: Ichimoku Score Calculation ---
+  // Ichimoku Score Calculation using our computed ichimokuData
   let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
   let cloudScore = 100 / (1 + Math.exp(-1 * (latestPrice - ichimokuLatestSenkouA)));
   let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
@@ -1082,13 +1198,14 @@ function computeIchimoku(prices) {
   let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
   let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
   
-  // Aggregate overall technical score from all five indicators.
+  // Aggregate overall technical bullish score from all five indicators.
   let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
   document.getElementById('techDetails').innerText =
     `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
   
   return aggregatedScore;
 }
+
 
   // Compute technical score as before
   if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
