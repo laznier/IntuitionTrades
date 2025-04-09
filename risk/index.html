@@ -35,24 +35,21 @@
       margin-top: 15px;
       font-weight: bold;
     }
-    input, button, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #555;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-      color: var(--text-color);
-      font-size: 1rem;
-    }
     button {
-      background: var(--accent-color);
-      margin-top: 20px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #1e3a8a;
-    }
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: var(--accent-color);
+  color: var(--text-color);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--transition-speed);
+}
+button:hover {
+  background: #1e3a8a;
+}
+    
     .section {
       margin-top: 30px;
       padding: 20px;
@@ -130,6 +127,9 @@
   </style>
 </head>
 <body>
+    <!-- Back to Home Button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+
   <h1>dbHJ Risk vs Reward Tool</h1>
   <p>
     This tool uses a double Heston stochastic volatility jump‐diffusion (dbHJ) model—with jump‐risk mitigation calibrated via live options pricing—to estimate the risk and reward potential of a given stock over a future time horizon.
