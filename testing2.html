@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Analyst Bullish Score | Intuition Trades</title>
-  <!-- Include Highcharts for Charting -->
+  <title>Standalone Technical Analysis</title>
+  <!-- Include Highcharts for Charting (Standard and Stock) -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <!-- Include Math.js for regression calculations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
     :root {
       --primary-bg: #111;
@@ -24,17 +27,21 @@
       padding: 2rem;
       line-height: 1.6;
     }
-    h1, h2 {
+    h1 {
       text-align: center;
+      margin-bottom: 20px;
       font-weight: 600;
     }
-    h1 {
-      margin-bottom: 20px;
-    }
-    p, label {
+    p, li, label {
       margin-bottom: 0.75em;
     }
-    input[type="text"] {
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       padding: 8px;
       margin-top: 5px;
@@ -81,33 +88,44 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    /* Meter styling used for Combined Score */
-    .meter-section {
+    .section {
       margin-top: 30px;
       padding: 20px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: var(--secondary-bg);
     }
-    .meter-section h2 {
+    .section h2 {
       margin-bottom: 10px;
       font-weight: 600;
     }
-    .meter {
+    .chartContainer {
+      margin-top: 20px;
+    }
+    /* Aggregated Signal Meter styles */
+    #aggregateSection {
+      display: none;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #aggregateBar {
       position: relative;
       background: linear-gradient(to right, red, green);
       height: 30px;
       border-radius: 15px;
       margin: 10px 0;
     }
-    .marker {
+    #aggregateMarker {
       position: absolute;
       top: 0;
       width: 2px;
       height: 100%;
-      background: #fff;
+      background: var(--text-color);
     }
-    .score-text {
+    #aggregateScoreText {
       position: absolute;
       width: 100%;
       text-align: center;
@@ -120,56 +138,33 @@
       margin-top: 10px;
       font-style: italic;
       color: var(--accent-color);
-      text-align: center;
       display: none;
-    }
-    /* Analyst Ratings Breakdown Section */
-    .breakdown-section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    .breakdown-section table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .breakdown-section th, .breakdown-section td {
-      border: 1px solid #555;
-      padding: 6px;
-      text-align: left;
-    }
-    .breakdown-section th {
-      background: #222;
-    }
-    /* Price Comparison Chart Section */
-    .chart-section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    /* Explanation Button */
-    .explanation-btn {
-      display: block;
-      margin: 30px auto 0;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    .explanation-btn:hover {
-      background: #1e3a8a;
     }
     /* Back to Home Button */
     #backHome {
       margin-bottom: 20px;
+    }
+    /* Mobile-specific adjustments */
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 10px;
+      }
+      .section {
+        padding: 10px;
+        margin-top: 15px;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+      }
+      .chartContainer {
+        margin-top: 10px;
+      }
     }
   </style>
 </head>
@@ -177,72 +172,79 @@
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Analyst Bullish Score</h1>
-  <p>Enter a ticker symbol to compute the overall analyst bullish score, view the breakdown of ratings, and compare the current price to the analyst target price.</p>
+  <h1>Top 5 Technical Analysis</h1>
+  <p>Enter a ticker symbol and select a historical period (in months) to analyze five technical indicators.</p>
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
-  <!-- Autocomplete suggestions will appear here -->
+  <!-- Autocomplete suggestions for ticker -->
   <ul id="ticker-suggestions"></ul>
 
-  <button id="runAnalysis">Run Analysis</button>
-  <div id="loading">Loading data and computing scores...</div>
+  <label for="period">Historical Period (months):</label>
+  <input type="number" id="period" value="12" min="1">
 
-  <!-- Combined Analyst Bullish Score Meter -->
-  <div class="meter-section" id="combinedSection" style="display:none;">
-    <h2>Combined Analyst Bullish Score</h2>
-    <div class="meter" id="combinedMeter">
-      <div class="marker" id="combinedMarker"></div>
-      <div class="score-text" id="combinedScoreText"></div>
+  <button id="runAnalysis">Run Analysis</button>
+  <div id="loading">Loading data and running analysis...</div>
+
+  <!-- Aggregated Signal Meter -->
+  <div id="aggregateSection">
+    <h2>Aggregated Technical Signal</h2>
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
+      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
+        <div id="aggregateMarker"></div>
+        <span id="aggregateScoreText"></span>
+      </div>
+      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
     </div>
   </div>
 
-  <!-- Analyst Ratings Breakdown Section -->
-  <div class="breakdown-section" id="ratingBreakdownSection" style="display:none;">
-    <h2>Analyst Ratings Breakdown</h2>
-    <table>
-      <tr>
-        <th>Rating</th>
-        <th>Count</th>
-      </tr>
-      <tr>
-        <td>Strong Buy</td>
-        <td id="ratingSB"></td>
-      </tr>
-      <tr>
-        <td>Buy</td>
-        <td id="ratingB"></td>
-      </tr>
-      <tr>
-        <td>Hold</td>
-        <td id="ratingHold"></td>
-      </tr>
-      <tr>
-        <td>Sell</td>
-        <td id="ratingS"></td>
-      </tr>
-      <tr>
-        <td>Strong Sell</td>
-        <td id="ratingSS"></td>
-      </tr>
-    </table>
+  <!-- RSI Section -->
+  <div class="chartContainer section" id="rsiSection" style="display:none;">
+    <h2>RSI Analysis</h2>
+    <div id="rsiChart"></div>
+    <div id="rsiScoreDisplay" style="margin-top:10px; font-weight:600;"></div>
   </div>
 
-  <!-- Price Comparison Chart Section -->
-  <div class="chart-section" id="priceChartSection" style="display:none;">
-    <h2>Current Price vs. Analyst Target Price</h2>
-    <div id="priceChart"></div>
+  <!-- Bollinger Bands Section -->
+  <div class="chartContainer section" id="bbSection" style="display:none;">
+    <h2>Bollinger Bands Analysis</h2>
+    <div id="bbChart"></div>
+    <div id="bbScoreDisplay" style="margin-top:10px; font-weight:600;"></div>
   </div>
 
-  <!-- Explanation Button -->
-  <button class="explanation-btn" id="explanationButton">View Detailed Explanation</button>
+  <!-- MACD Section -->
+  <div class="chartContainer section" id="macdSection" style="display:none;">
+    <h2>MACD Analysis</h2>
+    <div id="macdChart"></div>
+    <div id="macdScoreDisplay" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- WMA Section -->
+  <div class="chartContainer section" id="wmaSection" style="display:none;">
+    <h2>WMA Analysis</h2>
+    <div id="wmaChart"></div>
+    <div id="wmaScoreDisplay" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Ichimoku Cloud Section -->
+  <div class="chartContainer section" id="ichimokuSection" style="display:none;">
+    <h2>Ichimoku Cloud Analysis</h2>
+    <div id="ichimokuChart"></div>
+    <div id="ichimokuScoreDisplay" style="margin-top:10px; font-weight:600;"></div>
+  </div>
+
+  <!-- Detailed Explanation Button -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="explanationButton">View Detailed Explanation</button>
+  </div>
 
   <script>
-    // Global variables
+    // Global variable to store analysis details for the explanation page.
     let techReport = null;
     let debounceTimeout;
 
-    // --- Autocomplete Functions ---
+    /*************** Autocomplete Functions ***************/
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
       if (list) {
@@ -301,160 +303,549 @@
       clearSuggestions();
     });
 
-    // --- Utility & Calculation Functions ---
-    function logistic(x, c) {
-      return 1 / (1 + Math.exp(-c * x));
+    /*************** Utility & Calculation Functions ***************/
+    function parseAlphaDate(str) {
+      const year  = str.substring(0, 4);
+      const month = str.substring(4, 6);
+      const day   = str.substring(6, 8);
+      return new Date(`${year}-${month}-${day}`);
     }
 
-    // Compute normalized recommendation score R from analyst ratings.
-    function computeRecommendationScore(data) {
-      const SB = parseFloat(data.AnalystRatingStrongBuy) || 0;
-      const B  = parseFloat(data.AnalystRatingBuy) || 0;
-      const Hold = parseFloat(data.AnalystRatingHold) || 0;
-      const S  = parseFloat(data.AnalystRatingSell) || 0;
-      const SS = parseFloat(data.AnalystRatingStrongSell) || 0;
-      const total = SB + B + Hold + S + SS;
-      if(total === 0) return 0.5;
-      const avgRating = (2 * SB + 1 * B - 1 * S - 2 * SS) / total;
-      return (avgRating + 2) / 4;
+    // Process historical data; returns an array of price objects for dates within periodMonths.
+    function processHistoricalData(timeSeries, periodMonths) {
+      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+      const endDate = new Date(dates[dates.length - 1]);
+      const startDate = new Date(endDate);
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let prices = [];
+      for (let date of dates) {
+        const dt = new Date(date);
+        if (dt >= startDate && dt <= endDate) {
+          prices.push({
+            date: dt,
+            open: timeSeries[date]["1. open"] ? parseFloat(timeSeries[date]["1. open"]) : parseFloat(timeSeries[date]["5. adjusted close"]),
+            close: parseFloat(timeSeries[date]["5. adjusted close"]),
+            high: parseFloat(timeSeries[date]["2. high"]),
+            low: parseFloat(timeSeries[date]["3. low"])
+          });
+        }
+      }
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
     }
 
-    // Compute the target premium score P using a logistic function.
-    function computePremiumScore(targetPrice, currentPrice, c = 10) {
-      if(currentPrice === 0) return 0.5;
-      const ratio = (parseFloat(targetPrice) / parseFloat(currentPrice)) - 1;
-      return logistic(ratio, c);
+    /*************** Technical Indicator Calculations ***************/
+    function computeBollingerBands(prices, period = 20, k = 2) {
+      let bands = [];
+      for (let i = period - 1; i < prices.length; i++) {
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let sma = slice.reduce((a, b) => a + b, 0) / period;
+        let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
+        let std = Math.sqrt(variance);
+        bands.push({
+          date: prices[i].date,
+          sma: sma,
+          upper: sma + k * std,
+          lower: sma - k * std
+        });
+      }
+      return bands;
     }
 
-    // Combined Score is the average of R and P.
-    function computeCombinedScore(R, P) {
-      return (R + P) / 2;
+    function computeWMA(prices, period = 20) {
+      let wmas = [];
+      for (let i = period - 1; i < prices.length; i++) {
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let numerator = 0, denominator = 0;
+        for (let j = 0; j < period; j++) {
+          let weight = j + 1;
+          numerator += slice[j] * weight;
+          denominator += weight;
+        }
+        wmas.push({ date: prices[i].date, wma: numerator / denominator });
+      }
+      return wmas;
     }
 
-    // Update the meter element: adjust marker position and display percentage.
-    function updateMeter(meterId, markerId, textId, score) {
-      const percent = score * 100;
-      document.getElementById(markerId).style.left = percent + "%";
-      document.getElementById(textId).innerText = percent.toFixed(1) + "%";
-      document.getElementById(meterId).parentElement.style.display = 'block';
+    function computeRSI(prices, period = 14) {
+      let rsis = [];
+      for (let i = period; i < prices.length; i++) {
+        let gains = 0, losses = 0;
+        for (let j = i - period + 1; j <= i; j++) {
+          let diff = prices[j].close - prices[j - 1].close;
+          if (diff > 0) gains += diff;
+          else losses -= diff;
+        }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+        let rsi = 100 - (100 / (1 + rs));
+        rsis.push({ date: prices[i].date, rsi: rsi });
+      }
+      return rsis;
     }
 
-    // Simple helper functions to show/hide elements.
-    function showElement(id) {
-      document.getElementById(id).style.display = 'block';
-    }
-    function hideElement(id) {
-      document.getElementById(id).style.display = 'none';
+    function computeEMA(prices, period) {
+      let ema = [];
+      let multiplier = 2 / (period + 1);
+      let sum = 0;
+      for (let i = 0; i < period; i++) {
+        sum += prices[i].close;
+      }
+      let prevEma = sum / period;
+      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+      for (let i = period; i < prices.length; i++) {
+        let cur = prices[i].close;
+        let nextEma = (cur - prevEma) * multiplier + prevEma;
+        ema[i] = { date: prices[i].date, ema: nextEma };
+        prevEma = nextEma;
+      }
+      return ema.filter(x => x !== undefined);
     }
 
-    // --- Highcharts Price Comparison ---
-    function plotPriceComparison(currentPrice, targetPrice) {
-      Highcharts.chart('priceChart', {
-        chart: {
-          type: 'column',
-          backgroundColor: 'transparent'
-        },
-        title: {
-          text: 'Price Comparison'
-        },
-        xAxis: {
-          categories: ['Current Price', 'Target Price']
-        },
+    function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
+      let fastEMA = computeEMA(prices, fast);
+      let slowEMA = computeEMA(prices, slow);
+      let macdLine = [];
+      for (let i = 0; i < slowEMA.length; i++) {
+        let date = slowEMA[i].date;
+        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+        if (match) {
+          macdLine.push({ date: date, macd: match.ema - slowEMA[i].ema });
+        }
+      }
+      if (macdLine.length < signal) return { macdLine: macdLine, signalLine: [] };
+      let signalLine = [];
+      let m = 2 / (signal + 1);
+      let sumMacd = 0;
+      for (let i = 0; i < signal; i++) {
+        sumMacd += macdLine[i].macd;
+      }
+      let prevSig = sumMacd / signal;
+      signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
+      for (let i = signal; i < macdLine.length; i++) {
+        let s = (macdLine[i].macd - prevSig) * m + prevSig;
+        signalLine[i] = { date: macdLine[i].date, signal: s };
+        prevSig = s;
+      }
+      signalLine = signalLine.filter(x => x !== undefined);
+      return { macdLine: macdLine, signalLine: signalLine };
+    }
+
+    /*************** Ichimoku Cloud Calculation ***************/
+    function computeIchimoku(prices) {
+      let tenkan = [];
+      let kijun = [];
+      let senkouA = [];
+      let senkouB = [];
+      for (let i = 8; i < prices.length; i++) {
+        let period9 = prices.slice(i - 8, i + 1);
+        let high9 = Math.max(...period9.map(p => p.high));
+        let low9 = Math.min(...period9.map(p => p.low));
+        tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
+      }
+      for (let i = 25; i < prices.length; i++) {
+        let period26 = prices.slice(i - 25, i + 1);
+        let high26 = Math.max(...period26.map(p => p.high));
+        let low26 = Math.min(...period26.map(p => p.low));
+        kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+      }
+      let minLen = Math.min(tenkan.length, kijun.length);
+      for (let i = 0; i < minLen; i++) {
+        let baseDate = kijun[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+      }
+      for (let i = 51; i < prices.length; i++) {
+        let period52 = prices.slice(i - 51, i + 1);
+        let high52 = Math.max(...period52.map(p => p.high));
+        let low52 = Math.min(...period52.map(p => p.low));
+        let baseDate = prices[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+      }
+      let chikou = [];
+      for (let i = 26; i < prices.length; i++) {
+        chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+      }
+      return {
+        tenkan: tenkan,
+        kijun: kijun,
+        senkouA: senkouA,
+        senkouB: senkouB,
+        chikou: chikou
+      };
+    }
+
+    /*************** Scoring Functions ***************/
+    function scoreRSI(latestRSI, prevRSI) {
+      let rel = 50 - latestRSI;
+      let base = 100 / (1 + Math.exp(-0.05 * rel));
+      let dRSI = prevRSI - latestRSI;
+      return base * (1 + 0.01 * dRSI);
+    }
+
+    function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
+      let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+      let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+      let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+      let dPercentB = prevPercentB - currentPercentB;
+      return baseBB * (1 + 0.1 * dPercentB);
+    }
+
+    function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
+      let currentX = (latestPrice / latestWMA) - 1;
+      let prevX = (prevPrice / prevWMA) - 1;
+      let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+      let dx = prevX - currentX;
+      return baseWMA * (1 + 0.5 * dx);
+    }
+
+    /*************** New MACD Scoring System ***************/
+    function polynomialRegression(x, y, degree) {
+      let X = [];
+      for (let i = 0; i < x.length; i++) {
+        let row = [];
+        for (let j = 0; j <= degree; j++) {
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      const XT = math.transpose(X);
+      const XTX = math.multiply(XT, X);
+      const XTy = math.multiply(XT, y);
+      const coeffsMatrix = math.lusolve(XTX, XTy);
+      const coeffs = coeffsMatrix.map(val => val[0]);
+      return coeffs;
+    }
+    function predictValue(coeffs, x) {
+      return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
+    }
+    function computeMomentumScoreUsingRegression(histValues) {
+      if (histValues.length < 6) return null;
+      const recentHist = histValues.slice(-6);
+      const x = [1, 2, 3, 4, 5, 6];
+      const coeffs = polynomialRegression(x, recentHist, 3);
+      const predicted = predictValue(coeffs, 7);
+      const lastValue = recentHist[recentHist.length - 1];
+      const delta = predicted - lastValue;
+      const k = 5;
+      const score = 100 / (1 + Math.exp(-k * delta));
+      return score;
+    }
+    function computeGapTrendScore(macdLine, signalLine) {
+      if (macdLine.length < 6 || signalLine.length < 6) return null;
+      const recentMACD = macdLine.slice(-6).map(item => item.macd);
+      const recentSignal = signalLine.slice(-6).map(item => item.signal);
+      const x = [1, 2, 3, 4, 5, 6];
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+      const predictedMACD = predictValue(macdCoeffs, 7);
+      const predictedSignal = predictValue(signalCoeffs, 7);
+      const predictedGap = predictedMACD - predictedSignal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const delta = predictedGap - currentGap;
+      const k = 5;
+      const gapScore = 100 / (1 + Math.exp(-k * delta));
+      return { gapScore, delta, currentGap, predictedGap };
+    }
+    function computeNewMACDScore(prices) {
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if (macdLine.length < 2 || signalLine.length < 2) return null;
+      const len = Math.min(macdLine.length, signalLine.length);
+      const latestMACD = macdLine[len - 1].macd;
+      const positionScore = 100 / (1 + Math.exp(latestMACD));
+      const gapData = computeGapTrendScore(macdLine, signalLine);
+      const gapScore = gapData ? gapData.gapScore : null;
+      let histValues = [];
+      for (let i = 0; i < len; i++) {
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      const momentumScore = computeMomentumScoreUsingRegression(histValues);
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
+      console.log("New MACD Scores -> Position:", positionScore.toFixed(2),
+                  "Gap:", gapScore.toFixed(2),
+                  "Momentum:", momentumScore.toFixed(2),
+                  "Final:", finalScore.toFixed(2));
+      return finalScore;
+    }
+
+    /*************** Chart Plot Functions using Highcharts ***************/
+
+    // RSI Chart
+    function plotRSI(prices) {
+      const rsidata = computeRSI(prices);
+      Highcharts.chart('rsiChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'RSI Chart' },
+        xAxis: { type: 'datetime' },
         yAxis: {
-          title: {
-            text: 'Price (USD)'
-          }
+          title: { text: 'RSI' },
+          min: 0,
+          max: 100,
+          plotLines: [{
+            value: 70,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2
+          }, {
+            value: 30,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2
+          }]
         },
         series: [{
-          name: 'Price',
-          data: [currentPrice, parseFloat(targetPrice)],
-          colorByPoint: true,
-          colors: [
-            getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(), 
-            '#1e3a8a'
-          ]
+          name: 'RSI',
+          data: rsidata.map(item => [item.date.getTime(), item.rsi]),
+          color: 'orange'
         }],
-        credits: {
-          enabled: false
-        }
+        credits: { enabled: false }
       });
-      showElement('priceChartSection');
+      return rsidata;
     }
 
-    // Populate the rating breakdown table.
-    function populateRatingBreakdown(data) {
-      document.getElementById('ratingSB').innerText = data.AnalystRatingStrongBuy || 0;
-      document.getElementById('ratingB').innerText = data.AnalystRatingBuy || 0;
-      document.getElementById('ratingHold').innerText = data.AnalystRatingHold || 0;
-      document.getElementById('ratingS').innerText = data.AnalystRatingSell || 0;
-      document.getElementById('ratingSS').innerText = data.AnalystRatingStrongSell || 0;
-      showElement('ratingBreakdownSection');
+    // Bollinger Bands Chart
+    function plotBollinger(prices) {
+      let bands = computeBollingerBands(prices);
+      Highcharts.chart('bbChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'Bollinger Bands' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'Price' } },
+        series: [
+          { name: 'Price', data: prices.map(p => [p.date.getTime(), p.close]), color: '#ffffff' },
+          { name: 'SMA', data: bands.map(b => [b.date.getTime(), b.sma]), color: 'blue' },
+          { name: 'Upper Band', data: bands.map(b => [b.date.getTime(), b.upper]), color: 'green' },
+          { name: 'Lower Band', data: bands.map(b => [b.date.getTime(), b.lower]), color: 'red' }
+        ],
+        credits: { enabled: false }
+      });
+      return bands;
     }
 
-    // --- Main Analysis Function ---
-    document.getElementById('runAnalysis').addEventListener('click', async () => {
-      const ticker = document.getElementById('ticker').value.trim();
+    // MACD Chart
+    function plotMACD(prices) {
+      const macdData = computeMACD(prices);
+      const len = Math.min(macdData.macdLine.length, macdData.signalLine.length);
+      let histData = [];
+      for (let i = 0; i < len; i++) {
+        histData.push([macdData.macdLine[i].date.getTime(), macdData.macdLine[i].macd - macdData.signalLine[i].signal]);
+      }
+      Highcharts.chart('macdChart', {
+        chart: { backgroundColor: 'transparent' },
+        title: { text: 'MACD Chart' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'MACD' } },
+        series: [{
+          type: 'column',
+          name: 'Histogram',
+          data: histData,
+          colorByPoint: true
+        }, {
+          type: 'line',
+          name: 'MACD',
+          data: macdData.macdLine.map(item => [item.date.getTime(), item.macd]),
+          color: 'blue'
+        }, {
+          type: 'line',
+          name: 'Signal',
+          data: macdData.signalLine.map(item => [item.date.getTime(), item.signal]),
+          color: 'orange'
+        }],
+        credits: { enabled: false }
+      });
+      return macdData;
+    }
+
+    // WMA Chart
+    function plotWMA(prices, wmas) {
+      Highcharts.chart('wmaChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'WMA Chart' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'Price' } },
+        series: [{
+          name: 'Price',
+          data: prices.map(p => [p.date.getTime(), p.close]),
+          color: '#ffffff'
+        }, {
+          name: 'WMA',
+          data: wmas.map(item => [item.date.getTime(), item.wma]),
+          color: 'red'
+        }],
+        credits: { enabled: false }
+      });
+      return wmas;
+    }
+
+    // Ichimoku Chart with Candlestick using Highstock
+    function plotCandlestickIchimoku(prices, ichimokuData) {
+      const ohlc = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+      Highcharts.stockChart('ichimokuChart', {
+        rangeSelector: { enabled: false },
+        title: { text: 'Candlestick Chart with Ichimoku Cloud' },
+        series: [{
+          type: 'candlestick',
+          name: 'Price',
+          data: ohlc
+        }, {
+          type: 'line',
+          name: 'Tenkan-sen',
+          data: ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]),
+          color: 'blue'
+        }, {
+          type: 'line',
+          name: 'Kijun-sen',
+          data: ichimokuData.kijun.map(item => [item.date.getTime(), item.value]),
+          color: 'red'
+        }, {
+          type: 'line',
+          name: 'Senkou Span A',
+          data: ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]),
+          color: 'green'
+        }, {
+          type: 'line',
+          name: 'Senkou Span B',
+          data: ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]),
+          color: 'brown'
+        }, {
+          type: 'line',
+          name: 'Chikou Span',
+          data: ichimokuData.chikou.map(item => [item.date.getTime(), item.value]),
+          color: 'purple'
+        }],
+        credits: { enabled: false }
+      });
+    }
+
+    /*************** Main Analysis Function ***************/
+    document.getElementById("runAnalysis").addEventListener("click", async () => {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('aggregateSection').style.display = 'none';
+      document.getElementById('rsiSection').style.display = 'none';
+      document.getElementById('bbSection').style.display = 'none';
+      document.getElementById('macdSection').style.display = 'none';
+      document.getElementById('wmaSection').style.display = 'none';
+      document.getElementById('ichimokuSection').style.display = 'none';
+      
+      let ticker = document.getElementById('ticker').value.trim();
+      let periodMonths = parseInt(document.getElementById('period').value);
       if (!ticker) {
         alert("Please enter a ticker symbol.");
+        document.getElementById('loading').style.display = 'none';
         return;
       }
-      showElement('loading');
-      hideElement('combinedSection');
-      hideElement('ratingBreakdownSection');
-      hideElement('priceChartSection');
-
+      
       try {
-        // Fetch fundamental data.
-        const fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-        const fundResp = await fetch(fundUrl);
-        const fundData = await fundResp.json();
-        if (!fundData || !fundData.Symbol) {
-          throw new Error("No fundamental data found.");
+        // Fetch historical data from your API endpoint.
+        let histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let resp = await fetch(histUrl);
+        let data = await resp.json();
+        if (!data["Time Series (Daily)"]) {
+          throw new Error("Unable to retrieve valid historical data.");
         }
-
-        // Fetch historical data to get current price.
-        const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-        const histResp = await fetch(histUrl);
-        const histData = await histResp.json();
-        if (!histData["Time Series (Daily)"]) {
-          throw new Error("No historical data found.");
+        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+        if (prices.length < 80) {
+          alert("Not enough historical data for the selected period.");
+          document.getElementById('loading').style.display = 'none';
+          return;
         }
-        const dates = Object.keys(histData["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
-        const latestDate = dates[dates.length - 1];
-        const currentPrice = parseFloat(histData["Time Series (Daily)"][latestDate]["5. adjusted close"]);
-
-        // Compute scores.
-        const R = computeRecommendationScore(fundData);
-        const P = computePremiumScore(fundData.AnalystTargetPrice, currentPrice);
-        const combinedScore = computeCombinedScore(R, P);
-
-        // Update Combined Score meter.
-        updateMeter('combinedMeter', 'combinedMarker', 'combinedScoreText', combinedScore);
-
-        // Populate the analyst ratings breakdown.
-        populateRatingBreakdown(fundData);
-
-        // Plot the price comparison chart using Highcharts.
-        plotPriceComparison(currentPrice, fundData.AnalystTargetPrice);
-
-        // Store all relevant data in techReport for the explanation page.
+        
+        // Plot charts using Highcharts.
+        let rsis = plotRSI(prices);
+        let bands = plotBollinger(prices);
+        let macdData = plotMACD(prices);
+        let wmas = computeWMA(prices);
+        plotWMA(prices, wmas);
+        let ichimokuData = computeIchimoku(prices);
+        plotCandlestickIchimoku(prices, ichimokuData);
+        document.getElementById('ichimokuSection').style.display = 'block';
+        
+        // Compute individual scores.
+        let latestPrice = prices[prices.length - 1].close;
+        let prevPrice = prices[prices.length - 2].close;
+        
+        let latestRSI = rsis[rsis.length - 1].rsi;
+        let prevRSI = rsis[rsis.length - 2].rsi;
+        let rsiScore = scoreRSI(latestRSI, prevRSI);
+        
+        let latestBand = bands[bands.length - 1];
+        let prevBand = bands[bands.length - 2];
+        let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
+        
+        let newMACDScore = computeNewMACDScore(prices);
+        
+        let latestWMA = wmas[wmas.length - 1].wma;
+        let prevWMA = wmas[wmas.length - 2].wma;
+        let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
+        
+        // Ichimoku Scores calculations.
+        let cloudScore = 100 / (1 + Math.exp(-1 * (latestPrice - ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value)));
+        let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+        let latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+        let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
+        let price26Ago = prices[prices.length - 26].close;
+        let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPrice - price26Ago)));
+        let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value - ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / (((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value + ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / 2) || 1))));
+        let overallIchimoku = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+        
+        // Update score displays.
+        document.getElementById('rsiScoreDisplay').innerText = `RSI Score: ${rsiScore.toFixed(1)}%`;
+        document.getElementById('bbScoreDisplay').innerText = `Bollinger Score: ${bbScore.toFixed(1)}%`;
+        document.getElementById('macdScoreDisplay').innerText = `MACD Score: ${newMACDScore ? newMACDScore.toFixed(1) : "N/A"}%`;
+        document.getElementById('wmaScoreDisplay').innerText = `WMA Score: ${wmaScore.toFixed(1)}%`;
+        document.getElementById('ichimokuScoreDisplay').innerText = `Ichimoku Score: ${overallIchimoku.toFixed(1)}%`;
+        
+        let combinedScore = (rsiScore + bbScore + newMACDScore + wmaScore + overallIchimoku) / 5;
+        document.getElementById('aggregateScoreText').innerText = `${combinedScore.toFixed(2)}%`;
+        document.getElementById('aggregateMarker').style.left = `${combinedScore}%`;
+        document.getElementById('aggregateSection').style.display = 'block';
+        
+        // Show individual indicator sections.
+        document.getElementById('rsiSection').style.display = 'block';
+        document.getElementById('bbSection').style.display = 'block';
+        document.getElementById('macdSection').style.display = 'block';
+        document.getElementById('wmaSection').style.display = 'block';
+        
+        // Store all analysis details in techReport for the explanation page.
         techReport = {
           ticker: ticker,
-          fundamentalData: fundData,
-          currentPrice: currentPrice,
-          R: R,
-          P: P,
+          periodMonths: periodMonths,
+          latestRSI: latestRSI,
+          latestPrice: latestPrice,
+          bollinger: latestBand,
+          macd: newMACDScore,
+          wma: latestWMA,
+          ichimoku: ichimokuData,
+          ichimokuScores: {
+            cloud: cloudScore,
+            tenkan: tenkanScore,
+            chikou: chikouScore,
+            senkou: senkouScore
+          },
+          overallIchimoku: overallIchimoku,
+          scores: {
+            rsi: rsiScore,
+            bollinger: bbScore,
+            macd: newMACDScore,
+            wma: wmaScore
+          },
           combined: combinedScore
         };
       } catch (err) {
         alert("Error: " + err.message);
         console.error(err);
       }
-      hideElement('loading');
+      document.getElementById('loading').style.display = 'none';
     });
 
-    // --- Explanation Button ---
-    document.getElementById('explanationButton').addEventListener('click', () => {
+    /*************** Detailed Explanation ***************/
+    document.getElementById("explanationButton").addEventListener("click", () => {
       if (!techReport) {
         alert("Please run an analysis first.");
         return;
@@ -465,187 +856,180 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Analyst Bullish Score Explanation | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Technical Analysis Report for ${techReport.ticker}</title>
   <style>
-    :root {
-      --primary-bg: #111;
-      --secondary-bg: #333;
-      --accent-color: #16a34a;
-      --text-color: #fff;
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
+    body { 
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+      background: #111; 
+      color: #fff; 
+      margin: 0 auto; 
+      max-width: 900px; 
+      padding: 2rem; 
+      line-height: 1.6; 
     }
-    body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      margin: 0 auto;
-      max-width: 900px;
-      padding: 2rem;
-      line-height: 1.6;
+    h1, h2, h3 { text-align: center; }
+    section { margin-bottom: 2rem; }
+    pre { 
+      background: #333; 
+      padding: 1rem; 
+      border-radius: 4px; 
+      overflow-x: auto; 
     }
-    h1, h2 {
-      text-align: center;
-      font-weight: 600;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    h2 {
-      margin-top: 30px;
-      margin-bottom: 15px;
-    }
-    p, li {
-      margin-bottom: 0.75em;
-    }
-    pre {
-      background: #222;
-      padding: 1rem;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-    code {
-      background: #444;
-      padding: 2px 4px;
-      border-radius: 3px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-    }
-    th, td {
-      border: 1px solid #555;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background: #333;
-    }
-    .close-btn {
-      display: block;
-      margin: 30px auto;
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background var(--transition-speed);
-    }
-    .close-btn:hover {
-      background: #1e3a8a;
-    }
+    a { color: var(--accent-color); }
   </style>
 </head>
 <body>
-  <h1>Analyst Bullish Score Explanation</h1>
-  <p>
-    This tool calculates an overall Analyst Bullish Score by combining two key components: the normalized analyst recommendations and the normalized target premium.
-  </p>
+  <h1>Technical Analysis Report for ${techReport.ticker}</h1>
+  
+  <section>
+    <h2>Input Parameters</h2>
+    <p><strong>Ticker:</strong> ${techReport.ticker}</p>
+    <p><strong>Historical Period (months):</strong> ${techReport.periodMonths}</p>
+    <p>This report uses historical daily adjusted data (with high and low values) to analyze five technical indicators: RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud.</p>
+  </section>
+  
+  <section>
+    <h2>RSI Analysis</h2>
+    <p>The Relative Strength Index (RSI) is computed over a 14-period window to gauge momentum. We compute a base score using a logistic function based on how far the RSI is below 50 and then adjust for its rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
+rel = 50 - RSI
+Base_RSI = 100 / (1 + exp(-0.05 × rel))
+dRSI = RSI(previous day) - RSI(current day)
+Score_RSI = Base_RSI × (1 + 0.01 × dRSI)
+    </pre>
+    <p>A lower RSI (and a rapid drop) yields a higher score. In our case, the RSI score is <strong>${techReport.scores.rsi.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>Bollinger Bands Analysis</h2>
+    <p>Bollinger Bands are constructed using a 20-day SMA and standard deviation. We compute %B to indicate the position of the price within the bands, then use a logistic function with moderate steepness and adjust by the rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
+%B = (Price - Lower Band) / (Upper Band - Lower Band)
+Base_BB = 100 / (1 + exp(3 × (%B - 0.5)))
+d%B = %B(previous day) - %B(current day)
+Score_BB = Base_BB × (1 + 0.1 × d%B)
+    </pre>
+    <p>Here, a price near the middle (%B ≈ 0.5) yields a score around 50. Our Bollinger score is <strong>${techReport.scores.bollinger.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>MACD Analysis</h2>
+    <p>The updated MACD scoring system quantifies three key elements using regression-based methods:</p>
+    <ul>
+      <li><strong>Position Score:</strong> Measures where the MACD line lies relative to zero using <code>100 / (1 + exp(latestMACD))</code>.</li>
+      <li><strong>Gap Trend Score:</strong> Applies 3rd-degree polynomial regression on the last 6 MACD and Signal values to predict the 7th gap, then transforms the difference via a logistic function.</li>
+      <li><strong>Momentum Score:</strong> Uses regression on the MACD histogram over the last 6 periods to predict the next value, with the resulting delta mapped through a logistic function.</li>
+    </ul>
+    <p>The final MACD score is the average of these three components. In our analysis, the MACD score is <strong>${techReport.macd ? techReport.macd.toFixed(1) : "N/A"}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>WMA Analysis</h2>
+    <p>The Weighted Moving Average (WMA) gives more weight to recent prices. We compute x = (Price / WMA) - 1 and then score using a logistic function (steepness factor 10) with an adjustment for its rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
+x = (Price / WMA) - 1
+Base_WMA = 100 / (1 + exp(-10 × x))
+dx = x(previous day) - x(current day)
+Score_WMA = Base_WMA × (1 + 0.5 × dx)
+    </pre>
+    <p>Our WMA score is <strong>${techReport.scores.wma.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>Ichimoku Cloud Analysis</h2>
+    <p>We analyze four Ichimoku parameters:</p>
+    <ul>
+      <li><strong>Price vs. Cloud Score:</strong> Compares current price to the cloud defined by Senkou Span A and B.</li>
+      <li><strong>Tenkan/Kijun Cross Score:</strong> Evaluates the difference between Tenkan-sen and Kijun-sen.</li>
+      <li><strong>Chikou Span Score:</strong> Compares current price to the price 26 periods ago.</li>
+      <li><strong>Senkou Cross Score:</strong> Measures the difference between Senkou Span A and B.</li>
+    </ul>
+    <p><strong>Scoring:</strong></p>
+    <pre>
+Cloud:
+  Cloud Top = max(Senkou Span A, Senkou Span B)
+  Cloud Bottom = min(Senkou Span A, Senkou Span B)
+  mid = (Cloud Top + Cloud Bottom) / 2
+  half = (Cloud Top - Cloud Bottom) / 2
+  norm = (Price - mid) / half
+  Score_Cloud = 100 / (1 + exp(-1 × norm))
 
-  <h2>1. Normalize the Analyst Recommendations</h2>
-  <p>
-    First, we assign numerical values to each rating:
-  </p>
-  <ul>
-    <li><code>Strong Buy = +2</code></li>
-    <li><code>Buy = +1</code></li>
-    <li><code>Hold = 0</code></li>
-    <li><code>Sell = -1</code></li>
-    <li><code>Strong Sell = -2</code></li>
-  </ul>
-  <p>
-    Next, we compute the average rating using:
-  </p>
-  <pre>
-Average Rating = (2 × N_SB + 1 × N_B - 1 × N_S - 2 × N_SS) / N_Total
-  </pre>
-  <p>
-    Because the average rating will fall between –2 and +2, we then shift and scale it to a 0–1 range:
-  </p>
-  <pre>
-R = (Average Rating + 2) / 4
-  </pre>
-  <p>
-    For example, if the weighted average rating is 0.8:
-  </p>
-  <pre>
-R = (0.8 + 2) / 4 = 2.8 / 4 = 0.70
-  </pre>
-  <p>
-    Here, <strong>R = 0.70</strong> indicates a moderately bullish consensus.
-  </p>
+Tenkan/Kijun:
+  diff = Tenkan - Kijun
+  Score_Tenkan = 100 / (1 + exp(-0.2 × diff))
 
-  <h2>2. Normalize the Target Premium</h2>
-  <p>
-    The target premium is defined as the percentage difference between the analyst target price and the current price. We normalize it using a logistic function:
-  </p>
-  <pre>
-P = 1 / (1 + exp(-c × ((Target Price / Current Price) - 1)))
-  </pre>
-  <p>
-    In this equation, <code>c</code> is a sensitivity constant (for example, c = 10). When the current price equals the target price, the term (Target Price/Current Price - 1) is 0, yielding:
-  </p>
-  <pre>
-P = 1 / (1 + exp(0)) = 0.5
-  </pre>
-  <p>
-    For example, if the target price is 3% above the current price:
-  </p>
-  <pre>
-P = 1 / (1 + exp(-10 × (1.03 - 1))) ≈ 0.57
-  </pre>
-  <p>
-    Here, <strong>P ≈ 0.57</strong> indicates a slightly bullish price premium.
-  </p>
+Chikou:
+  diff_Chikou = Price - Price 26 periods ago
+  Score_Chikou = 100 / (1 + exp(-0.1 × diff_Chikou))
 
-  <h2>3. Combine the Two Scores</h2>
-  <p>
-    Finally, we combine the two normalized scores by assigning weights <code>w_R</code> and <code>w_P</code> to the recommendation score and the premium score respectively. With equal weights (w_R = w_P = 1), the overall score is:
-  </p>
-  <pre>
-Analyst Bullish Score = (R + P) / 2
-  </pre>
-  <p>
-    For example, if R = 0.70 and P = 0.57:
-  </p>
-  <pre>
-Analyst Bullish Score = (0.70 + 0.57) / 2 ≈ 0.635
-  </pre>
-  <p>
-    Converting to a percentage, the overall score is approximately 63.5%.
-  </p>
+Senkou Cross:
+  diff_Senkou = Senkou Span A - Senkou Span B
+  norm_Senkou = diff_Senkou / ((Senkou Span A + Senkou Span B) / 2)
+  Score_Senkou = 100 / (1 + exp(-3 × norm_Senkou))
 
-  <h2>Summary</h2>
-  <ol>
-    <li><strong>R</strong>: Normalized recommendation score based on analyst ratings (0 = most bearish, 1 = most bullish).</li>
-    <li><strong>P</strong>: Normalized target premium score using a logistic function.</li>
-    <li>The overall Analyst Bullish Score is the simple average of R and P.</li>
-  </ol>
-  <p>
-    For the ticker <strong>${techReport.ticker}</strong>:
-  </p>
-  <ul>
-    <li>Current Price: $${techReport.currentPrice.toFixed(2)}</li>
-    <li>Analyst Target Price: $${techReport.fundamentalData.AnalystTargetPrice}</li>
-    <li>Recommendation Score (R): ${(techReport.R * 100).toFixed(1)}%</li>
-    <li>Premium Score (P): ${(techReport.P * 100).toFixed(1)}%</li>
-    <li>Combined Analyst Bullish Score: ${(techReport.combined * 100).toFixed(1)}%</li>
-  </ul>
-  <p>
-    The tool uses these calculations to provide a balanced view of analyst sentiment.
-  </p>
-<section style="text-align:center;">
-      <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
-    </section>
+Overall Ichimoku Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
+    </pre>
+    <p>Individual Ichimoku scores:</p>
+    <ul>
+      <li>Price vs. Cloud Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.cloud.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Tenkan/Kijun Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.tenkan.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Chikou Span Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.chikou.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Senkou Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.senkou.toFixed(1) : 'N/A'}%</strong></li>
+    </ul>
+    <p><strong>Overall Ichimoku Signal:</strong> ${techReport.overallIchimoku.toFixed(2)}%</p>
+  </section>
+  
+  <section>
+    <h2>Combined Technical Bullish Score</h2>
+    <p>The overall technical bullish score is the average of the five indicator scores (RSI, Bollinger Bands, MACD, WMA, and overall Ichimoku signal):</p>
+    <pre>
+Overall Score = (Score_RSI + Score_BB + Score_MACD + Score_WMA + Overall_Ichimoku) / 5
+    </pre>
+    <p><strong>Overall Technical Bullish Score:</strong> ${techReport.combined.toFixed(2)}%</p>
+  </section>
+  
+  <section>
+    <h2>Disclaimers</h2>
+    <p><strong>Market Data Disclaimer:</strong> The historical data is provided via the API and may not reflect real-time market conditions.</p>
+    <p><strong>Analytical Disclaimer:</strong> The techniques and metrics in this report are for informational purposes only and should not be considered financial advice.</p>
+  </section>
+  
+  <section>
+    <h2>Conclusion</h2>
+    <p>This report integrates five technical indicators—RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud—to provide a detailed evaluation of a stock's technical momentum. Use these insights as part of your comprehensive trading strategy.</p>
+  </section>
+  
+  <section style="text-align:center;">
+    <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
+  </section>
 </body>
 </html>
       `;
       win.document.write(html);
       win.document.close();
+    });
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const symbol = params.get('symbol');
+      const period = params.get('period');
+      
+      if (symbol) {
+        document.getElementById('ticker').value = symbol;
+      }
+      if (period) {
+        document.getElementById('period').value = period;
+      }
+      
+      if (params.get('autoFetch') === 'true') {
+        setTimeout(() => {
+          document.getElementById('runAnalysis').click();
+        }, 500);
+      }
     });
   </script>
 </body>
