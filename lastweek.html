@@ -338,25 +338,22 @@
         .catch(error => console.error("Error fetching data for", ticker, error));
     }
 
-    // Calculate average performance for top picks.
-    function calculateWeeklyPicksPerformance(buys, shorts) {
-      let total = 0, count = 0;
-      buys.forEach(ticker => {
-        const el = document.getElementById("performance-" + ticker);
-        if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-          const val = parseFloat(el.textContent.replace('%', ''));
-          if (!isNaN(val)) { total += val; count++; }
-        }
-      });
-      shorts.forEach(ticker => {
-        const el = document.getElementById("performance-" + ticker);
-        if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-          const val = parseFloat(el.textContent.replace('%', ''));
-          if (!isNaN(val)) { total += -val; count++; }
-        }
-      });
-      return count ? total / count : 0;
+    // Calculate average performance for top picks using only buys.
+function calculateWeeklyPicksPerformance(buys) {
+  let total = 0, count = 0;
+  buys.forEach(ticker => {
+    const el = document.getElementById("performance-" + ticker);
+    if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+      const val = parseFloat(el.textContent.replace('%', ''));
+      if (!isNaN(val)) { 
+        total += val; 
+        count++; 
+      }
     }
+  });
+  return count ? total / count : 0;
+}
+
 
     // Update index performance for SPY and QQQ.
     function updateIndexPerformance(ticker, buttonElement) {
@@ -430,22 +427,26 @@
 
       // Update Overall Performance (Our Top Picks) button.
       function updateWeeklyPicksButton() {
-        const perf = calculateWeeklyPicksPerformance(buys, shorts);
-        const picksBtn = document.getElementById("weeklyPicksChange");
-        picksBtn.textContent = perf.toFixed(2) + '%';
-        if (perf >= 0) {
-          picksBtn.classList.add("positive-performance");
-          picksBtn.classList.remove("negative-performance");
-        } else {
-          picksBtn.classList.add("negative-performance");
-          picksBtn.classList.remove("positive-performance");
-        }
-      }
+  const perf = calculateWeeklyPicksPerformance(buys);
+  const picksBtn = document.getElementById("weeklyPicksChange");
+  picksBtn.textContent = perf.toFixed(2) + '%';
+  if (perf >= 0) {
+    picksBtn.classList.add("positive-performance");
+    picksBtn.classList.remove("negative-performance");
+  } else {
+    picksBtn.classList.add("negative-performance");
+    picksBtn.classList.remove("positive-performance");
+  }
+}
+
 
       // Explanation text toggle.
       function generateExplanation() {
-        return "This number represents the average profit percentage if you had bought our top three recommended stocks (" + buys.join(", ") + ") and shorted our bottom three picks (" + shorts.join(", ") + ") starting on " + initialDate + ". It updates in real time based on intraday data.";
-      }
+  return "This number represents the average profit percentage if you had bought our top three recommended stocks (" 
+         + buys.join(", ") + ") starting on " + initialDate 
+         + ". It updates in real time based on intraday data.";
+}
+
       const weeklyPicksButton = document.getElementById("weeklyPicksButton");
       const explanationBox = document.getElementById("weeklyExplanationBox");
       weeklyPicksButton.addEventListener("click", () => {

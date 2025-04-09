@@ -1459,42 +1459,30 @@ footer {
       const bottomShorts = ["INTA", "AXON", "LYV"];
 
       function generateExplanation() {
-        return (
-          "This number represents the average profit percentage if you had " +
-          "bought our top three recommended stocks (" + topBuys.join(", ") + ") and " +
-          "shorted our bottom three picks (" + bottomShorts.join(", ") + ") as of " +
-          "2025-04-04. It updates in real time based on intraday data."
-        );
-      }
+  return (
+    "This number represents the average profit percentage if you had bought our top three recommended stocks (" +
+    topBuys.join(", ") + ") as of 2025-04-04. It updates in real time based on intraday data."
+  );
+}
+
 
       function calculateWeeklyPicksPerformance() {
-        let total = 0;
-        let count = 0;
-        // Buys
-        topBuys.forEach(ticker => {
-          const el = document.getElementById("performance-" + ticker);
-          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-            const val = parseFloat(el.textContent.replace('%', ''));
-            if (!isNaN(val)) {
-              total += val;
-              count++;
-            }
-          }
-        });
-        // Shorts
-        bottomShorts.forEach(ticker => {
-          const el = document.getElementById("performance-" + ticker);
-          if (el && el.textContent && el.textContent.trim() !== "Loading...") {
-            const val = parseFloat(el.textContent.replace('%', ''));
-            if (!isNaN(val)) {
-              // For shorts, invert the sign
-              total += -val;
-              count++;
-            }
-          }
-        });
-        return count ? total / count : 0;
+  let total = 0;
+  let count = 0;
+  // Only consider top buys
+  topBuys.forEach(ticker => {
+    const el = document.getElementById("performance-" + ticker);
+    if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+      const val = parseFloat(el.textContent.replace('%', ''));
+      if (!isNaN(val)) {
+        total += val;
+        count++;
       }
+    }
+  });
+  return count ? total / count : 0;
+}
+
 
       function updateWeeklyPicksButton() {
         const performance = calculateWeeklyPicksPerformance();
