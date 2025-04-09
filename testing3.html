@@ -467,7 +467,7 @@
       const explanationWindow = window.open("", "_blank", "width=800,height=600,scrollbars=yes");
       const explanationHTML = `
         <!DOCTYPE html>
-        <html lang="en">
+       <html lang="en">
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -499,9 +499,88 @@
           <h1>Detailed Explanation</h1>
           <h2>Double Heston Jump-Diffusion (dbHJ) Model</h2>
           <p>
-            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk...
+            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk. The model combines two independent Heston processes—each modeling a different aspect of volatility—with a Poisson jump component to capture sudden large price moves.
           </p>
-          <!-- [Truncated for brevity in this snippet; full explanation here] -->
+          <h3>Model Components</h3>
+          <ul>
+            <li>
+              <strong>Double Heston Volatility:</strong>
+              <br>
+              Two variance processes, \(v_1\) and \(v_2\), are modeled as:
+              <br><br>
+              \(dv_i = \kappa_i (\theta_i - v_i)\,dt + \sigma_i \sqrt{v_i}\,dW_{v_i}\)  for \(i = 1, 2\)
+              <br>
+              where:
+              <ul>
+                <li>\(\kappa_i\): Mean reversion speed</li>
+                <li>\(\theta_i\): Long-run variance</li>
+                <li>\(\sigma_i\): Volatility of volatility</li>
+                <li>\(dW_{v_i}\): Brownian increments</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Jump-Diffusion:</strong>
+              <br>
+              A Poisson jump process is added such that if a jump occurs (with intensity \(\lambda\)), the stock price is multiplied by a jump factor:
+              <br><br>
+              \(J = \exp(\mu_J + \sigma_J Z)\)
+              <br>
+              with \(Z\) being a standard normal variable.
+            </li>
+          </ul>
+          <h3>Parameter Calibration</h3>
+          <p>
+            Live options data (via our internal endpoint) is used to extract the implied volatility, which sets the initial variances \(v_{10}\) and \(v_{20}\). The following default parameters are used:
+          </p>
+          <pre>
+    // Example defaults:
+    kappa1 = 2.0,  theta1 = v10,      sigma1 = 0.5,  rho1 = -0.7
+    kappa2 = 1.5,  theta2 = 0.5*v10,    sigma2 = 0.3,  rho2 = -0.3
+    lambda = 0.2,  mu_J = -0.1,  sigma_J = 0.2
+          </pre>
+          <h3>Risk Metrics</h3>
+          <p>
+            The simulation produces a distribution of stock prices at the target date. From this distribution:
+            <br>
+            <strong>VaR (Value at Risk):</strong> The 5th percentile price, representing the worst-case outcome in 95% of scenarios.
+            <br>
+            <strong>CVaR (Conditional Value at Risk):</strong> The average outcome of the worst 5% of simulations.
+          </p>
+          <h3>Profit/Risk Score</h3>
+          <p>
+            In addition to risk metrics, a combined Profit/Risk Score is generated. This score considers:
+          </p>
+          <ul>
+            <li>
+              The probability that the stock ends above the current price,
+            </li>
+            <li>
+              The median percentage gain (the typical upside),
+            </li>
+            <li>
+              And the downside risk as represented by CVaR.
+            </li>
+          </ul>
+          <p>
+            The net factor \(f\) is defined as:
+            <br>
+            \(f = P_{gain} \times U - (1 - P_{gain}) \times D\)
+            <br>
+            where:
+            <br>
+            - \(P_{gain}\) is the probability of gain,
+            <br>
+            - \(U\) is the median return (as a fraction),
+            <br>
+            - \(D\) is the downside risk (CVaR, as a fraction of loss).
+          </p>
+          <p>
+            This factor is then scaled so that a neutral stock (f = 0) gets a score of 50, strongly favorable stocks approach 100, and strongly unfavorable stocks approach 0.
+          </p>
+          <h3>Interactive Features</h3>
+          <p>
+            An adjustable slider sets a target price threshold. A red dashed vertical line on the histogram marks this target, and the tool calculates the probability that the stock price exceeds it.
+          </p>
           <p style="text-align:center;">
             <a href="#" onclick="window.close(); return false;">Close Explanation</a>
           </p>
