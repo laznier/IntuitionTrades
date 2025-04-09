@@ -1245,7 +1245,7 @@
       `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
     return finalBullishScore;
   }
-  async function fetchAndProcessInsiderData(ticker, days, lastPrice) {
+  async function fetchAndProcessInsiderData(ticker, periodMonths, lastPrice) {
   // --- Fetch Insider Transactions ---
   const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
   const response = await fetch(url);
@@ -1259,7 +1259,9 @@
   const lowerBound = lastPrice * 0.5;
   const upperBound = lastPrice * 1.5;
   const cutoff = new Date();
+  // Use periodMonths here (months based cutoff)
   cutoff.setMonth(cutoff.getMonth() - periodMonths);
+  
   const filtered = data.data.filter(item => {
     const d = new Date(item.transaction_date);
     if (isNaN(d) || d < cutoff) return false;
@@ -1300,7 +1302,8 @@
   // --- Fetch Insider Sentiment (MSPR) Data ---
   let today = new Date();
   let pastDate = new Date();
-  pastDate.setDate(today.getDate() - days);
+  // Use months here as well:
+  pastDate.setMonth(today.getMonth() - periodMonths);
   let fromDateStr = pastDate.toISOString().slice(0,10);
   let toDateStr = today.toISOString().slice(0,10);
   const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
@@ -1327,17 +1330,18 @@
   }
   let endFillDate = new Date(toDateStr);
   let filledData = [];
-  let currentDate = new Date(sentimentStart);
-  while (currentDate <= endFillDate) {
-    let year = currentDate.getFullYear();
-    let month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+  let currentDateForSentiment = new Date(sentimentStart);
+  while (currentDateForSentiment <= endFillDate) {
+    let year = currentDateForSentiment.getFullYear();
+    let month = currentDateForSentiment.getMonth() + 1; // JavaScript months are 0-indexed
     let found = sentimentJson.data && sentimentJson.data.find(pt => pt.year === year && pt.month === month);
     if (found) {
       filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
     } else {
+      // If no data exists for this month, default the MSPR to 0
       filledData.push({ year: year, month: month, mspr: 0 });
     }
-    currentDate.setMonth(currentDate.getMonth() + 1);
+    currentDateForSentiment.setMonth(currentDateForSentiment.getMonth() + 1);
   }
   let filledSentimentCategories = filledData.map(pt => `${pt.year}-${pt.month.toString().padStart(2, '0')}`);
   let filledSentimentValues = filledData.map(pt => pt.mspr);
@@ -1376,6 +1380,7 @@
     insiderScore: finalInsiderScore
   };
 }
+
 
 
 function updateInsiderCharts(insiderData) {
@@ -1731,10 +1736,12 @@ function updateInsiderCharts(insiderData) {
     document.getElementById('sentSection').style.display = 'block';
     let sentBull = updateSentimentChart(sentiments);
 
-    // Use mcStats.lastPrice (which is now defined) in your insider function:
-    let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
-    document.getElementById('insiderSection').style.display = 'block';
-    let insiderBull = updateInsiderCharts(insiderData);
+    
+// Use mcStats.lastPrice (which is now defined from computeStats)
+let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+document.getElementById('insiderSection').style.display = 'block';
+let insiderBull = updateInsiderCharts(insiderData);
+
 
     let congressObj = await fetchCongressData(ticker, periodMonths);
     document.getElementById('congressSection').style.display = 'block';
