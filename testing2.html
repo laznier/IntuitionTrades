@@ -1377,6 +1377,7 @@
   };
 }
 
+
 function updateInsiderCharts(insiderData) {
   // Create column series for buys and sells from the aggregated time series.
   const buyData = insiderData.timeSeries.map(item => [item.date.getTime(), item.buys]);
@@ -1444,6 +1445,7 @@ function updateInsiderCharts(insiderData) {
       `Insider Bullish Score: ${insiderData.insiderScore.toFixed(2)}%`;
   return insiderData.insiderScore;
 }
+
 
   async function fetchCongressData(ticker, periodMonths) {
     const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
@@ -1723,12 +1725,14 @@ function updateInsiderCharts(insiderData) {
       let sentiments = await fetchSentimentData(ticker, periodMonths);
       document.getElementById('sentSection').style.display = 'block';
       let sentBull = updateSentimentChart(sentiments);
-      // Get the number of days from your insider timeframe input.
+    
+// Get the number of days from your insider timeframe input.
 const insiderDays = parseInt(document.getElementById('days').value.trim()) || 30;
 // Assume you have already determined the last closing price (lastPrice) from your historical data.
 let insiderData = await fetchAndProcessInsiderData(ticker, insiderDays, lastPrice);
 document.getElementById('insiderSection').style.display = 'block';
 let insiderBull = updateInsiderCharts(insiderData);
+
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
       document.getElementById('congressSection').style.display = 'block';
