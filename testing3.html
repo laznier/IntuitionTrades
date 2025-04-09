@@ -99,25 +99,29 @@
   </div>
   
   <!-- Chart and Risk Metrics Section -->
-  <div class="section" id="chartSection" style="display:none;">
-    <h2>Simulation Outcome Distribution</h2>
-    <!-- Highcharts will render the histogram inside this container -->
-    <div id="chartContainer" style="height:350px;"></div>
-    <!-- Risk Metrics -->
-    <div id="riskMetrics" style="padding:10px;"></div>
-    <!-- Interactive slider for target threshold -->
-    <label for="targetSlider">Set a Target Price Threshold:</label>
-    <input type="range" id="targetSlider" min="0" max="100" step="0.01" value="0" />
-    <span id="targetValue"></span>
-    <div id="sliderProb" style="margin-top:10px; font-weight:600;"></div>
-  </div>
+<div class="section" id="chartSection" style="display:none;">
+  <h2>Simulation Outcome Distribution</h2>
+  <!-- Highcharts will render the histogram inside this container -->
+  <div id="chartContainer" style="height:350px;"></div>
   
-  <!-- Toggleable Explanation Section -->
-  <button id="toggleExplanation">Show Explanation</button>
-  <div class="section" id="explanation">
-    <h2>Detailed Explanation</h2>
-    <p>
-      This tool uses a Monte Carlo simulation based on a double Heston stochastic volatility jump‐diffusion (dbHJ) model. It is designed for jump‐risk mitigation by modeling both the stock price dynamics and two independent stochastic volatility processes combined with jumps.
+  <!-- Risk Metrics -->
+  <div id="riskMetrics" style="padding:10px;"></div>
+  
+  <!-- Interactive slider for target threshold -->
+  <label for="targetSlider">Set a Target Price Threshold:</label>
+  <input type="range" id="targetSlider" min="0" max="100" step="0.01" value="0" />
+  <span id="targetValue"></span>
+  <div id="sliderProb" style="margin-top:10px; font-weight:600;"></div>
+  
+  <!-- Place the toggle button here, under metrics and slider -->
+  <button id="toggleExplanation" style="margin-top:20px;">Show Explanation</button>
+</div>
+
+<!-- Explanation Section (hidden by default) -->
+<div class="section" id="explanation" style="display:none;">
+  <h2>Detailed Explanation</h2>
+  <p>
+    This tool uses a Monte Carlo simulation based on a double Heston stochastic volatility jump‐diffusion (dbHJ) model. It is designed for jump‐risk mitigation by modeling both the stock price dynamics and two independent stochastic volatility processes combined with jumps.
     </p>
     <ul>
       <li><strong>Double Heston Component:</strong> Two variance processes (v<sub>1</sub> and v<sub>2</sub>) are simulated. Each follows a Heston dynamic:
