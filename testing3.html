@@ -328,24 +328,30 @@
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    // Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
-    // ***Modified: The last 6 values are now inverted (newest is index 0)***
-    function computeMomentumScoreUsingRegression(histValues) {
-      if (histValues.length < 6) return null;
-      // Invert the order of the last six values:
-      const recentHist = histValues.slice(-6).reverse();
-      const x = [1, 2, 3, 4, 5, 6];
-      const coeffs = polynomialRegression(x, recentHist, 3);
-      const predicted = predictValue(coeffs, 7);
-      const lastValue = recentHist[recentHist.length - 1];
-      const delta = predicted - lastValue;
-      const k = 5; // sensitivity factor
-      const score = 100 / (1 + Math.exp(-k * delta));
-      console.log("Recent (inverted) histogram values:", recentHist);
-      console.log("Predicted value:", predicted);
-      console.log("Last value:", lastValue, "Delta:", delta, "Momentum Score:", score);
-      return score;
-    }
+// Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
+// Modified so that the last 6 values are inverted and the independent variable is also reversed.
+function computeMomentumScoreUsingRegression(histValues) {
+  if (histValues.length < 6) return null;
+  // Get the last 6 histogram values and invert the order so that the newest is first.
+  const recentHist = histValues.slice(-6).reverse();
+  // Assign x-values so that the newest gets x=6 and the oldest gets x=1.
+  const x = [6, 5, 4, 3, 2, 1];
+  // Compute the polynomial regression coefficients (3rd degree).
+  const coeffs = polynomialRegression(x, recentHist, 3);
+  // Extrapolate to predict the next period.
+  const predicted = predictValue(coeffs, 7);
+  // Use the newest value (first element in the reversed recentHist) as the base.
+  const lastValue = recentHist[0];
+  const delta = predicted - lastValue;
+  const k = 5; // sensitivity factor
+  const score = 100 / (1 + Math.exp(-k * delta));
+  console.log("Recent (inverted) histogram values:", recentHist);
+  console.log("X values:", x);
+  console.log("Predicted value at x=7:", predicted);
+  console.log("Newest value (x=6):", lastValue, "Delta:", delta, "Momentum Score:", score);
+  return score;
+}
+
     
     // Compute the gap trend score using regression on both MACD and Signal lines.
     function computeGapTrendScore(macdLine, signalLine) {
