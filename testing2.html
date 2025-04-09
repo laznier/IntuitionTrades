@@ -777,12 +777,7 @@ function computeIchimoku(prices) {
       return finalScore;
     }
     
-    function updateTechChart(prices) {
-  // Compute technical indicators as before
-  let bands = computeBollingerBands(prices);
-  let wmas = computeWMA(prices);
-  let rsivals = computeRSI(prices, 14);
-  let macdData = computeMACD(prices);
+
 
   // Helper to convert date/value pairs for Highcharts
   const toTimeSeries = (data, valueKey) =>
@@ -1206,29 +1201,6 @@ function computeIchimoku(prices) {
   return aggregatedScore;
 }
 
-
-  // Compute technical score as before
-  if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
-    document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-    return 50;
-  }
-  let latestPrice = prices[prices.length - 1].close;
-  let prevPrice = prices[prices.length - 2].close;
-  let latestRSI = rsivals[rsivals.length - 1].rsi;
-  let prevRSI = rsivals[rsivals.length - 2].rsi;
-  let rsiScore = scoreRSI(latestRSI, prevRSI);
-  let latestBand = bands[bands.length - 1];
-  let prevBand = bands[bands.length - 2];
-  let bbScore = scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand);
-  let macdScore = computeNewMACDScore(prices);
-  let latestWMA = wmas[wmas.length - 1].wma;
-  let prevWMA = wmas[wmas.length - 2].wma;
-  let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
-  let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore) / 4;
-  document.getElementById('techDetails').innerText =
-    `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-  return aggregatedScore;
-}
 
 
     function randn_bm() {
