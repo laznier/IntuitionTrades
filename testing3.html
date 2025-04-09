@@ -328,50 +328,25 @@
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-// Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
-// Modified so that the last 6 values are inverted and the independent variable is also reversed.
-function computeMomentumScoreUsingRegression(histValues) {
-  if (histValues.length < 6) return null;
-  // Get the last 6 histogram values and invert the order so that the newest is first.
-  const recentHist = histValues.slice(-6).reverse();
-  // Assign x-values so that the newest gets x=6 and the oldest gets x=1.
-  const x = [6, 5, 4, 3, 2, 1];
-  // Compute the polynomial regression coefficients (3rd degree).
-  const coeffs = polynomialRegression(x, recentHist, 3);
-  // Extrapolate to predict the next period.
-  const predicted = predictValue(coeffs, 7);
-  // Use the newest value (first element in the reversed recentHist) as the base.
-  const lastValue = recentHist[0];
-  const delta = predicted - lastValue;
-  const k = 5; // sensitivity factor
-  const score = 100 / (1 + Math.exp(-k * delta));
-  console.log("Recent (inverted) histogram values:", recentHist);
-  console.log("X values:", x);
-  console.log("Predicted value at x=7:", predicted);
-  console.log("Newest value (x=6):", lastValue, "Delta:", delta, "Momentum Score:", score);
-  return score;
-}
-
-    
-    // Compute the gap trend score using regression on both MACD and Signal lines.
-    function computeGapTrendScore(macdLine, signalLine) {
-      if (macdLine.length < 6 || signalLine.length < 6) return null;
-      const recentMACD = macdLine.slice(-6).map(item => item.macd);
-      const recentSignal = signalLine.slice(-6).map(item => item.signal);
-      const x = [1, 2, 3, 4, 5, 6];
-      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
-      const predictedMACD = predictValue(macdCoeffs, 7);
-      const predictedSignal = predictValue(signalCoeffs, 7);
-      const predictedGap = predictedMACD - predictedSignal;
-      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
-      const delta = predictedGap - currentGap;
-      const k = 5; // sensitivity factor
-      const gapScore = 100 / (1 + Math.exp(-k * delta));
-      return { gapScore, delta, currentGap, predictedGap };
+    // Alternative momentum score calculation.
+    // Instead of using regression to predict a future value,
+    // we calculate the overall change (delta) across the last 6 histogram values.
+    function computeMomentumScoreSimple(histValues) {
+      if (histValues.length < 6) return null;
+      // Get the last 6 histogram values in their natural chronological order (oldest to newest).
+      const recentHist = histValues.slice(-6);
+      // Compute the change from the oldest to the newest:
+      const delta = recentHist[recentHist.length - 1] - recentHist[0];
+      // Adjust k for sensitivity; tune as necessary.
+      const k = 0.5;
+      const score = 100 / (1 + Math.exp(-k * delta));
+      console.log("Recent histogram values (oldest to newest):", recentHist);
+      console.log("Delta (newest - oldest):", delta, "Momentum Score (simple):", score);
+      return score;
     }
     
-    // Compute the overall MACD score using Position Score, Gap Trend Score, and Momentum Score.
+    // Optionally, if you want to compare both methods you can call one or the other.
+    // For example, you can comment out the regression-based momentum score and use the simple version:
     function computeNewMACDScore(prices) {
       const macdData = computeMACD(prices);
       const macdLine = macdData.macdLine;
@@ -388,12 +363,12 @@ function computeMomentumScoreUsingRegression(histValues) {
       const gapData = computeGapTrendScore(macdLine, signalLine);
       const gapScore = gapData ? gapData.gapScore : null;
       
-      // 3. Momentum Score: Use histogram regression.
+      // 3. Momentum Score: Use the simple shift method instead of regression.
       let histValues = [];
       for (let i = 0; i < len; i++) {
         histValues.push(macdLine[i].macd - signalLine[i].signal);
       }
-      const momentumScore = computeMomentumScoreUsingRegression(histValues);
+      const momentumScore = computeMomentumScoreSimple(histValues);
       
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return { positionScore, gapScore, momentumScore, finalScore };
@@ -444,7 +419,7 @@ function computeMomentumScoreUsingRegression(histValues) {
           <h2>MACD Analysis for ${ticker}</h2>
           <p><strong>Position Score:</strong> ${macdScores.positionScore.toFixed(2)}%</p>
           <p><strong>Gap Trend Score:</strong> ${macdScores.gapScore.toFixed(2)}%</p>
-          <p><strong>Momentum Score (Regression based):</strong> ${macdScores.momentumScore.toFixed(2)}%</p>
+          <p><strong>Momentum Score (Simple):</strong> ${macdScores.momentumScore.toFixed(2)}%</p>
           <hr>
           <p><strong>Final MACD Score:</strong> ${macdScores.finalScore.toFixed(2)}%</p>
         `;
@@ -505,31 +480,26 @@ function computeMomentumScoreUsingRegression(histValues) {
           <h2>2. Gap Trend Score</h2>
           <p>The Gap Trend Score measures how the gap between the MACD and Signal lines is expected to change. To compute it we:</p>
           <ol>
-            <li>Select the last 6 data points from both the MACD and Signal lines.</li>
+            <li>Select the last 6 data points from the MACD and Signal lines.</li>
             <li>Fit a 3rd-degree polynomial regression to each series.</li>
-            <li>Predict the 7th value for both the MACD and Signal lines.</li>
-            <li>Compute the predicted gap (predicted MACD minus predicted Signal) and compare it with the current gap to get a delta.</li>
-            <li>Map the delta using a logistic function: <code>gapScore = 100 / (1 + Math.exp(-k * delta));</code></li>
+            <li>Predict the 7th value and compare it to the current gap (MACD minus Signal) to compute a delta.</li>
+            <li>Map the delta using a logistic function.</li>
           </ol>
-          <p>A positive delta indicates a bullish trend in the gap, increasing the score, while a negative delta lowers it.</p>
         </section>
         <section>
-          <h2>3. Momentum Score</h2>
-          <p>The Momentum Score examines changes in the MACD histogram (the difference between MACD and Signal) over the last 6 values:</p>
+          <h2>3. Momentum Score (Simple)</h2>
+          <p>Rather than attempting a regression-based prediction, this method calculates the overall shift in the histogram (MACD – Signal) from the oldest to the newest of the last 6 data points.</p>
           <ol>
-            <li>Gather the last 6 histogram values (inverted so that the newest data is first).</li>
-            <li>Fit a 3rd-degree polynomial regression to these values.</li>
-            <li>Predict the 7th histogram value.</li>
-            <li>Calculate the delta between the predicted and the last observed histogram value.</li>
-            <li>Map the delta via a logistic function to obtain the momentum score.</li>
+            <li>Extract the last 6 histogram values (in chronological order).</li>
+            <li>Compute delta = (newest value) – (oldest value).</li>
+            <li>Apply the logistic function: <code>score = 100 / (1 + Math.exp(-k * delta))</code></li>
           </ol>
-          <p>A positive delta results in a higher momentum score; a negative one reduces the score.</p>
+          <p>If the histogram has shifted significantly upward (delta large positive), the score will be near 100.</p>
         </section>
         <section>
           <h2>4. Final MACD Score</h2>
           <p>The final MACD Score is the average of the Position, Gap Trend, and Momentum scores:</p>
           <pre>finalScore = (positionScore + gapScore + momentumScore) / 3;</pre>
-          <p>This final score provides an overall view of the MACD by capturing current position, anticipated change, and momentum.</p>
         </section>
         <section style="text-align:center;">
           <p><a href="#" onclick="window.close(); return false;">Close Explanation</a></p>
