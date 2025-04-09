@@ -731,6 +731,34 @@ button:hover {
         loadingOverlay.style.display = "none";
       }
     });
+    
+  // This function checks for URL parameters and auto-triggers simulation if a ticker is provided.
+  function autoInitializeSimulation() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tickerParam = urlParams.get("ticker");
+
+    if (tickerParam) {
+      // Autofill the ticker input.
+      document.getElementById("ticker").value = tickerParam;
+
+      // Optionally, you could update the company name as well by making an API call.
+      // For example:
+      // fetchTickerSuggestions(tickerParam).then(suggestions => {
+      //   if (suggestions.length > 0) {
+      //     document.getElementById("company-full-name").textContent = suggestions[0]["2. name"];
+      //   }
+      // });
+
+      // Auto-trigger simulation after a brief delay to ensure everything is set.
+      setTimeout(() => {
+        document.getElementById("simulateButton").click();
+      }, 200);
+    }
+  }
+
+  // Run once the DOM is fully loaded.
+  document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
+
   </script>
 </body>
 </html>
