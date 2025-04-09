@@ -1379,87 +1379,64 @@ footer {
     // finds the first available price on the initial date and the most recent price,
     // then calculates and displays the percentage difference in the given buttonElement.
     function updateTickerPerformanceIntraday(ticker, buttonElement) {
-  return new Promise((resolve) => {
-    const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
-    fetch(intradayUrl)
-      .then(response => response.json())
-      .then(data => {
-        if (!data || !data["Time Series (5min)"]) {
-          // Resolve even if there's no data to avoid blocking the chain
-          resolve();
-          return;
-        }
-        const timeSeries = data["Time Series (5min)"];
-        const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending
+      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(intradayUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
 
-        // Adjust the starting date as needed:
-        const initialDate = "2025-04-04";
-        const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
-        if (!initialTimestamps.length) {
-          resolve();
-          return;
-        }
-        const initialTimestamp = initialTimestamps[0];
-        const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+          // Adjust this date as needed
+          const initialDate = "2025-04-04";
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
 
-        const now = new Date();
-        const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
-        if (!currentTimestamps.length) {
-          resolve();
-          return;
-        }
-        const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
-        const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+          // Get the most recent timestamp (<= current time)
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
 
-        const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
-        const diffFormatted = diff.toFixed(2) + '%';
+          // Calculate percentage difference
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          const diffFormatted = diff.toFixed(2) + '%';
 
-        buttonElement.textContent = diffFormatted;
-        if (diff >= 0) {
-          buttonElement.classList.add('positive-performance');
-          buttonElement.classList.remove('negative-performance');
-        } else {
-          buttonElement.classList.add('negative-performance');
-          buttonElement.classList.remove('positive-performance');
-        }
-        resolve(); // Signal that this ticker's update is complete.
-      })
-      .catch(error => {
-        console.error("Error fetching intraday data for", ticker, error);
-        resolve(); // Resolve even if there's an error.
-      });
-  });
-}
-
+          // Update button text and styling
+          buttonElement.textContent = diffFormatted;
+          if (diff >= 0) {
+            buttonElement.classList.add('positive-performance');
+            buttonElement.classList.remove('negative-performance');
+          } else {
+            buttonElement.classList.add('negative-performance');
+            buttonElement.classList.remove('positive-performance');
+          }
+        })
+        .catch(error => console.error("Error fetching intraday data for", ticker, error));
+    }
 
     // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV) and the initial date
     document.addEventListener('DOMContentLoaded', () => {
-  const initialDate = "2025-04-04";
-  document.querySelectorAll('.performance-header').forEach(header => {
-    header.textContent = "Performance Since " + initialDate;
-  });
+      const initialDate = "2025-04-04";
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
 
-  // List the tickers for top picks
-  const topBuys = ["VST", "WYNN", "OXY"];
-  
-  // Map the top picks to an array of promises
-  const updatePromises = topBuys.map(ticker => {
-    const perfEl = document.getElementById(`performance-${ticker}`);
-    if (perfEl) {
-      return updateTickerPerformanceIntraday(ticker, perfEl);
-    }
-    // Resolve immediately if element is not found.
-    return Promise.resolve();
-  });
-  
-  // Wait until all top picks are updated then calculate weekly performance
-  Promise.all(updatePromises).then(() => {
-    updateWeeklyPicksButton();
-    // Optionally, set up an interval to update later if required:
-    setInterval(updateWeeklyPicksButton, 60000);
-  });
-});
-
+      const tickers = ["VST", "WYNN", "OXY", "INTA", "AXON", "LYV"];
+      tickers.forEach(ticker => {
+        const perfEl = document.getElementById(`performance-${ticker}`);
+        if (perfEl) {
+          updateTickerPerformanceIntraday(ticker, perfEl);
+          // Make each performance button clickable to see intraday chart
+          perfEl.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
+        }
+      });
+    });
   </script>
 
   <script>
@@ -1489,9 +1466,10 @@ footer {
 }
 
 
-function calculateWeeklyPicksPerformance() {
+      function calculateWeeklyPicksPerformance() {
   let total = 0;
   let count = 0;
+  // Only consider top buys
   topBuys.forEach(ticker => {
     const el = document.getElementById("performance-" + ticker);
     if (el && el.textContent && el.textContent.trim() !== "Loading...") {
@@ -1505,21 +1483,27 @@ function calculateWeeklyPicksPerformance() {
   return count ? total / count : 0;
 }
 
-function updateWeeklyPicksButton() {
-  const performance = calculateWeeklyPicksPerformance();
-  const performanceText = performance.toFixed(2) + '%';
-  const picksChangeBtn = document.getElementById("weeklyPicksChange");
-  picksChangeBtn.textContent = performanceText;
 
-  if (performance >= 0) {
-    picksChangeBtn.classList.add("positive-performance");
-    picksChangeBtn.classList.remove("negative-performance");
-  } else {
-    picksChangeBtn.classList.add("negative-performance");
-    picksChangeBtn.classList.remove("positive-performance");
-  }
-}
+      function updateWeeklyPicksButton() {
+        const performance = calculateWeeklyPicksPerformance();
+        const performanceText = performance.toFixed(2) + '%';
 
+        // Left button: "Our Top Picks"
+        const picksBtn = document.getElementById("weeklyPicksButton");
+        picksBtn.textContent = "Our Top Picks";
+
+        // Right button: actual performance
+        const picksChangeBtn = document.getElementById("weeklyPicksChange");
+        picksChangeBtn.textContent = performanceText;
+
+        if (performance >= 0) {
+          picksChangeBtn.classList.add("positive-performance");
+          picksChangeBtn.classList.remove("negative-performance");
+        } else {
+          picksChangeBtn.classList.add("negative-performance");
+          picksChangeBtn.classList.remove("positive-performance");
+        }
+      }
 
       // Update weekly picks performance after a short delay, then periodically
       setTimeout(updateWeeklyPicksButton, 3000);
