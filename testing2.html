@@ -377,14 +377,7 @@
       const gapData = computeGapTrendScore(macdLine, signalLine);
       const gapScore = gapData ? gapData.gapScore : null;
       
-      console.log("Last six histogram values:", lastSixHistogramValues);
-console.log("Polynomial regression coefficients:", coeffs);
-console.log("Predicted histogram value:", predicted);
-console.log("Last actual histogram value:", lastValue);
-console.log("Delta:", delta);
-console.log("Momentum Score:", momentumScore);
-
-
+      
       // 3. Momentum Score: Use histogram regression.
       let histValues = [];
       for (let i = 0; i < len; i++) {
