@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Top 5 Analysis</title>
+  <title>Top 5 Analysis (RRI Replacement)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
     body {
@@ -11,7 +11,9 @@
       line-height: 1.5;
       max-width: 1000px;
     }
-    h1 { margin-bottom: 1rem; }
+    h1 {
+      margin-bottom: 1rem;
+    }
     label, input, select {
       display: block;
       margin: 0.3rem 0;
@@ -60,7 +62,7 @@
 <h1>Top 5 Analysis</h1>
 
 <p>
-  This tool evaluates each ticker using Monte Carlo, Technical, Sentiment, Insider, Fundamental, and Congress signals.
+  This tool evaluates each ticker using <b>RiskReward</b>, Technical, Sentiment, Insider, Fundamental, and Congress signals.
   If “Use Manual Weights &amp; Scaling” is unchecked, it auto‑detects SPY’s market regime (Bull/Bear/Neutral) and picks a weighting distribution.
   If checked, you can pick Bear/Neutral/Bull to auto‑fill – or override any.
   
@@ -81,8 +83,8 @@
       </select>
     </label>
 
-    <label>Monte Carlo Weight (0..1): 
-      <input type="number" id="wMC" value="0.10" min="0" max="1" step="0.01">
+    <label>RiskReward Weight (0..1): 
+      <input type="number" id="wRRI" value="0.10" min="0" max="1" step="0.01">
     </label>
     <label>Technical Weight (0..1): 
       <input type="number" id="wTech" value="0.15" min="0" max="1" step="0.01">
@@ -117,7 +119,8 @@
 <script>
 /***********************************************************************
  * EXAMPLE TICKER LIST
- * Replace with your real set of tickers.
+ * Replace or trim with your real set of tickers if desired.
+ * This is extremely large from the original code.
  ***********************************************************************/
  const predeterminedTickers = [
     "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AES", "AFL", "A", "APD", "ABNB", "AKAM", "ALB", "ARE", "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AMCR", "AEE", "AEP", "AXP", "AIG", "AMT", "AWK", "AMP", "AME", "AMGN", "APH", "ADI", "ANSS", "AON", "APA", "APO", "AAPL", "AMAT", "APTV", "ACGL", "ADM", "ANET", "AJG", "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "AXON", "BKR", "BALL", "BAC", "BAX", "BDX", "BRK.B", "BBY", "TECH", "BIIB", "BLK", "BX", "BK", "BA", "BKNG", "BSX", "BMY", "AVGO", "BR", "BRO", "BF.B", "BLDR", "BG", "BXP", "CHRW", "CDNS", "CZR", "CPT", "CPB", "COF", "CAH", "KMX", "CCL", "CARR", "CAT", "CBOE", "CBRE", "CDW", "COR", "CNC", "CNP", "CF", "CRL", "SCHW", "CHTR", "CVX", "CMG", "CB", "CHD", "CI", "CINF", "CTAS", "CSCO", "C", "CFG", "CLX", "CME", "CMS", "KO", "CTSH", "CL", "CMCSA", "CAG", "COP", "ED", "STZ", "CEG", "COO", "CPRT", "GLW", "CPAY", "CTVA", "CSGP", "COST", "CTRA", "CRWD", "CCI", "CSX", "CMI", "CVS", "DHR", "DRI", "DVA", "DAY", "DECK", "DE", "DELL", "DAL", "DVN", "DXCM", "FANG", "DLR", "DFS", "DG", "DLTR", "D", "DPZ", "DASH", "DOV", "DOW", "DHI", "DTE", "DUK", "DD", "EMN", "ETN", "EBAY", "ECL", "EIX", "EW", "EA", "ELV", "EMR", "ENPH", "ETR", "EOG", "EPAM", "EQT", "EFX", "EQIX", "EQR", "ERIE", "ESS", "EL", "EG", "EVRG", "ES", "EXC", "EXE", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FDS", "FICO", "FAST", "FRT", "FDX", "FIS", "FITB", "FSLR", "FE", "FI", "F", "FTNT", "FTV", "FOXA", "FOX", "BEN", "FCX", "GRMN", "IT", "GE", "GEHC", "GEV", "GEN", "GNRC", "GD", "GIS", "GM", "GPC", "GILD", "GPN", "GL", "GDDY", "GS", "HAL", "HIG", "HAS", "HCA", "DOC", "HSIC", "HSY", "HES", "HPE", "HLT", "HOLX", "HD", "HON", "HRL", "HST", "HWM", "HPQ", "HUBB", "HUM", "HBAN", "HII", "IBM", "IEX", "IDXX", "ITW", "INCY", "IR", "PODD", "INTC", "ICE", "IFF", "IP", "IPG", "INTU", "ISRG", "IVZ", "INVH", "IQV", "IRM", "JBHT", "JBL", "JKHY", "J", "JNJ", "JCI", "JPM", "JNPR", "K", "KVUE", "KDP", "KEY", "KEYS", "KMB", "KIM", "KMI", "KKR", "KLAC", "KHC", "KR", "LHX", "LH", "LRCX", "LW", "LVS", "LDOS", "LEN", "LII", "LLY", "LIN", "LYV", "LKQ", "LMT", "L", "LOW", "LULU", "LYB", "MTB", "MPC", "MKTX", "MAR", "MMC", "MLM", "MAS", "MA", "MTCH", "MKC", "MCD", "MCK", "MDT", "MRK", "META", "MET", "MTD", "MGM", "MCHP", "MU", "MSFT", "MAA", "MRNA", "MHK", "MOH", "TAP", "MDLZ", "MPWR", "MNST", "MCO", "MS", "MOS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX", "NEM", "NWSA", "NWS", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC", "NCLH", "NRG", "NUE", "NVDA", "NVR", "NXPI", "ORLY", "OXY", "ODFL", "OMC", "ON", "OKE", "ORCL", "OTIS", "PCAR", "PKG", "PLTR", "PANW", "PARA", "PH", "PAYX", "PAYC", "PYPL", "PNR", "PEP", "PFE", "PCG", "PM", "PSX", "PNW", "PNC", "POOL", "PPG", "PPL", "PFG", "PG", "PGR", "PLD", "PRU", "PEG", "PTC", "PSA", "PHM", "PWR", "QCOM", "DGX", "RL", "RJF", "RTX", "O", "REG", "REGN", "RF", "RSG", "RMD", "RVTY", "ROK", "ROL", "ROP", "ROST", "RCL", "SPGI", "CRM", "SBAC", "SLB", "STX", "SRE", "NOW", "SHW", "SPG", "SWKS", "SJM", "SW", "SNA", "SOLV", "SO", "LUV", "SWK", "SBUX", "STT", "STLD", "STE", "SYK", "SMCI", "SYF", "SNPS", "SYY", "TMUS", "TROW", "TTWO", "TPR", "TRGP", "TGT", "TEL", "TDY", "TER", "TSLA", "TXN", "TPL", "TXT", "TMO", "TJX", "TKO", "TSCO", "TT", "TDG", "TRV", "TRMB", "TFC", "TYL", "TSN", "USB", "UBER", "UDR", "ULTA", "UNP", "UAL", "UPS", "URI", "UNH", "UHS", "VLO", "VTR", "VLTO", "VRSN", "VRSK", "VZ", "VRTX", "VTRS", "VICI", "V", "VST", "VMC", "WRB", "GWW", "WAB", "WBA", "WMT", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC", "WY", "WSM", "WMB", "WTW", "WDAY", "WYNN", "XEL", "XYL", "YUM", "ZBRA", "ZBH", "ZTS", "SFM", "INSM", "FTAI", "CRS", "SSB", "PCVX", "AIT", "MLI", "XTSLA", "FN", "HALO", "HQY", "BECN", "CVLT", "EXLS", "AUR", "UMBF", "HIMS", "ENSG", "CRDO", "RKLB", "GTLS", "ONB", "CWST", "COOP", "LNTH", "EAT", "UFPI", "RVMD", "FLR", "ALTR", "NXT", "PRMB", "TRNO", "RMBS", "TMHC", "SPXC", "MDGL", "HLNE", "BPMC", "JBTM", "MMSI", "ESNT", "OPCH", "TGTX", "WTS", "ACIW", "RHP", "CHX", "EPRT", "BMI", "ALKS", "IDCC", "GATX", "GH", "CMC", "SIGI", "KNF", "JXN", "GPI", "HOMB", "CTRE", "LRN", "CYTK", "IONQ", "GKOS", "GBCI", "BCPC", "MTH", "BBIO", "SKY", "SPSC", "MOGA", "CWAN", "CSWI", "KRG", "MARA", "ITRI", "LUMN", "ZWS", "RDN", "QTWO", "TXNM", "NOVT", "NJR", "QLYS", "HWC", "CORT", "FFIN", "KRYS", "KTOS", "MOD", "ABG", "PIPR", "IRT", "AXSM", "UBSI", "FSS", "ADMA", "AHR", "CNX", "BE", "SWX", "DY", "CADE", "POR", "FCFS", "VRNS", "AROC", "CBT", "MAC", "WK", "SR", "UPST", "PECO", "VLY", "NSIT", "BIPC", "FELE", "SANM", "MATX", "MGY", "PTCT", "BOX", "TENB", "BKH", "MWA", "ESE", "BDC", "ESGR", "CNO", "IBP", "SLG", "SFBS", "PBH", "CVCO", "OGS", "SBRA", "ORA", "KAI", "EXPO", "HRI", "SLAB", "AEIS", "GLNG", "BCC", "STRL", "ACA", "KBH", "CNR", "ANF", "ASTS", "ASB", "ITGR", "CDE", "ATGE", "BCO", "ALE", "ENS", "MUR", "CALM", "SKYW", "ABCB", "STEP", "MMS", "NPO", "RNA", "GEO", "TDS", "SM", "TCBI", "ROAD", "BXMT", "AVNT", "IBOC", "SHAK", "AVAV", "KTB", "FUN", "SKT", "PCH", "PJT", "PLXS", "AX", "SNEX", "COMP", "KFY", "CBZ", "PRIM", "PLMR", "VRRM", "HL", "SITM", "ASO", "GVA", "NWE", "HASI", "RDNT", "MC", "LANC", "URBN", "RUSHA", "AKRO", "MGEE", "EBC", "OTTR", "SOUN", "SWTX", "BOOT", "INTA", "PTEN", "IRTC", "BNL", "FRSH", "CRNX", "NHI", "SATS", "DORM", "NE", "STNE", "OSIS", "ICUI", "MHO", "NSP", "MIR", "ATMU", "HAE", "AVA", "WDFC", "POWI", "ACLX", "RELY", "WHD", "GHC", "UCB", "APLE", "FLG", "PTGX", "CDP", "BWIN", "HEES", "NOG", "WAY", "CRC", "SMPL", "SXT", "TGNA", "BGC", "RXO", "FTDR", "TPH", "ABM", "CCOI", "FUL", "GMS", "SMTC", "UNF", "RYTM", "CRVL", "GFF", "JOBY", "BL", "NMIH", "CPRX", "FULT", "WSFS", "ACHR", "OSCR", "WSBC", "PATK", "CBU", "WD", "FCPT", "MGRC", "BUR", "CNK", "ZETA", "AWR", "ASGN", "PFSI", "CPK", "CARG", "TEX", "LTH", "HGV", "RIOT", "SRRK", "NUVL", "PRCT", "CWT", "ALRM", "REZI", "GT", "WNS", "GSHD", "AUB", "BHVN", "TWST", "VCTR", "SG", "FBP", "ENVA", "AI", "GNW", "ALIT", "LXP", "LAUR", "VIAV", "VCYT", "SYNA", "TBBK", "AKR", "CATY", "PTON", "INDB", "SIG", "TOWN", "SFNC", "TNET", "FOLD", "AZZ", "DOCN", "BRZE", "CVBF", "HP", "FORM", "CAKE", "APAM", "HURN", "UE", "HCC", "DRS", "BOH", "FRME", "VAL", "OUT", "PDCO", "PRVA", "FIBK", "IOSP", "TRN", "AIR", "BLKB", "CLSKW", "MRCY", "LBRT", "BKU", "TTMI", "GPOR", "ACVA", "VCEL", "CON", "EVTC", "RIG", "YOU", "TMDX", "EPAC", "PRGS", "YELP", "SLVM", "PRK", "HUBG", "IVT", "BANF", "CNS", "OII", "AEO", "UEC", "AIN", "LCII", "CURB", "SBCF", "KAR", "FFBC", "CALX", "VC", "RRR", "CXW", "VSEC", "WAFD", "LIVN", "IPAR", "BEAM", "ATKR", "SSRM", "HNI", "VSH", "TDW", "EFSC", "PAR", "AMBA", "DIOD", "ENR", "HBI", "PSMT", "NVCR", "MTX", "MQ", "RNST", "HWKN", "PI", "PAYO", "ACAD", "MYRG", "KNTK", "BANR", "NATL", "AVPT", "SHO", "STC", "LGND", "PBF", "SKWD", "EXTR", "SHOO", "IGT", "CCS", "VERX", "PPBI", "TARS", "TRMK", "LMND", "CHEF", "CRGY", "SXI", "JJSF", "BATRK", "KLIC", "DAN", "DEI", "HE", "BUSE", "ROCK", "NEOG", "PFS", "ALG", "SMMT", "PHIN", "BANC", "ACLS", "NBTB", "CRK", "IIPR", "GOLF", "CNMD", "SYBT", "SGRY", "TGI", "MIRM", "RPD", "OSW", "WERN", "ARQT", "SEM", "HI", "ARWR", "STRA", "OI", "POWL", "RGTI", "DNLI", "FBK", "GRBK", "AGIO", "KWR", "AGM", "DVAX", "MTRN", "WRBY", "CSGS", "RAMP", "ZD", "NTB", "BTU", "TVTX", "ARCB", "STNG", "WLY", "OFG", "HLMN", "KMT", "JBLU", "KGS", "PLUS", "ALHC", "DNOW", "AGYS", "CASH", "MBC", "NMRK", "LMAT", "UPWK", "SDRL", "EWTX", "CHCO", "RXRX", "ABR", "SMR", "SJW", "JOE", "LZB", "VSCO", "MGNI", "REVG", "DRH", "TGLS", "GBX", "ALKT", "PD", "CORZ", "NNI", "ATRC", "BCRX", "PGNY", "SUPN", "AGX", "NWN", "FBNC", "UNFI", "WKC", "GNL", "PRKS", "OMCL", "STR", "IDYA", "HMN", "APLD", "KYMR", "QBTS", "ICFI", "LTC", "ADUS", "NIC", "PHR", "CUBI", "NGVT", "LKFN", "GTY", "ROOT", "APGE", "PAGS", "CENTA", "IESC", "IART", "VYX", "TNC", "MCY", "TDOC", "NWBI", "NTCT", "UFPT", "CGON", "FCF", "AVDX", "ELME", "DBRG", "ADEA", "LGIH", "BHE", "HTH", "CSTM", "TWO", "SONO", "PRDO", "DHT", "PZZA", "ENVX", "CABO", "GEF", "AMR", "TFIN", "ANDE", "COCO", "EPC", "AMRX", "LADR", "ACMR", "RUN", "MNKD", "STEL", "KN", "INSW", "ARI", "WABC", "ASTH", "VSAT", "TCBK", "SASR", "NBHC", "AGL", "AESI", "UPBD", "ROG", "DESP", "LNN", "TNDM", "VRNT", "CWK", "PLAB", "STBA", "CLDX", "CODI", "MSGE", "XHR", "FL", "ALEX", "SABR", "UMH", "TALO", "RLJ", "LC", "MLKN", "WGS", "RDFN", "WOR", "UVV", "TRUP", "VRE", "HRMY", "PMT", "SOC", "JBGS", "NEO", "HOPE", "CTS", "VBTX", "DFIN", "APPN", "SLNO", "SPT", "SDGR", "VRTS", "PLUG", "UTI", "INOD", "VICR", "PEB", "UNIT", "MD", "COMM", "INMD", "BFH", "PRM", "AMC", "SCL", "ATEN", "BKE", "WT", "QCRH", "HLX", "ARDX", "FLYW", "ASAN", "WMK", "VERA", "THS", "IRON", "VECO", "HELE", "XMTR", "ADNT", "OCUL", "KLG", "ANIP", "CRAI", "NVAX", "SAFT", "SRCE", "TILE", "NTST", "DX", "SPNT", "AIV", "LZ", "HCI", "EFC", "IMAX", "PRG", "WWW", "VRDN", "NHC", "HLIO", "BKD", "AUPH", "CCB", "HUT", "ATSG", "BHLB", "GABC", "PCRX", "DCOM", "HLIT", "BLBD", "GSAT", "DBD", "IMVT", "MFA", "SNDX", "ESRT", "EVH", "FBMS", "DXPE", "OBK", "PWP", "UCTT", "PEBO", "EVRI", "CIM", "CNNE", "TPC", "LEU", "JAMF", "KALU", "JBI", "USPH", "FUBO", "GIII", "EIG", "ATEC", "FOXF", "PRA", "NEXT", "AMPH", "ACT", "BBSI", "CSR", "NAVI", "BLX", "NVEE", "DGII", "FBRT", "KOS", "MXL", "SGHC", "MSEX", "EYE", "ARLO", "DOLE", "APOG", "CXM", "SFL", "AHCO", "VITL", "ARR", "QNST", "DEA", "PENG", "BTSG", "KW", "GDYN", "GERN", "DYN", "AMSF", "DRVN", "MCRI", "USLM", "TPB", "AAT", "ETNB", "MRC", "SCS", "SWI", "COUR", "DK", "CENX", "CDNA", "NN", "PBI", "BFC", "THR", "CWH", "IOVA", "ADPT", "PCT", "FDP", "XPRO", "NRIX", "JANX", "OCFC", "AORT", "WTTR", "LQDA", "WGO", "LOB", "GBTG", "PRO", "MODG", "WVE", "GOGL", "COLL", "MDXG", "SAFE", "AAOI", "BLFS", "FSLY", "SAH", "THRM", "TRS", "NTLA", "NX", "PDM", "INVA", "LFST", "ERII", "TNK", "FIZZ", "LGFB", "BRKL", "AMWD", "WINA", "WULF", "HROW", "UVSP", "AMN", "RXST", "OXM", "PRLB", "HG", "CNOB", "AMPL", "SBH", "CBRL", "RVLV", "BY", "ICHR", "MYGN", "HSII", "KNSA", "SPHR", "KFRC", "TROX", "MMI", "LMB", "FMBH", "UTZ", "PL", "NXRT", "SCSC", "SBSI", "EXPI", "WS", "IMKTA", "ALGT", "XNCR", "BLND", "ARIS", "STAA", "RSI", "ECPG", "CTBI", "TMP", "NSSC", "RWT", "SPNS", "LILAK", "LPG", "XPEL", "FIHL", "FA", "ARRY", "UTL", "RC", "ASTE", "VVX", "PRAA", "VMEO", "ELVN", "XERS", "CDRE", "BELFB", "HLF", "BHRB", "COHU", "CARS", "NNE", "UDMY", "AMTB", "DCO", "UUUU", "BV", "OPEN", "PNTG", "IDT", "SXC", "BDN", "PARR", "NG", "AVDL", "MCW", "ML", "OEC", "PGRE", "HFWA", "BRSP", "VTOL", "AXGN", "DAVE", "MBWM", "MRTN", "PRSU", "OSBC", "ATRO", "CNXN", "SYRE", "AMSC", "ADTN", "RDUS", "REPL", "NBBK", "HCSG", "EMBC", "ECVT", "CAC", "CMPR", "AAMI", "HSTM", "CFFN", "DLX", "BBUC", "SEI", "FCBC", "CLB", "EOLS", "AVXL", "CECO", "PTVE", "EVER", "HBNC", "HCKT", "WSR", "MBIN", "ZYME", "BXC", "LQDT", "NTGR", "PAX", "GRC", "CVI", "MATW", "PTLO", "OMI", "NBN", "OLO", "REAL", "PLYM", "COGT", "EQBK", "PLAY", "DFH", "KREF", "YEXT", "VTLE", "IBCP", "CEVA", "RCKT", "BJRI", "BLMN", "FLNG", "IBTA", "XRX", "CRMD", "PUMP", "CIFR", "IAS", "BFST", "MLAB", "VIR", "FWRG", "TRNS", "THFF", "ORC", "AOSL", "GOOD", "SPTN", "PRAX", "FG", "SITC", "BZH", "AVNS", "SPRY", "GCMG", "PDFS", "MLNK", "RYI", "ETD", "DEC", "AHH", "UFCS", "INVX", "HTBK", "OSPN", "JBSS", "MCB", "MOFG", "FIGS", "CBL", "FNA", "AIOT", "PFBC", "RBCAA", "BOW", "CASS", "ORRF", "SHEN", "SIBN", "WASH", "ASIX", "RGR", "INN", "GLDD", "EGBN", "NYMT", "SEZL", "VTS", "MCBS", "PSFE", "HTB", "BASE", "SMBC", "TIPT", "IIIV", "CAL", "MBUU", "AMAL", "GNK", "OPK", "JACK", "CPF", "CCBG", "AVBP", "THRY", "DJCO", "KOP", "SMBK", "IVR", "IMNM", "BORR", "MTUS", "NVRI", "TREE", "HAFC", "HOV", "IE", "PRTA", "GDEN", "LGFA", "OFIX", "REX", "SHLS", "ARVN", "GSBC", "KURA", "CSTL", "SNCY", "PGC", "SLQT", "HIPO", "CTO", "NABL", "UVE", "STGW", "SBGI", "ENFN", "FARO", "ESQ", "DHC", "FSBC", "DAKT", "CCNE", "BHB", "PRCH", "PLOW", "EE", "MTAL", "FWRD", "TRST", "WLDN", "GOGO", "OUST", "SMP", "FMNB", "CMCO", "AXL", "TRTX", "FIP", "HY", "JELD", "IIIN", "WLFC", "RUSHB", "BGS", "ACEL", "RPAY", "HZO", "UHT", "ACCD", "ARHS", "MNMD", "GMRE", "CTKB", "FLOC", "CSV", "NAT", "AMRK", "CLMB", "OMER", "LYTS", "RCUS", "PX", "CAPR", "FISI", "NPKI", "CHCT", "AROW", "PKST", "MNRO", "ETWO", "WEAV", "ABUS", "CNDT", "NFBK", "MEG", "FPI", "SSTK", "MLR", "VREX", "STKL", "SHBI", "BBW", "SVC", "MPB", "WRLD", "DNUT", "CCRN", "WNC", "CTLP", "SPFI", "TRVI", "RES", "PPTA", "DNTH", "NLOP", "PACS", "GCI", "NPK", "KALV", "AGS", "ALX", "EBF", "OLP", "CRSR", "SCHL", "REAX", "CCSI", "PGY", "PAHC", "BATRA", "ALRS", "BSRR", "MTSR", "HONE", "ODC", "MYE", "GRND", "DAWN", "MLYS", "PFIS", "TTI", "ORIC", "CLBK", "FBIZ", "SAGE", "CGEM", "CMRE", "URGN", "NRIM", "LGTY", "ALT", "AKBA", "TWI", "ODP", "ASPN", "EBTC", "IBRX", "BIGC", "ZVRA", "SWBI", "LIF", "KELYA", "EHAB", "RDVT", "ZIP", "FOR", "HTZ", "CRNC", "SRDX", "HNST", "DHIL", "AMRC", "CARE", "NWPX", "TTGT", "IMXI", "TMCI", "HTLD", "GTN", "EYPT", "CCO", "BMRC", "AMBC", "AVO", "MCS", "FFIC", "EVLV", "ASC", "KRUS", "GRPN", "LINC", "NCMI", "KE", "ACCO", "MGPI", "ANAB", "AMBP", "HPP", "VERV", "TCBX", "KODK", "SLP", "RGNX", "KIDS", "LASR", "PUBM", "CLW", "SENEA", "CENT", "MITK", "EGY", "GLRE", "BMBL", "ITIC", "SCVL", "TRML", "HIFS", "LUNR", "RBBN", "SFIX", "SEMR", "YORW", "KRNY", "KLC", "INDI", "NBR", "RLAY", "CVGW", "BAND", "DIN", "MSFUT", "HBCP", "ANGO", "NGVC", "TITN", "WTBA", "UNTY", "CLFD", "NAGE", "BFS", "ATEX", "GCT", "HBT", "ACNB", "BVS", "AMPS", "HOUS", "CLDT", "KROS", "RICK", "CVLG", "LIND", "NUS", "ORGO", "MSBI", "BBAI", "DDD", "CRMT", "TK", "APEI", "RIGL", "PACB", "TALK", "CIVB", "LXU", "IRMD", "RYAM", "XPER", "MATV", "APPS", "CYH", "CMTG", "NUVB", "MGTX", "GNTY", "CZNC", "REPX", "CELC", "EVGO", "FMAO", "MTRX", "CBAN", "FLGT", "FRPH", "NECB", "CWBC", "FRBA", "CWCO", "RBB", "NRDS", "ALNT", "BCAL", "MTW", "NEWT", "LPRO", "LAB", "PLPC", "TBPH", "OOMA", "SD", "SVRA", "LENZ", "MVIS", "BOC", "GHM", "LAND", "HRTG", "HAIN", "CMP", "ALDX", "MXCT", "HNRG", "BYRN", "NNOX", "ARKO", "IPI", "ESPR", "GPRE", "FLIC", "AURA", "SANA", "FLNC", "TCMD", "ATLC", "TRC", "BWMN", "BCML", "ZEUS", "OIS", "BTBT", "DGICA", "ZIMV", "ARCT", "SHYF", "CBNK", "FNLC", "LXFR", "BKV", "ARDT", "FFWM", "CYRX", "USNA", "DOMO", "ACIC", "HVT", "UIS", "FC", "GDOT", "STOK", "KIND", "PLSE", "HUMA", "FSBW", "NVEC", "MAX", "EGHT", "VLGEA", "URG", "EU", "GIC", "BWB", "RM", "LMNR", "ATXS", "MCFT", "CTRI", "RMR", "DSGR", "TSHA", "AVAH", "GRNT", "CMPO", "SMLR", "CLNE", "GEFB", "MOV", "SSBK", "DCGO", "NVTS", "SFST", "CPS", "CZFS", "CERS", "LUNG", "HRTX", "SPOK", "OBT", "SWIM", "PBPB", "VPG", "PLBC", "LOCO", "ASLE", "ERAS", "OSUR", "SIGA", "HDSN", "RDW", "VSTM", "HCAT", "ACRE", "COFS", "ANNX", "CHPT", "TRDA", "REFI", "VNDA", "PCB", "WSBF", "TSBK", "PKBK", "BCAX", "LOVE", "BRY", "PACK", "QTRX", "WOW", "EAF", "INBK", "LEGH", "MBI", "AEHR", "ABSI", "CTOS", "MRVI", "PDLB", "CRCT", "GCO", "BLZE", "TERN", "PHAT", "CMPX", "CDXS", "CBLL", "PGEN", "ASPI", "ULCC", "AVIR", "TBCH", "BKSY", "RRBI", "METCV", "CADL", "FRST", "IMMR", "AQST", "MEI", "BYON", "GLUE", "ASUR", "RGP", "TSVT", "ZUMZ", "RCEL", "OABI", "HYLN", "PSTL", "VMD", "PKE", "TRAK", "ILPT", "FNKO", "BWFG", "AVNW", "WEST", "EVCM", "DMRC", "AIP", "CRDA", "FDBC", "SMRT", "NGS", "SKYT", "GAMB", "IBEX", "AMCX", "MVBF", "TDUP", "BLFY", "BRT", "MITT", "RNGR", "JAKK", "ATNI", "SB", "LFMD", "LILA", "IRWD", "ORN", "JMSB", "GETY", "OPFI", "ALLO", "NRC", "WOOF", "CIO", "RLGT", "CRDF", "IAUX", "MG", "SEAT", "ONIT", "BSVN", "FET", "INSE", "MBCN", "TYRA", "ONEW", "DSP", "TG", "USCB", "GNE", "TH", "PINE", "PHLT", "MAMA", "LCNB", "PCYO", "NVRO", "RMNI", "FVR", "BYND", "PAL", "XPOF", "LSEA", "NWFL", "FSTR", "SLRN", "ALCO", "PKOH", "ISTR", "SPIR", "SSP", "YMAB", "DENN", "BCBP", "ITOS", "INR", "EB", "CHMG", "ANIK", "KLTR", "CVRX", "TBI", "SEVN", "OLPX", "EVEX", "BBNX", "BHR", "IHRT", "PRTH", "BARK", "FDMT", "OCGN", "OVLY", "ULH", "FLXS", "HMST", "DC", "SSTI", "FULC", "HPK", "MFIN", "REI", "BPRN", "SAMG", "INGN", "ARAY", "QSI", "VABK", "KRO", "OLMA", "SLDP", "ATLO", "NPCE", "VYGR", "ADV", "PANL", "VEL", "NKSH", "KRT", "QUAD", "BLDE", "MED", "FSP", "TTSH", "MEC", "TE", "INBX", "MYFW", "CMCL", "BOOM", "ESSA", "FVCB", "RMAX", "PVBC", "GCBC", "RAPP", "ACDC", "SVV", "NATH", "HBB", "RNAC", "DBI", "LZM", "JRVR", "NGNE", "HSHP", "WTI", "DH", "LE", "WEYS", "NKTR", "TRUE", "OB", "OPRX", "LAZR", "PMTS", "XOMA", "TLS", "FFNW", "DSGN", "LFCR", "NATR", "FLWS", "FENC", "GRDN", "NXDT", "RELL", "PNRG", "ONTF", "SMID", "MNTK", "SNBR", "LESL", "BH", "HFFG", "CDZI", "SGC", "PEBK", "KRRO", "WBTN", "AMPY", "III", "PBYI", "GPMT", "RGCO", "CRGX", "MDWD", "TCX", "CTRN", "EPM", "ALTG", "NREF", "RSVR", "PBFS", "ESCA", "JYNT", "CCCC", "SRI", "RXT", "POWW", "CATX", "FLL", "ARQ", "MLP", "UPB", "RCKY", "LAW", "EWCZ", "EVC", "ZBIO", "SMTI", "LWLG", "SMHI", "NC", "BBCP", "ADCT", "AOMR", "LNKB", "ENTA", "ONL", "AFCG", "SKYH", "PLL", "GENC", "MGNX", "NRDY", "SEPN", "NNBR", "KOD", "ZNTL", "PESI", "EML", "EDIT", "NODK", "HOFT", "CURV", "PRME", "MYPS", "ADVM", "INFU", "BRCC", "SAVA", "SCPH", "FORR", "MAPS", "SERA", "AVD", "HLLY", "ALEC", "SUNS", "ACTG", "SLDB", "JILL", "INMB", "JOUT", "KFS", "GPRO", "VIRC", "BELFA", "LWAY", "SKIN", "STHO", "FF", "SBT", "OFLX", "UTMD", "PROK", "SNDA", "AEVA", "CDLX", "CHRS", "UP", "SPCE", "STRS", "IRBT", "TSQ", "CMT", "AEYE", "SGHT", "MRAM", "BTMD", "FHTX", "NMRA", "PLRX", "BLNK", "STXS", "FCEL", "CTGO", "ALTI", "NRGV", "LRMR", "ACHV", "CLAR", "RILY", "ATOS", "LXEO", "EVI", "FATE", "MAZE", "LYEL", "MASS", "LCTX", "OBIO", "REKR", "GWRS", "RGLS", "DXLG", "EGAN", "MBX", "QIPT", "TAYD", "CRBU", "PAYS", "EP", "VTYX", "QUIK", "TNGX", "NKTX", "GEOS", "CABA", "SES", "PAMT", "RENB", "TTEC", "TELO", "BMEA", "VERU", "NOTE", "RHLD", "WALD", "CPSS", "FRGE", "GRWG", "CHGG", "TWIN", "AMTX", "CTNM", "THRD", "CRBP", "NPWR", "ALMS", "GOCO", "BDTX", "ARTV", "NL", "NTIC", "APLT", "INO", "MPX", "DIBS", "STEM", "STRO", "IVVD", "MHLD", "VTSI", "GLSI", "ACRV", "EEX", "XBIT", "GYRE", "JSPR", "VRA", "COOK", "TCRX", "ZURA", "HQI", "STRW", "CLPR", "LVO", "PYXS", "ISPR", "INNV", "STKS", "KYTX", "LCUT", "BIOA", "ANRO", "XFOR", "CRVO", "HLVX", "INZY", "LNZA", "VHI", "RMBL", "STTK", "ABOS", "ULBI", "NAUT", "TUSK", "VCSA", "PRPL", "CSTE", "ATNM", "CVGI", "GUTS", "AVTE", "NOVA", "RAPT", "MGX", "AMPX", "LXRX", "AKYA", "AGEN", "MRSN", "METCB", "ADRO", "TLYS", "SKYE", "AISP", "TPIC", "TNYA", "BLUE", "ZYXI", "CLYM", "AIRS", "RDZN", "QRHC", "GMGI", "VALU", "INH", "LVWR", "TCI", "CBUS", "DLHC", "SVCO", "PROP", "OTLK", "HOWL", "CAMP", "OVID", "ZSPC", "SWKH", "CIX", "FBLG", "SMXT", "PEPG", "MKTW", "GBIO", "GALT", "ALXO", "IPSC", "HBIO", "MODV", "IGMS", "BOLD", "SCWO", "AFRI", "SLND", "GCTS", "ARL", "ELEV", "SCLX", "LYRA", "QTTB", "SST", "VGAS", "OPAD", "DTI", "UHG", "VRCA", "PRLD", "ADRO", "DTC", "BAER", "WLLBW", "CRML", "GTXI", "MARGIN_USD", "CAD", "ETD_USD", "PDLI", "P5N994", "RTYM5", "USD"
@@ -140,29 +143,29 @@ const regimeSelect = document.getElementById("marketRegimeSelect");
 regimeSelect.addEventListener("change", function(){
   const val = this.value;
   if(val==="Bear"){
-    document.getElementById("wMC").value      = 0.05;
-    document.getElementById("wTech").value    = 0.05;
-    document.getElementById("wSent").value    = 0.10;
-    document.getElementById("wInsider").value = 0.30;
-    document.getElementById("wFund").value    = 0.30;
-    document.getElementById("wCongress").value= 0.20;
+    document.getElementById("wRRI").value      = 0.05;
+    document.getElementById("wTech").value     = 0.05;
+    document.getElementById("wSent").value     = 0.10;
+    document.getElementById("wInsider").value  = 0.30;
+    document.getElementById("wFund").value     = 0.30;
+    document.getElementById("wCongress").value = 0.20;
     document.getElementById("scalingFactor").value = 0.25;
   } else if(val==="Bull"){
-    document.getElementById("wMC").value      = 0.20;
-    document.getElementById("wTech").value    = 0.25;
-    document.getElementById("wSent").value    = 0.15;
-    document.getElementById("wInsider").value = 0.15;
-    document.getElementById("wFund").value    = 0.15;
-    document.getElementById("wCongress").value= 0.10;
+    document.getElementById("wRRI").value      = 0.20;
+    document.getElementById("wTech").value     = 0.25;
+    document.getElementById("wSent").value     = 0.15;
+    document.getElementById("wInsider").value  = 0.15;
+    document.getElementById("wFund").value     = 0.15;
+    document.getElementById("wCongress").value = 0.10;
     document.getElementById("scalingFactor").value = 1.00;
   } else {
     // Neutral
-    document.getElementById("wMC").value      = 0.15;
-    document.getElementById("wTech").value    = 0.20;
-    document.getElementById("wSent").value    = 0.15;
-    document.getElementById("wInsider").value = 0.15;
-    document.getElementById("wFund").value    = 0.20;
-    document.getElementById("wCongress").value= 0.15;
+    document.getElementById("wRRI").value      = 0.15;
+    document.getElementById("wTech").value     = 0.20;
+    document.getElementById("wSent").value     = 0.15;
+    document.getElementById("wInsider").value  = 0.15;
+    document.getElementById("wFund").value     = 0.20;
+    document.getElementById("wCongress").value = 0.15;
     document.getElementById("scalingFactor").value = 0.50;
   }
 });
@@ -173,7 +176,7 @@ regimeSelect.addEventListener("change", function(){
 function logStatus(msg){
   const s = document.getElementById("status");
   s.textContent += msg + "\n";
-  s.scrollTop= s.scrollHeight;
+  s.scrollTop = s.scrollHeight;
 }
 function sleep(ms){
   return new Promise(resolve=> setTimeout(resolve,ms));
@@ -187,6 +190,7 @@ const mathInstance = create(all);
 
 /***********************************************************************
  * parseAlphaDate
+ * (Used for sentiment date parsing)
  ***********************************************************************/
 function parseAlphaDate(str){
   const year  = str.substring(0,4);
@@ -199,89 +203,209 @@ function parseAlphaDate(str){
 }
 
 /***********************************************************************
- * processHistoricalData (for Monte Carlo and Technical)
+ * Historical data fetch
  ***********************************************************************/
-function processHistoricalData(timeSeries, periodMonths){
-  const dates= Object.keys(timeSeries).sort((a,b)=> new Date(a)- new Date(b));
-  const endDate= new Date(dates[dates.length-1]);
-  const startDate= new Date(endDate);
-  startDate.setMonth(startDate.getMonth()- periodMonths);
-
-  let prices=[];
-  for(let date of dates){
-    let dt=new Date(date);
-    if(dt>=startDate && dt<=endDate){
-      prices.push({
-        date: dt,
-        close: parseFloat(timeSeries[date]["5. adjusted close"])
-      });
-    }
+async function fetchHistoricalData(ticker){
+  // Adjust to your real endpoint if needed:
+  let url= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+  // For local usage:  let url= `/api/historical?symbol=${ticker}`;
+  const resp = await fetch(url);
+  const j = await resp.json();
+  if(!j["Time Series (Daily)"]){
+    throw new Error("No daily data for " + ticker);
   }
-  prices.sort((a,b)=> a.date- b.date);
-  return prices;
+  const ts = j["Time Series (Daily)"];
+  let out = [];
+  Object.keys(ts).forEach(d=>{
+    out.push({
+      date: new Date(d),
+      close: parseFloat(ts[d]["5. adjusted close"])
+    });
+  });
+  out.sort((a,b)=> a.date - b.date);
+  return out;
 }
 
 /***********************************************************************
- * Monte Carlo functions
+ * DBHJ-based RRI logic from Tool #2
  ***********************************************************************/
+
+// Standard Normal via Box-Muller
 function randn_bm(){
   let u=0,v=0;
   while(u===0) u=Math.random();
   while(v===0) v=Math.random();
-  return Math.sqrt(-2.0*Math.log(u)) * Math.cos(2.0*Math.PI*v);
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0*Math.PI*v);
 }
-function computeStats(prices){
-  let logs=[];
-  for(let i=1;i<prices.length;i++){
-    let prev= prices[i-1].close;
-    let cur=  prices[i].close;
-    logs.push( Math.log(cur/ prev) );
+
+// Basic stats from historical (daily returns -> annual)
+function computeHistStats(prices){
+  let logs = [];
+  for(let i=1; i< prices.length; i++){
+    let r= Math.log(prices[i].close / prices[i-1].close);
+    logs.push(r);
   }
-  if(!logs.length){
-    return { mean:0, stdDev:0, lastPrice: prices[prices.length-1].close };
+  if(logs.length<2){
+    return {
+      mu: 0,
+      sigma: 0,
+      lastPrice: prices[prices.length-1].close
+    };
   }
-  let dailyMean= logs.reduce((a,b)=> a+b,0)/ logs.length;
-  let variance= logs.reduce((acc,v)=> acc+ (v-dailyMean)**2, 0)/(logs.length-1);
-  let dailyStd= Math.sqrt(variance);
-  let tradingDays=252;
+  let meanDaily= logs.reduce((a,b)=> a+b, 0)/ logs.length;
+  let variance= logs.reduce((acc,r)=> acc+ (r- meanDaily)**2, 0)/(logs.length -1);
+  let stdDaily= Math.sqrt(variance);
+  let tradingDays= 252;
   return {
-    mean: dailyMean* tradingDays,
-    stdDev: dailyStd* Math.sqrt(tradingDays),
+    mu: meanDaily* tradingDays,
+    sigma: stdDaily* Math.sqrt(tradingDays),
     lastPrice: prices[prices.length-1].close
   };
 }
-function runMC(lastPrice, mean, stdDev, T, sims=10000){
-  let finals=[];
-  for(let i=0;i<sims;i++){
-    let Z= randn_bm();
-    let ST= lastPrice* Math.exp((mean- 0.5*stdDev**2)* T + stdDev* Math.sqrt(T)* Z);
-    finals.push(ST);
+
+// Attempt to fetch live IV:
+async function fetchOptionsIV(ticker){
+  try {
+    let url= `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
+    let resp= await fetch(url);
+    let j= await resp.json();
+    if(j.data && Array.isArray(j.data) && j.data.length>0){
+      let contract= j.data[0];
+      return parseFloat(contract.impliedVolatility) || null;
+    }
+  }catch(e){
+    // fallback
+    return null;
+  }
+  return null;
+}
+
+// Double Heston + Jump
+function runDBHJSimulation(S0, v10, v20, mu,
+                           kappa1, theta1, sigma1, rho1,
+                           kappa2, theta2, sigma2, rho2,
+                           lambda, jumpMean, jumpStd,
+                           T, dt, sims){
+  let steps= Math.floor(T/dt);
+  let finals= [];
+  for(let i=0; i<sims; i++){
+    let S= S0;
+    let v1= v10;
+    let v2= v20;
+    for(let j=0; j< steps; j++){
+      let Z1= randn_bm();
+      let Z2= randn_bm();
+      let Z3= randn_bm();
+      let dW_a=  Math.sqrt(dt)* Z1;
+      let dW_v1= Math.sqrt(dt)* (rho1* Z1 + Math.sqrt(1- rho1*rho1)* Z2);
+      let dW_v2= Math.sqrt(dt)* (rho2* Z1 + Math.sqrt(1- rho2*rho2)* Z3);
+
+      // v1, v2
+      v1= Math.max(
+            v1 + kappa1*(theta1 - v1)* dt + sigma1* Math.sqrt(Math.max(v1,0))* dW_v1,
+            0
+          );
+      v2= Math.max(
+            v2 + kappa2*(theta2 - v2)* dt + sigma2* Math.sqrt(Math.max(v2,0))* dW_v2,
+            0
+          );
+      
+      let jumpMultiplier= 1;
+      if(Math.random()< lambda* dt){
+        jumpMultiplier= Math.exp(jumpMean + jumpStd* randn_bm());
+      }
+      let totalVar= v1+ v2;
+      S *= jumpMultiplier * Math.exp( (mu- 0.5* totalVar)* dt + Math.sqrt(totalVar)* dW_a );
+    }
+    finals.push(S);
   }
   return finals;
 }
-function computeMCBull(lastPrice, finals){
-  let cnt= finals.filter(x=> x>= lastPrice).length;
-  return (cnt/ finals.length)* 100;
+
+// Basic 5% VaR and CVaR
+function computeRiskMetrics(finals, currentPrice){
+  let sorted= finals.slice().sort((a,b)=> a-b);
+  let idx= Math.floor(0.05* sorted.length);
+  let varPrice= sorted[idx];
+  let tail= sorted.slice(0, idx+1);
+  let cvarPrice= tail.reduce((sum,p)=> sum+p, 0)/ tail.length;
+  let varPct= 100*(currentPrice- varPrice)/ currentPrice;
+  let cvarPct= 100*(currentPrice- cvarPrice)/ currentPrice;
+  return { varPrice, varPct, cvarPrice, cvarPct };
+}
+
+// Risk vs Reward Index
+function computeRiskVsRewardIndex(finals, currentPrice, cvarFraction, T){
+  let sorted= finals.slice().sort((a,b)=> a-b);
+  let medianPrice= sorted[Math.floor(sorted.length/2)];
+  let rawReturn= (medianPrice/ currentPrice)-1;
+  let E_ann= Math.pow(1+ rawReturn, 1/T)-1; // annualize
+  let D_ann= 1- Math.pow(1- cvarFraction, 1/T);
+  let ratio;
+  if(D_ann> 1e-6) ratio= E_ann/ D_ann;
+  else ratio= (E_ann>=0)?9999: -9999;
+  
+  let alpha=1;
+  let rri= 50* (1+ Math.tanh(alpha* ratio));
+  return rri;
+}
+
+/**
+ * computeTickerRRI(ticker): gather historical, fetch IV, run dbHJ for 1 month
+ * return the final RRI
+ */
+async function computeTickerRRI(ticker){
+  // 1) hist data
+  let prices= await fetchHistoricalData(ticker);
+  if(prices.length<5){
+    logStatus("Not enough historical data for "+ ticker);
+    return 50;
+  }
+  let st= computeHistStats(prices);
+  // 2) IV
+  let iv= await fetchOptionsIV(ticker);
+  if(!iv) iv= st.sigma; // fallback
+  // 3) set up double heston
+  let v10= iv* iv;
+  let v20= 0.5* v10;
+  let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
+  let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
+  let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
+  let T=1/12, dt=1/252, sims=5000;
+  // 4) run sim
+  let finals= runDBHJSimulation(
+    st.lastPrice, v10, v20, st.mu,
+    kappa1, theta1, sigma1, rho1,
+    kappa2, theta2, sigma2, rho2,
+    lambda, jumpMean, jumpStd,
+    T, dt, sims
+  );
+  // 5) cvar => fraction
+  let risk= computeRiskMetrics(finals, st.lastPrice);
+  let cvarFrac= risk.cvarPct/100;
+  // 6) RRI
+  let rri= computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
+  return rri;
 }
 
 /***********************************************************************
  * Technical (MACD) functions
  ***********************************************************************/
 function computeEMA(series, period){
-  if(series.length<period)return [];
-  let alpha=2/(period+1);
+  if(series.length< period) return [];
+  let alpha= 2/(period+1);
   let sum=0;
-  for(let i=0;i<period;i++){
+  for(let i=0;i< period;i++){
     sum+= series[i].close;
   }
   let prevEma= sum/ period;
   let out=[];
-  out[period-1]={ date: series[period-1].date, ema: prevEma };
-  for(let i=period;i<series.length;i++){
+  out[period-1]= { date: series[period-1].date, ema: prevEma };
+  for(let i= period; i< series.length; i++){
     let cur= series[i].close;
-    let nxt=(cur- prevEma)* alpha + prevEma;
-    out[i]={ date: series[i].date, ema:nxt };
-    prevEma=nxt;
+    let nxt= (cur- prevEma)* alpha + prevEma;
+    out[i]= { date: series[i].date, ema: nxt };
+    prevEma= nxt;
   }
   return out.filter(Boolean);
 }
@@ -289,8 +413,8 @@ function computeMACD(series, fast=12, slow=26, signal=9){
   let fEMA= computeEMA(series, fast);
   let sEMA= computeEMA(series, slow);
   let macdLine=[];
-  for(let i=0;i<sEMA.length;i++){
-    let dt=sEMA[i].date;
+  for(let i=0; i< sEMA.length; i++){
+    let dt= sEMA[i].date;
     let match= fEMA.find(x=> x.date.getTime()=== dt.getTime());
     if(match){
       macdLine.push({ date: dt, macd: match.ema - sEMA[i].ema });
@@ -299,25 +423,25 @@ function computeMACD(series, fast=12, slow=26, signal=9){
   if(macdLine.length< signal) return { macdLine, signalLine:[] };
   let m=2/(signal+1);
   let sum=0;
-  for(let i=0;i<signal;i++){
+  for(let i=0;i< signal;i++){
     sum+= macdLine[i].macd;
   }
-  let prevSig= sum/signal;
+  let prevSig= sum/ signal;
   let signalLine=[];
-  signalLine[signal-1]={ date: macdLine[signal-1].date, signal: prevSig };
-  for(let i=signal;i< macdLine.length;i++){
-    let s=(macdLine[i].macd - prevSig)* m + prevSig;
-    signalLine[i]={ date: macdLine[i].date, signal: s };
-    prevSig=s;
+  signalLine[signal-1]= { date: macdLine[signal-1].date, signal: prevSig };
+  for(let i= signal;i< macdLine.length;i++){
+    let s= (macdLine[i].macd- prevSig)* m + prevSig;
+    signalLine[i]= { date: macdLine[i].date, signal: s };
+    prevSig= s;
   }
-  return { macdLine, signalLine: signalLine.filter(Boolean)};
+  return { macdLine, signalLine: signalLine.filter(Boolean) };
 }
 function polynomialRegression(x,y,deg){
   let X=[];
   for(let i=0;i<x.length;i++){
     let row=[];
-    for(let j=0;j<=deg;j++){
-      row.push( Math.pow(x[i], j) );
+    for(let j=0; j<= deg; j++){
+      row.push(Math.pow(x[i], j));
     }
     X.push(row);
   }
@@ -331,7 +455,7 @@ function predictValue(coefs,xx){
   return coefs.reduce((acc,c,i)=> acc+ c*Math.pow(xx,i), 0);
 }
 function computeMomentumScoreUsingRegression(hist){
-  if(hist.length<6)return 50;
+  if(hist.length<6) return 50;
   let recent= hist.slice(-6);
   let x=[1,2,3,4,5,6];
   let coefs= polynomialRegression(x, recent,3);
@@ -340,15 +464,15 @@ function computeMomentumScoreUsingRegression(hist){
   let delta= pred- last;
   let k=5;
   let sc= 100/(1+ Math.exp(-k* delta));
-  return isNaN(sc)?50:sc;
+  return isNaN(sc)? 50: sc;
 }
 function computeGapTrendScore(macdLine, signalLine){
-  if(macdLine.length<6|| signalLine.length<6)return { gapScore:50 };
+  if(macdLine.length<6 || signalLine.length<6) return { gapScore:50 };
   let rMacd= macdLine.slice(-6).map(x=> x.macd);
-  let rSig=  signalLine.slice(-6).map(x=> x.signal);
+  let rSig = signalLine.slice(-6).map(x=> x.signal);
   let x=[1,2,3,4,5,6];
   let macdCoefs= polynomialRegression(x, rMacd,3);
-  let sigCoefs=  polynomialRegression(x, rSig,3);
+  let sigCoefs = polynomialRegression(x, rSig,3);
   let predMACD= predictValue(macdCoefs,7);
   let predSig=  predictValue(sigCoefs,7);
   let predGap=  predMACD- predSig;
@@ -359,10 +483,9 @@ function computeGapTrendScore(macdLine, signalLine){
   return { gapScore: sc };
 }
 async function computeTechnical(prices){
-  if(prices.length<2)return 50;
-  let macdData= computeMACD(prices,12,26,9);
-  let macdLine= macdData.macdLine, signalLine= macdData.signalLine;
-  if(macdLine.length<2|| signalLine.length<2)return 50;
+  if(prices.length<2) return 50;
+  let { macdLine, signalLine }= computeMACD(prices,12,26,9);
+  if(macdLine.length<2 || signalLine.length<2) return 50;
   let len= Math.min(macdLine.length, signalLine.length);
   let latestMACD= macdLine[len-1].macd;
   let positionScore= 100/(1+ Math.exp(latestMACD));
@@ -370,96 +493,66 @@ async function computeTechnical(prices){
   let gapScore= gapObj.gapScore||50;
   let hist=[];
   for(let i=0;i<len;i++){
-    hist.push( macdLine[i].macd - signalLine[i].signal );
+    hist.push(macdLine[i].macd - signalLine[i].signal);
   }
   let momentum= computeMomentumScoreUsingRegression(hist);
   if(!momentum) momentum=50;
-  let final=(positionScore+ gapScore+ momentum)/3;
+  let final= (positionScore+ gapScore+ momentum)/3;
   return final;
-}
-
-/***********************************************************************
- * computeStats for Monte Carlo
- ***********************************************************************/
-function computeStats(prices){
-  let logs=[];
-  for(let i=1;i<prices.length;i++){
-    let prev= prices[i-1].close;
-    let cur=  prices[i].close;
-    logs.push( Math.log(cur/ prev) );
-  }
-  if(!logs.length){
-    return { mean:0, stdDev:0, lastPrice: prices[prices.length-1].close };
-  }
-  let dMean= logs.reduce((a,b)=> a+b,0)/ logs.length;
-  let variance= logs.reduce((acc,v)=> acc+ (v-dMean)**2, 0)/(logs.length-1);
-  let dStd= Math.sqrt(variance);
-  let tradingDays=252;
-  return {
-    mean: dMean* tradingDays,
-    stdDev: dStd* Math.sqrt(tradingDays),
-    lastPrice: prices[prices.length-1].close
-  };
-}
-function runMC(lastPrice, mean, stdDev, T, sims=10000){
-  let finals=[];
-  for(let i=0;i<sims;i++){
-    let Z= randn_bm();
-    let ST= lastPrice* Math.exp((mean- 0.5*stdDev**2)* T + stdDev* Math.sqrt(T)* Z);
-    finals.push(ST);
-  }
-  return finals;
-}
-function computeMCBull(lastPrice, finals){
-  let cnt= finals.filter(x=> x>= lastPrice).length;
-  return (cnt/ finals.length)* 100;
 }
 
 /***********************************************************************
  * Sentiment
  ***********************************************************************/
 async function fetchSentimentData(ticker, periodMonths){
-  const url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.feed) throw new Error("No sentiment data from server.");
-  let cutoff= new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let byHour={};
-  for(let art of j.feed){
-    let dt= parseAlphaDate(art.time_published);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    if(!art.ticker_sentiment)continue;
-    let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
-    if(!tItem)continue;
-    let raw= parseFloat(tItem.ticker_sentiment_score);
-    if(isNaN(raw))continue;
-    let norm= ((raw+1)/2)* 100;
-    let hr= dt.toISOString().substring(0,13);
-    if(!byHour[hr]) byHour[hr]=[];
-    byHour[hr].push(norm);
+  try {
+    let url= `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+    let resp= await fetch(url);
+    let j= await resp.json();
+    if(!j.feed) return [];
+    let cutoff= new Date();
+    cutoff.setMonth(cutoff.getMonth()- periodMonths);
+    let byHour= {};
+    for(let art of j.feed){
+      let dt= parseAlphaDate(art.time_published);
+      if(isNaN(dt)|| dt< cutoff) continue;
+      if(!art.ticker_sentiment) continue;
+      let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
+      if(!tItem) continue;
+      let raw= parseFloat(tItem.ticker_sentiment_score);
+      if(isNaN(raw)) continue;
+      let norm= ((raw+1)/2)*100;
+      let hr= dt.toISOString().substring(0,13);
+      if(!byHour[hr]) byHour[hr]= [];
+      byHour[hr].push(norm);
+    }
+    let sentiments=[];
+    for(let hStr in byHour){
+      let arr= byHour[hStr];
+      let avg= arr.reduce((a,b)=> a+b, 0)/ arr.length;
+      let dt= new Date(`${hStr}:00:00Z`);
+      sentiments.push({ date: dt, sentiment: avg });
+    }
+    sentiments.sort((a,b)=> a.date- b.date);
+    return sentiments;
+  } catch(e){
+    return [];
   }
-  let sentiments=[];
-  for(let hStr in byHour){
-    let arr= byHour[hStr];
-    let avg= arr.reduce((a,b)=> a+b,0)/ arr.length;
-    let dt=new Date(`${hStr}:00:00Z`);
-    sentiments.push({ date:dt, sentiment:avg });
-  }
-  sentiments.sort((a,b)=> a.date- b.date);
-  return sentiments;
 }
 function computeSentBull(arr){
-  if(arr.length<2)return 50;
+  if(arr.length<2) return 50;
   let first= arr[0].date;
-  let xs= arr.map(d=> (d.date-first)/(1000*60*60*24));
+  let xs= arr.map(d=> (d.date- first)/(1000*60*60*24));
   let ys= arr.map(d=> d.sentiment);
   let n= xs.length;
   let sumX= xs.reduce((a,b)=> a+b,0);
   let sumY= ys.reduce((a,b)=> a+b,0);
-  let sumXY= xs.reduce((acc,val,i)=> acc+ val* ys[i],0);
-  let sumX2= xs.reduce((acc,val)=> acc+ val* val,0);
-  let slope= (n* sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
+  let sumXY=0, sumX2=0;
+  for(let i=0;i<n;i++){
+    sumXY+= xs[i]* ys[i];
+    sumX2+= xs[i]* xs[i];
+  }
+  let slope= (n*sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
   let avg= sumY/n;
   let k=0.3;
   let slopeScore= 100/(1+ Math.exp(-k* slope));
@@ -469,11 +562,10 @@ function computeSentBull(arr){
 /***********************************************************************
  * Insider
  ***********************************************************************/
-// Fetch insider transaction data (buys/sells)
 async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
+  let url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
+  let r= await fetch(url);
+  let j= await r.json();
   if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
   let cutoff= new Date();
   cutoff.setMonth(cutoff.getMonth()- periodMonths);
@@ -481,10 +573,10 @@ async function fetchInsiderData(ticker, periodMonths, currentPrice){
   for(let item of j.data){
     if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
     if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-    let tradePrice=parseFloat(item.share_price);
+    let tradePrice= parseFloat(item.share_price);
     let lb= currentPrice*0.5, ub= currentPrice*1.5;
     if(tradePrice< lb|| tradePrice> ub) continue;
-    let dt=new Date(item.transaction_date);
+    let dt= new Date(item.transaction_date);
     if(isNaN(dt)|| dt< cutoff) continue;
     let shares= parseFloat(item.shares);
     if(item.acquisition_or_disposal==="A") totalBuy+= shares;
@@ -493,79 +585,59 @@ async function fetchInsiderData(ticker, periodMonths, currentPrice){
   return { totalBuys: totalBuy, totalSells: totalSell };
 }
 
-// Fetch insider sentiment data from the updated API endpoint.
-// Returns an object containing: { data: [...], trend, fromDateStr, toDateStr }
 async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-  let fromDate = new Date(simDate);
+  let fromDate= new Date(simDate);
   fromDate.setMonth(fromDate.getMonth()- periodMonths);
-  let fromDateStr = fromDate.toISOString().slice(0,10);
-  let toDateStr = simDate.toISOString().slice(0,10);
-  let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-  let r = await fetch(url);
-  let j = await r.json();
-  if(!j.data || !Array.isArray(j.data) || j.data.length===0)
+  let fromDateStr= fromDate.toISOString().slice(0,10);
+  let toDateStr= simDate.toISOString().slice(0,10);
+  let url= `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+  let r= await fetch(url);
+  let j= await r.json();
+  if(!j.data|| !Array.isArray(j.data)|| j.data.length===0){
     throw new Error("No insider sentiment data available.");
+  }
   return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
 }
 
-// Compute new insider score using the insider tool method.
-// - Fill timeline between fromDateStr and toDateStr with raw MSPR; missing months default to 0 (neutral, normalized to 50).
-// - Normalize using (raw+100)/2.
-// - Weights: 25% Final MSPR, 50% Transaction Score, 25% Trend Component.
 function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-  // Fill timeline
-  let fromDate = new Date(insiderSentimentData.fromDateStr);
-  let toDate = new Date(insiderSentimentData.toDateStr);
-  let filledData = [];
-  let currentDate = new Date(fromDate);
-  while(currentDate <= toDate){
-    let year = currentDate.getFullYear();
-    let month = currentDate.getMonth()+1; // JS months are 0-indexed
-    let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
+  let fromDate= new Date(insiderSentimentData.fromDateStr);
+  let toDate=   new Date(insiderSentimentData.toDateStr);
+  let filledData= [];
+  let currentDate= new Date(fromDate);
+  while(currentDate<= toDate){
+    let year= currentDate.getFullYear();
+    let month= currentDate.getMonth()+1;
+    let found= insiderSentimentData.data.find(pt=> pt.year===year && pt.month===month);
     if(found){
-      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
+      filledData.push({ year, month, mspr: parseFloat(found.mspr) });
     } else {
-      // Missing data: raw value 0 -> normalized to 50
-      filledData.push({ year: year, month: month, mspr: 0 });
+      filledData.push({ year, month, mspr: 0 });
     }
     currentDate.setMonth(currentDate.getMonth()+1);
   }
-  // Final MSPR: last month in timeline
-  let finalMspr = filledData[filledData.length-1].mspr;
-  let normalizedFinalMspr = (finalMspr+100)/2;
-  
-  // Average MSPR over timeline
-  let sumMspr = filledData.reduce((sum,pt)=> sum+pt.mspr, 0);
-  let avgMspr = sumMspr/ filledData.length;
-  let normalizedAvgMspr = (avgMspr+100)/2;
-  
-  // Regression slope using sequential month indices
-  let n = filledData.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  let finalMspr= filledData[filledData.length-1].mspr;
+  let normalizedFinalMspr= (finalMspr+100)/2;
+  let sumMspr= filledData.reduce((sum,pt)=> sum+ pt.mspr, 0);
+  let avgMspr= sumMspr/ filledData.length;
+  let normalizedAvgMspr= (avgMspr+100)/2;
+  let n= filledData.length;
+  let sumX=0, sumY=0, sumXY=0, sumX2=0;
   for(let i=0;i<n;i++){
-    let x = i+1;
-    let y = filledData[i].mspr;
-    sumX += x;
-    sumY += y;
-    sumXY += x*y;
-    sumX2 += x*x;
+    let x= i+1;
+    let y= filledData[i].mspr;
+    sumX+= x; sumY+= y; sumXY+= x*y; sumX2+= x*x;
   }
-  let denominator = n* sumX2 - sumX* sumX;
-  let slope = (denominator===0) ? 0 : (n* sumXY - sumX* sumY)/ denominator;
-  let normalizedSlope = (isNaN(slope) || !isFinite(slope)) ? 50 : (slope+100)/2;
-  
-  let trendComponent = (normalizedAvgMspr+ normalizedSlope)/2;
-  
-  // Transaction score
-  let transactionScore = 0;
-  let totalTrans = transactionBuys+ transactionSells;
+  let denom= n* sumX2 - sumX* sumX;
+  let slope= (denom===0)? 0 : (n* sumXY - sumX* sumY)/ denom;
+  let normalizedSlope= (isNaN(slope)|| !isFinite(slope))? 50: (slope+100)/2;
+  let trendComponent= (normalizedAvgMspr+ normalizedSlope)/2;
+  let transactionScore=0;
+  let totalTrans= transactionBuys+ transactionSells;
   if(totalTrans>0){
-    transactionScore = ((transactionBuys- transactionSells)/ totalTrans)*100;
+    transactionScore= ((transactionBuys- transactionSells)/ totalTrans)* 100;
   }
-  let normalizedTransactionScore = (transactionScore+100)/2;
-  
-  // Final combined insider score with weights: 25% Final MSPR, 50% Transaction, 25% Trend
-  let finalScore = 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
+  let normalizedTransactionScore= (transactionScore+ 100)/2;
+  let finalScore= 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
   return finalScore;
 }
 
@@ -574,60 +646,59 @@ function computeNewInsiderScore(insiderSentimentData, transactionBuys, transacti
  ***********************************************************************/
 function computeFundScores(data){
   const norm=(val,min,max)=>{
-    if(!val||isNaN(val))return 50;
-    let ratio=(val-min)/(max-min);
-    return Math.max(0,Math.min(100, ratio*100));
+    if(!val|| isNaN(val)) return 50;
+    let ratio= (val- min)/(max- min);
+    return Math.max(0, Math.min(100, ratio*100));
   };
   let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
   let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
   let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
   let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-  let profitability=(margin+ opMarg+ roa+ roe)/4;
+  let profitability= (margin+ opMarg+ roa+ roe)/4;
 
-  let pe=parseFloat(data.PERatio);
+  let pe= parseFloat(data.PERatio);
   let peScore= 100- norm(pe,5,40);
-  let peg=parseFloat(data.PEGRatio);
-  let pegScore=100- norm(peg,0.5,2.5);
+  let peg= parseFloat(data.PEGRatio);
+  let pegScore= 100- norm(peg,0.5,2.5);
   let ps= parseFloat(data.PriceToSalesRatioTTM);
-  let psScore=100- norm(ps,1,10);
+  let psScore= 100- norm(ps,1,10);
   let pb= parseFloat(data.PriceToBookRatio);
-  let pbScore=100- norm(pb,1,10);
-  let valuation=(peScore+ pegScore+ psScore+ pbScore)/4;
+  let pbScore= 100- norm(pb,1,10);
+  let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
 
-  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2,0.3);
-  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3,0.3);
+  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
+  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
   let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
   let ratio=0;
   if(pRef>0 && data.AnalystTargetPrice){
-    ratio=(parseFloat(data.AnalystTargetPrice)/ pRef)-1;
+    ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
   }
   let tgtScore= norm(ratio,0,0.5);
-  let growth=(rg+ eg+ tgtScore)/3;
+  let growth= (rg+ eg+ tgtScore)/3;
 
   let dy= norm(parseFloat(data.DividendYield),0,0.07);
   let dps= norm(parseFloat(data.DividendPerShare),0,10);
   let eps= norm(parseFloat(data.EPS),0,12);
-  let dividends=(dy+ dps+ eps)/3;
+  let dividends= (dy+ dps+ eps)/3;
 
-  let ebitda=parseFloat(data.EBITDA);
-  let revTTM=parseFloat(data.RevenueTTM);
-  let ebitdaMarg= (ebitda&& revTTM)? norm(ebitda/revTTM,0,0.3):50;
+  let ebitda= parseFloat(data.EBITDA);
+  let revTTM= parseFloat(data.RevenueTTM);
+  let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3): 50;
   let evEbitda= parseFloat(data.EVToEBITDA);
   let evEbitdaScore= 100- norm(evEbitda,5,30);
   let beta= parseFloat(data.Beta);
-  let betaScore=50;
+  let betaScore= 50;
   if(!isNaN(beta)){
-    betaScore=100- norm(beta,0,2);
+    betaScore= 100- norm(beta,0,2);
   }
-  let financial=(ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-
+  let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
   return { profitability, valuation, growth, dividends, financial };
 }
 async function fetchFundamentalData(ticker){
-  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.Symbol)return 50;
+  let url= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+  let r= await fetch(url);
+  let j= await r.json();
+  if(!j.Symbol) return 50;
   let cat= computeFundScores(j);
   let s=0,c=0;
   for(let k in cat){ s+= cat[k]; c++; }
@@ -639,18 +710,17 @@ async function fetchFundamentalData(ticker){
  ***********************************************************************/
 async function fetchCongressData(ticker, periodMonths){
   const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-  const resp=await fetch(url);
-  const j=await resp.json();
+  const resp= await fetch(url);
+  const j= await resp.json();
   if(!j.data || !Array.isArray(j.data)){
     throw new Error("Invalid congress data format.");
   }
-  const rawData = j.data;
-  let cutoff=new Date();
+  let cutoff= new Date();
   cutoff.setMonth(cutoff.getMonth()- periodMonths);
   let totalPurchase=0, totalSale=0;
-  for(let item of rawData){
-    if(!item.TransactionDate||!item.Transaction) continue;
-    let dt=new Date(item.TransactionDate);
+  for(let item of j.data){
+    if(!item.TransactionDate|| !item.Transaction) continue;
+    let dt= new Date(item.TransactionDate);
     if(isNaN(dt)|| dt< cutoff) continue;
     let amt= parseFloat(item.Amount)||0;
     if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
@@ -658,10 +728,10 @@ async function fetchCongressData(ticker, periodMonths){
   }
   return { totalPurchase, totalSale };
 }
-function computeCongressBull(purchase,sale){
+function computeCongressBull(purchase, sale){
   let sum= purchase+ sale;
-  if(sum<=0)return 50;
-  return ((purchase-sale)/ sum)*50 + 50;
+  if(sum<=0) return 50;
+  return ((purchase- sale)/ sum)*50 + 50;
 }
 
 /***********************************************************************
@@ -670,8 +740,8 @@ function computeCongressBull(purchase,sale){
 async function determineSPYMarketRegime(periodMonths){
   try {
     let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-    let resp=await fetch(url);
-    let j=await resp.json();
+    let resp= await fetch(url);
+    let j= await resp.json();
     if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
 
     let shortWindow= periodMonths*5;
@@ -681,7 +751,7 @@ async function determineSPYMarketRegime(periodMonths){
     let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
     let arr=[];
     for(let d of allKeys){
-      let dt=new Date(d);
+      let dt= new Date(d);
       let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
       arr.push({ date:dt, close:c });
     }
@@ -703,7 +773,7 @@ async function determineSPYMarketRegime(periodMonths){
     if(smaSig==="Bear") votes--;
     if(slopeSig==="Bull") votes++;
     if(slopeSig==="Bear") votes--;
-    if(votes>=2)  return "Bull";
+    if(votes>=2) return "Bull";
     if(votes<=-2) return "Bear";
     return "Neutral";
   } catch(e){
@@ -712,22 +782,22 @@ async function determineSPYMarketRegime(periodMonths){
   }
 }
 function computeSMA(priceArray, period){
-  if(!priceArray|| priceArray.length<period)return null;
+  if(!priceArray|| priceArray.length< period) return null;
   let slice= priceArray.slice(-period);
   let sum=0;
-  for(let p of slice){ sum+= p.close; }
-  return sum/period;
+  for(let p of slice) sum+= p.close;
+  return sum/ period;
 }
 function classifyBySMA(shortSMA, longSMA){
-  if(!shortSMA|| !longSMA)return "Neutral";
+  if(!shortSMA|| !longSMA) return "Neutral";
   let ratio= shortSMA/ longSMA;
-  if(ratio>1.01)return "Bull";
-  if(ratio<0.99)return "Bear";
+  if(ratio>1.01) return "Bull";
+  if(ratio<0.99) return "Bear";
   return "Neutral";
 }
 function computePriceSlope(prices){
   let n= prices.length;
-  if(n<2)return 0;
+  if(n<2) return 0;
   let sumX=0, sumY=0, sumXY=0, sumX2=0;
   for(let i=0;i<n;i++){
     sumX+= i;
@@ -737,34 +807,50 @@ function computePriceSlope(prices){
   }
   let numerator= n* sumXY - sumX* sumY;
   let denominator= n* sumX2 - sumX* sumX;
-  if(denominator===0)return 0;
+  if(denominator===0) return 0;
   return numerator/ denominator;
 }
 function classifyBySlope(slope){
   let bullThr=0.2, bearThr=-0.2;
-  if(slope> bullThr)return "Bull";
-  if(slope< bearThr)return "Bear";
+  if(slope> bullThr) return "Bull";
+  if(slope< bearThr) return "Bear";
   return "Neutral";
 }
 
 /***********************************************************************
- * getAutoWeightsForRegime => returns { wMC, wTech, wSent, wIns, wFund, wCong, scale }
+ * getAutoWeightsForRegime => returns { wRRI, wTech, wSent, wIns, wFund, wCong, scale }
  ***********************************************************************/
 function getAutoWeightsForRegime(regime){
   if(regime==="Bear"){
     return {
-      wMC: 0.05,  wTech:0.05, wSent:0.10, wIns:0.30,
-      wFund:0.30, wCong:0.20, scale:0.25
+      wRRI: 0.05,
+      wTech: 0.05,
+      wSent: 0.10,
+      wIns: 0.30,
+      wFund: 0.30,
+      wCong: 0.20,
+      scale: 0.25
     };
   } else if(regime==="Bull"){
     return {
-      wMC: 0.20,  wTech:0.25, wSent:0.15, wIns:0.15,
-      wFund:0.15, wCong:0.10, scale:1.00
+      wRRI: 0.20,
+      wTech: 0.25,
+      wSent: 0.15,
+      wIns: 0.15,
+      wFund: 0.15,
+      wCong: 0.10,
+      scale: 1.00
     };
   } else {
+    // Neutral
     return {
-      wMC: 0.15,  wTech:0.20, wSent:0.15, wIns:0.15,
-      wFund:0.20, wCong:0.15, scale:0.50
+      wRRI: 0.15,
+      wTech: 0.20,
+      wSent: 0.15,
+      wIns: 0.15,
+      wFund: 0.20,
+      wCong: 0.15,
+      scale: 0.50
     };
   }
 }
@@ -772,357 +858,77 @@ function getAutoWeightsForRegime(regime){
 /***********************************************************************
  * aggregatorFinal => picks auto or manual
  ***********************************************************************/
-function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
+function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime){
   const manual= document.getElementById("manualModeCheckbox").checked;
   if(manual){
-    const wMC    = parseFloat(document.getElementById("wMC").value)||0;
+    const wRRI   = parseFloat(document.getElementById("wRRI").value)||0;
     const wTech  = parseFloat(document.getElementById("wTech").value)||0;
     const wSent  = parseFloat(document.getElementById("wSent").value)||0;
     const wIns   = parseFloat(document.getElementById("wInsider").value)||0;
     const wFund  = parseFloat(document.getElementById("wFund").value)||0;
     const wCong  = parseFloat(document.getElementById("wCongress").value)||0;
     let sc= parseFloat(document.getElementById("scalingFactor").value)||1.0;
-    const sumW= wMC+wTech+wSent+wIns+wFund+wCong;
+
+    const sumW= wRRI + wTech + wSent + wIns + wFund + wCong;
     let invalidWeights= (Math.abs(sumW-1)>1e-9);
-    let invalidScale  = (sc<0 || sc>2);
+    let invalidScale= (sc<0 || sc>2);
     if(invalidWeights || invalidScale){
-      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling is outside [0..2]. Fallback to EQUAL weighting + scale=1.0.");
-      let eq= (mc+ tech+ sent+ ins+ fund+ cong)/6;
+      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => EQUAL weighting + scale=1.0");
+      let eq= (rri + tech + sent + ins + fund + cong)/6;
       return eq;
     } else {
-      let raw= wMC*mc + wTech*tech + wSent*sent + wIns*ins + wFund*fund + wCong*cong;
+      let raw= wRRI*rri + wTech*tech + wSent*sent + wIns*ins + wFund*fund + wCong*cong;
       return (raw- 50)* sc + 50;
     }
   } else {
     let auto= getAutoWeightsForRegime(regime);
-    let raw= auto.wMC*mc + auto.wTech*tech + auto.wSent*sent +
-             auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
+    let raw= auto.wRRI*rri + auto.wTech*tech + auto.wSent*sent
+           + auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
     return (raw- 50)* auto.scale + 50;
   }
 }
 
 /***********************************************************************
- * INSIDER FUNCTIONS (UPDATED)
- ***********************************************************************/
-// Fetch insider transaction data (buys/sells)
-async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  const url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
-  let cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalBuy=0, totalSell=0;
-  for(let item of j.data){
-    if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
-    if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-    let tradePrice=parseFloat(item.share_price);
-    let lb= currentPrice*0.5, ub= currentPrice*1.5;
-    if(tradePrice< lb|| tradePrice> ub) continue;
-    let dt=new Date(item.transaction_date);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let shares= parseFloat(item.shares);
-    if(item.acquisition_or_disposal==="A") totalBuy+= shares;
-    else if(item.acquisition_or_disposal==="D") totalSell+= shares;
-  }
-  return { totalBuys: totalBuy, totalSells: totalSell };
-}
-
-// Fetch insider sentiment data from updated API endpoint
-async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-  let fromDate = new Date(simDate);
-  fromDate.setMonth(fromDate.getMonth()- periodMonths);
-  let fromDateStr = fromDate.toISOString().slice(0,10);
-  let toDateStr = simDate.toISOString().slice(0,10);
-  let url = `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-  let r = await fetch(url);
-  let j = await r.json();
-  if(!j.data || !Array.isArray(j.data) || j.data.length===0)
-    throw new Error("No insider sentiment data available.");
-  return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
-}
-
-// Compute new insider score using insider tool logic:
-// - Fill timeline from fromDateStr to toDateStr; missing months get raw 0 (neutral, normalized to 50).
-// - Normalize raw MSPR using (raw+100)/2.
-// - Weights: 25% Final MSPR, 50% Transaction Score, 25% Trend Component.
-function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-  let fromDate = new Date(insiderSentimentData.fromDateStr);
-  let toDate = new Date(insiderSentimentData.toDateStr);
-  let filledData = [];
-  let currentDate = new Date(fromDate);
-  while(currentDate <= toDate){
-    let year = currentDate.getFullYear();
-    let month = currentDate.getMonth()+1;
-    let found = insiderSentimentData.data.find(pt => pt.year === year && pt.month === month);
-    if(found){
-      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
-    } else {
-      // Missing data: default raw MSPR = 0 (normalized to 50)
-      filledData.push({ year: year, month: month, mspr: 0 });
-    }
-    currentDate.setMonth(currentDate.getMonth()+1);
-  }
-  // Final MSPR: last month in timeline
-  let finalMspr = filledData[filledData.length-1].mspr;
-  let normalizedFinalMspr = (finalMspr+100)/2;
-  // Average MSPR over timeline
-  let sumMspr = filledData.reduce((sum, pt)=> sum+pt.mspr, 0);
-  let avgMspr = sumMspr/ filledData.length;
-  let normalizedAvgMspr = (avgMspr+100)/2;
-  // Regression slope using sequential month indices
-  let n = filledData.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for(let i=0;i<n;i++){
-    let x = i+1;
-    let y = filledData[i].mspr;
-    sumX += x;
-    sumY += y;
-    sumXY += x*y;
-    sumX2 += x*x;
-  }
-  let denominator = n* sumX2 - sumX* sumX;
-  let slope = (denominator===0) ? 0 : (n* sumXY - sumX* sumY)/ denominator;
-  let normalizedSlope = (isNaN(slope) || !isFinite(slope)) ? 50 : (slope+100)/2;
-  let trendComponent = (normalizedAvgMspr+ normalizedSlope)/2;
-  // Transaction score
-  let transactionScore = 0;
-  let totalTrans = transactionBuys+ transactionSells;
-  if(totalTrans>0){
-    transactionScore = ((transactionBuys- transactionSells)/ totalTrans)*100;
-  }
-  let normalizedTransactionScore = (transactionScore+100)/2;
-  // Final combined insider score:
-  let finalScore = 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
-  return finalScore;
-}
-
-/***********************************************************************
- * Fundamental functions
- ***********************************************************************/
-function computeFundScores(data){
-  const norm=(val,min,max)=>{
-    if(!val|| isNaN(val))return 50;
-    let ratio=(val-min)/(max-min);
-    return Math.max(0,Math.min(100, ratio*100));
-  };
-  let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
-  let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-  let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-  let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-  let profitability=(margin+ opMarg+ roa+ roe)/4;
-  let pe=parseFloat(data.PERatio);
-  let peScore= 100- norm(pe,5,40);
-  let peg=parseFloat(data.PEGRatio);
-  let pegScore=100- norm(peg,0.5,2.5);
-  let ps= parseFloat(data.PriceToSalesRatioTTM);
-  let psScore=100- norm(ps,1,10);
-  let pb= parseFloat(data.PriceToBookRatio);
-  let pbScore=100- norm(pb,1,10);
-  let valuation=(peScore+ pegScore+ psScore+ pbScore)/4;
-  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2,0.3);
-  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3,0.3);
-  let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-  let ratio=0;
-  if(pRef>0 && data.AnalystTargetPrice){
-    ratio=(parseFloat(data.AnalystTargetPrice)/ pRef)-1;
-  }
-  let tgtScore= norm(ratio,0,0.5);
-  let growth=(rg+ eg+ tgtScore)/3;
-  let dy= norm(parseFloat(data.DividendYield),0,0.07);
-  let dps= norm(parseFloat(data.DividendPerShare),0,10);
-  let eps= norm(parseFloat(data.EPS),0,12);
-  let dividends=(dy+ dps+ eps)/3;
-  let ebitda=parseFloat(data.EBITDA);
-  let revTTM=parseFloat(data.RevenueTTM);
-  let ebitdaMarg= (ebitda&& revTTM)? norm(ebitda/revTTM,0,0.3):50;
-  let evEbitda= parseFloat(data.EVToEBITDA);
-  let evEbitdaScore= 100- norm(evEbitda,5,30);
-  let beta= parseFloat(data.Beta);
-  let betaScore=50;
-  if(!isNaN(beta)){
-    betaScore=100- norm(beta,0,2);
-  }
-  let financial=(ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-  return { profitability, valuation, growth, dividends, financial };
-}
-async function fetchFundamentalData(ticker){
-  const url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-  const r=await fetch(url);
-  const j=await r.json();
-  if(!j.Symbol)return 50;
-  let cat= computeFundScores(j);
-  let s=0,c=0;
-  for(let k in cat){ s+= cat[k]; c++; }
-  return s/c;
-}
-
-/***********************************************************************
- * Congress functions
- ***********************************************************************/
-async function fetchCongressData(ticker, periodMonths){
-  const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-  const resp=await fetch(url);
-  const j=await resp.json();
-  if(!j.data || !Array.isArray(j.data)) throw new Error("Invalid congress data format.");
-  const rawData = j.data;
-  let cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalPurchase=0, totalSale=0;
-  for(let item of rawData){
-    if(!item.TransactionDate||!item.Transaction) continue;
-    let dt=new Date(item.TransactionDate);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let amt= parseFloat(item.Amount)||0;
-    if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
-    if(/sale/i.test(item.Transaction)) totalSale+= amt;
-  }
-  return { totalPurchase, totalSale };
-}
-function computeCongressBull(purchase,sale){
-  let sum= purchase+ sale;
-  if(sum<=0)return 50;
-  return ((purchase-sale)/ sum)*50 + 50;
-}
-
-/***********************************************************************
- * Market Regime detection
- ***********************************************************************/
-async function determineSPYMarketRegime(periodMonths){
-  try {
-    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-    let resp=await fetch(url);
-    let j=await resp.json();
-    if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
-    let shortWindow= periodMonths*5;
-    let longWindow=  periodMonths*15;
-    let totalDays= periodMonths*30;
-    let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-    let arr=[];
-    for(let d of allKeys){
-      let dt=new Date(d);
-      let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-      arr.push({ date:dt, close:c });
-    }
-    let end= arr[arr.length-1].date;
-    let start= new Date(end);
-    start.setDate(start.getDate()- totalDays);
-    let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-    if(filtered.length< Math.max(shortWindow, longWindow)){
-      logStatus("Not enough SPY data => neutral");
-      return "Neutral";
-    }
-    let shortSMA= computeSMA(filtered, shortWindow);
-    let longSMA= computeSMA(filtered, longWindow);
-    let smaSig= classifyBySMA(shortSMA, longSMA);
-    let slopeVal= computePriceSlope(filtered);
-    let slopeSig= classifyBySlope(slopeVal);
-    let votes=0;
-    if(smaSig==="Bull") votes++;
-    if(smaSig==="Bear") votes--;
-    if(slopeSig==="Bull") votes++;
-    if(slopeSig==="Bear") votes--;
-    if(votes>=2)  return "Bull";
-    if(votes<=-2) return "Bear";
-    return "Neutral";
-  } catch(e){
-    logStatus("Error in determineSPYMarketRegime => "+ e.message);
-    return "Neutral";
-  }
-}
-function computeSMA(priceArray, period){
-  if(!priceArray|| priceArray.length<period)return null;
-  let slice= priceArray.slice(-period);
-  let sum=0;
-  for(let p of slice){ sum+= p.close; }
-  return sum/period;
-}
-function classifyBySMA(shortSMA, longSMA){
-  if(!shortSMA|| !longSMA)return "Neutral";
-  let ratio= shortSMA/ longSMA;
-  if(ratio>1.01)return "Bull";
-  if(ratio<0.99)return "Bear";
-  return "Neutral";
-}
-function computePriceSlope(prices){
-  let n= prices.length;
-  if(n<2)return 0;
-  let sumX=0, sumY=0, sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    sumX+= i;
-    sumY+= prices[i].close;
-    sumXY+= i* prices[i].close;
-    sumX2+= i*i;
-  }
-  let numerator= n* sumXY - sumX* sumY;
-  let denominator= n* sumX2 - sumX* sumX;
-  if(denominator===0)return 0;
-  return numerator/ denominator;
-}
-function classifyBySlope(slope){
-  let bullThr=0.2, bearThr=-0.2;
-  if(slope> bullThr)return "Bull";
-  if(slope< bearThr)return "Bear";
-  return "Neutral";
-}
-
-/***********************************************************************
- * Single Ticker Logic
+ * SINGLE TICKER LOGIC
  ***********************************************************************/
 async function simulateOneTicker(ticker, periodMonths, regime){
   try {
-    // fetch historical data
-    const histUrl= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-    const histResp= await fetch(histUrl);
-    const histJson= await histResp.json();
-    if(!histJson["Time Series (Daily)"]){
-      logStatus(`No daily data for ${ticker}`);
-      return { ticker, aggregator:50 };
-    }
-    let prices= processHistoricalData(histJson["Time Series (Daily)"], periodMonths);
-    if(prices.length<2){
-      logStatus(`Not enough historical data for ${ticker}`);
-      return { ticker, aggregator:50 };
-    }
-
-    // Monte Carlo
-    let mcStats= computeStats(prices);
-    const T= 1/12;
-    let finals= runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T, 5000);
-    let mcBull= computeMCBull(mcStats.lastPrice, finals);
+    // RiskReward => RRI
+    let rri= await computeTickerRRI(ticker);
 
     // Technical
-    let techVal= await computeTechnical(prices);
+    let hist= await fetchHistoricalData(ticker);
+    let techVal= await computeTechnical(hist);
 
     // Sentiment
     let sentData= await fetchSentimentData(ticker, periodMonths);
     let sentVal= (sentData.length<2)? 50: computeSentBull(sentData);
 
-    // Insider (UPDATED: use new combined insider score)
-    // Use the last historical date as the simDate for insider sentiment
-    let simDateForInsider = prices[prices.length-1].date;
-    let transactionData = await fetchInsiderData(ticker, periodMonths, mcStats.lastPrice);
-    let insiderSentimentData = await fetchInsiderSentiment(ticker, periodMonths, simDateForInsider);
-    let insVal = computeNewInsiderScore(insiderSentimentData, transactionData.totalBuys, transactionData.totalSells);
-
-    // Fundamental
-    const fundUrl= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-    const fundResp= await fetch(fundUrl);
-    const fundJson= await fundResp.json();
-    let fundVal=50;
-    if(fundJson.Symbol){
-      let cat= computeFundScores(fundJson);
-      let s=0,c=0;
-      for(let k in cat){ s+= cat[k]; c++; }
-      fundVal= s/c;
+    // Insider
+    let currentPrice= (hist.length>0)? hist[hist.length-1].close : 1;
+    let insiderTx= await fetchInsiderData(ticker, periodMonths, currentPrice);
+    let insiderSent= null;
+    let simDate= (hist.length>0)? hist[hist.length-1].date : new Date();
+    try{
+      insiderSent= await fetchInsiderSentiment(ticker, periodMonths, simDate);
+    }catch(e){
+      // no data
+      insiderSent= null;
+    }
+    let insVal= 50;
+    if(insiderSent){
+      insVal= computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
     }
 
-    // Congress
-    let congObj= await fetchCongressData(ticker, periodMonths);
-    let congVal= computeCongressBull(congObj.totalPurchase, congObj.totalSale);
+    // Fundamental
+    let fundVal= await fetchFundamentalData(ticker);
 
-    // Aggregator using either manual or auto weights
-    let aggregator= aggregatorFinal(mcBull, techVal, sentVal, insVal, fundVal, congVal, regime);
+    // Congress
+    let congData= await fetchCongressData(ticker, periodMonths);
+    let congVal= computeCongressBull(congData.totalPurchase, congData.totalSale);
+
+    // aggregator
+    let aggregator= aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
     return { ticker, aggregator };
   } catch(e){
     logStatus(`Error with ${ticker}: ${e.message}`);
@@ -1131,25 +937,28 @@ async function simulateOneTicker(ticker, periodMonths, regime){
 }
 
 /***********************************************************************
- * Batch Analysis
+ * BATCH ANALYSIS
  ***********************************************************************/
 async function runBatchAnalysis(){
-  document.getElementById("status").textContent="";
+  document.getElementById("status").textContent= "";
   const progressContainer= document.getElementById("progressContainer");
   const progressBar= document.getElementById("progressBar");
   const progressText= document.getElementById("progressText");
-  progressContainer.style.display="block";
-  progressBar.value=0;
-  progressBar.max=100;
-  progressText.textContent="0% Completed";
+  progressContainer.style.display= "block";
+  progressBar.value= 0;
+  progressBar.max= 100;
+  progressText.textContent= "0% Completed";
+
   logStatus("Detecting SPY market regime...");
   let regime= await determineSPYMarketRegime(4);
   logStatus(`Detected Market Regime => ${regime}\n`);
-  let results=[];
-  let processed=0;
+
+  let results= [];
+  let processed= 0;
   let total= predeterminedTickers.length;
-  let batchSize=70;
-  for(let i=0;i<total;i+= batchSize){
+  let batchSize= 70; // or 50, up to you
+
+  for(let i=0; i< total; i+= batchSize){
     let batch= predeterminedTickers.slice(i, i+ batchSize);
     logStatus(`Processing batch #${Math.floor(i/batchSize)+1}: ${batch.join(", ")}`);
     for(let tk of batch){
@@ -1157,7 +966,7 @@ async function runBatchAnalysis(){
       results.push(one);
       processed++;
       logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
-      let pct= Math.round((processed/ total)*100);
+      let pct= Math.round((processed / total)*100);
       progressBar.value= pct;
       progressText.textContent= `${pct}% Completed`;
     }
@@ -1166,9 +975,10 @@ async function runBatchAnalysis(){
       await sleep(60000);
     }
   }
-  results.sort((a,b)=> a.aggregator- b.aggregator);
+  results.sort((a,b)=> a.aggregator - b.aggregator);
   let top5= results.slice(-5).reverse();
   let bottom5= results.slice(0,5);
+
   logStatus("\n=== Final Results ===");
   logStatus("Top 5:");
   top5.forEach(item=>{
@@ -1176,229 +986,6 @@ async function runBatchAnalysis(){
   });
   logStatus("Bottom 5:");
   bottom5.forEach(item=>{
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus(`Done! Processed ${processed} tickers.`);
-}
-
-/***********************************************************************
- * aggregatorFinal (manual/auto)
- ***********************************************************************/
-function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime){
-  const manual= document.getElementById("manualModeCheckbox").checked;
-  if(manual){
-    const wMC    = parseFloat(document.getElementById("wMC").value)||0;
-    const wTech  = parseFloat(document.getElementById("wTech").value)||0;
-    const wSent  = parseFloat(document.getElementById("wSent").value)||0;
-    const wIns   = parseFloat(document.getElementById("wInsider").value)||0;
-    const wFund  = parseFloat(document.getElementById("wFund").value)||0;
-    const wCong  = parseFloat(document.getElementById("wCongress").value)||0;
-    let sc= parseFloat(document.getElementById("scalingFactor").value)||1.0;
-    const sumW= wMC+wTech+wSent+wIns+wFund+wCong;
-    let invalidWeights= (Math.abs(sumW-1)>1e-9);
-    let invalidScale  = (sc<0 || sc>2);
-    if(invalidWeights || invalidScale){
-      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling is outside [0..2]. Fallback to EQUAL weighting + scale=1.0.");
-      let eq= (mc+ tech+ sent+ ins+ fund+ cong)/6;
-      return eq;
-    } else {
-      let raw= wMC*mc + wTech*tech + wSent*sent + wIns*ins + wFund*fund + wCong*cong;
-      return (raw- 50)* sc + 50;
-    }
-  } else {
-    let auto= getAutoWeightsForRegime(regime);
-    let raw= auto.wMC*mc + auto.wTech*tech + auto.wSent*sent +
-             auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
-    return (raw- 50)* auto.scale + 50;
-  }
-}
-
-/***********************************************************************
- * Optimize Weights By Direction
- ***********************************************************************/
-function optimizeWeightsByDirection(results) {
-  if (!results || !results.length) {
-    return { wMC: 1 / 6, wTech: 1 / 6, wSent: 1 / 6, wIns: 1 / 6, wFund: 1 / 6, wCong: 1 / 6 };
-  }
-  let bestAcc = -Infinity, bestErr = Infinity;
-  let bestW = { wMC: 1 / 6, wTech: 1 / 6, wSent: 1 / 6, wIns: 1 / 6, wFund: 1 / 6, wCong: 1 / 6 };
-  let step = 0.1;
-  for (let wMC = 0; wMC <= 1; wMC += step) {
-    for (let wTech = 0; wTech <= 1; wTech += step) {
-      for (let wSent = 0; wSent <= 1; wSent += step) {
-        for (let wIns = 0; wIns <= 1; wIns += step) {
-          for (let wFund = 0; wFund <= 1; wFund += step) {
-            for (let wCong = 0; wCong <= 1; wCong += step) {
-              let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
-              if (Math.abs(sumW - 1) > 1e-9) continue;
-              let c = 0, e = 0, u = 0;
-              for (let r of results) {
-                if (!r) continue;
-                let agg = wMC * r.componentScores.mc + wTech * r.componentScores.tech
-                  + wSent * r.componentScores.sent + wIns * r.componentScores.insider
-                  + wFund * r.componentScores.fundamental + wCong * r.componentScores.congress;
-                let ret = agg - 50;
-                let d = (ret > 0) ? "Positive" : "Negative";
-                if (d === r.actualDirection) c++;
-                e += Math.abs(ret - r.actualReturn);
-                u++;
-              }
-              let acc = (u > 0) ? (c / u) : 0;
-              let avgErr = (u > 0) ? (e / u) : 999999;
-              if (acc > bestAcc) {
-                bestAcc = acc; bestErr = avgErr;
-                bestW = { wMC, wTech, wSent, wIns, wFund, wCong };
-              } else if (Math.abs(acc - bestAcc) < 1e-12 && avgErr < bestErr) {
-                bestAcc = acc; bestErr = avgErr;
-                bestW = { wMC, wTech, wSent, wIns, wFund, wCong };
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return bestW;
-}
-
-/***********************************************************************
- * Detailed Analysis
- ***********************************************************************/
-function viewDetailedAnalysis() {
-  if (!allResults.length) {
-    alert("No simulation results. Run the backtest first.");
-    return;
-  }
-  let correctEq = allResults.filter(r => r && r.correctPrediction).length;
-  let incorrectEq = allResults.length - correctEq;
-  let eqAccuracy = (correctEq / allResults.length) * 100;
-  let best = optimizeWeightsByDirection(allResults);
-  let used = 0, cOpt = 0, sumErr = 0;
-  for (let r of allResults) {
-    if (!r) continue;
-    let agg = best.wMC * r.componentScores.mc + best.wTech * r.componentScores.tech
-      + best.wSent * r.componentScores.sent + best.wIns * r.componentScores.insider
-      + best.wFund * r.componentScores.fundamental + best.wCong * r.componentScores.congress;
-    let ret = agg - 50;
-    let d = ret > 0 ? "Positive" : "Negative";
-    if (d === r.actualDirection) cOpt++;
-    sumErr += Math.abs(ret - r.actualReturn);
-    used++;
-  }
-  let optAccuracy = (cOpt / used) * 100;
-  let optIncorrect = used - cOpt;
-  let optMAE = (used > 0) ? (sumErr / used) : 0;
-  let detailHTML = `
-    <h1>Detailed Analysis</h1>
-    <p>Number of Tickers Processed: ${allResults.length}</p>
-    <h2>Auto Weighted & Scaled</h2>
-    <p>Correct Predictions: ${correctEq}, Incorrect: ${incorrectEq}</p>
-    <p>Directional Accuracy: ${eqAccuracy.toFixed(2)}%</p>
-    <h3>Suggested Scaling Factor (Strict "Auto" aggregator)</h3>
-    <p>
-      Best scaling factor in [0..2]: <strong>${best.scale ? best.scale.toFixed(2) : "N/A"}</strong><br>
-      (For auto aggregator, please refer to the optimal scaling computed in the batch results.)
-    </p>
-    <h2>Optimized Weights (All Tickers)</h2>
-    <p>
-      Monte Carlo: ${(best.wMC * 100).toFixed(0)}%, 
-      Technical: ${(best.wTech * 100).toFixed(0)}%,
-      Sentiment: ${(best.wSent * 100).toFixed(0)}%,
-      Insider: ${(best.wIns * 100).toFixed(0)}%,
-      Fundamental: ${(best.wFund * 100).toFixed(0)}%,
-      Congress: ${(best.wCong * 100).toFixed(0)}%
-    </p>
-    <p>Correct: ${cOpt}, Incorrect: ${optIncorrect}, Accuracy: ${optAccuracy.toFixed(2)}%</p>
-    <p>Mean Absolute Error (Tie-breaker): ${optMAE.toFixed(2)}%</p>
-  `;
-  let w = window.open("", "_blank");
-  if (!w) {
-    alert("Please allow popups for the detailed analysis.");
-    return;
-  }
-  let htmlDoc = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Detailed Analysis</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #f9fafb;
-        color: #333;
-        margin: 0 auto;
-        max-width: 900px;
-        padding: 2rem;
-        line-height: 1.6;
-      }
-      h1, h2, h3 {
-        text-align: center;
-      }
-      a {
-        color: #2563eb;
-      }
-    </style>
-  </head>
-  <body>
-    ${detailHTML}
-    <div style="text-align:center; margin-top:20px;">
-      <p><a href="#" onclick="window.close();return false;">Close Window</a></p>
-    </div>
-  </body>
-  </html>
-  `;
-  w.document.open();
-  w.document.write(htmlDoc);
-  w.document.close();
-}
-
-/***********************************************************************
- * Run Batch Analysis
- ***********************************************************************/
-async function runBatchAnalysis(){
-  document.getElementById("status").textContent = "";
-  const progressContainer = document.getElementById("progressContainer");
-  const progressBar = document.getElementById("progressBar");
-  const progressText = document.getElementById("progressText");
-  progressContainer.style.display = "block";
-  progressBar.value = 0;
-  progressBar.max = 100;
-  progressText.textContent = "0% Completed";
-  logStatus("Detecting SPY market regime...");
-  let regime = await determineSPYMarketRegime(4);
-  logStatus(`Detected Market Regime => ${regime}\n`);
-  let results = [];
-  let processed = 0;
-  let total = predeterminedTickers.length;
-  let batchSize = 70;
-  for (let i = 0; i < total; i += batchSize) {
-    let batch = predeterminedTickers.slice(i, i + batchSize);
-    logStatus(`Processing batch #${Math.floor(i / batchSize) + 1}: ${batch.join(", ")}`);
-    for (let tk of batch) {
-      let one = await simulateOneTicker(tk, 4, regime);
-      results.push(one);
-      processed++;
-      logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
-      let pct = Math.round((processed / total) * 100);
-      progressBar.value = pct;
-      progressText.textContent = `${pct}% Completed`;
-    }
-    if (i + batchSize < total) {
-      logStatus("Waiting 60s before next batch...");
-      await sleep(60000);
-    }
-  }
-  results.sort((a, b) => a.aggregator - b.aggregator);
-  let top5 = results.slice(-5).reverse();
-  let bottom5 = results.slice(0, 5);
-  logStatus("\n=== Final Results ===");
-  logStatus("Top 5:");
-  top5.forEach(item => {
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
-  logStatus("Bottom 5:");
-  bottom5.forEach(item => {
     logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
   });
   logStatus(`Done! Processed ${processed} tickers.`);
