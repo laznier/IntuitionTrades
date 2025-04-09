@@ -4,15 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Standalone Technical Analysis</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Include Highcharts for Charting (Standard and Stock) -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>  
   <!-- Include Math.js for regression calculations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
@@ -23,7 +31,7 @@
       margin-bottom: 20px;
       font-weight: 600;
     }
-    p, li {
+    p, li, label {
       margin-bottom: 0.75em;
     }
     label {
@@ -36,31 +44,55 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+      transition: border-color var(--transition-speed);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
     }
+    /* Autocomplete suggestions for ticker */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+    }
     .section {
       margin-top: 30px;
       padding: 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     .section h2 {
       margin-bottom: 10px;
@@ -74,9 +106,9 @@
       display: none;
       margin-bottom: 20px;
       padding: 15px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     #aggregateBar {
       position: relative;
@@ -90,7 +122,7 @@
       top: 0;
       width: 2px;
       height: 100%;
-      background: black;
+      background: var(--text-color);
     }
     #aggregateScoreText {
       position: absolute;
@@ -98,19 +130,19 @@
       text-align: center;
       line-height: 30px;
       font-weight: bold;
-      color: #fff;
+      color: var(--text-color);
       text-shadow: 1px 1px 2px #000;
     }
     #loading {
       margin-top: 10px;
       font-style: italic;
-      color: #f97316;
+      color: var(--accent-color);
+      display: none;
     }
     /* Back to Home Button */
     #backHome {
       margin-bottom: 20px;
     }
-    
     /* Mobile-specific adjustments */
     @media (max-width: 600px) {
       body {
@@ -132,11 +164,6 @@
       .chartContainer {
         margin-top: 10px;
       }
-      /* Ensure Plotly charts resize on mobile */
-      #rsiChart, #bbChart, #macdChart, #wmaChart, #ichimokuChart {
-        width: 100% !important;
-        height: auto !important;
-      }
     }
   </style>
 </head>
@@ -149,12 +176,14 @@
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
+  <!-- Autocomplete suggestions for ticker -->
+  <ul id="ticker-suggestions"></ul>
 
   <label for="period">Historical Period (months):</label>
   <input type="number" id="period" value="12" min="1">
 
   <button id="runAnalysis">Run Analysis</button>
-  <div id="loading" style="display:none;">Loading data and running analysis...</div>
+  <div id="loading">Loading data and running analysis...</div>
 
   <!-- Aggregated Signal Meter -->
   <div id="aggregateSection">
@@ -210,10 +239,70 @@
   </div>
 
   <script>
-    // Global variable to store analysis details
+    // Global variable to store analysis details for the explanation page.
     let techReport = null;
+    let debounceTimeout;
 
-    /*************** Utility Functions ***************/
+    /*************** Autocomplete Functions ***************/
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
+    }
+
+    async function fetchTickerSuggestions(query) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+          throw new Error('Error fetching ticker suggestions');
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item["1. symbol"]}</span> - <span>${item["2. name"]}</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+
+    /*************** Utility & Calculation Functions ***************/
     function parseAlphaDate(str) {
       const year  = str.substring(0, 4);
       const month = str.substring(4, 6);
@@ -221,7 +310,7 @@
       return new Date(`${year}-${month}-${day}`);
     }
 
-    // Process historical data; expects keys "5. adjusted close", "2. high", "3. low", and optionally "1. open"
+    // Process historical data; returns an array of price objects for dates within periodMonths.
     function processHistoricalData(timeSeries, periodMonths) {
       const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
       const endDate = new Date(dates[dates.length - 1]);
@@ -313,7 +402,6 @@
       return ema.filter(x => x !== undefined);
     }
 
-    // Updated MACD Calculation (EMA-based) remains unchanged.
     function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
       let fastEMA = computeEMA(prices, fast);
       let slowEMA = computeEMA(prices, slow);
@@ -349,21 +437,18 @@
       let kijun = [];
       let senkouA = [];
       let senkouB = [];
-      // Tenkan-sen (Conversion Line): 9-period high and low average
       for (let i = 8; i < prices.length; i++) {
         let period9 = prices.slice(i - 8, i + 1);
         let high9 = Math.max(...period9.map(p => p.high));
         let low9 = Math.min(...period9.map(p => p.low));
         tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
       }
-      // Kijun-sen (Base Line): 26-period high and low average
       for (let i = 25; i < prices.length; i++) {
         let period26 = prices.slice(i - 25, i + 1);
         let high26 = Math.max(...period26.map(p => p.high));
         let low26 = Math.min(...period26.map(p => p.low));
         kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
       }
-      // Senkou Span A: (Tenkan-sen + Kijun-sen) / 2, plotted 26 periods ahead
       let minLen = Math.min(tenkan.length, kijun.length);
       for (let i = 0; i < minLen; i++) {
         let baseDate = kijun[i].date;
@@ -371,7 +456,6 @@
         senkouDate.setDate(senkouDate.getDate() + 26);
         senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
       }
-      // Senkou Span B: 52-period high and low average, plotted 26 periods ahead
       for (let i = 51; i < prices.length; i++) {
         let period52 = prices.slice(i - 51, i + 1);
         let high52 = Math.max(...period52.map(p => p.high));
@@ -381,7 +465,6 @@
         senkouDate.setDate(senkouDate.getDate() + 26);
         senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
       }
-      // Chikou Span: Today's close, plotted 26 periods back
       let chikou = [];
       for (let i = 26; i < prices.length; i++) {
         chikou.push({ date: prices[i - 26].date, value: prices[i].close });
@@ -417,223 +500,6 @@
       let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
       let dx = prevX - currentX;
       return baseWMA * (1 + 0.5 * dx);
-    }
-
-    /*************** Plotting Functions ***************/
-    function plotRSI(prices) {
-      let rsidata = computeRSI(prices);
-      let traceRSI = {
-        x: rsidata.map(item => item.date),
-        y: rsidata.map(item => item.rsi),
-        mode: 'lines',
-        name: 'RSI',
-        line: { color: 'orange' }
-      };
-      let layout = {
-        title: "RSI Chart",
-        xaxis: { title: "Date" },
-        yaxis: { title: "RSI", range: [0, 100] },
-        dragmode: 'zoom',
-        shapes: [
-          {
-            type: 'line',
-            xref: 'paper',
-            x0: 0,
-            x1: 1,
-            yref: 'y',
-            y0: 70,
-            y1: 70,
-            line: { dash: 'dash', color: 'red' }
-          },
-          {
-            type: 'line',
-            xref: 'paper',
-            x0: 0,
-            x1: 1,
-            yref: 'y',
-            y0: 30,
-            y1: 30,
-            line: { dash: 'dash', color: 'red' }
-          }
-        ]
-      };
-      Plotly.newPlot("rsiChart", [traceRSI], layout);
-      return rsidata;
-    }
-
-    function plotBollinger(prices) {
-      let bands = computeBollingerBands(prices);
-      let dates = bands.map(b => b.date);
-      let sma = bands.map(b => b.sma);
-      let upper = bands.map(b => b.upper);
-      let lower = bands.map(b => b.lower);
-      
-      let traceSMA = {
-        x: dates,
-        y: sma,
-        mode: 'lines',
-        name: 'SMA'
-      };
-      let traceUpper = {
-        x: dates,
-        y: upper,
-        mode: 'lines',
-        name: 'Upper Band'
-      };
-      let traceLower = {
-        x: dates,
-        y: lower,
-        mode: 'lines',
-        name: 'Lower Band'
-      };
-      let tracePrice = {
-        x: prices.map(p => p.date),
-        y: prices.map(p => p.close),
-        mode: 'lines',
-        name: 'Price',
-        line: { color: 'black' }
-      };
-      
-      let layout = {
-        title: "Bollinger Bands",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Price" },
-        dragmode: 'zoom'
-      };
-      Plotly.newPlot("bbChart", [tracePrice, traceSMA, traceUpper, traceLower], layout);
-      return bands;
-    }
-
-    function plotMACD(prices) {
-      let macdData = computeMACD(prices);
-      let datesMACD = macdData.macdLine.map(item => item.date);
-      let macdValues = macdData.macdLine.map(item => item.macd);
-      let datesSignal = macdData.signalLine.map(item => item.date);
-      let signalValues = macdData.signalLine.map(item => item.signal);
-      
-      let histDates = [];
-      let histValues = [];
-      let len = Math.min(macdData.macdLine.length, macdData.signalLine.length);
-      for (let i = 0; i < len; i++) {
-        histDates.push(macdData.macdLine[i].date);
-        histValues.push(macdData.macdLine[i].macd - macdData.signalLine[i].signal);
-      }
-      let traceHist = {
-        x: histDates,
-        y: histValues,
-        type: 'bar',
-        name: 'Histogram',
-        marker: {
-          color: histValues.map(val => val >= 0 ? 'green' : 'red')
-        }
-      };
-      let traceMACD = {
-        x: datesMACD,
-        y: macdValues,
-        mode: 'lines',
-        name: 'MACD',
-        line: { color: 'blue' }
-      };
-      let traceSignal = {
-        x: datesSignal,
-        y: signalValues,
-        mode: 'lines',
-        name: 'Signal',
-        line: { color: 'orange' }
-      };
-      let layout = {
-        title: "MACD Chart",
-        xaxis: { title: "Date" },
-        yaxis: { title: "MACD" },
-        dragmode: 'zoom'
-      };
-      Plotly.newPlot("macdChart", [traceHist, traceMACD, traceSignal], layout);
-      return macdData;
-    }
-
-    function plotWMA(prices) {
-      let wmas = computeWMA(prices);
-      let traceWMA = {
-        x: wmas.map(item => item.date),
-        y: wmas.map(item => item.wma),
-        mode: 'lines',
-        name: 'WMA'
-      };
-      let tracePrice = {
-        x: prices.map(p => p.date),
-        y: prices.map(p => p.close),
-        mode: 'lines',
-        name: 'Price',
-        line: { color: 'black' }
-      };
-      let layout = {
-        title: "WMA Chart",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Price" },
-        dragmode: 'zoom'
-      };
-      Plotly.newPlot("wmaChart", [tracePrice, traceWMA], layout);
-      return wmas;
-    }
-
-    function plotCandlestickIchimoku(prices, ichimokuData) {
-      let dates = prices.map(p => p.date);
-      let open = prices.map(p => p.open);
-      let high = prices.map(p => p.high);
-      let low = prices.map(p => p.low);
-      let close = prices.map(p => p.close);
-      let traceCandlestick = {
-        x: dates,
-        open: open,
-        high: high,
-        low: low,
-        close: close,
-        type: 'candlestick',
-        name: 'Price'
-      };
-      let traceTenkan = {
-        x: ichimokuData.tenkan.map(item => item.date),
-        y: ichimokuData.tenkan.map(item => item.value),
-        mode: 'lines',
-        name: 'Tenkan-sen',
-        line: { dash: 'dash', color: 'blue' }
-      };
-      let traceKijun = {
-        x: ichimokuData.kijun.map(item => item.date),
-        y: ichimokuData.kijun.map(item => item.value),
-        mode: 'lines',
-        name: 'Kijun-sen',
-        line: { dash: 'dash', color: 'red' }
-      };
-      let traceSenkouA = {
-        x: ichimokuData.senkouA.map(item => item.date),
-        y: ichimokuData.senkouA.map(item => item.value),
-        mode: 'lines',
-        name: 'Senkou Span A',
-        line: { color: 'green' }
-      };
-      let traceSenkouB = {
-        x: ichimokuData.senkouB.map(item => item.date),
-        y: ichimokuData.senkouB.map(item => item.value),
-        mode: 'lines',
-        name: 'Senkou Span B',
-        line: { color: 'brown' },
-        fill: 'tonexty'
-      };
-      let traceChikou = {
-        x: ichimokuData.chikou.map(item => item.date),
-        y: ichimokuData.chikou.map(item => item.value),
-        mode: 'lines',
-        name: 'Chikou Span',
-        line: { color: 'purple' }
-      };
-      let layout = {
-        title: "Candlestick Chart with Ichimoku Cloud",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Price" },
-        dragmode: 'zoom'
-      };
-      Plotly.newPlot("ichimokuChart", [traceCandlestick, traceTenkan, traceKijun, traceSenkouA, traceSenkouB, traceChikou], layout);
     }
 
     /*************** New MACD Scoring System ***************/
@@ -689,7 +555,6 @@
       const macdLine = macdData.macdLine;
       const signalLine = macdData.signalLine;
       if (macdLine.length < 2 || signalLine.length < 2) return null;
-      
       const len = Math.min(macdLine.length, signalLine.length);
       const latestMACD = macdLine[len - 1].macd;
       const positionScore = 100 / (1 + Math.exp(latestMACD));
@@ -706,6 +571,155 @@
                   "Momentum:", momentumScore.toFixed(2),
                   "Final:", finalScore.toFixed(2));
       return finalScore;
+    }
+
+    /*************** Chart Plot Functions using Highcharts ***************/
+
+    // RSI Chart
+    function plotRSI(prices) {
+      const rsidata = computeRSI(prices);
+      Highcharts.chart('rsiChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'RSI Chart' },
+        xAxis: { type: 'datetime' },
+        yAxis: {
+          title: { text: 'RSI' },
+          min: 0,
+          max: 100,
+          plotLines: [{
+            value: 70,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2
+          }, {
+            value: 30,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2
+          }]
+        },
+        series: [{
+          name: 'RSI',
+          data: rsidata.map(item => [item.date.getTime(), item.rsi]),
+          color: 'orange'
+        }],
+        credits: { enabled: false }
+      });
+      return rsidata;
+    }
+
+    // Bollinger Bands Chart
+    function plotBollinger(prices) {
+      let bands = computeBollingerBands(prices);
+      Highcharts.chart('bbChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'Bollinger Bands' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'Price' } },
+        series: [
+          { name: 'Price', data: prices.map(p => [p.date.getTime(), p.close]), color: '#ffffff' },
+          { name: 'SMA', data: bands.map(b => [b.date.getTime(), b.sma]), color: 'blue' },
+          { name: 'Upper Band', data: bands.map(b => [b.date.getTime(), b.upper]), color: 'green' },
+          { name: 'Lower Band', data: bands.map(b => [b.date.getTime(), b.lower]), color: 'red' }
+        ],
+        credits: { enabled: false }
+      });
+      return bands;
+    }
+
+    // MACD Chart
+    function plotMACD(prices) {
+      const macdData = computeMACD(prices);
+      const len = Math.min(macdData.macdLine.length, macdData.signalLine.length);
+      let histData = [];
+      for (let i = 0; i < len; i++) {
+        histData.push([macdData.macdLine[i].date.getTime(), macdData.macdLine[i].macd - macdData.signalLine[i].signal]);
+      }
+      Highcharts.chart('macdChart', {
+        chart: { backgroundColor: 'transparent' },
+        title: { text: 'MACD Chart' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'MACD' } },
+        series: [{
+          type: 'column',
+          name: 'Histogram',
+          data: histData,
+          colorByPoint: true
+        }, {
+          type: 'line',
+          name: 'MACD',
+          data: macdData.macdLine.map(item => [item.date.getTime(), item.macd]),
+          color: 'blue'
+        }, {
+          type: 'line',
+          name: 'Signal',
+          data: macdData.signalLine.map(item => [item.date.getTime(), item.signal]),
+          color: 'orange'
+        }],
+        credits: { enabled: false }
+      });
+      return macdData;
+    }
+
+    // WMA Chart
+    function plotWMA(prices, wmas) {
+      Highcharts.chart('wmaChart', {
+        chart: { type: 'line', backgroundColor: 'transparent' },
+        title: { text: 'WMA Chart' },
+        xAxis: { type: 'datetime' },
+        yAxis: { title: { text: 'Price' } },
+        series: [{
+          name: 'Price',
+          data: prices.map(p => [p.date.getTime(), p.close]),
+          color: '#ffffff'
+        }, {
+          name: 'WMA',
+          data: wmas.map(item => [item.date.getTime(), item.wma]),
+          color: 'red'
+        }],
+        credits: { enabled: false }
+      });
+      return wmas;
+    }
+
+    // Ichimoku Chart with Candlestick using Highstock
+    function plotCandlestickIchimoku(prices, ichimokuData) {
+      const ohlc = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+      Highcharts.stockChart('ichimokuChart', {
+        rangeSelector: { enabled: false },
+        title: { text: 'Candlestick Chart with Ichimoku Cloud' },
+        series: [{
+          type: 'candlestick',
+          name: 'Price',
+          data: ohlc
+        }, {
+          type: 'line',
+          name: 'Tenkan-sen',
+          data: ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]),
+          color: 'blue'
+        }, {
+          type: 'line',
+          name: 'Kijun-sen',
+          data: ichimokuData.kijun.map(item => [item.date.getTime(), item.value]),
+          color: 'red'
+        }, {
+          type: 'line',
+          name: 'Senkou Span A',
+          data: ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]),
+          color: 'green'
+        }, {
+          type: 'line',
+          name: 'Senkou Span B',
+          data: ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]),
+          color: 'brown'
+        }, {
+          type: 'line',
+          name: 'Chikou Span',
+          data: ichimokuData.chikou.map(item => [item.date.getTime(), item.value]),
+          color: 'purple'
+        }],
+        credits: { enabled: false }
+      });
     }
 
     /*************** Main Analysis Function ***************/
@@ -727,6 +741,7 @@
       }
       
       try {
+        // Fetch historical data from your API endpoint.
         let histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
         let resp = await fetch(histUrl);
         let data = await resp.json();
@@ -740,14 +755,17 @@
           return;
         }
         
+        // Plot charts using Highcharts.
         let rsis = plotRSI(prices);
         let bands = plotBollinger(prices);
         let macdData = plotMACD(prices);
-        let wmas = plotWMA(prices);
+        let wmas = computeWMA(prices);
+        plotWMA(prices, wmas);
         let ichimokuData = computeIchimoku(prices);
         plotCandlestickIchimoku(prices, ichimokuData);
         document.getElementById('ichimokuSection').style.display = 'block';
         
+        // Compute individual scores.
         let latestPrice = prices[prices.length - 1].close;
         let prevPrice = prices[prices.length - 2].close;
         
@@ -765,7 +783,8 @@
         let prevWMA = wmas[wmas.length - 2].wma;
         let wmaScore = scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA);
         
-        let cloudScore = 100 / (1 + Math.exp(-1 * (latestPrice - ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value)));        
+        // Ichimoku Scores calculations.
+        let cloudScore = 100 / (1 + Math.exp(-1 * (latestPrice - ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value)));
         let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
         let latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
         let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
@@ -774,6 +793,7 @@
         let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value - ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / (((ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value + ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value) / 2) || 1))));
         let overallIchimoku = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
         
+        // Update score displays.
         document.getElementById('rsiScoreDisplay').innerText = `RSI Score: ${rsiScore.toFixed(1)}%`;
         document.getElementById('bbScoreDisplay').innerText = `Bollinger Score: ${bbScore.toFixed(1)}%`;
         document.getElementById('macdScoreDisplay').innerText = `MACD Score: ${newMACDScore ? newMACDScore.toFixed(1) : "N/A"}%`;
@@ -785,11 +805,13 @@
         document.getElementById('aggregateMarker').style.left = `${combinedScore}%`;
         document.getElementById('aggregateSection').style.display = 'block';
         
+        // Show individual indicator sections.
         document.getElementById('rsiSection').style.display = 'block';
         document.getElementById('bbSection').style.display = 'block';
         document.getElementById('macdSection').style.display = 'block';
         document.getElementById('wmaSection').style.display = 'block';
         
+        // Store all analysis details in techReport for the explanation page.
         techReport = {
           ticker: ticker,
           periodMonths: periodMonths,
@@ -816,40 +838,10 @@
         };
       } catch (err) {
         alert("Error: " + err.message);
+        console.error(err);
       }
       document.getElementById('loading').style.display = 'none';
     });
-
-    /*************** Additional Scoring Functions for Ichimoku ***************/
-    function scoreCloud(currentPrice, senkouA, senkouB) {
-      let cloudTop = Math.max(senkouA, senkouB);
-      let cloudBottom = Math.min(senkouA, senkouB);
-      let mid = (cloudTop + cloudBottom) / 2;
-      let half = (cloudTop - cloudBottom) / 2 || 1;
-      let norm = (currentPrice - mid) / half;
-      let C = 1;
-      return 100 / (1 + Math.exp(-C * norm));
-    }
-    function scoreTenkan(tenkan, kijun) {
-      let diff = tenkan - kijun;
-      let D = 0.2;
-      return 100 / (1 + Math.exp(-D * diff));
-    }
-    function scoreChikou(currentPrice, price26Ago) {
-      let diff = currentPrice - price26Ago;
-      let E = 0.1;
-      return 100 / (1 + Math.exp(-E * diff));
-    }
-    function scoreSenkou(senkouA, senkouB) {
-      let diff = senkouA - senkouB;
-      let avg = (senkouA + senkouB) / 2 || 1;
-      let norm = diff / avg;
-      let F = 3;
-      return 100 / (1 + Math.exp(-F * norm));
-    }
-    function overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore) {
-      return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-    }
 
     /*************** Detailed Explanation ***************/
     document.getElementById("explanationButton").addEventListener("click", () => {
@@ -859,103 +851,103 @@
       }
       let win = window.open("", "_blank");
       let html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Technical Analysis Report for ${techReport.ticker}</title>
-        <style>
-          body { 
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
-            background: #f9fafb; 
-            color: #333; 
-            margin: 0 auto; 
-            max-width: 900px; 
-            padding: 2rem; 
-            line-height: 1.6; 
-          }
-          h1, h2, h3 { text-align: center; }
-          section { margin-bottom: 2rem; }
-          pre { 
-            background: #eee; 
-            padding: 1rem; 
-            border-radius: 4px; 
-            overflow-x: auto; 
-          }
-          a { color: #2563eb; }
-        </style>
-      </head>
-      <body>
-        <h1>Technical Analysis Report for ${techReport.ticker}</h1>
-        
-        <section>
-          <h2>Input Parameters</h2>
-          <p><strong>Ticker:</strong> ${techReport.ticker}</p>
-          <p><strong>Historical Period (months):</strong> ${techReport.periodMonths}</p>
-          <p>This report uses historical daily adjusted data (with high and low values) to analyze five technical indicators: RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud.</p>
-        </section>
-        
-        <section>
-          <h2>RSI Analysis</h2>
-          <p>The Relative Strength Index (RSI) is computed over a 14-period window to gauge momentum. We compute a base score using a logistic function based on how far the RSI is below 50 and then adjust for its rate of change.</p>
-          <p><strong>Scoring:</strong></p>
-          <pre>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Technical Analysis Report for ${techReport.ticker}</title>
+  <style>
+    body { 
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+      background: #111; 
+      color: #fff; 
+      margin: 0 auto; 
+      max-width: 900px; 
+      padding: 2rem; 
+      line-height: 1.6; 
+    }
+    h1, h2, h3 { text-align: center; }
+    section { margin-bottom: 2rem; }
+    pre { 
+      background: #333; 
+      padding: 1rem; 
+      border-radius: 4px; 
+      overflow-x: auto; 
+    }
+    a { color: var(--accent-color); }
+  </style>
+</head>
+<body>
+  <h1>Technical Analysis Report for ${techReport.ticker}</h1>
+  
+  <section>
+    <h2>Input Parameters</h2>
+    <p><strong>Ticker:</strong> ${techReport.ticker}</p>
+    <p><strong>Historical Period (months):</strong> ${techReport.periodMonths}</p>
+    <p>This report uses historical daily adjusted data (with high and low values) to analyze five technical indicators: RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud.</p>
+  </section>
+  
+  <section>
+    <h2>RSI Analysis</h2>
+    <p>The Relative Strength Index (RSI) is computed over a 14-period window to gauge momentum. We compute a base score using a logistic function based on how far the RSI is below 50 and then adjust for its rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
 rel = 50 - RSI
 Base_RSI = 100 / (1 + exp(-0.05 × rel))
 dRSI = RSI(previous day) - RSI(current day)
 Score_RSI = Base_RSI × (1 + 0.01 × dRSI)
-          </pre>
-          <p>A lower RSI (and a rapid drop) yields a higher score. In our case, the RSI score is <strong>${techReport.scores.rsi.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Bollinger Bands Analysis</h2>
-          <p>Bollinger Bands are constructed using a 20-day SMA and standard deviation. We compute %B to indicate the position of the price within the bands, then use a logistic function with moderate steepness and adjust by the rate of change.</p>
-          <p><strong>Scoring:</strong></p>
-          <pre>
+    </pre>
+    <p>A lower RSI (and a rapid drop) yields a higher score. In our case, the RSI score is <strong>${techReport.scores.rsi.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>Bollinger Bands Analysis</h2>
+    <p>Bollinger Bands are constructed using a 20-day SMA and standard deviation. We compute %B to indicate the position of the price within the bands, then use a logistic function with moderate steepness and adjust by the rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
 %B = (Price - Lower Band) / (Upper Band - Lower Band)
 Base_BB = 100 / (1 + exp(3 × (%B - 0.5)))
 d%B = %B(previous day) - %B(current day)
 Score_BB = Base_BB × (1 + 0.1 × d%B)
-          </pre>
-          <p>Here, a price near the middle (%B ≈ 0.5) yields a score around 50. Our Bollinger score is <strong>${techReport.scores.bollinger.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>MACD Analysis</h2>
-          <p>The updated MACD scoring system quantifies three key elements using regression-based methods:</p>
-          <ul>
-            <li><strong>Position Score:</strong> This measures where the MACD line lies relative to zero. It is computed using the formula <code>100 / (1 + exp(latestMACD))</code> so that very negative MACD values yield high scores, while positive values yield low scores.</li>
-            <li><strong>Gap Trend Score:</strong> A 3rd-degree polynomial regression is applied to the last 6 MACD and Signal values to predict the 7th values. The difference between the predicted gap and the current gap is then mapped through a logistic function to produce the gap trend score.</li>
-            <li><strong>Momentum Score:</strong> Similarly, a regression is applied to the MACD histogram over the last 6 periods to predict the next histogram value. The resulting delta is transformed via a logistic function, indicating whether momentum is increasing (bullish) or decreasing (bearish).</li>
-          </ul>
-          <p>The final MACD score is the average of these three components, providing a nuanced overall measure of MACD momentum. In our analysis, the MACD score is <strong>${techReport.macd ? techReport.macd.toFixed(1) : "N/A"}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>WMA Analysis</h2>
-          <p>The Weighted Moving Average (WMA) gives more weight to recent prices. We compute x = (Price / WMA) - 1 and then score using a logistic function (steepness factor 10) and adjust by the derivative.</p>
-          <p><strong>Scoring:</strong></p>
-          <pre>
+    </pre>
+    <p>Here, a price near the middle (%B ≈ 0.5) yields a score around 50. Our Bollinger score is <strong>${techReport.scores.bollinger.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>MACD Analysis</h2>
+    <p>The updated MACD scoring system quantifies three key elements using regression-based methods:</p>
+    <ul>
+      <li><strong>Position Score:</strong> Measures where the MACD line lies relative to zero using <code>100 / (1 + exp(latestMACD))</code>.</li>
+      <li><strong>Gap Trend Score:</strong> Applies 3rd-degree polynomial regression on the last 6 MACD and Signal values to predict the 7th gap, then transforms the difference via a logistic function.</li>
+      <li><strong>Momentum Score:</strong> Uses regression on the MACD histogram over the last 6 periods to predict the next value, with the resulting delta mapped through a logistic function.</li>
+    </ul>
+    <p>The final MACD score is the average of these three components. In our analysis, the MACD score is <strong>${techReport.macd ? techReport.macd.toFixed(1) : "N/A"}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>WMA Analysis</h2>
+    <p>The Weighted Moving Average (WMA) gives more weight to recent prices. We compute x = (Price / WMA) - 1 and then score using a logistic function (steepness factor 10) with an adjustment for its rate of change.</p>
+    <p><strong>Scoring:</strong></p>
+    <pre>
 x = (Price / WMA) - 1
 Base_WMA = 100 / (1 + exp(-10 × x))
 dx = x(previous day) - x(current day)
 Score_WMA = Base_WMA × (1 + 0.5 × dx)
-          </pre>
-          <p>Our WMA score is <strong>${techReport.scores.wma.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Ichimoku Cloud Analysis</h2>
-          <p>We analyze four Ichimoku parameters:</p>
-          <ul>
-            <li><strong>Price vs. Cloud Score:</strong> Compares the current price to the cloud defined by Senkou Span A and B.</li>
-            <li><strong>Tenkan/Kijun Cross Score:</strong> Evaluates the difference between the Tenkan-sen and Kijun-sen.</li>
-            <li><strong>Chikou Span Confirmation Score:</strong> Compares the current price to the price 26 periods ago.</li>
-            <li><strong>Senkou Span Cross Score:</strong> Measures the difference between Senkou Span A and B.</li>
-          </ul>
-          <p><strong>Scoring:</strong></p>
-          <pre>
+    </pre>
+    <p>Our WMA score is <strong>${techReport.scores.wma.toFixed(1)}%</strong>.</p>
+  </section>
+  
+  <section>
+    <h2>Ichimoku Cloud Analysis</h2>
+    <p>We analyze four Ichimoku parameters:</p>
+    <ul>
+      <li><strong>Price vs. Cloud Score:</strong> Compares current price to the cloud defined by Senkou Span A and B.</li>
+      <li><strong>Tenkan/Kijun Cross Score:</strong> Evaluates the difference between Tenkan-sen and Kijun-sen.</li>
+      <li><strong>Chikou Span Score:</strong> Compares current price to the price 26 periods ago.</li>
+      <li><strong>Senkou Cross Score:</strong> Measures the difference between Senkou Span A and B.</li>
+    </ul>
+    <p><strong>Scoring:</strong></p>
+    <pre>
 Cloud:
   Cloud Top = max(Senkou Span A, Senkou Span B)
   Cloud Bottom = min(Senkou Span A, Senkou Span B)
@@ -978,42 +970,42 @@ Senkou Cross:
   Score_Senkou = 100 / (1 + exp(-3 × norm_Senkou))
 
 Overall Ichimoku Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
-          </pre>
-          <p>Based on our calculations, the individual Ichimoku scores are:</p>
-          <ul>
-            <li>Price vs. Cloud Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.cloud.toFixed(1) : 'N/A'}%</strong></li>
-            <li>Tenkan/Kijun Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.tenkan.toFixed(1) : 'N/A'}%</strong></li>
-            <li>Chikou Span Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.chikou.toFixed(1) : 'N/A'}%</strong></li>
-            <li>Senkou Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.senkou.toFixed(1) : 'N/A'}%</strong></li>
-          </ul>
-          <p><strong>Overall Ichimoku Signal:</strong> ${techReport.overallIchimoku.toFixed(2)}%</p>
-        </section>
-        
-        <section>
-          <h2>Combined Technical Bullish Score</h2>
-          <p>The overall technical bullish score is the average of the five indicator scores (RSI, Bollinger Bands, MACD, WMA, and overall Ichimoku signal):</p>
-          <pre>
+    </pre>
+    <p>Individual Ichimoku scores:</p>
+    <ul>
+      <li>Price vs. Cloud Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.cloud.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Tenkan/Kijun Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.tenkan.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Chikou Span Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.chikou.toFixed(1) : 'N/A'}%</strong></li>
+      <li>Senkou Cross Score: <strong>${techReport.ichimokuScores ? techReport.ichimokuScores.senkou.toFixed(1) : 'N/A'}%</strong></li>
+    </ul>
+    <p><strong>Overall Ichimoku Signal:</strong> ${techReport.overallIchimoku.toFixed(2)}%</p>
+  </section>
+  
+  <section>
+    <h2>Combined Technical Bullish Score</h2>
+    <p>The overall technical bullish score is the average of the five indicator scores (RSI, Bollinger Bands, MACD, WMA, and overall Ichimoku signal):</p>
+    <pre>
 Overall Score = (Score_RSI + Score_BB + Score_MACD + Score_WMA + Overall_Ichimoku) / 5
-          </pre>
-          <p><strong>Overall Technical Bullish Score:</strong> ${techReport.combined.toFixed(2)}%</p>
-        </section>
-        
-        <section>
-          <h2>Disclaimers</h2>
-          <p><strong>Market Data Disclaimer:</strong> The historical data is provided via the API and may not reflect real-time market conditions.</p>
-          <p><strong>Analytical Disclaimer:</strong> The techniques and metrics in this report are for informational purposes only and should not be considered financial advice.</p>
-        </section>
-        
-        <section>
-          <h2>Conclusion</h2>
-          <p>This report integrates five technical indicators—RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud—to provide a detailed evaluation of a stock's technical momentum. Use these insights as part of your comprehensive trading strategy.</p>
-        </section>
-        
-        <section style="text-align:center;">
-          <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
-        </section>
-      </body>
-      </html>
+    </pre>
+    <p><strong>Overall Technical Bullish Score:</strong> ${techReport.combined.toFixed(2)}%</p>
+  </section>
+  
+  <section>
+    <h2>Disclaimers</h2>
+    <p><strong>Market Data Disclaimer:</strong> The historical data is provided via the API and may not reflect real-time market conditions.</p>
+    <p><strong>Analytical Disclaimer:</strong> The techniques and metrics in this report are for informational purposes only and should not be considered financial advice.</p>
+  </section>
+  
+  <section>
+    <h2>Conclusion</h2>
+    <p>This report integrates five technical indicators—RSI, Bollinger Bands, MACD, WMA, and Ichimoku Cloud—to provide a detailed evaluation of a stock's technical momentum. Use these insights as part of your comprehensive trading strategy.</p>
+  </section>
+  
+  <section style="text-align:center;">
+    <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
+  </section>
+</body>
+</html>
       `;
       win.document.write(html);
       win.document.close();
@@ -1033,13 +1025,11 @@ Overall Score = (Score_RSI + Score_BB + Score_MACD + Score_WMA + Overall_Ichimok
       }
       
       if (params.get('autoFetch') === 'true') {
-        // Delay to ensure the fields are populated
         setTimeout(() => {
           document.getElementById('runAnalysis').click();
         }, 500);
       }
     });
   </script>
-  
 </body>
 </html>
