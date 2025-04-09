@@ -1259,7 +1259,7 @@
   const lowerBound = lastPrice * 0.5;
   const upperBound = lastPrice * 1.5;
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
+  cutoff.setMonth(cutoff.getMonth() - periodMonths);
   const filtered = data.data.filter(item => {
     const d = new Date(item.transaction_date);
     if (isNaN(d) || d < cutoff) return false;
@@ -1657,29 +1657,30 @@ function updateInsiderCharts(insiderData) {
     document.getElementById('congressSection').style.display = 'none';
 
     let ticker = document.getElementById('ticker').value.trim();
-    let futureDateStr = document.getElementById('futureDate').value;
-    if(!ticker || !futureDateStr){
-      alert("Please enter both a ticker symbol and a future date.");
-      document.getElementById('loading').style.display = 'none';
-      return;
-    }
-    let futureDate = new Date(futureDateStr);
-    let currentDate = new Date();
-    let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
-                       (futureDate.getMonth() - currentDate.getMonth());
-    if(diffInMonths < 1) diffInMonths = 1;
-    let recommendedPeriod = diffInMonths * 4;
-    let periodMonths;
-    if(document.getElementById('manualOverrideCheckbox').checked){
-      periodMonths = parseInt(document.getElementById('manualPeriod').value);
-      if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
-        alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
-        periodMonths = recommendedPeriod;
-      }
-    } else {
+  let futureDateStr = document.getElementById('futureDate').value;
+  if(!ticker || !futureDateStr){
+    alert("Please enter both a ticker symbol and a future date.");
+    document.getElementById('loading').style.display = 'none';
+    return;
+  }
+  let futureDate = new Date(futureDateStr);
+  let currentDate = new Date();
+  let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
+                     (futureDate.getMonth() - currentDate.getMonth());
+  if(diffInMonths < 1) diffInMonths = 1;
+  let recommendedPeriod = diffInMonths * 4;
+  let periodMonths;
+  if(document.getElementById('manualOverrideCheckbox').checked){
+    periodMonths = parseInt(document.getElementById('manualPeriod').value);
+    if(isNaN(periodMonths) || periodMonths < recommendedPeriod){
+      alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
       periodMonths = recommendedPeriod;
     }
-    try {
+  } else {
+    periodMonths = recommendedPeriod;
+  }
+
+  try {
       let regime = await determineSPYMarketRegime(4);
       console.log("Detected SPY Market Regime => ", regime);
       let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
@@ -1726,12 +1727,11 @@ function updateInsiderCharts(insiderData) {
       document.getElementById('sentSection').style.display = 'block';
       let sentBull = updateSentimentChart(sentiments);
     
-// Get the number of days from your insider timeframe input.
-const insiderDays = parseInt(document.getElementById('days').value.trim()) || 30;
-// Assume you have already determined the last closing price (lastPrice) from your historical data.
-let insiderData = await fetchAndProcessInsiderData(ticker, insiderDays, lastPrice);
-document.getElementById('insiderSection').style.display = 'block';
-let insiderBull = updateInsiderCharts(insiderData);
+
+// Use the same historical period as the entire app.
+let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, lastPrice);
+    document.getElementById('insiderSection').style.display = 'block';
+    let insiderBull = updateInsiderCharts(insiderData);
 
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
@@ -1770,10 +1770,10 @@ let insiderBull = updateInsiderCharts(insiderData);
         })()
       };
     } catch(err) {
-      alert("Error: " + err.message);
-    }
-    document.getElementById('loading').style.display = 'none';
+    alert("Error: " + err.message);
   }
+  document.getElementById('loading').style.display = 'none';
+}
 
   // Run simulation with overlay on button click
   document.getElementById("simulateButton").addEventListener("click", () => {
