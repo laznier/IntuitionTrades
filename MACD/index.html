@@ -352,8 +352,8 @@ for (let i = 0; i < signalLine.length; i++) {
       const recentMACD = macdLine.slice(-6).map(item => item.macd);
       const recentSignal = signalLine.slice(-6).map(item => item.signal);
       const x = [1, 2, 3, 4, 5, 6];
-      const macdCoeffs = polynomialRegression(x, recentMACD, 1);
-      const signalCoeffs = polynomialRegression(x, recentSignal, 1);
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
       const predictedMACD = predictValue(macdCoeffs, 7);
       const predictedSignal = predictValue(signalCoeffs, 7);
       const predictedGap = predictedMACD - predictedSignal;
