@@ -1201,6 +1201,13 @@ function computeStats(prices) {
      * Other Functions: Sentiment, Insider, Congress, and Aggregation
      ***********************************************/
     // ... (Sentiment, Insider, and Congress functions remain unchanged)
+    function logisticBullish(slope) {
+  const k = 0.3; // Adjust this constant as needed for scaling
+  let result = 100 / (1 + Math.exp(-k * slope));
+  return Math.max(0, Math.min(100, result)); // Clamping the result between 0 and 100
+}
+
+    
     function updateSentimentChart(sentiments) {
   if (sentiments.length < 2) {
     Highcharts.chart("sentChart", {
