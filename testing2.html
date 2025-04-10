@@ -1,56 +1,49 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ichimoku Technical Analysis Tool</title>
-  <!-- Include Highcharts for Charting (Stock) -->
-  <script src="https://code.highcharts.com/stock/highstock.js"></script>
-  <!-- Include Math.js for any advanced calculations -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dbHJ Risk vs Reward Tool</title>
+  
+  <!-- Highcharts for visualization -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <!-- Math.js for additional math functions -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  
   <style>
+    /* Dark theme styling */
     :root {
       --primary-bg: #111;
       --secondary-bg: #333;
       --accent-color: #16a34a;
       --text-color: #fff;
       --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
     }
     body {
-      font-family: var(--font-family);
       background-color: var(--primary-bg);
       color: var(--text-color);
+      font-family: var(--font-family);
+      max-width: 1000px;
       margin: 0 auto;
-      max-width: 900px;
       padding: 2rem;
-      line-height: 1.6;
-      position: relative;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 20px;
-      font-weight: 600;
-    }
-    p, li, label {
-      margin-bottom: 0.75em;
     }
     label {
       display: block;
       margin-top: 15px;
-      font-weight: 500;
+      font-weight: bold;
     }
-    input[type="text"],
-    input[type="number"] {
+    input, select {
       width: 100%;
       padding: 8px;
       margin-top: 5px;
       border: 1px solid #555;
       border-radius: 4px;
-      font-size: 0.95rem;
       background-color: var(--secondary-bg);
       color: var(--text-color);
-      transition: border-color var(--transition-speed);
+      font-size: 1rem;
     }
     button {
       margin-top: 20px;
@@ -66,18 +59,36 @@
     button:hover {
       background: #1e3a8a;
     }
-    /* Autocomplete suggestions for ticker */
+    
+    .section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #chartSection {
+      display: none;
+    }
+    /* Let riskMetrics auto-size according to its content */
+    #riskMetrics {
+      padding: 10px;
+      margin-bottom: 15px;
+    }
+    /* Fixed height for chart container */
+    #chartContainer {
+      height: 350px;
+    }
+    /* Ticker suggestions dropdown styling */
     #ticker-suggestions {
       position: absolute;
-      background-color: var(--secondary-bg);
+      background: var(--secondary-bg);
       border: 1px solid #555;
-      width: calc(100% - 20px);
-      max-height: 200px;
-      overflow-y: auto;
-      z-index: 1000;
       list-style: none;
+      margin-top: 0;
       padding: 0;
-      margin-top: 0.5rem;
+      width: 96%; /* slightly less than the input width */
+      z-index: 10;
       display: none;
     }
     #ticker-suggestions li {
@@ -85,131 +96,103 @@
       cursor: pointer;
     }
     #ticker-suggestions li:hover {
-      background-color: var(--accent-color);
-      color: var(--text-color);
+      background: var(--accent-color);
+      color: #fff;
     }
-    #loading {
-      margin-top: 10px;
-      font-style: italic;
+    /* A small container for displaying the company name (if desired) */
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 0.9rem;
       color: var(--accent-color);
-      display: none;
     }
-    /* Aggregated Signal Meter styling */
-    #aggregateSection {
-      display: none;
-      margin-bottom: 20px;
-      padding: 15px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
-    }
-    #aggregateBar {
-      position: relative;
-      background: linear-gradient(to right, red, green);
-      height: 30px;
-      border-radius: 15px;
-      margin: 10px 0;
-    }
-    #aggregateMarker {
-      position: absolute;
+
+    /* Loading overlay (spinner + text) */
+    .loading-overlay {
+      position: fixed;
       top: 0;
-      width: 2px;
-      height: 100%;
-      background: #fff;
-    }
-    #aggregateScoreText {
-      position: absolute;
+      left: 0;
       width: 100%;
-      text-align: center;
-      line-height: 30px;
-      font-weight: bold;
-      color: var(--text-color);
-      text-shadow: 1px 1px 2px #000;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      color: var(--accent-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999; /* ensure it’s on top of everything */
     }
-    /* Chart and section styling */
-    .section {
-      margin-top: 20px;
-      padding: 15px;
-      border: 1px solid #444;
-      border-radius: 4px;
-      background-color: var(--secondary-bg);
+    .loader {
+      border: 8px solid #f3f3f3; /* Light grey ring */
+      border-top: 8px solid var(--accent-color); /* Green ring */
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 10px;
     }
-    #candleChart {
-      height: 500px;
-      display: none;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <!-- Back to Home Button -->
-  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+    <!-- Back to Home Button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
 
-  <h1>Ichimoku Technical Analysis Tool</h1>
-  <p>Enter a ticker symbol and a historical period (in months) to generate a candlestick chart with Ichimoku overlays and detailed parameter scores.</p>
+  <h1>dbHJ Risk vs Reward Tool</h1>
+  <p>
+    This tool uses a double Heston stochastic volatility jump‐diffusion (dbHJ) model—with jump‐risk mitigation calibrated via live options pricing—to estimate the risk and reward potential of a given stock over a future time horizon.
+  </p>
   
-  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
-  <input type="text" id="ticker" value="AAPL">
-  <!-- Autocomplete suggestions -->
-  <ul id="ticker-suggestions"></ul>
-  
-  <label for="period">Historical Period (months):</label>
-  <input type="number" id="period" value="12" min="1">
-  
-  <button id="runAnalysis">Run Analysis</button>
-  <div id="loading">Loading data and running analysis...</div>
-  
-  <!-- Aggregated Signal Meter -->
-  <div id="aggregateSection">
-    <h2>Aggregated Ichimoku Signal</h2>
-    <div style="display: flex; align-items: center;">
-      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
-      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
-        <div id="aggregateMarker"></div>
-        <span id="aggregateScoreText"></span>
-      </div>
-      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
-    </div>
+  <!-- Input Section -->
+  <div class="section" id="inputSection">
+    <label for="ticker">Ticker Symbol</label>
+    <input type="text" id="ticker" placeholder="e.g. IBM" autocomplete="off" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+    
+    <label for="futureDate">Future Date for Simulation</label>
+    <input type="date" id="futureDate" />
+
+    <label for="numSims">Number of Simulations:</label>
+    <input type="number" id="numSims" value="5000" min="1000" step="1000" />
+
+    <button id="simulateButton">Run Risk Simulation</button>
   </div>
   
-  <!-- Candlestick Chart with Ichimoku Overlay -->
-  <div class="section" id="candleSection" style="display:none;">
-    <h2>Candlestick Chart with Ichimoku Overlay</h2>
-    <div id="candleChart"></div>
+  <!-- Chart and Risk Metrics Section -->
+  <div class="section" id="chartSection">
+    <!-- Replaced the old "Simulation Outcome Distribution" with new heading -->
+    <h2>Risk vs Reward Index</h2>
+    
+    <div id="chartContainer"></div>
+    <div id="riskMetrics"></div>
+    
+    <!-- Interactive slider for target threshold -->
+    <label for="targetSlider">Set a Target Price Threshold:</label>
+    <input type="range" id="targetSlider" min="0" max="100" step="0.01" value="0" />
+    <span id="targetValue"></span>
+    <div id="sliderProb" style="margin-top:10px; font-weight:600;"></div>
+    
+    <!-- Button to open Detailed Explanation in a new window -->
+    <button id="explanationButton" style="margin-top:20px;">Detailed Explanation</button>
   </div>
-  
-  <!-- Parameter Scores Section -->
-  <div class="section" id="scoresSection" style="display:none;">
-    <h2>Ichimoku Parameter Scores</h2>
-    <ul>
-      <li id="scoreCloud"></li>
-      <li id="scoreTenkan"></li>
-      <li id="scoreChikou"></li>
-      <li id="scoreSenkou"></li>
-    </ul>
-    <p><strong>Overall Ichimoku Signal:</strong> <span id="overallScore"></span>%</p>
-  </div>
-  
-  <!-- Detailed Explanation Button -->
-  <div style="text-align:center; margin-top:20px;">
-    <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
+
+  <!-- Loading Overlay (hidden by default) -->
+  <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loader"></div>
+    <div id="loadingText">Running simulations...</div>
   </div>
   
   <script>
-    /*************** Autocomplete Functions ***************/
-    let debounceTimeout;
-    function clearSuggestions() {
-      const list = document.getElementById('ticker-suggestions');
-      if (list) {
-        list.innerHTML = '';
-        list.style.display = 'none';
-      }
-    }
+    /***********************************************
+     * Autocomplete for Ticker Input
+     ***********************************************/
     async function fetchTickerSuggestions(query) {
       try {
+        // Example endpoint: /api/ticker?query=...
         const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
-        if (!response.ok) {
-          throw new Error('Error fetching ticker suggestions');
-        }
         const data = await response.json();
         return data.bestMatches || [];
       } catch (error) {
@@ -217,430 +200,569 @@
         return [];
       }
     }
+
     function renderTickerSuggestions(suggestions) {
-      const list = document.getElementById('ticker-suggestions');
-      list.innerHTML = '';
+      const ul = document.getElementById("ticker-suggestions");
+      ul.innerHTML = "";
       if (!suggestions || suggestions.length === 0) {
-        list.style.display = 'none';
+        ul.style.display = "none";
         return;
       }
-      list.style.display = 'block';
       suggestions.forEach(item => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${item["1. symbol"]}</span> - <span>${item["2. name"]}</span>`;
-        li.addEventListener('click', () => {
-          document.getElementById('ticker').value = item["1. symbol"];
-          clearSuggestions();
+        const li = document.createElement("li");
+        li.textContent = `${item["1. symbol"]} (${item["2. name"]})`;
+        li.addEventListener("click", () => {
+          document.getElementById("ticker").value = item["1. symbol"];
+          document.getElementById("company-full-name").textContent = item["2. name"];
+          ul.style.display = "none";
         });
-        list.appendChild(li);
+        ul.appendChild(li);
       });
+      ul.style.display = "block";
     }
-    document.addEventListener("DOMContentLoaded", () => {
-      const tickerInput = document.getElementById('ticker');
-      tickerInput.addEventListener('input', () => {
-        const query = tickerInput.value.trim();
-        if (query.length < 2) {
-          clearSuggestions();
-          return;
-        }
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(async () => {
-          const suggestions = await fetchTickerSuggestions(query);
-          renderTickerSuggestions(suggestions);
-        }, 300);
-      });
-      clearSuggestions();
-    });
-    
-    /*************** Ichimoku Calculations ***************/
-    function processHistoricalData(timeSeries, periodMonths) {
-      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
-      const endDate = new Date(dates[dates.length - 1]);
-      const startDate = new Date(endDate);
-      startDate.setMonth(startDate.getMonth() - periodMonths);
-      let prices = [];
-      for (let date of dates) {
-        const dt = new Date(date);
-        if (dt >= startDate && dt <= endDate) {
-          prices.push({
-            date: dt,
-            open: parseFloat(timeSeries[date]["1. open"]),
-            high: parseFloat(timeSeries[date]["2. high"]),
-            low: parseFloat(timeSeries[date]["3. low"]),
-            close: parseFloat(timeSeries[date]["5. adjusted close"])
-          });
-        }
+
+    let autocompleteTimeout;
+    document.getElementById("ticker").addEventListener("input", function() {
+      const query = this.value.trim();
+      clearTimeout(autocompleteTimeout);
+      if (query.length < 2) {
+        document.getElementById("ticker-suggestions").style.display = "none";
+        return;
       }
+      autocompleteTimeout = setTimeout(async () => {
+        const suggestions = await fetchTickerSuggestions(query);
+        renderTickerSuggestions(suggestions);
+      }, 300);
+    });
+
+    /***********************************************
+     * Utility Functions & Data Fetching
+     ***********************************************/
+    // Set default future date (one month ahead).
+    (function setDefaultDate() {
+      const futureDateInput = document.getElementById('futureDate');
+      const today = new Date();
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      futureDateInput.value = nextMonth.toISOString().split('T')[0];
+    })();
+
+    // Fetch historical price data via your internal endpoint.
+    async function fetchHistoricalData(symbol) {
+      const url = `/api/historical?symbol=${symbol}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data["Time Series (Daily)"]) {
+        throw new Error("Historical endpoint did not return expected data.");
+      }
+      const timeSeries = data["Time Series (Daily)"];
+      const prices = Object.keys(timeSeries).map(dateStr => ({
+        date: new Date(dateStr),
+        close: parseFloat(timeSeries[dateStr]["5. adjusted close"])
+      }));
       prices.sort((a, b) => a.date - b.date);
       return prices;
     }
-    
-    function computeIchimoku(prices) {
-      let tenkan = [];
-      let kijun = [];
-      let senkouA = [];
-      let senkouB = [];
-      // Tenkan-sen (Conversion Line): 9-period high and low average
-      for (let i = 8; i < prices.length; i++) {
-        let period9 = prices.slice(i - 8, i + 1);
-        let high9 = Math.max(...period9.map(p => p.high));
-        let low9 = Math.min(...period9.map(p => p.low));
-        tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
+
+    // Fetch live options implied volatility via your internal liveoptions endpoint.
+    async function fetchOptionsIV(symbol) {
+      try {
+        const url = `/api/liveoptions?symbol=${symbol}&require_greeks=true`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+          const contract = data.data[0];
+          return parseFloat(contract.impliedVolatility) || null;
+        }
+      } catch (error) {
+        console.error("Error fetching options IV:", error);
       }
-      // Kijun-sen (Base Line): 26-period high and low average
-      for (let i = 25; i < prices.length; i++) {
-        let period26 = prices.slice(i - 25, i + 1);
-        let high26 = Math.max(...period26.map(p => p.high));
-        let low26 = Math.min(...period26.map(p => p.low));
-        kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+      return null;
+    }
+
+    // Compute log returns and basic statistics from historical prices.
+    function computeStats(prices) {
+      let logReturns = [];
+      for (let i = 1; i < prices.length; i++) {
+        logReturns.push(Math.log(prices[i].close / prices[i - 1].close));
       }
-      // Senkou Span A: (Tenkan-sen + Kijun-sen) / 2, plotted 26 periods ahead
-      let minLen = Math.min(tenkan.length, kijun.length);
-      for (let i = 0; i < minLen; i++) {
-        let baseDate = kijun[i].date;
-        let senkouDate = new Date(baseDate);
-        senkouDate.setDate(senkouDate.getDate() + 26);
-        senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
-      }
-      // Senkou Span B: 52-period high and low average, plotted 26 periods ahead
-      for (let i = 51; i < prices.length; i++) {
-        let period52 = prices.slice(i - 51, i + 1);
-        let high52 = Math.max(...period52.map(p => p.high));
-        let low52 = Math.min(...period52.map(p => p.low));
-        let baseDate = prices[i].date;
-        let senkouDate = new Date(baseDate);
-        senkouDate.setDate(senkouDate.getDate() + 26);
-        senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
-      }
-      // Chikou Span: Today's close, plotted 26 periods back
-      let chikou = [];
-      for (let i = 26; i < prices.length; i++) {
-        chikou.push({ date: prices[i - 26].date, value: prices[i].close });
-      }
+      const meanDaily = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+      const variance = logReturns.reduce((sum, r) => sum + Math.pow(r - meanDaily, 2), 0) / (logReturns.length - 1);
+      const stdDaily = Math.sqrt(variance);
+      const tradingDays = 252;
       return {
-        tenkan: tenkan,
-        kijun: kijun,
-        senkouA: senkouA,
-        senkouB: senkouB,
-        chikou: chikou
+        mu: meanDaily * tradingDays,            // Annual drift
+        sigma: stdDaily * Math.sqrt(tradingDays), // Annual volatility
+        lastPrice: prices[prices.length - 1].close
       };
     }
-    
-    /*************** Scoring Functions ***************/
-    function scoreCloud(currentPrice, senkouA, senkouB) {
-      let cloudTop = Math.max(senkouA, senkouB);
-      let cloudBottom = Math.min(senkouA, senkouB);
-      let mid = (cloudTop + cloudBottom) / 2;
-      let half = (cloudTop - cloudBottom) / 2 || 1;
-      let norm = (currentPrice - mid) / half;
-      let C = 1;
-      return 100 / (1 + Math.exp(-C * norm));
+
+    // Generate a standard normal random number (Box-Muller transform).
+    function randn() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
     }
-    function scoreTenkan(tenkan, kijun) {
-      let diff = tenkan - kijun;
-      let D = 0.2;
-      return 100 / (1 + Math.exp(-D * diff));
+
+    /***********************************************
+     * dbHJ Simulation: Double Heston with Jump Diffusion
+     ***********************************************/
+    // Simulate stock prices using a double Heston jump-diffusion (dbHJ) model.
+    function runDBHJSimulation(S0, v10, v20, mu,
+                               kappa1, theta1, sigma1, rho1,
+                               kappa2, theta2, sigma2, rho2,
+                               lambda, jumpMean, jumpStd,
+                               T, dt, sims) {
+      const steps = Math.floor(T / dt);
+      let finalPrices = [];
+      for (let i = 0; i < sims; i++) {
+        let S = S0;
+        let v1 = v10;
+        let v2 = v20;
+        for (let j = 0; j < steps; j++) {
+          let Z1 = randn();
+          let Z2 = randn();
+          let Z3 = randn();
+          const dW_a = Math.sqrt(dt) * Z1;
+          const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
+          const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
+          
+          v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
+          v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
+          
+          const totalVariance = v1 + v2;
+          let jumpMultiplier = 1;
+          if (Math.random() < lambda * dt) {
+            jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
+          }
+          S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVariance) * dt + Math.sqrt(totalVariance) * dW_a);
+        }
+        finalPrices.push(S);
+      }
+      return finalPrices;
     }
-    function scoreChikou(currentPrice, price26PeriodsAgo) {
-      let diff = currentPrice - price26PeriodsAgo;
-      let E = 0.1;
-      return 100 / (1 + Math.exp(-E * diff));
+
+    // Compute VaR & CVaR (5th percentile).
+    function computeRiskMetrics(finalPrices, currentPrice) {
+      const sorted = finalPrices.slice().sort((a, b) => a - b);
+      const idx = Math.floor(0.05 * sorted.length);
+      const var95 = sorted[idx];
+      const tail = sorted.slice(0, idx + 1);
+      const cvar95 = tail.reduce((sum, p) => sum + p, 0) / tail.length;
+      return {
+        varPrice: var95,
+        varPct: 100 * (currentPrice - var95) / currentPrice,   // % drop
+        cvarPrice: cvar95,
+        cvarPct: 100 * (currentPrice - cvar95) / currentPrice  // % drop
+      };
     }
-    function scoreSenkou(senkouA, senkouB) {
-      let diff = senkouA - senkouB;
-      let avg = (senkouA + senkouB) / 2 || 1;
-      let norm = diff / avg;
-      let F = 3;
-      return 100 / (1 + Math.exp(-F * norm));
-    }
-    function overallIchimokuScore(score1, score2, score3, score4) {
-      return (score1 + score2 + score3 + score4) / 4;
-    }
-    
-    /*************** Charting Function using Highcharts ***************/
-    function plotCandlestickIchimoku(prices, ichimokuData) {
-      // Prepare candlestick data: [timestamp, open, high, low, close]
-      let candlestickData = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
-      // Prepare line series data for Ichimoku overlays
-      let tenkanData = ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]);
-      let kijunData = ichimokuData.kijun.map(item => [item.date.getTime(), item.value]);
-      let senkouAData = ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]);
-      let senkouBData = ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]);
-      let chikouData = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
+
+    /***********************************************
+     * Stable Risk vs Reward Index (RRI)
+     ***********************************************/
+    // We define a stable 0–100 index that accounts for:
+    // 1) Median final price => annualized return
+    // 2) CVaR => annualized downside
+    // 3) Nonlinear mapping (tanh) to ensure stable range
+    function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
+      // 1) median of finalPrices
+      const sorted = finalPrices.slice().sort((a, b) => a - b);
+      const medianPrice = sorted[Math.floor(sorted.length / 2)];
       
-      Highcharts.stockChart('candleChart', {
-        chart: {
-          backgroundColor: 'transparent'
-        },
-        rangeSelector: {
-          enabled: false
-        },
-        title: {
-          text: 'Candlestick Chart with Ichimoku Overlay'
-        },
+      // raw median return at horizon T
+      const rawReturn = (medianPrice / currentPrice) - 1;
+      // annualize
+      const E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
+
+      // annualize CVaR-based downside
+      // cvarFraction is the fraction lost, e.g. 0.15 => 15%
+      const D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
+
+      // ratio
+      let ratio;
+      if (D_ann > 1e-6) {
+        ratio = E_ann / D_ann;
+      } else {
+        // if no downside, push ratio big
+        ratio = E_ann >= 0 ? 9999 : -9999;
+      }
+
+      // map to 0..100 via tanh
+      // RRI = 50 * [1 + tanh(alpha * ratio)]
+      const alpha = 1;
+      const rri = 50 * (1 + Math.tanh(alpha * ratio));
+      return rri;
+    }
+
+    /***********************************************
+     * Visualization with Highcharts
+     ***********************************************/
+    function renderChart(finalPrices, currentPrice) {
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const numBins = 20;
+      const binWidth = (maxPrice - minPrice) / numBins;
+      let bins = new Array(numBins).fill(0);
+      let binCenters = [];
+      finalPrices.forEach(price => {
+        let index = Math.floor((price - minPrice) / binWidth);
+        if(index >= numBins) index = numBins - 1;
+        bins[index]++;
+      });
+      for (let i = 0; i < numBins; i++) {
+        const center = minPrice + binWidth * (i + 0.5);
+        binCenters.push(center);
+      }
+      const seriesData = binCenters.map((center, idx) => [center, bins[idx]]);
+      
+      window.mcChart = Highcharts.chart('chartContainer', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Simulated Final Prices Distribution', style: { color: '#fff' } },
         xAxis: {
-          type: 'datetime'
+          type: 'linear',
+          title: { text: 'Price', style: { color: '#fff' } },
+          min: minPrice,
+          max: maxPrice,
+          labels: { style: { color: '#fff' } },
+          plotLines: [{
+            id: 'targetLine',
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2,
+            value: currentPrice,
+            zIndex: 5,
+            label: { text: 'Current Price', style: { color: 'red' } }
+          }]
         },
         yAxis: {
-          title: {
-            text: 'Price'
+          title: { text: 'Frequency', style: { color: '#fff' } },
+          labels: { style: { color: '#fff' } },
+          gridLineColor: '#444'
+        },
+        tooltip: {
+          formatter: function() {
+            return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
           }
         },
         series: [{
-          type: 'candlestick',
-          name: 'Price',
-          data: candlestickData,
-          id: 'price'
-        }, {
-          type: 'line',
-          name: 'Tenkan-sen',
-          data: tenkanData,
-          color: 'blue',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          type: 'line',
-          name: 'Kijun-sen',
-          data: kijunData,
-          color: 'red',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          type: 'line',
-          name: 'Senkou Span A',
-          data: senkouAData,
-          color: 'green',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          type: 'line',
-          name: 'Senkou Span B',
-          data: senkouBData,
-          color: 'brown',
-          tooltip: { valueDecimals: 2 }
-        }, {
-          type: 'line',
-          name: 'Chikou Span',
-          data: chikouData,
-          color: 'purple',
-          tooltip: { valueDecimals: 2 }
+          name: 'Frequency',
+          data: seriesData,
+          color: '#888'
         }],
-        credits: {
-          enabled: false
-        }
+        credits: { enabled: false }
       });
-      
-      document.getElementById("candleChart").style.display = "block";
     }
-    
-    /*************** Main Analysis Function ***************/
-    let ichimokuReport = null;
-    document.getElementById("runAnalysis").addEventListener("click", async () => {
-      document.getElementById('loading').style.display = 'block';
-      document.getElementById('aggregateSection').style.display = 'none';
-      document.getElementById('candleSection').style.display = 'none';
-      document.getElementById('scoresSection').style.display = 'none';
-      document.getElementById("explanationButton").style.display = "none";
+
+    // Update slider target probability text and update vertical target line.
+    function updateSliderProb(finalPrices) {
+      const slider = document.getElementById("targetSlider");
+      const targetDisplay = document.getElementById("targetValue");
+      const probDisplay = document.getElementById("sliderProb");
+      const target = parseFloat(slider.value);
+      targetDisplay.textContent = target.toFixed(2);
+      const count = finalPrices.filter(p => p >= target).length;
+      const prob = 100 * count / finalPrices.length;
+      probDisplay.innerText = "Probability above target: " + prob.toFixed(2) + "%";
       
-      const ticker = document.getElementById('ticker').value.trim();
-      const periodMonths = parseInt(document.getElementById('period').value);
-      if (!ticker) {
-        alert("Please enter a ticker symbol.");
-        document.getElementById('loading').style.display = 'none';
+      if (window.mcChart && window.mcChart.xAxis[0]) {
+        window.mcChart.xAxis[0].removePlotLine('targetLine');
+        window.mcChart.xAxis[0].addPlotLine({
+          id: 'targetLine',
+          value: target,
+          color: 'red',
+          dashStyle: 'Dash',
+          width: 2,
+          zIndex: 5,
+          label: { text: 'Target', style: { color: 'red' } }
+        });
+      }
+    }
+
+    /***********************************************
+     * Detailed Explanation: Open in a New Window
+     ***********************************************/
+    document.getElementById("explanationButton").addEventListener("click", function() {
+      const explanationWindow = window.open("", "_blank", "width=800,height=600,scrollbars=yes");
+      const explanationHTML = `
+        <!DOCTYPE html>
+       <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Detailed Explanation - dbHJ Risk Tool</title>
+          <style>
+            body {
+              background: #111;
+              color: #fff;
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              padding: 20px;
+              line-height: 1.6;
+            }
+            h1, h2, h3 {
+              text-align: center;
+            }
+            pre {
+              background: #333;
+              padding: 10px;
+              overflow-x: auto;
+              border-radius: 4px;
+            }
+            a {
+              color: #16a34a;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Detailed Explanation</h1>
+          <h2>Double Heston Jump-Diffusion (dbHJ) Model</h2>
+          <p>
+            This tool employs a double Heston stochastic volatility jump-diffusion (dbHJ) model to assess stock risk. The model combines two independent Heston processes—each modeling a different aspect of volatility—with a Poisson jump component to capture sudden large price moves.
+          </p>
+          <h3>Model Components</h3>
+          <ul>
+            <li>
+              <strong>Double Heston Volatility:</strong>
+              <br>
+              Two variance processes, \(v_1\) and \(v_2\), are modeled as:
+              <br><br>
+              \(dv_i = \kappa_i (\theta_i - v_i)\,dt + \sigma_i \sqrt{v_i}\,dW_{v_i}\)  for \(i = 1, 2\)
+              <br>
+              where:
+              <ul>
+                <li>\(\kappa_i\): Mean reversion speed</li>
+                <li>\(\theta_i\): Long-run variance</li>
+                <li>\(\sigma_i\): Volatility of volatility</li>
+                <li>\(dW_{v_i}\): Brownian increments</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Jump-Diffusion:</strong>
+              <br>
+              A Poisson jump process is added such that if a jump occurs (with intensity \(\lambda\)), the stock price is multiplied by a jump factor:
+              <br><br>
+              \(J = \exp(\mu_J + \sigma_J Z)\)
+              <br>
+              with \(Z\) being a standard normal variable.
+            </li>
+          </ul>
+          <h3>Parameter Calibration</h3>
+          <p>
+            Live options data (via our internal endpoint) is used to extract the implied volatility, which sets the initial variances \(v_{10}\) and \(v_{20}\). The following default parameters are used:
+          </p>
+          <pre>
+    // Example defaults:
+    kappa1 = 2.0,  theta1 = v10,      sigma1 = 0.5,  rho1 = -0.7
+    kappa2 = 1.5,  theta2 = 0.5*v10,    sigma2 = 0.3,  rho2 = -0.3
+    lambda = 0.2,  mu_J = -0.1,  sigma_J = 0.2
+          </pre>
+          <h3>Risk Metrics</h3>
+          <p>
+            The simulation produces a distribution of stock prices at the target date. From this distribution:
+            <br>
+            <strong>VaR (Value at Risk):</strong> The 5th percentile price, representing the worst-case outcome in 95% of scenarios.
+            <br>
+            <strong>CVaR (Conditional Value at Risk):</strong> The average outcome of the worst 5% of simulations.
+          </p>
+          <h3>Profit/Risk Score</h3>
+          <p>
+            
+<h2>Risk vs Reward Index (RRI)</h2>
+          <p>
+            We use a <em>Risk vs Reward Index</em> (RRI)
+            that ranges from 0 to 100. Higher numbers indicate a more favorable balance of
+            expected upside to downside risk.
+          </p>
+          <p>
+            We compute:
+          </p>
+          <ol>
+            <li>Median simulated price at the target date \((M)\) vs. current price \((S_0)\)</li>
+            <li>CVaR (worst 5%) downside fraction</li>
+            <li><strong>Annualize</strong> both upside and downside to stabilize results across different time horizons \(T\)</li>
+            <li>Form a ratio:
+              \[\\( \\text{ratio} = \\frac{E_{ann}}{D_{ann}} \\)
+              \\]
+              where \(E_{ann}\) is the annualized median return, and \(D_{ann}\) is the annualized downside.
+            </li>
+            <li>Finally, map <code>ratio</code> into \([0, 100]\) with a smooth <strong>tanh</strong> function:
+              \[\\(\\text{RRI} = 50 \\times \\bigl[1 + \\tanh(\\alpha \\times \\text{ratio})\\bigr]\\)
+              \\]
+              This ensures we never exceed 100 or drop below 0 and remain more stable over longer horizons.
+            </li>
+          </ol>
+
+          <h2>Interpreting the RRI</h2>
+          <p>
+            - <strong>RRI near 100:</strong> Very high annualized upside and/or very low downside risk
+            <br>
+            - <strong>RRI near 0:</strong> Large downside risk or negative upside
+            <br>
+            - <strong>RRI near 50:</strong> Risk/reward is balanced or uncertain
+          </p>
+
+          <h3>Example Defaults</h3>
+          <pre>
+  kappa1 = 2.0,  theta1 = v10,       sigma1 = 0.5,  rho1 = -0.7
+  kappa2 = 1.5,  theta2 = 0.5 * v10, sigma2 = 0.3,  rho2 = -0.3
+  lambda = 0.2,  jumpMean = -0.1,   jumpStd = 0.2
+          </pre>
+          <p>
+            Where <code>v10</code> and <code>v20</code> are initial variances calibrated from implied volatility.
+          </p>
+
+          <h3>Interactive Features</h3>
+          <p>
+            An adjustable slider sets a target price threshold. A red dashed vertical line on the histogram marks this target, and the tool calculates the probability that the stock price exceeds it.
+          </p>
+          <p style="text-align:center;">
+            <a href="#" onclick="window.close(); return false;">Close Explanation</a>
+          </p>
+        </body>
+        </html>
+      `;
+      explanationWindow.document.open();
+      explanationWindow.document.write(explanationHTML);
+      explanationWindow.document.close();
+    });
+
+    /***********************************************
+     * Main Simulation Handler
+     ***********************************************/
+    document.getElementById("simulateButton").addEventListener("click", async () => {
+      const ticker = document.getElementById("ticker").value.trim();
+      const futureDateStr = document.getElementById("futureDate").value;
+      const numSims = parseInt(document.getElementById("numSims").value, 10);
+
+      if (!ticker || !futureDateStr) {
+        alert("Please provide a ticker and a future date.");
         return;
       }
-      
+
+      // Show loading overlay
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const loadingText = document.getElementById("loadingText");
+      loadingOverlay.style.display = "flex";
+
+      // Animate trailing dots in “Running X simulations...”
+      let dotCount = 0;
+      const loadingInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4;
+        const dots = '.'.repeat(dotCount);
+        loadingText.innerText = `Running ${numSims} simulations${dots}`;
+      }, 500);
+
       try {
-        const histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
-        const resp = await fetch(histUrl);
-        const data = await resp.json();
-        if (!data["Time Series (Daily)"]) {
-          throw new Error("Unable to retrieve valid historical data.");
-        }
-        const prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if (prices.length < 80) {
-          alert("Not enough historical data for the selected period.");
-          document.getElementById('loading').style.display = 'none';
+        // Calculate time horizon T (in years).
+        const futureDate = new Date(futureDateStr);
+        const now = new Date();
+        const T = (futureDate - now) / (365 * 24 * 60 * 60 * 1000);
+        if (T <= 0) {
+          alert("The future date must be in the future.");
           return;
         }
-        
-        // Compute Ichimoku lines
-        const ichimokuData = computeIchimoku(prices);
-        
-        // Plot chart using Highcharts
-        plotCandlestickIchimoku(prices, ichimokuData);
-        document.getElementById('candleSection').style.display = 'block';
-        
-        // Calculate scores using the latest values
-        const currentPrice = prices[prices.length - 1].close;
-        const lastSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
-        const lastSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
-        const cloudScore = scoreCloud(currentPrice, lastSenkouA, lastSenkouB);
-        const latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
-        const latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
-        const tenkanScore = scoreTenkan(latestTenkan, latestKijun);
-        const price26PeriodsAgo = prices[prices.length - 26].close;
-        const chikouScore = scoreChikou(currentPrice, price26PeriodsAgo);
-        const senkouScore = scoreSenkou(lastSenkouA, lastSenkouB);
-        const overallScore = overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore);
-        
-        // Display scores
-        document.getElementById('scoreCloud').innerText = `Price vs Cloud Score: ${cloudScore.toFixed(1)}%`;
-        document.getElementById('scoreTenkan').innerText = `Tenkan/Kijun Cross Score: ${tenkanScore.toFixed(1)}%`;
-        document.getElementById('scoreChikou').innerText = `Chikou Span Score: ${chikouScore.toFixed(1)}%`;
-        document.getElementById('scoreSenkou').innerText = `Cloud Cross Score: ${senkouScore.toFixed(1)}%`;
-        document.getElementById('overallScore').innerText = overallScore.toFixed(2);
-        
-        document.getElementById('aggregateScoreText').innerText = `${overallScore.toFixed(2)}%`;
-        document.getElementById('aggregateMarker').style.left = `${overallScore}%`;
-        document.getElementById('aggregateSection').style.display = 'block';
-        document.getElementById('scoresSection').style.display = 'block';
-        document.getElementById("explanationButton").style.display = "block";
-        
-        // Store report for explanation details
-        ichimokuReport = {
-          ticker: ticker,
-          periodMonths: periodMonths,
-          currentPrice: currentPrice,
-          senkouA: lastSenkouA,
-          senkouB: lastSenkouB,
-          tenkan: latestTenkan,
-          kijun: latestKijun,
-          price26Ago: price26PeriodsAgo,
-          scores: {
-            cloud: cloudScore,
-            tenkan: tenkanScore,
-            chikou: chikouScore,
-            senkou: senkouScore
-          },
-          overall: overallScore
-        };
+
+        // Fetch historical price data
+        let prices = await fetchHistoricalData(ticker);
+        // --- NEW: Filter historical data to use only the past 4x the future time horizon ---
+        const historicalWindowMs = 4 * T * 365 * 24 * 60 * 60 * 1000;
+        const minHistoricalDate = new Date(now.getTime() - historicalWindowMs);
+        prices = prices.filter(p => p.date >= minHistoricalDate);
+        // -----------------------------------------------------------------------------
+
+        const stats = computeStats(prices);
+
+        // Fetch live implied volatility or fallback
+        let optionsIV = await fetchOptionsIV(ticker);
+        if (!optionsIV) {
+          optionsIV = stats.sigma; // fallback to historical
+        }
+
+        // For dbHJ, set initial variances
+        const v10 = optionsIV * optionsIV;  // primary variance
+        const v20 = v10 * 0.5;             // secondary variance component
+
+        // Default parameters for double Heston
+        const kappa1 = 2.0,  theta1 = v10,        sigma1 = 0.5,  rho1 = -0.7;
+        const kappa2 = 1.5,  theta2 = 0.5 * v10,  sigma2 = 0.3,  rho2 = -0.3;
+        // Jump params
+        const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+
+        // daily steps
+        const dt = 1 / 252; 
+        const finalPrices = runDBHJSimulation(
+          stats.lastPrice, v10, v20, stats.mu,
+          kappa1, theta1, sigma1, rho1,
+          kappa2, theta2, sigma2, rho2,
+          lambda, jumpMean, jumpStd,
+          T, dt, numSims
+        );
+
+        // Risk metrics
+        const riskMetrics = computeRiskMetrics(finalPrices, stats.lastPrice);
+        // cvarPct is e.g. 20 => meaning 20% drop
+        const cvarFraction = riskMetrics.cvarPct / 100;  
+
+        // Compute the stable 0–100 Risk vs Reward Index
+        const rri = computeRiskVsRewardIndex(finalPrices, stats.lastPrice, cvarFraction, T);
+
+        // Build results HTML
+        const riskHTML = `
+          <p><strong>Current Price:</strong> ${stats.lastPrice.toFixed(2)}</p>
+          <p><strong>VaR (5th percentile):</strong> ${riskMetrics.varPrice.toFixed(2)} (${riskMetrics.varPct.toFixed(2)}% loss)</p>
+          <p><strong>CVaR (Expected Shortfall):</strong> ${riskMetrics.cvarPrice.toFixed(2)} (${riskMetrics.cvarPct.toFixed(2)}% loss)</p>
+          <p><strong>Risk vs Reward Index (0–100):</strong> ${rri.toFixed(2)}</p>
+        `;
+        document.getElementById("riskMetrics").innerHTML = riskHTML;
+
+        // Render distribution chart
+        renderChart(finalPrices, stats.lastPrice);
+        document.getElementById("chartSection").style.display = "block";
+
+        // Setup target slider
+        const slider = document.getElementById("targetSlider");
+        slider.min = Math.min(...finalPrices).toFixed(2);
+        slider.max = Math.max(...finalPrices).toFixed(2);
+        slider.value = stats.lastPrice.toFixed(2);
+        updateSliderProb(finalPrices);
+        slider.oninput = () => updateSliderProb(finalPrices);
+
       } catch (err) {
-        alert("Error: " + err.message);
+        alert("Error during simulation: " + err.message);
+      } finally {
+        // Hide spinner
+        clearInterval(loadingInterval);
+        loadingOverlay.style.display = "none";
       }
-      document.getElementById('loading').style.display = 'none';
     });
     
-   /*************** Detailed Explanation ***************/
-    document.getElementById("explanationButton").addEventListener("click", () => {
-      if (!ichimokuReport) {
-        alert("Please run an analysis first.");
-        return;
-      }
-      let win = window.open("", "_blank");
-      let html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <title>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</title>
-        <style>
-          body { 
-            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
-            background: #f9fafb; 
-            color: #333; 
-            margin: 0 auto; 
-            max-width: 900px; 
-            padding: 2rem; 
-            line-height: 1.6; 
-          }
-          h1, h2, h3 { text-align: center; }
-          section { margin-bottom: 2rem; }
-          pre { 
-            background: #eee; 
-            padding: 1rem; 
-            border-radius: 4px; 
-            overflow-x: auto; 
-          }
-          a { color: #2563eb; }
-        </style>
-      </head>
-      <body>
-        <h1>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</h1>
-        
-        <section>
-          <h2>Input Parameters</h2>
-          <p><strong>Ticker:</strong> ${ichimokuReport.ticker}</p>
-          <p><strong>Historical Period (months):</strong> ${ichimokuReport.periodMonths}</p>
-          <p>This report uses historical daily candlestick data (open, high, low, close) to calculate Ichimoku components and generate parameter scores.</p>
-        </section>
-        
-        <section>
-          <h2>Price vs. Cloud Score</h2>
-          <p><strong>Definition:</strong> The cloud is defined by Senkou Span A and Senkou Span B. We compute the cloud’s midpoint and half‑width, then normalize the current price relative to this cloud.</p>
-          <p><strong>Calculation:</strong></p>
-          <pre>
-Cloud Top = max(Senkou Span A, Senkou Span B)
-Cloud Bottom = min(Senkou Span A, Senkou Span B)
-mid = (Cloud Top + Cloud Bottom) / 2
-half = (Cloud Top - Cloud Bottom) / 2
-norm = (Current Price - mid) / half
-Base_Cloud = 100 / (1 + exp(-1 × norm))
-          </pre>
-          <p><strong>Interpretation:</strong> A price far above the cloud yields a high score (closer to 100, bullish), while a price far below gives a low score (closer to 0, bearish). In our example, the computed score is <strong>${ichimokuReport.scores.cloud.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Tenkan/Kijun Cross Score</h2>
-          <p><strong>Definition:</strong> The Tenkan-sen (Conversion Line) and Kijun-sen (Base Line) indicate short‑term and medium‑term trends. When Tenkan is above Kijun, it is bullish.</p>
-          <p><strong>Calculation:</strong></p>
-          <pre>
-diff = Tenkan - Kijun
-Base_Tenkan = 100 / (1 + exp(-0.2 × diff))
-          </pre>
-          <p><strong>Interpretation:</strong> A positive diff results in a score above 50 (bullish), while a negative diff yields a score below 50. In our example, the score is <strong>${ichimokuReport.scores.tenkan.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Chikou Span Confirmation Score</h2>
-          <p><strong>Definition:</strong> The Chikou Span is the current closing price plotted 26 periods back. It is bullish if it lies above the price from 26 periods ago.</p>
-          <p><strong>Calculation:</strong></p>
-          <pre>
-diff_Chikou = Current Price - Price 26 Periods Ago
-Base_Chikou = 100 / (1 + exp(-0.1 × diff_Chikou))
-          </pre>
-          <p><strong>Interpretation:</strong> A positive difference (current price > price 26 periods ago) leads to a higher score, indicating bullish confirmation. Here the score is <strong>${ichimokuReport.scores.chikou.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Senkou Span Cross (Cloud Color) Score</h2>
-          <p><strong>Definition:</strong> The difference between Senkou Span A and Senkou Span B indicates the bullishness of the cloud. If Senkou Span A is well above Span B, the cloud is bullish.</p>
-          <p><strong>Calculation:</strong></p>
-          <pre>
-diff_Senkou = Senkou Span A - Senkou Span B
-avg_Senkou = (Senkou Span A + Senkou Span B) / 2
-norm = diff_Senkou / avg_Senkou
-Base_Senkou = 100 / (1 + exp(-3 × norm))
-          </pre>
-          <p><strong>Interpretation:</strong> A positive normalized difference results in a high score. In our case, the score is <strong>${ichimokuReport.scores.senkou.toFixed(1)}%</strong>.</p>
-        </section>
-        
-        <section>
-          <h2>Overall Ichimoku Signal</h2>
-          <p>The overall signal is computed as the average of the four parameter scores:</p>
-          <pre>
-Overall Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
-          </pre>
-          <p><strong>Overall Technical Bullish Score:</strong> ${ichimokuReport.overall.toFixed(2)}%</p>
-        </section>
-        
-        <section>
-          <h2>Disclaimers</h2>
-          <p><strong>Market Data Disclaimer:</strong> Historical candlestick data (open, high, low, close) is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time conditions.</p>
-          <p><strong>Analytical Disclaimer:</strong> The methods and metrics in this report are for informational purposes only and should not be taken as financial advice. Conduct your own research before making any decisions.</p>
-        </section>
-        
-        <section>
-          <h2>Conclusion</h2>
-          <p>This Ichimoku analysis tool integrates multiple aspects of the indicator – including the price’s position relative to the cloud, the Tenkan/Kijun cross, Chikou Span confirmation, and the cloud’s internal structure (Senkou Span A vs. B) – to provide a comprehensive technical signal. Each parameter is scored continuously based on its deviation from key trigger levels and its recent momentum. The overall score, presented on a signal meter, offers a unified view of the technical outlook. Use these insights as part of your broader trading strategy.</p>
-        </section>
-        
-        <section style="text-align:center;">
-          <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
-        </section>
-      </body>
-      </html>
-      `;
-      win.document.write(html);
-      win.document.close();
-    });
+  // This function checks for URL parameters and auto-triggers simulation if a ticker is provided.
+  function autoInitializeSimulation() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tickerParam = urlParams.get("ticker");
+
+    if (tickerParam) {
+      // Autofill the ticker input.
+      document.getElementById("ticker").value = tickerParam;
+
+      // Optionally, you could update the company name as well by making an API call.
+      // For example:
+      // fetchTickerSuggestions(tickerParam).then(suggestions => {
+      //   if (suggestions.length > 0) {
+      //     document.getElementById("company-full-name").textContent = suggestions[0]["2. name"];
+      //   }
+      // });
+
+      // Auto-trigger simulation after a brief delay to ensure everything is set.
+      setTimeout(() => {
+        document.getElementById("simulateButton").click();
+      }, 200);
+    }
+  }
+
+  // Run once the DOM is fully loaded.
+  document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
+
   </script>
 </body>
 </html>
