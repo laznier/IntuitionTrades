@@ -728,16 +728,15 @@
     const macdLine = macdData.macdLine;
     const signalLine = macdData.signalLine;
     if(macdLine.length < 2 || signalLine.length < 2) return 50;
-    const offset = macdLine.length - signalLine.length;
+    const len = Math.min(macdLine.length, signalLine.length);
     const latestMACD = macdLine[len - 1].macd;
     const positionScore = 100 / (1 + Math.exp(latestMACD));
     const gapData = computeGapTrendScore(macdLine, signalLine);
     const gapScore = gapData ? gapData.gapScore : 50;
     let histValues = [];
-    for (let i = 0; i < signalLine.length; i++) {
-      const alignedMACD = macdLine[i + offset];
-  histData.push([alignedMACD.date.getTime(), alignedMACD.macd - signalLine[i].signal]);
-}
+    for(let i = 0; i < len; i++){
+      histValues.push(macdLine[i].macd - signalLine[i].signal);
+    }
     const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
     const finalScore = (positionScore + gapScore + momentumScore) / 3;
     return finalScore;
@@ -2112,8 +2111,8 @@ Score_BB = Base_BB × (1 + 0.1 × d%B)
           <strong>MACD (Regression-Based Scoring):</strong>
           <br>
           1) Position Score (logistic function on latest MACD)<br>
-          2) Gap Trend Score (3rd-degree polynomial regression to predict next MACD-signal gap)<br>
-          3) Momentum Score (1st-degree polynomial regression on MACD histogram)
+          2) Gap Trend Score (polynomial regression to predict next MACD-signal gap)<br>
+          3) Momentum Score (polynomial regression on MACD histogram)
           <p>The final MACD score is the average of these three sub-scores.</p>
         </li>
         <li>
