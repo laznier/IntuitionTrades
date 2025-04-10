@@ -1607,44 +1607,67 @@ async function fetchCongressData(ticker, periodMonths) {
     const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
     const resp = await fetch(url);
     if (!resp.ok) {
-      // If the HTTP status is not OK, log and return default values
       console.error("Network response for congress data not OK:", resp.statusText);
-      return { totalPurchase: 0, totalSale: 0 };
+      return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0 };
     }
-    
-    // Try to parse the response as JSON.
     let text = await resp.text();
     let j;
     try {
       j = JSON.parse(text);
     } catch (err) {
-      // Log the raw response text when JSON parsing fails.
       throw new Error("Failed to parse congress data as JSON: " + text);
     }
-  
     if (!j.data || !Array.isArray(j.data)) {
       throw new Error("Invalid congress data format.");
     }
-  
     const rawData = j.data;
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - periodMonths);
     let totalPurchase = 0, totalSale = 0;
+    let uniqueBuyMembers = new Set();
     for (let item of rawData) {
       if (!item.TransactionDate || !item.Transaction) continue;
       let dt = new Date(item.TransactionDate);
       if (isNaN(dt) || dt < cutoff) continue;
       let amt = parseFloat(item.Amount) || 0;
-      if (/purchase/i.test(item.Transaction)) totalPurchase += amt;
-      if (/sale/i.test(item.Transaction)) totalSale += amt;
+      // Assume that item has a field "member" that uniquely identifies the congress member
+      if (/purchase/i.test(item.Transaction)) {
+        totalPurchase += amt;
+        if(item.member) uniqueBuyMembers.add(item.member);
+      }
+      if (/sale/i.test(item.Transaction)) {
+        totalSale += amt;
+      }
     }
-    return { totalPurchase, totalSale };
+    return { totalPurchase, totalSale, uniqueBuyCount: uniqueBuyMembers.size };
   } catch (error) {
     console.error("Error in fetchCongressData:", error.message);
-    // Return default values to prevent indefinite spinner
-    return { totalPurchase: 0, totalSale: 0 };
+    return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0 };
   }
 }
+function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount) {
+  // Compute basic net ratio score
+  let ratio = 0;
+  if (totalPurchase + totalSale > 0) {
+    ratio = (totalPurchase - totalSale) / (totalPurchase + totalSale); // Range [-1, 1]
+  }
+  let baseScore = 50 + 50 * ratio; // 0 to 100
+
+  // Absolute factor using log10; choose L and U as typical lower and upper bounds.
+  let L = 3, U = 8; // For example, $1,000 (log10(1000) ≈ 3) to $100,000,000 (log10(100e6) ≈ 8)
+  let absFactor = Math.log10(totalPurchase + 1);
+  let normalizedAbsolute = Math.max(0, Math.min(1, (absFactor - L) / (U - L)));
+
+  // Unique factor: assume maximum unique members (say 20)
+  let normalizedUnique = Math.max(0, Math.min(1, uniqueBuyCount / 20));
+
+  // Combine the factors to form a multiplier.
+  let multiplier = 1 + 0.5 * normalizedAbsolute + 0.5 * normalizedUnique;
+  
+  let finalScore = baseScore * multiplier;
+  return Math.min(100, finalScore);
+}
+
 
   function interpolateColor(value) {
     const ratio = Math.max(0, Math.min(1, value / 100));
@@ -1652,26 +1675,25 @@ async function fetchCongressData(ticker, periodMonths) {
     const g = Math.round(255 * ratio);
     return `rgb(${r},${g},0)`;
   }
-  function updateCongressChart(totalPurchase, totalSale) {
-    const categories = ["Purchase Amount", "Sale Amount"];
-    const data = [totalPurchase, totalSale];
-    Highcharts.chart("congressChart", {
-      chart: { type: "column", backgroundColor: "transparent" },
-      title: { text: "(USD)", style: { color: "#fff" } },
-      xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
-      yAxis: { title: { text: "Amount", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
-      tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
-      series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
-      credits: { enabled: false },
-      legend: { enabled: false }
-    });
-    let sum = totalPurchase + totalSale;
-    let congressBull = 50;
-    if (sum > 0) { congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50; }
-    document.getElementById("congressDetails").innerText =
-      `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
-    return congressBull;
-  }
+  function updateCongressChart(totalPurchase, totalSale, uniqueBuyCount) {
+  const categories = ["Purchase Amount", "Sale Amount"];
+  const data = [totalPurchase, totalSale];
+  Highcharts.chart("congressChart", {
+    chart: { type: "column", backgroundColor: "transparent" },
+    title: { text: "(USD)", style: { color: "#fff" } },
+    xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+    yAxis: { title: { text: "Amount", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+    tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
+    series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
+    credits: { enabled: false },
+    legend: { enabled: false }
+  });
+  let congressBull = computeCongressScore(totalPurchase, totalSale, uniqueBuyCount);
+  document.getElementById("congressDetails").innerText =
+    `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+  return congressBull;
+}
+
   function computeSMAforRegime(priceArray, period) {
     if(!priceArray || priceArray.length < period) return null;
     let slice = priceArray.slice(-period);
@@ -1944,8 +1966,10 @@ async function fetchCongressData(ticker, periodMonths) {
       let insiderBull = updateInsiderCharts(insiderData);
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
-      document.getElementById('congressSection').style.display = 'block';
-      let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+document.getElementById('congressSection').style.display = 'block';
+// Pass the uniqueBuyCount as well:
+let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount);
+
       let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
       document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
       document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
