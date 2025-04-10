@@ -330,13 +330,13 @@ for (let i = 0; i < signalLine.length; i++) {
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    // Compute momentum score using 4rd-degree polynomial regression on the last 6 histogram values.
+    // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
     function computeMomentumScoreUsingRegression(histValues) {
   if (histValues.length < 6) return null;
   const recentHist = histValues.slice(-6);
   const x = [1, 2, 3, 4, 5, 6];
   // Change the degree from 3 to 4 here:
-  const coeffs = polynomialRegression(x, recentHist, 4);
+  const coeffs = polynomialRegression(x, recentHist, 1);
   const predicted = predictValue(coeffs, 7);
   const lastValue = recentHist[recentHist.length - 1];
   const delta = predicted - lastValue;
