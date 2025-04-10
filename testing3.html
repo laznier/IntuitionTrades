@@ -1608,8 +1608,9 @@ async function fetchCongressData(ticker, periodMonths) {
     const resp = await fetch(url);
     if (!resp.ok) {
       console.error("Network response for congress data not OK:", resp.statusText);
-      return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0 };
+      return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
     }
+    
     let text = await resp.text();
     let j;
     try {
@@ -1617,6 +1618,7 @@ async function fetchCongressData(ticker, periodMonths) {
     } catch (err) {
       throw new Error("Failed to parse congress data as JSON: " + text);
     }
+    
     if (!j.data || !Array.isArray(j.data)) {
       throw new Error("Invalid congress data format.");
     }
@@ -1625,48 +1627,68 @@ async function fetchCongressData(ticker, periodMonths) {
     cutoff.setMonth(cutoff.getMonth() - periodMonths);
     let totalPurchase = 0, totalSale = 0;
     let uniqueBuyMembers = new Set();
+    let uniqueSellMembers = new Set();
+    
     for (let item of rawData) {
       if (!item.TransactionDate || !item.Transaction) continue;
       let dt = new Date(item.TransactionDate);
       if (isNaN(dt) || dt < cutoff) continue;
       let amt = parseFloat(item.Amount) || 0;
-      // Assume that item has a field "member" that uniquely identifies the congress member
+      
       if (/purchase/i.test(item.Transaction)) {
         totalPurchase += amt;
-        if(item.member) uniqueBuyMembers.add(item.member);
+        if (item.member) uniqueBuyMembers.add(item.member);
       }
       if (/sale/i.test(item.Transaction)) {
         totalSale += amt;
+        if (item.member) uniqueSellMembers.add(item.member);
       }
     }
-    return { totalPurchase, totalSale, uniqueBuyCount: uniqueBuyMembers.size };
+    
+    return {
+      totalPurchase,
+      totalSale,
+      uniqueBuyCount: uniqueBuyMembers.size,
+      uniqueSellCount: uniqueSellMembers.size
+    };
+    
   } catch (error) {
     console.error("Error in fetchCongressData:", error.message);
-    return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0 };
+    return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
   }
 }
-function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount) {
-  // Compute basic net ratio score
-  let ratio = 0;
-  if (totalPurchase + totalSale > 0) {
-    ratio = (totalPurchase - totalSale) / (totalPurchase + totalSale); // Range [-1, 1]
+
+// Calculate dollars-based component (this can be as before, or you can adjust it)
+function computeDollarsScore(netDollars) {
+  const cap = 10000000;  // \$10M cap
+  let ratio;
+  if (netDollars >= 0) {
+    ratio = Math.log10(netDollars + 1) / Math.log10(cap + 1);
+  } else {
+    ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
   }
-  let baseScore = 50 + 50 * ratio; // 0 to 100
-
-  // Absolute factor using log10; choose L and U as typical lower and upper bounds.
-  let L = 3, U = 8; // For example, $1,000 (log10(1000) ≈ 3) to $100,000,000 (log10(100e6) ≈ 8)
-  let absFactor = Math.log10(totalPurchase + 1);
-  let normalizedAbsolute = Math.max(0, Math.min(1, (absFactor - L) / (U - L)));
-
-  // Unique factor: assume maximum unique members (say 20)
-  let normalizedUnique = Math.max(0, Math.min(1, uniqueBuyCount / 20));
-
-  // Combine the factors to form a multiplier.
-  let multiplier = 1 + 0.5 * normalizedAbsolute + 0.5 * normalizedUnique;
-  
-  let finalScore = baseScore * multiplier;
-  return Math.min(100, finalScore);
+  // You can adjust the exponent to compress small changes
+  const alpha = 2.2;
+  ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
+  return 50 + 50 * ratio;
 }
+
+// Compute the Unique Score based on net unique actions, using 5 as the maximum difference.
+function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
+  let netUnique = uniqueBuyCount - uniqueSellCount;
+  // Cap netUnique to the range -5 to +5
+  netUnique = Math.max(-5, Math.min(5, netUnique));
+  return 50 + 50 * (netUnique / 5);
+}
+
+// Final Congress Score is the average of the Dollars Score and Unique Score
+function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
+  let netDollars = totalPurchase - totalSale;
+  let dollarsScore = computeDollarsScore(netDollars);
+  let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
+  return (dollarsScore + uniqueScore) / 2;
+}
+
 
 
   function interpolateColor(value) {
