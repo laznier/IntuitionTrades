@@ -699,7 +699,7 @@
     if(histValues.length < 6) return null;
     const recent = histValues.slice(-6);
     const x = [1, 2, 3, 4, 5, 6];
-    const coeffs = polynomialRegression(x, recent, 3);
+    const coeffs = polynomialRegression(x, recent, 1);
     const predicted = predictValue(coeffs, 7);
     const lastValue = recent[recent.length - 1];
     const delta = predicted - lastValue;
@@ -712,8 +712,8 @@
     const recentMACD = macdLine.slice(-6).map(item => item.macd);
     const recentSignal = signalLine.slice(-6).map(item => item.signal);
     const x = [1, 2, 3, 4, 5, 6];
-    const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-    const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+    const macdCoeffs = polynomialRegression(x, recentMACD, 1);
+    const signalCoeffs = polynomialRegression(x, recentSignal, 1);
     const predictedMACD = predictValue(macdCoeffs, 7);
     const predictedSignal = predictValue(signalCoeffs, 7);
     const predictedGap = predictedMACD - predictedSignal;
@@ -728,15 +728,16 @@
     const macdLine = macdData.macdLine;
     const signalLine = macdData.signalLine;
     if(macdLine.length < 2 || signalLine.length < 2) return 50;
-    const len = Math.min(macdLine.length, signalLine.length);
+    const offset = macdLine.length - signalLine.length;
     const latestMACD = macdLine[len - 1].macd;
     const positionScore = 100 / (1 + Math.exp(latestMACD));
     const gapData = computeGapTrendScore(macdLine, signalLine);
     const gapScore = gapData ? gapData.gapScore : 50;
     let histValues = [];
-    for(let i = 0; i < len; i++){
-      histValues.push(macdLine[i].macd - signalLine[i].signal);
-    }
+    for (let i = 0; i < signalLine.length; i++) {
+      const alignedMACD = macdLine[i + offset];
+  histData.push([alignedMACD.date.getTime(), alignedMACD.macd - signalLine[i].signal]);
+}
     const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
     const finalScore = (positionScore + gapScore + momentumScore) / 3;
     return finalScore;
