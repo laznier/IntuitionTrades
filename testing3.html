@@ -296,6 +296,7 @@
     <div id="mcChart"></div>
     <div id="mcBullScore" style="margin-top:10px; font-weight:600;"></div>
     <div id="mcSliderSection" style="margin-top: 20px;"></div>
+    <button id="rriLinkButton">More Risk vs Reward Analysis</button>
   </div>
 
   <!-- Sentiment -->
@@ -2009,12 +2010,14 @@ function computeStats(prices) {
     if(ticker){
       document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
       document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
+      document.getElementById("rriLinkButton").innerText = "More " + ticker.toUpperCase() + " Risk vs Reward Analysis";
       document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
       document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
       document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
     } else {
       document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
       document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
+      document.getElementById("rriLinkButton").innerText = "More Risk vs Reward Analysis";
       document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
       document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
       document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
@@ -2054,6 +2057,20 @@ function computeStats(prices) {
     const periodMonths = simulationReport.periodMonths;
     const days = periodMonths * 30;
     const url = "https://www.intuitiontrades.com/insider/?symbol=" 
+              + encodeURIComponent(ticker) 
+              + "&days=" + days
+              + "&autoFetch=true";
+    window.open(url, "_blank");
+  });
+  document.getElementById("rriLinkButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    const ticker = simulationReport.ticker;
+    const periodMonths = simulationReport.periodMonths;
+    const days = periodMonths * 30;
+    const url = "https://www.intuitiontrades.com/risk/?symbol=" 
               + encodeURIComponent(ticker) 
               + "&days=" + days
               + "&autoFetch=true";
