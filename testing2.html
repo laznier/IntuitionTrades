@@ -518,61 +518,53 @@
       document.getElementById('loading').style.display = 'none';
     });
     
-    /*************** Detailed Explanation ***************/
+   /*************** Detailed Explanation ***************/
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!ichimokuReport) {
         alert("Please run an analysis first.");
         return;
       }
-      const explanationWindow = window.open("", "_blank");
-      const explanationHTML = `
+      let win = window.open("", "_blank");
+      let html = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>Detailed Ichimoku Analysis Report for ${ichimokuReport.ticker}</title>
+        <title>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</title>
         <style>
-          :root {
-            --primary-bg: #111;
-            --secondary-bg: #333;
-            --accent-color: #16a34a;
-            --text-color: #fff;
-            --font-family: 'Arial', sans-serif;
-            --transition-speed: 0.3s;
-          }
           body { 
-            font-family: var(--font-family);
-            background-color: var(--primary-bg);
-            color: var(--text-color);
-            margin: 0 auto;
-            max-width: 900px;
-            padding: 2rem;
-            line-height: 1.6;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
+            background: #f9fafb; 
+            color: #333; 
+            margin: 0 auto; 
+            max-width: 900px; 
+            padding: 2rem; 
+            line-height: 1.6; 
           }
           h1, h2, h3 { text-align: center; }
           section { margin-bottom: 2rem; }
           pre { 
-            background: var(--secondary-bg); 
+            background: #eee; 
             padding: 1rem; 
             border-radius: 4px; 
             overflow-x: auto; 
           }
-          a { color: var(--accent-color); }
+          a { color: #2563eb; }
         </style>
       </head>
       <body>
-        <h1>Detailed Ichimoku Analysis Report for ${ichimokuReport.ticker}</h1>
+        <h1>Ichimoku Technical Analysis Report for ${ichimokuReport.ticker}</h1>
         
         <section>
           <h2>Input Parameters</h2>
           <p><strong>Ticker:</strong> ${ichimokuReport.ticker}</p>
           <p><strong>Historical Period (months):</strong> ${ichimokuReport.periodMonths}</p>
-          <p>This report uses historical daily candlestick data to calculate Ichimoku components and generate parameter scores.</p>
+          <p>This report uses historical daily candlestick data (open, high, low, close) to calculate Ichimoku components and generate parameter scores.</p>
         </section>
         
         <section>
           <h2>Price vs. Cloud Score</h2>
-          <p><strong>Definition:</strong> Measures the current price relative to the Ichimoku cloud, defined by Senkou Span A and B.</p>
+          <p><strong>Definition:</strong> The cloud is defined by Senkou Span A and Senkou Span B. We compute the cloud’s midpoint and half‑width, then normalize the current price relative to this cloud.</p>
           <p><strong>Calculation:</strong></p>
           <pre>
 Cloud Top = max(Senkou Span A, Senkou Span B)
@@ -580,59 +572,64 @@ Cloud Bottom = min(Senkou Span A, Senkou Span B)
 mid = (Cloud Top + Cloud Bottom) / 2
 half = (Cloud Top - Cloud Bottom) / 2
 norm = (Current Price - mid) / half
-Score = 100 / (1 + exp(-norm))
+Base_Cloud = 100 / (1 + exp(-1 × norm))
           </pre>
-          <p><strong>Result:</strong> ${ichimokuReport.scores.cloud.toFixed(1)}%</p>
+          <p><strong>Interpretation:</strong> A price far above the cloud yields a high score (closer to 100, bullish), while a price far below gives a low score (closer to 0, bearish). In our example, the computed score is <strong>${ichimokuReport.scores.cloud.toFixed(1)}%</strong>.</p>
         </section>
         
         <section>
           <h2>Tenkan/Kijun Cross Score</h2>
-          <p><strong>Definition:</strong> Evaluates the relative positions of the Tenkan-sen and Kijun-sen to signal short-term momentum.</p>
+          <p><strong>Definition:</strong> The Tenkan-sen (Conversion Line) and Kijun-sen (Base Line) indicate short‑term and medium‑term trends. When Tenkan is above Kijun, it is bullish.</p>
           <p><strong>Calculation:</strong></p>
           <pre>
 diff = Tenkan - Kijun
-Score = 100 / (1 + exp(-0.2 × diff))
+Base_Tenkan = 100 / (1 + exp(-0.2 × diff))
           </pre>
-          <p><strong>Result:</strong> ${ichimokuReport.scores.tenkan.toFixed(1)}%</p>
+          <p><strong>Interpretation:</strong> A positive diff results in a score above 50 (bullish), while a negative diff yields a score below 50. In our example, the score is <strong>${ichimokuReport.scores.tenkan.toFixed(1)}%</strong>.</p>
         </section>
         
         <section>
           <h2>Chikou Span Confirmation Score</h2>
-          <p><strong>Definition:</strong> Compares the current price to the price from 26 periods ago to confirm trend.</p>
+          <p><strong>Definition:</strong> The Chikou Span is the current closing price plotted 26 periods back. It is bullish if it lies above the price from 26 periods ago.</p>
           <p><strong>Calculation:</strong></p>
           <pre>
-diff = Current Price - Price 26 Periods Ago
-Score = 100 / (1 + exp(-0.1 × diff))
+diff_Chikou = Current Price - Price 26 Periods Ago
+Base_Chikou = 100 / (1 + exp(-0.1 × diff_Chikou))
           </pre>
-          <p><strong>Result:</strong> ${ichimokuReport.scores.chikou.toFixed(1)}%</p>
+          <p><strong>Interpretation:</strong> A positive difference (current price > price 26 periods ago) leads to a higher score, indicating bullish confirmation. Here the score is <strong>${ichimokuReport.scores.chikou.toFixed(1)}%</strong>.</p>
         </section>
         
         <section>
-          <h2>Senkou Span Cross Score</h2>
-          <p><strong>Definition:</strong> Evaluates the difference between Senkou Span A and B to determine cloud bullishness.</p>
+          <h2>Senkou Span Cross (Cloud Color) Score</h2>
+          <p><strong>Definition:</strong> The difference between Senkou Span A and Senkou Span B indicates the bullishness of the cloud. If Senkou Span A is well above Span B, the cloud is bullish.</p>
           <p><strong>Calculation:</strong></p>
           <pre>
-diff = Senkou Span A - Senkou Span B
-avg = (Senkou Span A + Senkou Span B) / 2
-norm = diff / avg
-Score = 100 / (1 + exp(-3 × norm))
+diff_Senkou = Senkou Span A - Senkou Span B
+avg_Senkou = (Senkou Span A + Senkou Span B) / 2
+norm = diff_Senkou / avg_Senkou
+Base_Senkou = 100 / (1 + exp(-3 × norm))
           </pre>
-          <p><strong>Result:</strong> ${ichimokuReport.scores.senkou.toFixed(1)}%</p>
+          <p><strong>Interpretation:</strong> A positive normalized difference results in a high score. In our case, the score is <strong>${ichimokuReport.scores.senkou.toFixed(1)}%</strong>.</p>
         </section>
         
         <section>
           <h2>Overall Ichimoku Signal</h2>
-          <p>The overall signal is calculated as the average of the four parameter scores.</p>
+          <p>The overall signal is computed as the average of the four parameter scores:</p>
           <pre>
 Overall Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
           </pre>
-          <p><strong>Overall Signal:</strong> ${ichimokuReport.overall.toFixed(2)}%</p>
+          <p><strong>Overall Technical Bullish Score:</strong> ${ichimokuReport.overall.toFixed(2)}%</p>
         </section>
         
         <section>
           <h2>Disclaimers</h2>
-          <p><strong>Market Data Disclaimer:</strong> Historical data is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time conditions.</p>
-          <p><strong>Analytical Disclaimer:</strong> The methods and metrics in this report are for informational purposes only and should not be taken as financial advice.</p>
+          <p><strong>Market Data Disclaimer:</strong> Historical candlestick data (open, high, low, close) is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time conditions.</p>
+          <p><strong>Analytical Disclaimer:</strong> The methods and metrics in this report are for informational purposes only and should not be taken as financial advice. Conduct your own research before making any decisions.</p>
+        </section>
+        
+        <section>
+          <h2>Conclusion</h2>
+          <p>This Ichimoku analysis tool integrates multiple aspects of the indicator – including the price’s position relative to the cloud, the Tenkan/Kijun cross, Chikou Span confirmation, and the cloud’s internal structure (Senkou Span A vs. B) – to provide a comprehensive technical signal. Each parameter is scored continuously based on its deviation from key trigger levels and its recent momentum. The overall score, presented on a signal meter, offers a unified view of the technical outlook. Use these insights as part of your broader trading strategy.</p>
         </section>
         
         <section style="text-align:center;">
@@ -641,8 +638,8 @@ Overall Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
       </body>
       </html>
       `;
-      explanationWindow.document.write(explanationHTML);
-      explanationWindow.document.close();
+      win.document.write(html);
+      win.document.close();
     });
   </script>
 </body>

@@ -1,27 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Ichimoku Technical Analysis Tool</title>
-  <!-- Include Plotly for Charting -->
-  <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+  <!-- Include Highcharts for Charting (Stock) -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <!-- Include Math.js for any advanced calculations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(to right, #f3f4f6, #ffffff);
-      color: #333;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
       margin: 0 auto;
       max-width: 900px;
       padding: 2rem;
       line-height: 1.6;
+      position: relative;
     }
     h1 {
       text-align: center;
       margin-bottom: 20px;
       font-weight: 600;
     }
-    p, li {
+    p, li, label {
       margin-bottom: 0.75em;
     }
     label {
@@ -34,47 +45,63 @@
       width: 100%;
       padding: 8px;
       margin-top: 5px;
-      border: 1px solid #ccc;
+      border: 1px solid #555;
       border-radius: 4px;
       font-size: 0.95rem;
-      transition: border-color 0.3s ease;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+      transition: border-color var(--transition-speed);
     }
     button {
       margin-top: 20px;
       padding: 10px 20px;
-      background: #2563eb;
-      color: #fff;
+      background: var(--accent-color);
+      color: var(--text-color);
       border: none;
       border-radius: 4px;
       font-size: 1rem;
       cursor: pointer;
-      transition: background 0.3s ease;
+      transition: background var(--transition-speed);
     }
     button:hover {
       background: #1e3a8a;
     }
-    .section {
-      margin-top: 30px;
-      padding: 20px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      background-color: #f9fafb;
+    /* Autocomplete suggestions for ticker */
+    #ticker-suggestions {
+      position: absolute;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 20px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      padding: 0;
+      margin-top: 0.5rem;
+      display: none;
     }
-    .section h2 {
-      margin-bottom: 10px;
-      font-weight: 600;
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
     }
-    .chartContainer {
-      margin-top: 20px;
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+      color: var(--text-color);
     }
-    /* Aggregated Signal Meter styles */
+    #loading {
+      margin-top: 10px;
+      font-style: italic;
+      color: var(--accent-color);
+      display: none;
+    }
+    /* Aggregated Signal Meter styling */
     #aggregateSection {
       display: none;
       margin-bottom: 20px;
       padding: 15px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #444;
       border-radius: 4px;
-      background-color: #f9fafb;
+      background-color: var(--secondary-bg);
     }
     #aggregateBar {
       position: relative;
@@ -88,7 +115,7 @@
       top: 0;
       width: 2px;
       height: 100%;
-      background: black;
+      background: #fff;
     }
     #aggregateScoreText {
       position: absolute;
@@ -96,17 +123,20 @@
       text-align: center;
       line-height: 30px;
       font-weight: bold;
-      color: #fff;
+      color: var(--text-color);
       text-shadow: 1px 1px 2px #000;
     }
-    #loading {
-      margin-top: 10px;
-      font-style: italic;
-      color: #f97316;
+    /* Chart and section styling */
+    .section {
+      margin-top: 20px;
+      padding: 15px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
     }
-    /* Back to Home Button */
-    #backHome {
-      margin-bottom: 20px;
+    #candleChart {
+      height: 500px;
+      display: none;
     }
   </style>
 </head>
@@ -116,16 +146,18 @@
 
   <h1>Ichimoku Technical Analysis Tool</h1>
   <p>Enter a ticker symbol and a historical period (in months) to generate a candlestick chart with Ichimoku overlays and detailed parameter scores.</p>
-
+  
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
+  <!-- Autocomplete suggestions -->
+  <ul id="ticker-suggestions"></ul>
   
   <label for="period">Historical Period (months):</label>
   <input type="number" id="period" value="12" min="1">
-
+  
   <button id="runAnalysis">Run Analysis</button>
-  <div id="loading" style="display:none;">Loading data and running analysis...</div>
-
+  <div id="loading">Loading data and running analysis...</div>
+  
   <!-- Aggregated Signal Meter -->
   <div id="aggregateSection">
     <h2>Aggregated Ichimoku Signal</h2>
@@ -138,13 +170,13 @@
       <span style="margin-left: 10px; font-weight: bold;">Buy</span>
     </div>
   </div>
-
+  
   <!-- Candlestick Chart with Ichimoku Overlay -->
-  <div class="chartContainer section" id="candleSection" style="display:none;">
+  <div class="section" id="candleSection" style="display:none;">
     <h2>Candlestick Chart with Ichimoku Overlay</h2>
     <div id="candleChart"></div>
   </div>
-
+  
   <!-- Parameter Scores Section -->
   <div class="section" id="scoresSection" style="display:none;">
     <h2>Ichimoku Parameter Scores</h2>
@@ -156,25 +188,71 @@
     </ul>
     <p><strong>Overall Ichimoku Signal:</strong> <span id="overallScore"></span>%</p>
   </div>
-
+  
   <!-- Detailed Explanation Button -->
   <div style="text-align:center; margin-top:20px;">
-    <button id="explanationButton">View Detailed Explanation</button>
+    <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
   </div>
-
+  
   <script>
-    // Global variable to store analysis details
-    let ichimokuReport = null;
-
-    /*************** Utility Functions ***************/
-    function parseAlphaDate(str) {
-      const year  = str.substring(0, 4);
-      const month = str.substring(4, 6);
-      const day   = str.substring(6, 8);
-      return new Date(`${year}-${month}-${day}`);
+    /*************** Autocomplete Functions ***************/
+    let debounceTimeout;
+    function clearSuggestions() {
+      const list = document.getElementById('ticker-suggestions');
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
     }
-
-    // Process historical data; expects keys "5. adjusted close", "2. high", "3. low"
+    async function fetchTickerSuggestions(query) {
+      try {
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(query)}`);
+        if (!response.ok) {
+          throw new Error('Error fetching ticker suggestions');
+        }
+        const data = await response.json();
+        return data.bestMatches || [];
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
+        return [];
+      }
+    }
+    function renderTickerSuggestions(suggestions) {
+      const list = document.getElementById('ticker-suggestions');
+      list.innerHTML = '';
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
+      list.style.display = 'block';
+      suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item["1. symbol"]}</span> - <span>${item["2. name"]}</span>`;
+        li.addEventListener('click', () => {
+          document.getElementById('ticker').value = item["1. symbol"];
+          clearSuggestions();
+        });
+        list.appendChild(li);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const tickerInput = document.getElementById('ticker');
+      tickerInput.addEventListener('input', () => {
+        const query = tickerInput.value.trim();
+        if (query.length < 2) {
+          clearSuggestions();
+          return;
+        }
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const suggestions = await fetchTickerSuggestions(query);
+          renderTickerSuggestions(suggestions);
+        }, 300);
+      });
+      clearSuggestions();
+    });
+    
+    /*************** Ichimoku Calculations ***************/
     function processHistoricalData(timeSeries, periodMonths) {
       const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
       const endDate = new Date(dates[dates.length - 1]);
@@ -196,8 +274,7 @@
       prices.sort((a, b) => a.date - b.date);
       return prices;
     }
-
-    /*************** Ichimoku Calculations ***************/
+    
     function computeIchimoku(prices) {
       let tenkan = [];
       let kijun = [];
@@ -248,130 +325,122 @@
         chikou: chikou
       };
     }
-
+    
     /*************** Scoring Functions ***************/
-    // Parameter 1: Price vs Cloud Score
     function scoreCloud(currentPrice, senkouA, senkouB) {
       let cloudTop = Math.max(senkouA, senkouB);
       let cloudBottom = Math.min(senkouA, senkouB);
       let mid = (cloudTop + cloudBottom) / 2;
       let half = (cloudTop - cloudBottom) / 2 || 1;
       let norm = (currentPrice - mid) / half;
-      // Use logistic function with moderate steepness
       let C = 1;
       return 100 / (1 + Math.exp(-C * norm));
     }
-
-    // Parameter 2: Tenkan/Kijun Cross Score
     function scoreTenkan(tenkan, kijun) {
       let diff = tenkan - kijun;
-      // Use logistic function: positive diff is bullish.
       let D = 0.2;
       return 100 / (1 + Math.exp(-D * diff));
     }
-
-    // Parameter 3: Chikou Span Confirmation Score
     function scoreChikou(currentPrice, price26PeriodsAgo) {
       let diff = currentPrice - price26PeriodsAgo;
-      // Use logistic with a gentle slope
       let E = 0.1;
       return 100 / (1 + Math.exp(-E * diff));
     }
-
-    // Parameter 4: Senkou Cross Score (Cloud Color)
     function scoreSenkou(senkouA, senkouB) {
       let diff = senkouA - senkouB;
-      // Normalize by average of senkou values
       let avg = (senkouA + senkouB) / 2 || 1;
       let norm = diff / avg;
       let F = 3;
       return 100 / (1 + Math.exp(-F * norm));
     }
-
-    // Overall Ichimoku Signal: Average of the four scores.
     function overallIchimokuScore(score1, score2, score3, score4) {
       return (score1 + score2 + score3 + score4) / 4;
     }
-
-    /*************** Charting Functions ***************/
-    // Create candlestick chart with Ichimoku overlays
+    
+    /*************** Charting Function using Highcharts ***************/
     function plotCandlestickIchimoku(prices, ichimokuData) {
-      // Prepare arrays for candlestick chart
-      let dates = prices.map(p => p.date);
-      let open = prices.map(p => p.open);
-      let high = prices.map(p => p.high);
-      let low = prices.map(p => p.low);
-      let close = prices.map(p => p.close);
+      // Prepare candlestick data: [timestamp, open, high, low, close]
+      let candlestickData = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+      // Prepare line series data for Ichimoku overlays
+      let tenkanData = ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]);
+      let kijunData = ichimokuData.kijun.map(item => [item.date.getTime(), item.value]);
+      let senkouAData = ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]);
+      let senkouBData = ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]);
+      let chikouData = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
       
-      // Candlestick trace
-      let traceCandlestick = {
-        x: dates,
-        open: open,
-        high: high,
-        low: low,
-        close: close,
-        type: 'candlestick',
-        name: 'Price'
-      };
+      Highcharts.stockChart('candleChart', {
+        chart: {
+          backgroundColor: 'transparent'
+        },
+        rangeSelector: {
+          enabled: false
+        },
+        title: {
+          text: 'Candlestick Chart with Ichimoku Overlay'
+        },
+        xAxis: {
+          type: 'datetime'
+        },
+        yAxis: {
+          title: {
+            text: 'Price'
+          }
+        },
+        series: [{
+          type: 'candlestick',
+          name: 'Price',
+          data: candlestickData,
+          id: 'price'
+        }, {
+          type: 'line',
+          name: 'Tenkan-sen',
+          data: tenkanData,
+          color: 'blue',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Kijun-sen',
+          data: kijunData,
+          color: 'red',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Senkou Span A',
+          data: senkouAData,
+          color: 'green',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Senkou Span B',
+          data: senkouBData,
+          color: 'brown',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Chikou Span',
+          data: chikouData,
+          color: 'purple',
+          tooltip: { valueDecimals: 2 }
+        }],
+        credits: {
+          enabled: false
+        }
+      });
       
-      // Overlay Ichimoku lines
-      let traceTenkan = {
-        x: ichimokuData.tenkan.map(item => item.date),
-        y: ichimokuData.tenkan.map(item => item.value),
-        mode: 'lines',
-        name: 'Tenkan-sen',
-        line: { dash: 'dash', color: 'blue' }
-      };
-      let traceKijun = {
-        x: ichimokuData.kijun.map(item => item.date),
-        y: ichimokuData.kijun.map(item => item.value),
-        mode: 'lines',
-        name: 'Kijun-sen',
-        line: { dash: 'dash', color: 'red' }
-      };
-      let traceSenkouA = {
-        x: ichimokuData.senkouA.map(item => item.date),
-        y: ichimokuData.senkouA.map(item => item.value),
-        mode: 'lines',
-        name: 'Senkou Span A',
-        line: { color: 'green' }
-      };
-      let traceSenkouB = {
-        x: ichimokuData.senkouB.map(item => item.date),
-        y: ichimokuData.senkouB.map(item => item.value),
-        mode: 'lines',
-        name: 'Senkou Span B',
-        line: { color: 'brown' },
-        fill: 'tonexty'
-      };
-      let traceChikou = {
-        x: ichimokuData.chikou.map(item => item.date),
-        y: ichimokuData.chikou.map(item => item.value),
-        mode: 'lines',
-        name: 'Chikou Span',
-        line: { color: 'purple' }
-      };
-      
-      let layout = {
-        title: "Candlestick Chart with Ichimoku Cloud",
-        xaxis: { title: "Date" },
-        yaxis: { title: "Price" },
-        dragmode: 'zoom'
-      };
-      
-      Plotly.newPlot("candleChart", [traceCandlestick, traceTenkan, traceKijun, traceSenkouA, traceSenkouB, traceChikou], layout);
+      document.getElementById("candleChart").style.display = "block";
     }
-
+    
     /*************** Main Analysis Function ***************/
+    let ichimokuReport = null;
     document.getElementById("runAnalysis").addEventListener("click", async () => {
       document.getElementById('loading').style.display = 'block';
-      // Hide previous sections
       document.getElementById('aggregateSection').style.display = 'none';
       document.getElementById('candleSection').style.display = 'none';
       document.getElementById('scoresSection').style.display = 'none';
+      document.getElementById("explanationButton").style.display = "none";
       
-      let ticker = document.getElementById('ticker').value.trim();
-      let periodMonths = parseInt(document.getElementById('period').value);
+      const ticker = document.getElementById('ticker').value.trim();
+      const periodMonths = parseInt(document.getElementById('period').value);
       if (!ticker) {
         alert("Please enter a ticker symbol.");
         document.getElementById('loading').style.display = 'none';
@@ -379,65 +448,53 @@
       }
       
       try {
-        let histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
-        let resp = await fetch(histUrl);
-        let data = await resp.json();
+        const histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        const resp = await fetch(histUrl);
+        const data = await resp.json();
         if (!data["Time Series (Daily)"]) {
           throw new Error("Unable to retrieve valid historical data.");
         }
-        let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if (prices.length < 80) {  // need enough data for Ichimoku (at least 52+26)
+        const prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+        if (prices.length < 80) {
           alert("Not enough historical data for the selected period.");
           document.getElementById('loading').style.display = 'none';
           return;
         }
         
         // Compute Ichimoku lines
-        let ichimokuData = computeIchimoku(prices);
+        const ichimokuData = computeIchimoku(prices);
         
-        // Plot candlestick chart with Ichimoku overlay
+        // Plot chart using Highcharts
         plotCandlestickIchimoku(prices, ichimokuData);
         document.getElementById('candleSection').style.display = 'block';
         
-        // For scoring, use the last day's values:
-        let currentPrice = prices[prices.length - 1].close;
-        // For Cloud score, use last senkou values:
-        let lastSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
-        let lastSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
-        let cloudScore = scoreCloud(currentPrice, lastSenkouA, lastSenkouB);
+        // Calculate scores using the latest values
+        const currentPrice = prices[prices.length - 1].close;
+        const lastSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+        const lastSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+        const cloudScore = scoreCloud(currentPrice, lastSenkouA, lastSenkouB);
+        const latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+        const latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+        const tenkanScore = scoreTenkan(latestTenkan, latestKijun);
+        const price26PeriodsAgo = prices[prices.length - 26].close;
+        const chikouScore = scoreChikou(currentPrice, price26PeriodsAgo);
+        const senkouScore = scoreSenkou(lastSenkouA, lastSenkouB);
+        const overallScore = overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore);
         
-        // Tenkan/Kijun score: use last available values
-        let latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
-        let latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
-        let tenkanScore = scoreTenkan(latestTenkan, latestKijun);
-        
-        // Chikou score: compare current price to price 26 periods ago
-        let price26PeriodsAgo = prices[prices.length - 26].close;
-        let chikouScore = scoreChikou(currentPrice, price26PeriodsAgo);
-        
-        // Senkou score: based on cloud cross (difference between Senkou A and B)
-        let senkouScore = scoreSenkou(lastSenkouA, lastSenkouB);
-        
-        // Overall Ichimoku Signal is the average of these 4 scores.
-        let overallScore = overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore);
-        
-        // Display individual scores
+        // Display scores
         document.getElementById('scoreCloud').innerText = `Price vs Cloud Score: ${cloudScore.toFixed(1)}%`;
         document.getElementById('scoreTenkan').innerText = `Tenkan/Kijun Cross Score: ${tenkanScore.toFixed(1)}%`;
         document.getElementById('scoreChikou').innerText = `Chikou Span Score: ${chikouScore.toFixed(1)}%`;
         document.getElementById('scoreSenkou').innerText = `Cloud Cross Score: ${senkouScore.toFixed(1)}%`;
-        
-        // Set overall score in the scores section
         document.getElementById('overallScore').innerText = overallScore.toFixed(2);
         
-        // Set aggregated meter
         document.getElementById('aggregateScoreText').innerText = `${overallScore.toFixed(2)}%`;
         document.getElementById('aggregateMarker').style.left = `${overallScore}%`;
         document.getElementById('aggregateSection').style.display = 'block';
-        
-        // Show scores section
         document.getElementById('scoresSection').style.display = 'block';
+        document.getElementById("explanationButton").style.display = "block";
         
+        // Store report for explanation details
         ichimokuReport = {
           ticker: ticker,
           periodMonths: periodMonths,
@@ -460,8 +517,8 @@
       }
       document.getElementById('loading').style.display = 'none';
     });
-
-    /*************** Detailed Explanation ***************/
+    
+   /*************** Detailed Explanation ***************/
     document.getElementById("explanationButton").addEventListener("click", () => {
       if (!ichimokuReport) {
         alert("Please run an analysis first.");
