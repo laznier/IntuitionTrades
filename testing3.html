@@ -719,7 +719,35 @@
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return finalScore;
     }
-  
+  // Helper function to compute the median of an array of numbers
+function getMedian(arr) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return (sorted.length % 2 !== 0) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// Compute key statistical measures (annual drift, volatility, and last price) from historical price data.
+function computeStats(prices) {
+  let logReturns = [];
+  for (let i = 1; i < prices.length; i++) {
+    let prev = prices[i - 1].close;
+    let curr = prices[i].close;
+    logReturns.push(Math.log(curr / prev));
+  }
+  if (logReturns.length < 1) {
+    return { mean: 0, stdDev: 0, lastPrice: prices[prices.length - 1].close };
+  }
+  let dailyMean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+  let variance = logReturns.reduce((sum, r) => sum + Math.pow(r - dailyMean, 2), 0) / (logReturns.length - 1);
+  let dailyStd = Math.sqrt(variance);
+  const tradingDays = 252;
+  return {
+    mean: dailyMean * tradingDays,
+    stdDev: dailyStd * Math.sqrt(tradingDays),
+    lastPrice: prices[prices.length - 1].close
+  };
+}
+
     /***********************************************
      * updateTechChart() – Render Technical Chart in 4 Panes
      ***********************************************/
