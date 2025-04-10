@@ -629,37 +629,45 @@
 
     // MACD Chart
     function plotMACD(prices) {
-      const macdData = computeMACD(prices);
-      const len = Math.min(macdData.macdLine.length, macdData.signalLine.length);
-      let histData = [];
-      for (let i = 0; i < len; i++) {
-        histData.push([macdData.macdLine[i].date.getTime(), macdData.macdLine[i].macd - macdData.signalLine[i].signal]);
-      }
-      Highcharts.chart('macdChart', {
-        chart: { backgroundColor: 'transparent' },
-        title: { text: 'MACD Chart' },
-        xAxis: { type: 'datetime' },
-        yAxis: { title: { text: 'MACD' } },
-        series: [{
-          type: 'column',
-          name: 'Histogram',
-          data: histData,
-          colorByPoint: true
-        }, {
-          type: 'line',
-          name: 'MACD',
-          data: macdData.macdLine.map(item => [item.date.getTime(), item.macd]),
-          color: 'blue'
-        }, {
-          type: 'line',
-          name: 'Signal',
-          data: macdData.signalLine.map(item => [item.date.getTime(), item.signal]),
-          color: 'orange'
-        }],
-        credits: { enabled: false }
-      });
-      return macdData;
-    }
+  const macdData = computeMACD(prices);
+  const macdLine = macdData.macdLine;
+  const signalLine = macdData.signalLine;
+  
+  // Compute the offset so that the first Signal entry corresponds
+  // to the correct MACD entry.
+  const offset = macdLine.length - signalLine.length;
+  let histData = [];
+  for (let i = 0; i < signalLine.length; i++) {
+    const alignedMACD = macdLine[i + offset];
+    histData.push([alignedMACD.date.getTime(), alignedMACD.macd - signalLine[i].signal]);
+  }
+  
+  Highcharts.chart('macdChart', {
+    chart: { backgroundColor: 'transparent' },
+    title: { text: 'MACD Chart' },
+    xAxis: { type: 'datetime' },
+    yAxis: { title: { text: 'MACD' } },
+    series: [{
+      type: 'column',
+      name: 'Histogram',
+      data: histData,
+      colorByPoint: true
+    }, {
+      type: 'line',
+      name: 'MACD',
+      data: macdLine.map(item => [item.date.getTime(), item.macd]),
+      color: 'blue'
+    }, {
+      type: 'line',
+      name: 'Signal',
+      data: signalLine.map(item => [item.date.getTime(), item.signal]),
+      color: 'orange'
+    }],
+    credits: { enabled: false }
+  });
+  return macdData;
+}
+
 
     // WMA Chart
     function plotWMA(prices, wmas) {
