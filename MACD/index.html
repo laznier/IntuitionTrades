@@ -271,11 +271,13 @@
       const signalLine = macdData.signalLine;
       if (macdLine.length === 0 || signalLine.length === 0) return;
       
-      const len = Math.min(macdLine.length, signalLine.length);
-      let histData = [];
-      for (let i = 0; i < len; i++) {
-        histData.push([macdLine[i].date.getTime(), macdLine[i].macd - signalLine[i].signal]);
-      }
+      const offset = macdLine.length - signalLine.length;
+let histData = [];
+for (let i = 0; i < signalLine.length; i++) {
+  const alignedMACD = macdLine[i + offset];
+  histData.push([alignedMACD.date.getTime(), alignedMACD.macd - signalLine[i].signal]);
+}
+
       
       Highcharts.chart('macdChart', {
         chart: { backgroundColor: 'transparent' },
@@ -328,19 +330,21 @@
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    // Compute momentum score using 3rd-degree polynomial regression on the last 6 histogram values.
+    // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
     function computeMomentumScoreUsingRegression(histValues) {
-      if (histValues.length < 6) return null;
-      const recentHist = histValues.slice(-6);
-      const x = [1, 2, 3, 4, 5, 6];
-      const coeffs = polynomialRegression(x, recentHist, 3);
-      const predicted = predictValue(coeffs, 7);
-      const lastValue = recentHist[recentHist.length - 1];
-      const delta = predicted - lastValue;
-      const k = 5; // sensitivity factor
-      const score = 100 / (1 + Math.exp(-k * delta));
-      return score;
-    }
+  if (histValues.length < 6) return null;
+  const recentHist = histValues.slice(-6);
+  const x = [1, 2, 3, 4, 5, 6];
+  // Change the degree from 3 to 1 here:
+  const coeffs = polynomialRegression(x, recentHist, 1);
+  const predicted = predictValue(coeffs, 7);
+  const lastValue = recentHist[recentHist.length - 1];
+  const delta = predicted - lastValue;
+  const k = 5; // sensitivity factor
+  const score = 100 / (1 + Math.exp(-k * delta));
+  return score;
+}
+
     
     // Compute the gap trend score using regression on both MACD and Signal lines.
     function computeGapTrendScore(macdLine, signalLine) {
@@ -496,7 +500,7 @@
           <p>The Gap Trend Score measures how the gap between the MACD and Signal lines is expected to change. To compute it we:</p>
           <ol>
             <li>Select the last 6 data points from both the MACD and Signal lines.</li>
-            <li>Fit a 3rd-degree polynomial regression to each series.</li>
+            <li>Fit a 1st-degree polynomial regression to each series.</li>
             <li>Predict the 7th value for both the MACD and Signal lines.</li>
             <li>Compute the predicted gap (predicted MACD minus predicted Signal) and compare it with the current gap to get a delta.</li>
             <li>Map the delta using a logistic function: <code>gapScore = 100 / (1 + Math.exp(-k * delta));</code></li>
@@ -508,7 +512,7 @@
           <p>The Momentum Score examines changes in the MACD histogram (the difference between MACD and Signal) over the last 6 values:</p>
           <ol>
             <li>Gather the last 6 histogram values.</li>
-            <li>Fit a 3rd-degree polynomial regression to these values.</li>
+            <li>Fit a 1rd-degree polynomial regression to these values.</li>
             <li>Predict the 7th histogram value.</li>
             <li>Calculate the delta between the predicted and the last observed histogram value.</li>
             <li>Map the delta via a logistic function to obtain the momentum score.</li>
