@@ -1201,7 +1201,64 @@ function computeStats(prices) {
      * Other Functions: Sentiment, Insider, Congress, and Aggregation
      ***********************************************/
     // ... (Sentiment, Insider, and Congress functions remain unchanged)
+    function updateSentimentChart(sentiments) {
+  if (sentiments.length < 2) {
+    Highcharts.chart("sentChart", {
+      chart: { type: "line", backgroundColor: "transparent" },
+      title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+      xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+      yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+      series: [{ name: "Sentiment", data: sentiments.map(s => [s.date.getTime(), s.sentiment]), marker: { enabled: true } }]
+    });
+    document.getElementById("sentDetails").innerText = "Insufficient data => 50.";
+    return 50;
+  }
+  // Compute x values as days since first sentiment date
+  let firstDate = sentiments[0].date;
+  let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24));
+  let ys = sentiments.map(s => s.sentiment);
+  let n = xs.length;
+  let sumX = xs.reduce((a, b) => a + b, 0);
+  let sumY = ys.reduce((a, b) => a + b, 0);
+  let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+  let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+  let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  let intercept = (sumY - slope * sumX) / n;
   
+  // Prepare trend line data
+  let minDate = sentiments[0].date;
+  let maxDate = sentiments[sentiments.length - 1].date;
+  let trendYstart = intercept + slope * xs[0];
+  let trendYend = intercept + slope * xs[xs.length - 1];
+  let rawData = sentiments.map(s => [s.date.getTime(), s.sentiment]);
+  let trendData = [
+    [minDate.getTime(), trendYstart],
+    [maxDate.getTime(), trendYend]
+  ];
+
+  Highcharts.chart("sentChart", {
+    chart: { type: "line", backgroundColor: "transparent" },
+    title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+    xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+    yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+    tooltip: { shared: true, xDateFormat: "%Y-%m-%d" },
+    series: [
+      { name: "Sentiment", data: rawData, marker: { enabled: true } },
+      { name: "Trend", data: trendData, dashStyle: "Dash", color: "red", marker: { enabled: false } }
+    ],
+    credits: { enabled: false },
+    legend: { itemStyle: { color: "#fff" } }
+  });
+
+  // Use a logistic function on the slope to produce a slope-based bullish score
+  let slopeBull = logisticBullish(slope);
+  let avgSentiment = sumY / n;
+  let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
+  document.getElementById("sentDetails").innerText =
+    `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
+  return finalBullishScore;
+}
+
     function interpolateColor(value) {
       const ratio = Math.max(0, Math.min(1, value / 100));
       const r = Math.round(255 * (1 - ratio));
