@@ -458,7 +458,7 @@ function computeMomentumScoreUsingRegression(hist){
   if(hist.length<6) return 50;
   let recent= hist.slice(-6);
   let x=[1,2,3,4,5,6];
-  let coefs= polynomialRegression(x, recent,3);
+  let coefs= polynomialRegression(x, recent,1);
   let pred= predictValue(coefs,7);
   let last= recent[recent.length-1];
   let delta= pred- last;
