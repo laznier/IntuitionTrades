@@ -1517,7 +1517,250 @@ function computeStats(prices) {
         }
       }
     }
+    function updateInsiderCharts(insiderData) {
+  // Create column series for buys and sells from the aggregated time series.
+  const buyData = insiderData.timeSeries.map(item => [item.date.getTime(), item.buys]);
+  const sellData = insiderData.timeSeries.map(item => [item.date.getTime(), item.sells]);
+
+  // Create a spline series for the insider sentiment trend.
+  // Convert each filled sentiment category (formatted as YYYY-MM) into a timestamp (using the 1st of the month).
+  const trendData = insiderData.sentimentCategories.map((cat, i) => {
+    let d = new Date(cat + "-01");
+    return [d.getTime(), insiderData.sentimentValues[i]];
+  });
+
+  Highcharts.chart('insiderChart', {
+  chart: { backgroundColor: 'var(--secondary-bg)' },
+  title: { text: 'Combined Insider Transactions & MSPR Trend', style: { color: 'var(--text-color)' } },
+  xAxis: { 
+    type: 'datetime', 
+    labels: { style: { color: 'var(--text-color)' } }
+  },
+  yAxis: [
+    { // Left axis for MSPR scores
+      min: -100,
+      max: 100,
+      title: { text: 'Insider MSPR Score (-100 to +100)' },
+      labels: { style: { color: 'var(--text-color)' } }
+    },
+    { // Right axis for number of shares
+      title: { text: 'Number of Shares' },
+      opposite: true,
+      labels: { style: { color: 'var(--text-color)' } }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    formatter: function() {
+      let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
+      this.points.forEach(point => {
+        if (point.series.options.yAxis === 1) {
+          tooltip += point.series.name + ': ' + point.y + '<br/>';
+        } else if (point.series.options.yAxis === 0) {
+          tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
+        }
+      });
+      return tooltip;
+    }
+  },
+  series: [
+    {
+      type: 'column',
+      name: 'Buys',
+      data: buyData,
+      color: '#16a34a',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'column',
+      name: 'Sells',
+      data: sellData,
+      color: '#dc2626',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'spline',
+      name: 'Insider MSPR Trend',
+      // Ensure the second value is a number; if needed use parseFloat.
+      data: trendData.map(point => [ point[0], parseFloat(point[1]) ]),
+      color: 'yellow',
+      marker: { enabled: true },
+      yAxis: 0 // plot on left axis
+    }
+  ],
+  credits: { enabled: false },
+  legend: { itemStyle: { color: 'var(--text-color)' } }
+});
+
+
   
+  // Update the insider details element with the overall insider score.
+  document.getElementById('insiderDetails').innerText = 
+      `Insider Bullish Score: ${insiderData.insiderScore.toFixed(2)}%`;
+  return insiderData.insiderScore;
+}
+
+
+  async function fetchCongressData(ticker, periodMonths) {
+    const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+    const resp = await fetch(url);
+    const j = await resp.json();
+    if(!j.data || !Array.isArray(j.data)){
+      throw new Error("Invalid congress data format.");
+    }
+    const rawData = j.data;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - periodMonths);
+    let totalPurchase = 0, totalSale = 0;
+    for(let item of rawData){
+      if(!item.TransactionDate || !item.Transaction) continue;
+      let dt = new Date(item.TransactionDate);
+      if(isNaN(dt) || dt < cutoff) continue;
+      let amt = parseFloat(item.Amount) || 0;
+      if(/purchase/i.test(item.Transaction)) totalPurchase += amt;
+      if(/sale/i.test(item.Transaction)) totalSale += amt;
+    }
+    return { totalPurchase, totalSale };
+  }
+  function interpolateColor(value) {
+    const ratio = Math.max(0, Math.min(1, value / 100));
+    const r = Math.round(255 * (1 - ratio));
+    const g = Math.round(255 * ratio);
+    return `rgb(${r},${g},0)`;
+  }
+  function updateCongressChart(totalPurchase, totalSale) {
+    const categories = ["Purchase Amount", "Sale Amount"];
+    const data = [totalPurchase, totalSale];
+    Highcharts.chart("congressChart", {
+      chart: { type: "column", backgroundColor: "transparent" },
+      title: { text: "(USD)", style: { color: "#fff" } },
+      xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+      yAxis: { title: { text: "Amount", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+      tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
+      series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
+      credits: { enabled: false },
+      legend: { enabled: false }
+    });
+    let sum = totalPurchase + totalSale;
+    let congressBull = 50;
+    if (sum > 0) { congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50; }
+    document.getElementById("congressDetails").innerText =
+      `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+    return congressBull;
+  }
+  function computeSMAforRegime(priceArray, period) {
+    if(!priceArray || priceArray.length < period) return null;
+    let slice = priceArray.slice(-period);
+    let sum = 0;
+    for(let p of slice){ sum += p.close; }
+    return sum / period;
+  }
+  function computeSlope(prices) {
+    let n = prices.length;
+    if(n < 2) return 0;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for(let i = 0; i < n; i++){
+      sumX += i;
+      sumY += prices[i].close;
+      sumXY += i * prices[i].close;
+      sumX2 += i * i;
+    }
+    let numerator = n * sumXY - sumX * sumY;
+    let denominator = n * sumX2 - sumX * sumX;
+    if(denominator === 0) return 0;
+    return numerator / denominator;
+  }
+  function classifyBySMAshortLong(shortSMA, longSMA) {
+    if(!shortSMA || !longSMA) return "Neutral";
+    let ratio = shortSMA / longSMA;
+    if(ratio > 1.01) return "Bull";
+    if(ratio < 0.99) return "Bear";
+    return "Neutral";
+  }
+  function classifyBySlopeVal(slopeVal) {
+    let bullThr = 0.2, bearThr = -0.2;
+    if(slopeVal > bullThr) return "Bull";
+    if(slopeVal < bearThr) return "Bear";
+    return "Neutral";
+  }
+  async function determineSPYMarketRegime(periodMonths = 4) {
+    try {
+      let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+      let resp = await fetch(url);
+      let j = await resp.json();
+      if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
+      let shortWindow = periodMonths * 5;
+      let longWindow = periodMonths * 15;
+      let totalDays = periodMonths * 30;
+      let allKeys = Object.keys(j["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
+      let arr = [];
+      for(let d of allKeys){
+        let dt = new Date(d);
+        let c = parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+        arr.push({ date: dt, close: c });
+      }
+      let end = arr[arr.length - 1].date;
+      let start = new Date(end);
+      start.setDate(start.getDate() - totalDays);
+      let filtered = arr.filter(pt => pt.date >= start && pt.date <= end);
+      if(filtered.length < Math.max(shortWindow, longWindow)){
+        console.log("Not enough SPY data => Neutral");
+        return "Neutral";
+      }
+      let shortSMA = computeSMAforRegime(filtered, shortWindow);
+      let longSMA = computeSMAforRegime(filtered, longWindow);
+      let smaSig = classifyBySMAshortLong(shortSMA, longSMA);
+      let slopeVal = computeSlope(filtered);
+      let slopeSig = classifyBySlopeVal(slopeVal);
+      let votes = 0;
+      if(smaSig === "Bull") votes++;
+      if(smaSig === "Bear") votes--;
+      if(slopeSig === "Bull") votes++;
+      if(slopeSig === "Bear") votes--;
+      if(votes >= 2) return "Bull";
+      if(votes <= -2) return "Bear";
+      return "Neutral";
+    } catch(e) {
+      console.log("Error in determineSPYMarketRegime =>", e.message);
+      return "Neutral";
+    }
+  }
+  function getAutoWeightsForRegime(regime) {
+    if(regime === "Bear"){
+      return { wMC: 0.05, wTech: 0.05, wSent: 0.10, wIns: 0.30, wFund: 0.30, wCong: 0.20, scale: 0.25 };
+    } else if(regime === "Bull"){
+      return { wMC: 0.20, wTech: 0.25, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.10, scale: 1.00 };
+    } else {
+      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
+    }
+  }
+  function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
+    const manual = document.getElementById("useManualWeightsCheckbox").checked;
+    if(!manual){
+      let auto = getAutoWeightsForRegime(regime);
+      let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+      return (raw - 50) * auto.scale + 50;
+    } else {
+      const wMC = parseFloat(document.getElementById("wMC").value) || 0;
+      const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+      const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+      const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+      const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+      const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+      let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+      let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+      let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+      let invalidScale = (sc < 0 || sc > 2);
+      if(invalidWeights || invalidScale){
+        console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
+        let eq = (mc + tech + sent + ins + fund + cong) / 6;
+        return eq;
+      } else {
+        let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+        return (raw - 50) * sc + 50;
+      }
+    }
+  }
     /***********************************************
      * Buffer Overlay Functions
      ***********************************************/
