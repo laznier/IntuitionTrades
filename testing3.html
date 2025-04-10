@@ -1518,6 +1518,37 @@ function computeStats(prices) {
     }
     document.getElementById('loading').style.display = 'none';
   }
+  async function fetchSentimentData(ticker, periodMonths) {
+  let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+  let resp = await fetch(url);
+  let data = await resp.json();
+  if(!data.feed) throw new Error("No sentiment data from server.");
+  let startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - periodMonths);
+  let byHour = {};
+  for(let article of data.feed) {
+    let dt = parseAlphaDate(article.time_published);
+    if(isNaN(dt) || dt < startDate) continue;
+    if(!article.ticker_sentiment) continue;
+    let tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
+    if(!tItem) continue;
+    let raw = parseFloat(tItem.ticker_sentiment_score);
+    if(isNaN(raw)) continue;
+    let norm = ((raw + 1) / 2) * 100;
+    let hourKey = dt.toISOString().substring(0,13);
+    if(!byHour[hourKey]) byHour[hourKey] = [];
+    byHour[hourKey].push(norm);
+  }
+  let sentiments = [];
+  for(let hStr in byHour) {
+    let vals = byHour[hStr];
+    let avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    let dt = new Date(`${hStr}:00:00Z`);
+    sentiments.push({ date: dt, sentiment: avg });
+  }
+  sentiments.sort((a, b) => a.date - b.date);
+  return sentiments;
+}
 
   // Run simulation with overlay on button click
   document.getElementById("simulateButton").addEventListener("click", () => {
