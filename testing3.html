@@ -1658,6 +1658,7 @@ async function fetchCongressData(ticker, periodMonths) {
   }
 }
 
+
 // Computes the Dollars Score: maps net dollars (totalPurchase-totalSale)
 // onto a 0–100 scale, where 0 corresponds to a net of \$0 (50% neutral) and
 // a net buy of 10M yields roughly 100% (with a logarithmic scaling).
@@ -1701,24 +1702,36 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
     const g = Math.round(255 * ratio);
     return `rgb(${r},${g},0)`;
   }
-  function updateCongressChart(totalPurchase, totalSale, uniqueBuyCount) {
+  function updateCongressChart(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
+  // Render the simple column chart.
   const categories = ["Purchase Amount", "Sale Amount"];
   const data = [totalPurchase, totalSale];
   Highcharts.chart("congressChart", {
     chart: { type: "column", backgroundColor: "transparent" },
     title: { text: "(USD)", style: { color: "#fff" } },
-    xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
-    yAxis: { title: { text: "Amount", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+    xAxis: {
+      categories: categories,
+      title: { text: null },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
+    yAxis: {
+      title: { text: "Amount", style: { color: "#fff" } },
+      gridLineColor: "#444",
+      labels: { style: { color: "#fff" } }
+    },
     tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
     series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
     credits: { enabled: false },
     legend: { enabled: false }
   });
-  let congressBull = computeCongressScore(totalPurchase, totalSale, uniqueBuyCount);
+  // Calculate final congress score using our updated computation.
+  let congressBull = computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount);
   document.getElementById("congressDetails").innerText =
     `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
   return congressBull;
 }
+
 
   function computeSMAforRegime(priceArray, period) {
     if(!priceArray || priceArray.length < period) return null;
@@ -1992,7 +2005,8 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       let insiderBull = updateInsiderCharts(insiderData);
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
-// Assuming congressObj now has properties: totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount
+document.getElementById('congressSection').style.display = 'block';
+// Pass both uniqueBuyCount and uniqueSellCount
 let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
 
       let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
