@@ -2155,13 +2155,15 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
     }
     const ticker = simulationReport.ticker;
 const periodMonths = simulationReport.periodMonths;
-const futureDate = simulationReport.futureDate; // e.g., "2025-05-10"
+// Get the correct ISO date from the futureDate input
+const futureDateValue = document.getElementById("futureDate").value;
 const url = "https://www.intuitiontrades.com/risk/?ticker=" 
-          + encodeURIComponent(ticker)
+          + encodeURIComponent(ticker) 
           + "&period=" + periodMonths
-          + "&futureDate=" + futureDate
+          + "&futureDate=" + encodeURIComponent(futureDateValue)
           + "&autoFetch=true";
 window.open(url, "_blank");
+
 
 
   });
