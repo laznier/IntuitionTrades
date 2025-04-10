@@ -539,8 +539,8 @@
       const recentMACD = macdLine.slice(-6).map(item => item.macd);
       const recentSignal = signalLine.slice(-6).map(item => item.signal);
       const x = [1, 2, 3, 4, 5, 6];
-      const macdCoeffs = polynomialRegression(x, recentMACD, 1);
-      const signalCoeffs = polynomialRegression(x, recentSignal, 1);
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
       const predictedMACD = predictValue(macdCoeffs, 7);
       const predictedSignal = predictValue(signalCoeffs, 7);
       const predictedGap = predictedMACD - predictedSignal;
@@ -918,8 +918,8 @@ Score_BB = Base_BB × (1 + 0.1 × d%B)
     <p>The updated MACD scoring system quantifies three key elements using regression-based methods:</p>
     <ul>
       <li><strong>Position Score:</strong> Measures where the MACD line lies relative to zero using <code>100 / (1 + exp(latestMACD))</code>.</li>
-      <li><strong>Gap Trend Score:</strong> Applies 1st-degree polynomial regression on the last 6 MACD and Signal values to predict the 7th gap, then transforms the difference via a logistic function.</li>
-      <li><strong>Momentum Score:</strong> Uses regression on the MACD histogram over the last 6 periods to predict the next value, with the resulting delta mapped through a logistic function.</li>
+      <li><strong>Gap Trend Score:</strong> Applies 3rd-degree polynomial regression on the last 6 MACD and Signal values to predict the 7th gap, then transforms the difference via a logistic function.</li>
+      <li><strong>Momentum Score:</strong> Uses 1st-degree polynomial regression on the MACD histogram over the last 6 periods to predict the next value, with the resulting delta mapped through a logistic function.</li>
     </ul>
     <p>The final MACD score is the average of these three components. In our analysis, the MACD score is <strong>${techReport.macd ? techReport.macd.toFixed(1) : "N/A"}%</strong>.</p>
   </section>

@@ -712,8 +712,8 @@
     const recentMACD = macdLine.slice(-6).map(item => item.macd);
     const recentSignal = signalLine.slice(-6).map(item => item.signal);
     const x = [1, 2, 3, 4, 5, 6];
-    const macdCoeffs = polynomialRegression(x, recentMACD, 1);
-    const signalCoeffs = polynomialRegression(x, recentSignal, 1);
+    const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+    const signalCoeffs = polynomialRegression(x, recentSignal, 3);
     const predictedMACD = predictValue(macdCoeffs, 7);
     const predictedSignal = predictValue(signalCoeffs, 7);
     const predictedGap = predictedMACD - predictedSignal;
@@ -2112,8 +2112,8 @@ Score_BB = Base_BB × (1 + 0.1 × d%B)
           <strong>MACD (Regression-Based Scoring):</strong>
           <br>
           1) Position Score (logistic function on latest MACD)<br>
-          2) Gap Trend Score (polynomial regression to predict next MACD-signal gap)<br>
-          3) Momentum Score (polynomial regression on MACD histogram)
+          2) Gap Trend Score (3rd-degree polynomial regression to predict next MACD-signal gap)<br>
+          3) Momentum Score (1st-degree polynomial regression on MACD histogram)
           <p>The final MACD score is the average of these three sub-scores.</p>
         </li>
         <li>
