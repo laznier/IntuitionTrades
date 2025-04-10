@@ -239,12 +239,22 @@
      * Utility Functions & Data Fetching
      ***********************************************/
     // Set default future date (one month ahead).
-    (function setDefaultDate() {
-      const futureDateInput = document.getElementById('futureDate');
-      const today = new Date();
-      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
-      futureDateInput.value = nextMonth.toISOString().split('T')[0];
-    })();
+    // Set default future date – use URL parameter if provided.
+(function setDefaultDate() {
+  const futureDateInput = document.getElementById('futureDate');
+  const urlParams = new URLSearchParams(window.location.search);
+  const futureDateParam = urlParams.get("futureDate");
+  if (futureDateParam) {
+    // Assume the provided date is in YYYY-MM-DD format.
+    futureDateInput.value = futureDateParam;
+  } else {
+    // Fallback: default to one month ahead.
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+    futureDateInput.value = nextMonth.toISOString().split('T')[0];
+  }
+})();
+
 
     // Fetch historical price data via your internal endpoint.
     async function fetchHistoricalData(symbol) {

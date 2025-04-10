@@ -2154,13 +2154,15 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
       return;
     }
     const ticker = simulationReport.ticker;
-    const periodMonths = simulationReport.periodMonths;
-    const days = periodMonths * 30;
-    const url = "https://www.intuitiontrades.com/risk/?ticker=" 
-            + encodeURIComponent(ticker) 
-            + "&period=" + periodMonths 
-            + "&autoFetch=true";
+const periodMonths = simulationReport.periodMonths;
+const futureDate = simulationReport.futureDate; // e.g., "2025-05-10"
+const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+          + encodeURIComponent(ticker)
+          + "&period=" + periodMonths
+          + "&futureDate=" + futureDate
+          + "&autoFetch=true";
 window.open(url, "_blank");
+
 
   });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
