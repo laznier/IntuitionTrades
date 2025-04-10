@@ -369,29 +369,35 @@
       let chikouData = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
       
       Highcharts.stockChart('candleChart', {
-        chart: {
-          backgroundColor: 'transparent'
-        },
-        rangeSelector: {
-          enabled: false
-        },
-        title: {
-          text: 'Candlestick Chart with Ichimoku Overlay'
-        },
-        xAxis: {
-          type: 'datetime'
-        },
-        yAxis: {
-          title: {
-            text: 'Price'
-          }
-        },
-        series: [{
-          type: 'candlestick',
-          name: 'Price',
-          data: candlestickData,
-          id: 'price'
-        }, {
+  chart: {
+    backgroundColor: 'transparent'
+  },
+  plotOptions: {
+    candlestick: {
+      color: 'red',    // Color for falling candles (close < open)
+      upColor: 'green' // Color for rising candles (close >= open)
+    }
+  },
+  rangeSelector: {
+    enabled: false
+  },
+  title: {
+    text: 'Candlestick Chart with Ichimoku Overlay'
+  },
+  xAxis: {
+    type: 'datetime'
+  },
+  yAxis: {
+    title: {
+      text: 'Price'
+    }
+  },
+  series: [{
+    type: 'candlestick',
+    name: 'Price',
+    data: candlestickData,
+    id: 'price'
+  }, {
           type: 'line',
           name: 'Tenkan-sen',
           data: tenkanData,
