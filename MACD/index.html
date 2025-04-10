@@ -500,7 +500,7 @@ for (let i = 0; i < signalLine.length; i++) {
           <p>The Gap Trend Score measures how the gap between the MACD and Signal lines is expected to change. To compute it we:</p>
           <ol>
             <li>Select the last 6 data points from both the MACD and Signal lines.</li>
-            <li>Fit a 1st-degree polynomial regression to each series.</li>
+            <li>Fit a 3st-degree polynomial regression to each series.</li>
             <li>Predict the 7th value for both the MACD and Signal lines.</li>
             <li>Compute the predicted gap (predicted MACD minus predicted Signal) and compare it with the current gap to get a delta.</li>
             <li>Map the delta using a logistic function: <code>gapScore = 100 / (1 + Math.exp(-k * delta));</code></li>
