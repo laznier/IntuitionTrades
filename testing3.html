@@ -1201,13 +1201,145 @@ function computeStats(prices) {
      * Other Functions: Sentiment, Insider, Congress, and Aggregation
      ***********************************************/
     // ... (Sentiment, Insider, and Congress functions remain unchanged)
+    async function fetchAndProcessInsiderData(ticker, periodMonths, lastPrice) {
+  // --- Fetch Insider Transactions ---
+  const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch insider data. Status: " + response.status);
+  }
+  const data = await response.json();
+  if (!data.data || !Array.isArray(data.data)) {
+    throw new Error("Invalid insider data format.");
+  }
+  const lowerBound = lastPrice * 0.5;
+  const upperBound = lastPrice * 1.5;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - periodMonths);
+  
+  const filtered = data.data.filter(item => {
+    const d = new Date(item.transaction_date);
+    if (isNaN(d) || d < cutoff) return false;
+    const sharePrice = parseFloat(item.share_price);
+    if (isNaN(sharePrice) || sharePrice === 0) return false;
+    return sharePrice >= lowerBound && sharePrice <= upperBound;
+  });
+  filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
+
+  let totalBuys = 0, totalSells = 0;
+  filtered.forEach(item => {
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') totalBuys += shares;
+    else if (item.acquisition_or_disposal === 'D') totalSells += shares;
+  });
+
+  // --- Aggregate Transactions by Day (for charting) ---
+  let aggregatedTimeSeries = {};
+  filtered.forEach(item => {
+    const d = new Date(item.transaction_date);
+    const dateStr = d.toISOString().substring(0,10);
+    if (!aggregatedTimeSeries[dateStr]) {
+      aggregatedTimeSeries[dateStr] = { date: new Date(dateStr), buys: 0, sells: 0 };
+    }
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') aggregatedTimeSeries[dateStr].buys += shares;
+    else if (item.acquisition_or_disposal === 'D') aggregatedTimeSeries[dateStr].sells += shares;
+  });
+  let timeSeriesArray = Object.values(aggregatedTimeSeries).sort((a, b) => a.date - b.date);
+
+  // --- Compute Transaction Score Factor ---
+  let transactionScore = 0;
+  if (totalBuys + totalSells > 0) {
+    transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
+  }
+  let normalizedTransactionScore = (transactionScore + 100) / 2;
+
+  // --- Fetch Insider Sentiment (MSPR) Data ---
+  let today = new Date();
+  let pastDate = new Date();
+  pastDate.setMonth(today.getMonth() - periodMonths);
+  let fromDateStr = pastDate.toISOString().slice(0,10);
+  let toDateStr = today.toISOString().slice(0,10);
+  const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
+  const sentimentResponse = await fetch(sentimentUrl);
+  if (!sentimentResponse.ok) {
+    throw new Error("Failed to fetch insider sentiment data. Status: " + sentimentResponse.status);
+  }
+  const sentimentJson = await sentimentResponse.json();
+
+  // --- Fill the Timeline for MSPR Data ---
+  let requestedFrom = new Date(fromDateStr);
+  let sentimentStart;
+  if (sentimentJson.data && sentimentJson.data.length > 0) {
+    let sortedSentiment = sentimentJson.data.slice().sort((a, b) => {
+      let d1 = new Date(a.year, a.month - 1, 1);
+      let d2 = new Date(b.year, b.month - 1, 1);
+      return d1 - d2;
+    });
+    let firstData = sortedSentiment[0];
+    let firstDataDate = new Date(firstData.year, firstData.month - 1, 1);
+    sentimentStart = firstDataDate < requestedFrom ? firstDataDate : requestedFrom;
+  } else {
+    sentimentStart = requestedFrom;
+  }
+  let endFillDate = new Date(toDateStr);
+  let filledData = [];
+  let currentDateForSentiment = new Date(sentimentStart);
+  while (currentDateForSentiment <= endFillDate) {
+    let year = currentDateForSentiment.getFullYear();
+    let month = currentDateForSentiment.getMonth() + 1; // JavaScript months are 0-indexed
+    let found = sentimentJson.data && sentimentJson.data.find(pt => pt.year === year && pt.month === month);
+    if (found) {
+      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
+    } else {
+      filledData.push({ year: year, month: month, mspr: 0 });
+    }
+    currentDateForSentiment.setMonth(currentDateForSentiment.getMonth() + 1);
+  }
+  let filledSentimentCategories = filledData.map(pt => `${pt.year}-${pt.month.toString().padStart(2, '0')}`);
+  let filledSentimentValues = filledData.map(pt => pt.mspr);
+
+  // --- Compute Insider Sentiment Components ---
+  let finalMspr = filledData[filledData.length - 1].mspr;
+  let normalizedFinalMspr = (finalMspr + 100) / 2;
+  let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
+  let avgMspr = sumMspr / filledData.length;
+  let normalizedAvgMspr = (avgMspr + 100) / 2;
+  let n = filledData.length, sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    let x = i + 1;
+    let y = filledData[i].mspr;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+  }
+  let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  let normalizedSlope = isNaN(slope) ? 50 : (slope + 100) / 2;
+  let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+
+  // --- Final Insider Score Calculation ---
+  const finalInsiderScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
+
+  return {
+    totalBuys: totalBuys,
+    totalSells: totalSells,
+    transactionScore: normalizedTransactionScore,
+    timeSeries: timeSeriesArray,
+    sentimentCategories: filledSentimentCategories,
+    sentimentValues: filledSentimentValues,
+    finalMspr: normalizedFinalMspr,
+    trendComponent: trendComponent,
+    insiderScore: finalInsiderScore
+  };
+}
+
+
     function logisticBullish(slope) {
   const k = 0.3; // Adjust this constant as needed for scaling
   let result = 100 / (1 + Math.exp(-k * slope));
   return Math.max(0, Math.min(100, result)); // Clamping the result between 0 and 100
 }
-
-    
     function updateSentimentChart(sentiments) {
   if (sentiments.length < 2) {
     Highcharts.chart("sentChart", {
