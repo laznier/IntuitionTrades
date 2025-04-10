@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MACD Score Calculator</title>
+  <title>Ichimoku Technical Analysis Tool</title>
   <!-- Include Highcharts for Charting (Stock) -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
-  <!-- Include Math.js for regression calculations -->
+  <!-- Include Math.js for any advanced calculations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
     :root {
@@ -88,50 +88,111 @@
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    /* Chart and output styling */
     #loading {
       margin-top: 10px;
       font-style: italic;
       color: var(--accent-color);
       display: none;
     }
-    #output, #macdChart {
+    /* Aggregated Signal Meter styling */
+    #aggregateSection {
+      display: none;
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background-color: var(--secondary-bg);
+    }
+    #aggregateBar {
+      position: relative;
+      background: linear-gradient(to right, red, green);
+      height: 30px;
+      border-radius: 15px;
+      margin: 10px 0;
+    }
+    #aggregateMarker {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #fff;
+    }
+    #aggregateScoreText {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      color: var(--text-color);
+      text-shadow: 1px 1px 2px #000;
+    }
+    /* Chart and section styling */
+    .section {
       margin-top: 20px;
       padding: 15px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: var(--secondary-bg);
     }
-    #macdChart {
-      padding: 0;
+    #candleChart {
+      height: 500px;
+      display: none;
     }
   </style>
 </head>
 <body>
   <!-- Back to Home Button -->
   <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
-  
-  <h1>MACD Score Calculator</h1>
-  <p>Enter a ticker symbol and historical period (in months) to compute the MACD score using our enhanced regression‐based gap and momentum methods, and view the MACD histogram chart.</p>
+
+  <h1>Ichimoku Technical Analysis Tool</h1>
+  <p>Enter a ticker symbol and a historical period (in months) to generate a candlestick chart with Ichimoku overlays and detailed parameter scores.</p>
   
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
-  <!-- Autocomplete suggestions for ticker -->
+  <!-- Autocomplete suggestions -->
   <ul id="ticker-suggestions"></ul>
   
   <label for="period">Historical Period (months):</label>
   <input type="number" id="period" value="12" min="1">
   
-  <button id="runAnalysis">Run MACD Calculation</button>
-  <div id="loading">Loading data and running MACD analysis...</div>
+  <button id="runAnalysis">Run Analysis</button>
+  <div id="loading">Loading data and running analysis...</div>
   
-  <!-- Output container for scores -->
-  <div id="output" style="display:none;"></div>
-  <!-- Container for MACD chart -->
-  <div id="macdChart" style="height: 500px; display:none;"></div>
+  <!-- Aggregated Signal Meter -->
+  <div id="aggregateSection">
+    <h2>Aggregated Ichimoku Signal</h2>
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
+      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
+        <div id="aggregateMarker"></div>
+        <span id="aggregateScoreText"></span>
+      </div>
+      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
+    </div>
+  </div>
   
-  <!-- View Detailed Explanation Button -->
-  <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
+  <!-- Candlestick Chart with Ichimoku Overlay -->
+  <div class="section" id="candleSection" style="display:none;">
+    <h2>Candlestick Chart with Ichimoku Overlay</h2>
+    <div id="candleChart"></div>
+  </div>
+  
+  <!-- Parameter Scores Section -->
+  <div class="section" id="scoresSection" style="display:none;">
+    <h2>Ichimoku Parameter Scores</h2>
+    <ul>
+      <li id="scoreCloud"></li>
+      <li id="scoreTenkan"></li>
+      <li id="scoreChikou"></li>
+      <li id="scoreSenkou"></li>
+    </ul>
+    <p><strong>Overall Ichimoku Signal:</strong> <span id="overallScore"></span>%</p>
+  </div>
+  
+  <!-- Detailed Explanation Button -->
+  <div style="text-align:center; margin-top:20px;">
+    <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
+  </div>
   
   <script>
     /*************** Autocomplete Functions ***************/
@@ -191,8 +252,7 @@
       clearSuggestions();
     });
     
-    /*************** MACD Analysis Functions ***************/
-    // Process historical data from the API response.
+    /*************** Ichimoku Calculations ***************/
     function processHistoricalData(timeSeries, periodMonths) {
       const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
       const endDate = new Date(dates[dates.length - 1]);
@@ -204,10 +264,10 @@
         if (dt >= startDate && dt <= endDate) {
           prices.push({
             date: dt,
-            open: timeSeries[date]["1. open"] ? parseFloat(timeSeries[date]["1. open"]) : parseFloat(timeSeries[date]["5. adjusted close"]),
-            close: parseFloat(timeSeries[date]["5. adjusted close"]),
+            open: parseFloat(timeSeries[date]["1. open"]),
             high: parseFloat(timeSeries[date]["2. high"]),
-            low: parseFloat(timeSeries[date]["3. low"])
+            low: parseFloat(timeSeries[date]["3. low"]),
+            close: parseFloat(timeSeries[date]["5. adjusted close"])
           });
         }
       }
@@ -215,189 +275,168 @@
       return prices;
     }
     
-    // Exponential Moving Average (EMA) calculation.
-    function computeEMA(prices, period) {
-      let ema = [];
-      const multiplier = 2 / (period + 1);
-      let sum = 0;
-      for (let i = 0; i < period; i++) {
-        sum += prices[i].close;
+    function computeIchimoku(prices) {
+      let tenkan = [];
+      let kijun = [];
+      let senkouA = [];
+      let senkouB = [];
+      // Tenkan-sen (Conversion Line): 9-period high and low average
+      for (let i = 8; i < prices.length; i++) {
+        let period9 = prices.slice(i - 8, i + 1);
+        let high9 = Math.max(...period9.map(p => p.high));
+        let low9 = Math.min(...period9.map(p => p.low));
+        tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
       }
-      let prevEma = sum / period;
-      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
-      for (let i = period; i < prices.length; i++) {
-        const cur = prices[i].close;
-        let nextEma = (cur - prevEma) * multiplier + prevEma;
-        ema[i] = { date: prices[i].date, ema: nextEma };
-        prevEma = nextEma;
+      // Kijun-sen (Base Line): 26-period high and low average
+      for (let i = 25; i < prices.length; i++) {
+        let period26 = prices.slice(i - 25, i + 1);
+        let high26 = Math.max(...period26.map(p => p.high));
+        let low26 = Math.min(...period26.map(p => p.low));
+        kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
       }
-      return ema.filter(x => x !== undefined);
+      // Senkou Span A: (Tenkan-sen + Kijun-sen) / 2, plotted 26 periods ahead
+      let minLen = Math.min(tenkan.length, kijun.length);
+      for (let i = 0; i < minLen; i++) {
+        let baseDate = kijun[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+      }
+      // Senkou Span B: 52-period high and low average, plotted 26 periods ahead
+      for (let i = 51; i < prices.length; i++) {
+        let period52 = prices.slice(i - 51, i + 1);
+        let high52 = Math.max(...period52.map(p => p.high));
+        let low52 = Math.min(...period52.map(p => p.low));
+        let baseDate = prices[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+      }
+      // Chikou Span: Today's close, plotted 26 periods back
+      let chikou = [];
+      for (let i = 26; i < prices.length; i++) {
+        chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+      }
+      return {
+        tenkan: tenkan,
+        kijun: kijun,
+        senkouA: senkouA,
+        senkouB: senkouB,
+        chikou: chikou
+      };
     }
     
-    // Compute MACD and Signal lines.
-    function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
-      let fastEMA = computeEMA(prices, fast);
-      let slowEMA = computeEMA(prices, slow);
-      let macdLine = [];
-      for (let i = 0; i < slowEMA.length; i++) {
-        let date = slowEMA[i].date;
-        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
-        if (match) {
-          macdLine.push({ date: date, macd: match.ema - slowEMA[i].ema });
-        }
-      }
-      if (macdLine.length < signal) return { macdLine: macdLine, signalLine: [] };
-      let signalLine = [];
-      const m = 2 / (signal + 1);
-      let sumMacd = 0;
-      for (let i = 0; i < signal; i++) {
-        sumMacd += macdLine[i].macd;
-      }
-      let prevSig = sumMacd / signal;
-      signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
-      for (let i = signal; i < macdLine.length; i++) {
-        let s = (macdLine[i].macd - prevSig) * m + prevSig;
-        signalLine[i] = { date: macdLine[i].date, signal: s };
-        prevSig = s;
-      }
-      signalLine = signalLine.filter(x => x !== undefined);
-      return { macdLine: macdLine, signalLine: signalLine };
+    /*************** Scoring Functions ***************/
+    function scoreCloud(currentPrice, senkouA, senkouB) {
+      let cloudTop = Math.max(senkouA, senkouB);
+      let cloudBottom = Math.min(senkouA, senkouB);
+      let mid = (cloudTop + cloudBottom) / 2;
+      let half = (cloudTop - cloudBottom) / 2 || 1;
+      let norm = (currentPrice - mid) / half;
+      let C = 1;
+      return 100 / (1 + Math.exp(-C * norm));
+    }
+    function scoreTenkan(tenkan, kijun) {
+      let diff = tenkan - kijun;
+      let D = 0.2;
+      return 100 / (1 + Math.exp(-D * diff));
+    }
+    function scoreChikou(currentPrice, price26PeriodsAgo) {
+      let diff = currentPrice - price26PeriodsAgo;
+      let E = 0.1;
+      return 100 / (1 + Math.exp(-E * diff));
+    }
+    function scoreSenkou(senkouA, senkouB) {
+      let diff = senkouA - senkouB;
+      let avg = (senkouA + senkouB) / 2 || 1;
+      let norm = diff / avg;
+      let F = 3;
+      return 100 / (1 + Math.exp(-F * norm));
+    }
+    function overallIchimokuScore(score1, score2, score3, score4) {
+      return (score1 + score2 + score3 + score4) / 4;
     }
     
-    // Plot MACD Chart using Highcharts.
-    function plotMACD(prices) {
-      const macdData = computeMACD(prices);
-      const macdLine = macdData.macdLine;
-      const signalLine = macdData.signalLine;
-      if (macdLine.length === 0 || signalLine.length === 0) return;
+    /*************** Charting Function using Highcharts ***************/
+    function plotCandlestickIchimoku(prices, ichimokuData) {
+      // Prepare candlestick data: [timestamp, open, high, low, close]
+      let candlestickData = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
+      // Prepare line series data for Ichimoku overlays
+      let tenkanData = ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]);
+      let kijunData = ichimokuData.kijun.map(item => [item.date.getTime(), item.value]);
+      let senkouAData = ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]);
+      let senkouBData = ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]);
+      let chikouData = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
       
-      const offset = macdLine.length - signalLine.length;
-let histData = [];
-for (let i = 0; i < signalLine.length; i++) {
-  const alignedMACD = macdLine[i + offset];
-  histData.push([alignedMACD.date.getTime(), alignedMACD.macd - signalLine[i].signal]);
-}
-
-      
-      Highcharts.chart('macdChart', {
-        chart: { backgroundColor: 'transparent' },
-        title: { text: 'MACD Chart' },
-        xAxis: { type: 'datetime' },
-        yAxis: { title: { text: 'MACD' } },
+      Highcharts.stockChart('candleChart', {
+        chart: {
+          backgroundColor: 'transparent'
+        },
+        rangeSelector: {
+          enabled: false
+        },
+        title: {
+          text: 'Candlestick Chart with Ichimoku Overlay'
+        },
+        xAxis: {
+          type: 'datetime'
+        },
+        yAxis: {
+          title: {
+            text: 'Price'
+          }
+        },
         series: [{
-          type: 'column',
-          name: 'Histogram',
-          data: histData,
-          colorByPoint: true
+          type: 'candlestick',
+          name: 'Price',
+          data: candlestickData,
+          id: 'price'
         }, {
           type: 'line',
-          name: 'MACD',
-          data: macdLine.map(item => [item.date.getTime(), item.macd]),
-          color: 'blue'
+          name: 'Tenkan-sen',
+          data: tenkanData,
+          color: 'blue',
+          tooltip: { valueDecimals: 2 }
         }, {
           type: 'line',
-          name: 'Signal',
-          data: signalLine.map(item => [item.date.getTime(), item.signal]),
-          color: 'orange'
+          name: 'Kijun-sen',
+          data: kijunData,
+          color: 'red',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Senkou Span A',
+          data: senkouAData,
+          color: 'green',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Senkou Span B',
+          data: senkouBData,
+          color: 'brown',
+          tooltip: { valueDecimals: 2 }
+        }, {
+          type: 'line',
+          name: 'Chikou Span',
+          data: chikouData,
+          color: 'purple',
+          tooltip: { valueDecimals: 2 }
         }],
-        credits: { enabled: false }
+        credits: {
+          enabled: false
+        }
       });
       
-      document.getElementById("macdChart").style.display = "block";
-      return { macdLine, signalLine, histData };
+      document.getElementById("candleChart").style.display = "block";
     }
     
-    // Polynomial regression using a Vandermonde matrix (3rd degree).
-    function polynomialRegression(x, y, degree) {
-      let X = [];
-      for (let i = 0; i < x.length; i++) {
-        let row = [];
-        for (let j = 0; j <= degree; j++) {
-          row.push(Math.pow(x[i], j));
-        }
-        X.push(row);
-      }
-      const XT = math.transpose(X);
-      const XTX = math.multiply(XT, X);
-      const XTy = math.multiply(XT, y);
-      const coeffsMatrix = math.lusolve(XTX, XTy);
-      const coeffs = coeffsMatrix.map(val => val[0]);
-      return coeffs;
-    }
-    
-    // Evaluate a polynomial at a given x.
-    function predictValue(coeffs, x) {
-      return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
-    }
-    
-    // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
-    function computeMomentumScoreUsingRegression(histValues) {
-  if (histValues.length < 6) return null;
-  const recentHist = histValues.slice(-6);
-  const x = [1, 2, 3, 4, 5, 6];
-  // Change the degree from 3 to 1 here:
-  const coeffs = polynomialRegression(x, recentHist, 1);
-  const predicted = predictValue(coeffs, 7);
-  const lastValue = recentHist[recentHist.length - 1];
-  const delta = predicted - lastValue;
-  const k = 5; // sensitivity factor
-  const score = 100 / (1 + Math.exp(-k * delta));
-  return score;
-}
-
-    
-    // Compute the gap trend score using regression on both MACD and Signal lines.
-    function computeGapTrendScore(macdLine, signalLine) {
-      if (macdLine.length < 6 || signalLine.length < 6) return null;
-      const recentMACD = macdLine.slice(-6).map(item => item.macd);
-      const recentSignal = signalLine.slice(-6).map(item => item.signal);
-      const x = [1, 2, 3, 4, 5, 6];
-      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
-      const predictedMACD = predictValue(macdCoeffs, 7);
-      const predictedSignal = predictValue(signalCoeffs, 7);
-      const predictedGap = predictedMACD - predictedSignal;
-      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
-      const delta = predictedGap - currentGap;
-      const k = 5; // sensitivity factor
-      const gapScore = 100 / (1 + Math.exp(-k * delta));
-      return { gapScore, delta, currentGap, predictedGap };
-    }
-    
-    // Compute the overall MACD score using Position Score, Gap Trend Score, and Momentum Score.
-    function computeNewMACDScore(prices) {
-      const macdData = computeMACD(prices);
-      const macdLine = macdData.macdLine;
-      const signalLine = macdData.signalLine;
-      if (macdLine.length < 2 || signalLine.length < 2) return null;
-      
-      const len = Math.min(macdLine.length, signalLine.length);
-      const latestMACD = macdLine[len - 1].macd;
-      
-      // 1. Position Score: Map latest MACD relative to zero using a logistic function.
-      const positionScore = 100 / (1 + Math.exp(latestMACD));
-      
-      // 2. Gap Trend Score using regression on both MACD and Signal lines.
-      const gapData = computeGapTrendScore(macdLine, signalLine);
-      const gapScore = gapData ? gapData.gapScore : null;
-      
-      
-      // 3. Momentum Score: Use histogram regression.
-      let histValues = [];
-      for (let i = 0; i < len; i++) {
-        histValues.push(macdLine[i].macd - signalLine[i].signal);
-      }
-      const momentumScore = computeMomentumScoreUsingRegression(histValues);
-      
-      const finalScore = (positionScore + gapScore + momentumScore) / 3;
-      return { positionScore, gapScore, momentumScore, finalScore };
-    }
-    
-    // Main analysis: fetch historical data, compute scores, and plot the MACD chart.
+    /*************** Main Analysis Function ***************/
+    let ichimokuReport = null;
     document.getElementById("runAnalysis").addEventListener("click", async () => {
       document.getElementById('loading').style.display = 'block';
-      document.getElementById('output').style.display = 'none';
-      document.getElementById("macdChart").style.display = "none";
+      document.getElementById('aggregateSection').style.display = 'none';
+      document.getElementById('candleSection').style.display = 'none';
+      document.getElementById('scoresSection').style.display = 'none';
       document.getElementById("explanationButton").style.display = "none";
       
       const ticker = document.getElementById('ticker').value.trim();
@@ -416,49 +455,82 @@ for (let i = 0; i < signalLine.length; i++) {
           throw new Error("Unable to retrieve valid historical data.");
         }
         const prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-        if (prices.length < 80) { // Ensure sufficient data.
+        if (prices.length < 80) {
           alert("Not enough historical data for the selected period.");
           document.getElementById('loading').style.display = 'none';
           return;
         }
         
-        // Plot the MACD chart using Highcharts.
-        const macdData = plotMACD(prices);
+        // Compute Ichimoku lines
+        const ichimokuData = computeIchimoku(prices);
         
-        // Compute the MACD scores.
-        const macdScores = computeNewMACDScore(prices);
-        if (!macdScores) {
-          alert("Not enough MACD data to compute scores.");
-          document.getElementById('loading').style.display = 'none';
-          return;
-        }
+        // Plot chart using Highcharts
+        plotCandlestickIchimoku(prices, ichimokuData);
+        document.getElementById('candleSection').style.display = 'block';
         
-        // Display the individual scores and final MACD score.
-        document.getElementById('output').innerHTML = `
-          <h2>MACD Analysis for ${ticker}</h2>
-          <p><strong>Position Score:</strong> ${macdScores.positionScore.toFixed(2)}%</p>
-          <p><strong>Gap Trend Score:</strong> ${macdScores.gapScore.toFixed(2)}%</p>
-          <p><strong>Momentum Score (Regression based):</strong> ${macdScores.momentumScore.toFixed(2)}%</p>
-          <hr>
-          <p><strong>Final MACD Score:</strong> ${macdScores.finalScore.toFixed(2)}%</p>
-        `;
-        document.getElementById('output').style.display = 'block';
+        // Calculate scores using the latest values
+        const currentPrice = prices[prices.length - 1].close;
+        const lastSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+        const lastSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+        const cloudScore = scoreCloud(currentPrice, lastSenkouA, lastSenkouB);
+        const latestTenkan = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+        const latestKijun = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+        const tenkanScore = scoreTenkan(latestTenkan, latestKijun);
+        const price26PeriodsAgo = prices[prices.length - 26].close;
+        const chikouScore = scoreChikou(currentPrice, price26PeriodsAgo);
+        const senkouScore = scoreSenkou(lastSenkouA, lastSenkouB);
+        const overallScore = overallIchimokuScore(cloudScore, tenkanScore, chikouScore, senkouScore);
+        
+        // Display scores
+        document.getElementById('scoreCloud').innerText = `Price vs Cloud Score: ${cloudScore.toFixed(1)}%`;
+        document.getElementById('scoreTenkan').innerText = `Tenkan/Kijun Cross Score: ${tenkanScore.toFixed(1)}%`;
+        document.getElementById('scoreChikou').innerText = `Chikou Span Score: ${chikouScore.toFixed(1)}%`;
+        document.getElementById('scoreSenkou').innerText = `Cloud Cross Score: ${senkouScore.toFixed(1)}%`;
+        document.getElementById('overallScore').innerText = overallScore.toFixed(2);
+        
+        document.getElementById('aggregateScoreText').innerText = `${overallScore.toFixed(2)}%`;
+        document.getElementById('aggregateMarker').style.left = `${overallScore}%`;
+        document.getElementById('aggregateSection').style.display = 'block';
+        document.getElementById('scoresSection').style.display = 'block';
         document.getElementById("explanationButton").style.display = "block";
+        
+        // Store report for explanation details
+        ichimokuReport = {
+          ticker: ticker,
+          periodMonths: periodMonths,
+          currentPrice: currentPrice,
+          senkouA: lastSenkouA,
+          senkouB: lastSenkouB,
+          tenkan: latestTenkan,
+          kijun: latestKijun,
+          price26Ago: price26PeriodsAgo,
+          scores: {
+            cloud: cloudScore,
+            tenkan: tenkanScore,
+            chikou: chikouScore,
+            senkou: senkouScore
+          },
+          overall: overallScore
+        };
       } catch (err) {
         alert("Error: " + err.message);
       }
       document.getElementById('loading').style.display = 'none';
     });
     
-    // View Detailed Explanation: Opens a new window with a detailed explanation.
+    /*************** Detailed Explanation ***************/
     document.getElementById("explanationButton").addEventListener("click", () => {
+      if (!ichimokuReport) {
+        alert("Please run an analysis first.");
+        return;
+      }
       const explanationWindow = window.open("", "_blank");
       const explanationHTML = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>Detailed MACD Calculation Explanation</title>
+        <title>Detailed Ichimoku Analysis Report for ${ichimokuReport.ticker}</title>
         <style>
           :root {
             --primary-bg: #111;
@@ -477,7 +549,8 @@ for (let i = 0; i < signalLine.length; i++) {
             padding: 2rem;
             line-height: 1.6;
           }
-          h1, h2 { text-align: center; }
+          h1, h2, h3 { text-align: center; }
+          section { margin-bottom: 2rem; }
           pre { 
             background: var(--secondary-bg); 
             padding: 1rem; 
@@ -488,45 +561,82 @@ for (let i = 0; i < signalLine.length; i++) {
         </style>
       </head>
       <body>
-        <h1>Detailed MACD Calculation Explanation</h1>
+        <h1>Detailed Ichimoku Analysis Report for ${ichimokuReport.ticker}</h1>
+        
         <section>
-          <h2>1. Position Score</h2>
-          <p>The Position Score uses the latest MACD value and maps it to a 0–100 range using a logistic function. The formula is:</p>
-          <pre>positionScore = 100 / (1 + Math.exp(latestMACD));</pre>
-          <p>This means that if the latest MACD value is very negative, the score approaches 100 (bullish); if it’s positive, the score tends toward 0 (bearish).</p>
+          <h2>Input Parameters</h2>
+          <p><strong>Ticker:</strong> ${ichimokuReport.ticker}</p>
+          <p><strong>Historical Period (months):</strong> ${ichimokuReport.periodMonths}</p>
+          <p>This report uses historical daily candlestick data to calculate Ichimoku components and generate parameter scores.</p>
         </section>
+        
         <section>
-          <h2>2. Gap Trend Score</h2>
-          <p>The Gap Trend Score measures how the gap between the MACD and Signal lines is expected to change. To compute it we:</p>
-          <ol>
-            <li>Select the last 6 data points from both the MACD and Signal lines.</li>
-            <li>Fit a 1st-degree polynomial regression to each series.</li>
-            <li>Predict the 7th value for both the MACD and Signal lines.</li>
-            <li>Compute the predicted gap (predicted MACD minus predicted Signal) and compare it with the current gap to get a delta.</li>
-            <li>Map the delta using a logistic function: <code>gapScore = 100 / (1 + Math.exp(-k * delta));</code></li>
-          </ol>
-          <p>A positive delta indicates a bullish trend in the gap, increasing the score, while a negative delta lowers it.</p>
+          <h2>Price vs. Cloud Score</h2>
+          <p><strong>Definition:</strong> Measures the current price relative to the Ichimoku cloud, defined by Senkou Span A and B.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+Cloud Top = max(Senkou Span A, Senkou Span B)
+Cloud Bottom = min(Senkou Span A, Senkou Span B)
+mid = (Cloud Top + Cloud Bottom) / 2
+half = (Cloud Top - Cloud Bottom) / 2
+norm = (Current Price - mid) / half
+Score = 100 / (1 + exp(-norm))
+          </pre>
+          <p><strong>Result:</strong> ${ichimokuReport.scores.cloud.toFixed(1)}%</p>
         </section>
+        
         <section>
-          <h2>3. Momentum Score</h2>
-          <p>The Momentum Score examines changes in the MACD histogram (the difference between MACD and Signal) over the last 6 values:</p>
-          <ol>
-            <li>Gather the last 6 histogram values.</li>
-            <li>Fit a 1rd-degree polynomial regression to these values.</li>
-            <li>Predict the 7th histogram value.</li>
-            <li>Calculate the delta between the predicted and the last observed histogram value.</li>
-            <li>Map the delta via a logistic function to obtain the momentum score.</li>
-          </ol>
-          <p>A positive delta results in a higher momentum score; a negative one reduces the score.</p>
+          <h2>Tenkan/Kijun Cross Score</h2>
+          <p><strong>Definition:</strong> Evaluates the relative positions of the Tenkan-sen and Kijun-sen to signal short-term momentum.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff = Tenkan - Kijun
+Score = 100 / (1 + exp(-0.2 × diff))
+          </pre>
+          <p><strong>Result:</strong> ${ichimokuReport.scores.tenkan.toFixed(1)}%</p>
         </section>
+        
         <section>
-          <h2>4. Final MACD Score</h2>
-          <p>The final MACD Score is the average of the Position, Gap Trend, and Momentum scores:</p>
-          <pre>finalScore = (positionScore + gapScore + momentumScore) / 3;</pre>
-          <p>This final score provides an overall view of the MACD by capturing current position, anticipated change, and momentum.</p>
+          <h2>Chikou Span Confirmation Score</h2>
+          <p><strong>Definition:</strong> Compares the current price to the price from 26 periods ago to confirm trend.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff = Current Price - Price 26 Periods Ago
+Score = 100 / (1 + exp(-0.1 × diff))
+          </pre>
+          <p><strong>Result:</strong> ${ichimokuReport.scores.chikou.toFixed(1)}%</p>
         </section>
+        
+        <section>
+          <h2>Senkou Span Cross Score</h2>
+          <p><strong>Definition:</strong> Evaluates the difference between Senkou Span A and B to determine cloud bullishness.</p>
+          <p><strong>Calculation:</strong></p>
+          <pre>
+diff = Senkou Span A - Senkou Span B
+avg = (Senkou Span A + Senkou Span B) / 2
+norm = diff / avg
+Score = 100 / (1 + exp(-3 × norm))
+          </pre>
+          <p><strong>Result:</strong> ${ichimokuReport.scores.senkou.toFixed(1)}%</p>
+        </section>
+        
+        <section>
+          <h2>Overall Ichimoku Signal</h2>
+          <p>The overall signal is calculated as the average of the four parameter scores.</p>
+          <pre>
+Overall Score = (Score_Cloud + Score_Tenkan + Score_Chikou + Score_Senkou) / 4
+          </pre>
+          <p><strong>Overall Signal:</strong> ${ichimokuReport.overall.toFixed(2)}%</p>
+        </section>
+        
+        <section>
+          <h2>Disclaimers</h2>
+          <p><strong>Market Data Disclaimer:</strong> Historical data is provided by the Alpha Vantage API (via the Project Manager Helper API) and may not reflect real-time conditions.</p>
+          <p><strong>Analytical Disclaimer:</strong> The methods and metrics in this report are for informational purposes only and should not be taken as financial advice.</p>
+        </section>
+        
         <section style="text-align:center;">
-          <p><a href="#" onclick="window.close(); return false;">Close Explanation</a></p>
+          <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
         </section>
       </body>
       </html>
