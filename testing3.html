@@ -1658,7 +1658,9 @@ async function fetchCongressData(ticker, periodMonths) {
   }
 }
 
-// Calculate dollars-based component (this can be as before, or you can adjust it)
+// Computes the Dollars Score: maps net dollars (totalPurchase-totalSale)
+// onto a 0–100 scale, where 0 corresponds to a net of \$0 (50% neutral) and
+// a net buy of 10M yields roughly 100% (with a logarithmic scaling).
 function computeDollarsScore(netDollars) {
   const cap = 10000000;  // \$10M cap
   let ratio;
@@ -1667,25 +1669,27 @@ function computeDollarsScore(netDollars) {
   } else {
     ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
   }
-  // You can adjust the exponent to compress small changes
+  // Use an exponent (alpha) to adjust sensitivity to small amounts.
   const alpha = 2.2;
   ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
   return 50 + 50 * ratio;
 }
 
-// Compute the Unique Score based on net unique actions, using 5 as the maximum difference.
+// Computes the Unique Score: using the net unique count of congress members, where
+// netUnique = (uniqueBuyCount - uniqueSellCount) and with a maximum magnitude of 5.
 function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
   let netUnique = uniqueBuyCount - uniqueSellCount;
-  // Cap netUnique to the range -5 to +5
+  // Cap netUnique to the range -5 to +5.
   netUnique = Math.max(-5, Math.min(5, netUnique));
   return 50 + 50 * (netUnique / 5);
 }
 
-// Final Congress Score is the average of the Dollars Score and Unique Score
+// Final Congress Score: the average of the Dollars Score and Unique Score.
 function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
   let netDollars = totalPurchase - totalSale;
   let dollarsScore = computeDollarsScore(netDollars);
   let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
+  // Average the two components.
   return (dollarsScore + uniqueScore) / 2;
 }
 
@@ -1988,9 +1992,8 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       let insiderBull = updateInsiderCharts(insiderData);
 
       let congressObj = await fetchCongressData(ticker, periodMonths);
-document.getElementById('congressSection').style.display = 'block';
-// Pass the uniqueBuyCount as well:
-let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount);
+// Assuming congressObj now has properties: totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount
+let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
 
       let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
       document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
