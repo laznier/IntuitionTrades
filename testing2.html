@@ -63,8 +63,8 @@
   <h1>Top 10 Scanner</h1>
   <p>
     This tool evaluates each ticker using RiskReward, Technical, Sentiment, Insider, Fundamental, and Congress signals.
-    If “Use Manual Weights &amp; Scaling” is unchecked, the tool auto‑detects SPY’s market regime (Bull/Bear/Neutral) and uses preset weights.
-    Otherwise, you may specify six weights (which must sum to 1) along with an overall scaling factor.
+    If “Use Manual Weights &amp; Scaling” is unchecked, the tool auto‑detects SPY’s market regime (Bull/Bear/Neutral)
+    and uses preset weights. Otherwise, you may specify six weights (which must sum to 1) along with an overall scaling factor.
   </p>
 
   <!-- Timeframe Selection Section -->
@@ -298,7 +298,7 @@
       return wmas;
     }
 
-    // MACD calculation (includes signal line)
+    // MACD (with signal line)
     function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
       let fastEMA = computeEMA(prices, fast);
       let slowEMA = computeEMA(prices, slow);
@@ -324,7 +324,7 @@
       return { macdLine, signalLine };
     }
 
-    // Ichimoku Cloud Calculation
+    // Ichimoku Cloud
     function computeIchimoku(prices) {
       let tenkan = [];
       let kijun = [];
@@ -371,14 +371,13 @@
       };
     }
 
-    // Score functions for technical metrics
+    // Technical score helper functions
     function scoreRSI(latestRSI, prevRSI) {
       let rel = 50 - latestRSI;
       let base = 100 / (1 + Math.exp(-0.05 * rel));
       let dRSI = prevRSI - latestRSI;
       return base * (1 + 0.01 * dRSI);
     }
-
     function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
       let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
       let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
@@ -386,7 +385,6 @@
       let dPercentB = prevPercentB - currentPercentB;
       return baseBB * (1 + 0.1 * dPercentB);
     }
-
     function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
       let currentX = (latestPrice / latestWMA) - 1;
       let prevX = (prevPrice / prevWMA) - 1;
@@ -395,7 +393,7 @@
       return baseWMA * (1 + 0.5 * dx);
     }
 
-    // Polynomial Regression helpers (using math.js)
+    // Polynomial regression helpers (using math.js)
     function polynomialRegression(x, y, degree) {
       let X = [];
       for (let i = 0; i < x.length; i++) {
@@ -435,7 +433,7 @@
       const predictedMACD = predictValue(macdCoeffs, 7);
       const predictedSignal = predictValue(signalCoeffs, 7);
       const predictedGap = predictedMACD - predictedSignal;
-      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[macdLine.length - 1].signal;
       const delta = predictedGap - currentGap;
       const k = 5;
       return { gapScore: 100 / (1 + Math.exp(-k * delta)) };
@@ -457,7 +455,7 @@
       const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
       return (positionScore + gapScore + momentumScore) / 3;
     }
-    // Simplified technical score (average of RSI, BB, MACD, WMA and Ichimoku)
+    // Simplified technical score: average of RSI, BB, MACD, WMA and Ichimoku
     function computeTechScore(prices) {
       if (prices.length < 2) return 50;
       let bands = computeBollingerBands(prices);
@@ -492,7 +490,7 @@
       return (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
     }
 
-    // Compute key statistical measures from historical prices.
+    // Compute key statistics (annual drift, volatility, and last price) from historical prices.
     function computeStats(prices) {
       let logReturns = [];
       for (let i = 1; i < prices.length; i++) {
@@ -557,9 +555,9 @@
       let tail = sorted.slice(0, idx + 1);
       let cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
       return {
-        varPrice,
+        varPrice: varPrice,
         varPct: 100 * (currentPrice - varPrice) / currentPrice,
-        cvarPrice,
+        cvarPrice: cvarPrice,
         cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
       };
     }
@@ -664,7 +662,6 @@
         return "Neutral";
       }
     }
-
     function getAutoWeightsForRegime(regime) {
       if (regime === "Bear") {
         return { wRRI: 0.05, wTech: 0.05, wSent: 0.10, wInsider: 0.30, wFund: 0.30, wCongress: 0.20, scale: 0.25 };
@@ -757,6 +754,7 @@
       sentiments.sort((a, b) => a.date - b.date);
       return sentiments;
     }
+    // Modified insider function:
     async function fetchAndProcessInsiderData(ticker, periodMonths, lastPrice) {
       const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
       const response = await fetch(url);
@@ -782,8 +780,9 @@
       });
       let transactionScore = (totalBuys + totalSells > 0) ? ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100 : 0;
       let normalizedTransactionScore = (transactionScore + 100) / 2;
-      let finalMspr = data.data[0] ? parseFloat(data.data[0].mspr) : 0;
-      let normalizedFinalMspr = (finalMspr + 100) / 2;
+      // Safely check mspr; if missing or invalid, default to 50.
+      let rawMspr = (data.data[0] && !isNaN(parseFloat(data.data[0].mspr))) ? parseFloat(data.data[0].mspr) : 50;
+      let normalizedFinalMspr = (rawMspr + 100) / 2;
       return 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * ((normalizedFinalMspr + normalizedTransactionScore) / 2);
     }
     async function fetchCongressData(ticker, periodMonths) {
@@ -827,8 +826,8 @@
 
     // --------------------------------------------------
     // === Analysis for a Single Ticker ===
-    // Now, runTickerAnalysis accepts additional parameters for the historical period (pastMonths)
-    // and the future simulation horizon (futureMonths).
+    // Now, runTickerAnalysis accepts additional parameters for past data (pastMonths)
+    // and the simulation horizon (futureMonths)
     async function runTickerAnalysis(ticker, regime, pastMonths, futureMonths) {
       logStatus("Calculating " + ticker + " ...");
 
@@ -868,9 +867,9 @@
       const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
       const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
       const dt = 1 / 252;
-      // Set simulation horizon based on futureMonths (in years)
+      // T in years based on futureMonths.
       let T = futureMonths / 12;
-      let numSims = 1000; // Reduced for batch speed.
+      let numSims = 1000;
       let finalPrices = runDBHJSimulation(stats.lastPrice, v10, v20, stats.mean,
                                           kappa1, theta1, sigma1, rho1,
                                           kappa2, theta2, sigma2, rho2,
@@ -911,7 +910,6 @@
     // --------------------------------------------------
     // === Main Batch Analysis ===
     async function runBatchAnalysis() {
-      // Clear previous status.
       document.getElementById('status').innerText = "";
       document.getElementById('progressContainer').style.display = "block";
       let progressBar = document.getElementById('progressBar');
@@ -933,7 +931,7 @@
         simulationPastMonths = 24;
       }
 
-      // Determine market regime based on SPY historical data.
+      // Determine market regime based on SPY.
       logStatus("Determining market regime based on SPY ...");
       let regime = await determineSPYMarketRegime(4);
       logStatus("Market regime detected: " + regime);
