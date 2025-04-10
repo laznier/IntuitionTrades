@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -46,19 +46,19 @@
       font-size: 1rem;
     }
     button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: var(--accent-color);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background var(--transition-speed);
-}
-button:hover {
-  background: #1e3a8a;
-}
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover {
+      background: #1e3a8a;
+    }
     
     .section {
       margin-top: 30px;
@@ -581,14 +581,12 @@ button:hover {
             <li>CVaR (worst 5%) downside fraction</li>
             <li><strong>Annualize</strong> both upside and downside to stabilize results across different time horizons \(T\)</li>
             <li>Form a ratio:
-              \[
-                \\( \\text{ratio} = \\frac{E_{ann}}{D_{ann}} \\)
+              \[\\( \\text{ratio} = \\frac{E_{ann}}{D_{ann}} \\)
               \\]
               where \(E_{ann}\) is the annualized median return, and \(D_{ann}\) is the annualized downside.
             </li>
             <li>Finally, map <code>ratio</code> into \([0, 100]\) with a smooth <strong>tanh</strong> function:
-              \[
-                \\text{RRI} = 50 \\times \\bigl[1 + \\tanh(\\alpha \\times \\text{ratio})\\bigr].
+              \[\\(\\text{RRI} = 50 \\times \\bigl[1 + \\tanh(\\alpha \\times \\text{ratio})\\bigr]\\)
               \\]
               This ensures we never exceed 100 or drop below 0 and remain more stable over longer horizons.
             </li>
@@ -665,7 +663,13 @@ button:hover {
         }
 
         // Fetch historical price data
-        const prices = await fetchHistoricalData(ticker);
+        let prices = await fetchHistoricalData(ticker);
+        // --- NEW: Filter historical data to use only the past 4x the future time horizon ---
+        const historicalWindowMs = 4 * T * 365 * 24 * 60 * 60 * 1000;
+        const minHistoricalDate = new Date(now.getTime() - historicalWindowMs);
+        prices = prices.filter(p => p.date >= minHistoricalDate);
+        // -----------------------------------------------------------------------------
+
         const stats = computeStats(prices);
 
         // Fetch live implied volatility or fallback
@@ -734,27 +738,32 @@ button:hover {
     
   // This function checks for URL parameters and auto-triggers simulation if a ticker is provided.
   function autoInitializeSimulation() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tickerParam = urlParams.get("ticker");
+  const urlParams = new URLSearchParams(window.location.search);
+  // Look for "ticker" or "symbol", preferring "ticker" if both are present.
+  const tickerParam = urlParams.get("ticker") || urlParams.get("symbol");
+  
+  // Optionally, read and use the period if needed.
+  const periodMonths = urlParams.get("period");
+  
+  // If autoFetch is set, you might want to automatically trigger simulation.
+  const autoFetch = urlParams.get("autoFetch");
 
-    if (tickerParam) {
-      // Autofill the ticker input.
-      document.getElementById("ticker").value = tickerParam;
-
-      // Optionally, you could update the company name as well by making an API call.
-      // For example:
-      // fetchTickerSuggestions(tickerParam).then(suggestions => {
-      //   if (suggestions.length > 0) {
-      //     document.getElementById("company-full-name").textContent = suggestions[0]["2. name"];
-      //   }
-      // });
-
-      // Auto-trigger simulation after a brief delay to ensure everything is set.
-      setTimeout(() => {
-        document.getElementById("simulateButton").click();
-      }, 200);
-    }
+  if (tickerParam && autoFetch === "true") {
+    // Autofill the ticker input.
+    document.getElementById("ticker").value = tickerParam;
+    
+    // Optionally update company name via an API call using tickerParam.
+    
+    // You might also consider handling periodMonths if needed.
+    
+    // Auto-trigger simulation after a brief delay.
+    setTimeout(() => {
+      document.getElementById("simulateButton").click();
+    }, 200);
   }
+}
+document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
+
 
   // Run once the DOM is fully loaded.
   document.addEventListener("DOMContentLoaded", autoInitializeSimulation);

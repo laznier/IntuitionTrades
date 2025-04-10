@@ -2156,11 +2156,12 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
     const ticker = simulationReport.ticker;
     const periodMonths = simulationReport.periodMonths;
     const days = periodMonths * 30;
-    const url = "https://www.intuitiontrades.com/risk/?symbol=" 
-              + encodeURIComponent(ticker) 
-              + "&days=" + days
-              + "&autoFetch=true";
-    window.open(url, "_blank");
+    const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+            + encodeURIComponent(ticker) 
+            + "&period=" + periodMonths 
+            + "&autoFetch=true";
+window.open(url, "_blank");
+
   });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
     if (!simulationReport) {
