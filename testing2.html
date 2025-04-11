@@ -117,6 +117,13 @@
 <div id="status"></div>
 
 <script>
+  /***********************************************************************
+ * math.js setup
+ ***********************************************************************/
+ const { create, all } = math;
+const mathInstance = create(all);
+
+
 /***********************************************************************
  * EXAMPLE TICKER LIST
  * Replace or trim with your real set of tickers if desired.
@@ -168,11 +175,6 @@ manualModeCheckbox.addEventListener("change", () => {
   }
 });
 
-/***********************************************************************
- * math.js setup
- ***********************************************************************/
- const { create, all } = math;
-const mathInstance = create(all);
 
 /***********************************************************************
  * Logging & Sleep
