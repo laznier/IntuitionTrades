@@ -1036,6 +1036,12 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
  * BATCH ANALYSIS
  ***********************************************************************/
 async function runBatchAnalysis(){
+  // 0) Check if tickers loaded
+
+  if (predeterminedTickers.length === 0) {
+    alert("No tickers loaded. Please select an index from the dropdown to load tickers first.");
+    return;
+  }
   // 1) Get the user timeframe
   let timeframe = document.getElementById("investmentTimeframe").value;
   if(timeframe === ""){
