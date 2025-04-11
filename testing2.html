@@ -359,25 +359,28 @@ function computeRiskVsRewardIndex(finals, currentPrice, cvarFraction, T){
  * computeTickerRRI(ticker): gather historical, fetch IV, run dbHJ for 1 month
  * return the final RRI
  */
-async function computeTickerRRI(ticker){
-  // 1) hist data
-  let prices= await fetchHistoricalData(ticker);
-  if(prices.length<5){
-    logStatus("Not enough historical data for "+ ticker);
+ async function computeTickerRRI(ticker, T){
+  // 1) Retrieve historical data
+  let prices = await fetchHistoricalData(ticker);
+  if (prices.length < 5) {
+    logStatus("Not enough historical data for " + ticker);
     return 50;
   }
-  let st= computeHistStats(prices);
-  // 2) IV
-  let iv= await fetchOptionsIV(ticker);
-  if(!iv) iv= st.sigma; // fallback
-  // 3) set up double heston
-  let v10= iv* iv;
-  let v20= 0.5* v10;
-  let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
-  let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
-  let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
-  let dt = 1/252, sims = 5000;
-  // 4) run sim
+  let st = computeHistStats(prices);
+  
+  // 2) Fetch implied volatility (IV)
+  let iv = await fetchOptionsIV(ticker);
+  if (!iv) iv = st.sigma; // fallback
+  
+  // 3) Set up Double Heston parameters using the IV
+  let v10 = iv * iv;
+  let v20 = 0.5 * v10;
+  let kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
+  let kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
+  let lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+  let dt = 1 / 252, sims = 5000;
+  
+  // 4) Run simulation using the provided T (simulation horizon in years)
   let finals = runDBHJSimulation(
     st.lastPrice, v10, v20, st.mu,
     kappa1, theta1, sigma1, rho1,
@@ -390,6 +393,7 @@ async function computeTickerRRI(ticker){
   let rri = computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
   return rri;
 }
+
 
 /***********************************************************************
  * Technical (MACD) functions
