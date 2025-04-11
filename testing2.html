@@ -758,8 +758,7 @@ function computeDollarsScore(netDollars) {
 
 function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
   let netUnique = uniqueBuyCount - uniqueSellCount;
-  // Cap netUnique between -5 and +5
-  netUnique = Math.max(-5, Math.min(5, netUnique));
+  netUnique = Math.max(-5, Math.min(5, netUnique)); // cap between -5 and +5
   return 50 + 50 * (netUnique / 5);
 }
 
@@ -769,6 +768,7 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
   let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
   return (dollarsScore + uniqueScore) / 2;
 }
+
 
 
 /***********************************************************************
@@ -895,33 +895,36 @@ function getAutoWeightsForRegime(regime){
 /***********************************************************************
  * aggregatorFinal => picks auto or manual
  ***********************************************************************/
- function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
-  const manual = document.getElementById("useManualWeightsCheckbox").checked;
-  if(!manual){
-    let auto = getAutoWeightsForRegime(regime);
-    let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-    return (raw - 50) * auto.scale + 50;
-  } else {
-    const wMC = parseFloat(document.getElementById("wMC").value) || 0;
-    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
-    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
-    const wIns = parseFloat(document.getElementById("wIns").value) || 0;
-    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
-    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
-    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
-    let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
+  const manual = document.getElementById("manualModeCheckbox").checked;
+  if(manual){
+    const wRRI   = parseFloat(document.getElementById("wRRI").value) || 0;
+    const wTech  = parseFloat(document.getElementById("wTech").value) || 0;
+    const wSent  = parseFloat(document.getElementById("wSent").value) || 0;
+    const wIns   = parseFloat(document.getElementById("wInsider").value) || 0;
+    const wFund  = parseFloat(document.getElementById("wFund").value) || 0;
+    const wCong  = parseFloat(document.getElementById("wCongress").value) || 0;
+    let sc = parseFloat(document.getElementById("scalingFactor").value) || 1.0;
+
+    const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
     let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
     let invalidScale = (sc < 0 || sc > 2);
     if(invalidWeights || invalidScale){
-      console.log("WARNING: Manual weights invalid. Fallback to equal weighting.");
-      let eq = (mc + tech + sent + ins + fund + cong) / 6;
+      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => Equal weighting.");
+      let eq = (rri + tech + sent + ins + fund + cong) / 6;
       return eq;
     } else {
-      let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+      let raw = wRRI * rri + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
       return (raw - 50) * sc + 50;
     }
+  } else {
+    let auto = getAutoWeightsForRegime(regime);
+    let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent
+            + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+    return (raw - 50) * auto.scale + 50;
   }
 }
+
 
 
 /***********************************************************************
@@ -959,7 +962,7 @@ async function simulateOneTicker(ticker, periodMonths, regime){
     // Fundamental
     let fundVal= await fetchFundamentalData(ticker);
 
-// Congress (updated calculation)
+// Congress (updated calculation using new logic)
 let congData = await fetchCongressData(ticker, periodMonths);
 let congVal = computeCongressScore(
   congData.totalPurchase,
@@ -967,6 +970,7 @@ let congVal = computeCongressScore(
   congData.uniqueBuyCount,
   congData.uniqueSellCount
 );
+
 
     // aggregator
     let aggregator= aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
