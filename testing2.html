@@ -168,6 +168,11 @@ manualModeCheckbox.addEventListener("change", () => {
   }
 });
 
+/***********************************************************************
+ * math.js setup
+ ***********************************************************************/
+ const { create, all } = math;
+const mathInstance = create(all);
 
 /***********************************************************************
  * Logging & Sleep
@@ -181,11 +186,7 @@ function sleep(ms){
   return new Promise(resolve=> setTimeout(resolve,ms));
 }
 
-/***********************************************************************
- * math.js setup
- ***********************************************************************/
-const { create, all } = math;
-const mathInstance = create(all);
+
 
 /***********************************************************************
  * parseAlphaDate
