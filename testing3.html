@@ -62,7 +62,7 @@
 <h1>Top 5 Analysis</h1>
 
 <p>
-  This tool evaluates each ticker using RiskReward, Technical, Sentiment, Insider, Fundamental, and Congress signals.
+  This tool evaluates each ticker using <b>RiskReward</b>, Technical, Sentiment, Insider, Fundamental, and Congress signals.
   If “Use Manual Weights &amp; Scaling” is unchecked, it auto‑detects SPY’s market regime (Bull/Bear/Neutral) and picks a weighting distribution.
   If checked, you can pick Bear/Neutral/Bull to auto‑fill – or override any.
   
@@ -109,12 +109,14 @@
 <div class="param-section">
   <label>Select Index:
     <select id="indexSelect">
+      <option value="">-- Select an Index --</option>
       <option value="sp500">SP500</option>
       <option value="russell3000">Russell 3000</option>
       <option value="vti">VTI</option>
     </select>
   </label>
 </div>
+
 
 <div class="param-section">
   <label>Investment Timeframe:
@@ -159,16 +161,27 @@ async function loadTickers(index) {
 // Listen for changes on the index dropdown.
 document.getElementById("indexSelect").addEventListener("change", async function() {
   const index = this.value;
-  // Clear the array before loading new tickers.
+  // Clear any previously loaded tickers.
   predeterminedTickers.length = 0;
+  
+  if (!index) {
+    logStatus("Please select an index to load tickers.");
+    return;
+  }
+  
   try {
     const tickers = await loadTickers(index);
-    tickers.forEach(ticker => predeterminedTickers.push(ticker));
-    logStatus(`Loaded ${predeterminedTickers.length} tickers for the ${index.toUpperCase()} index.`);
+    if (tickers.length === 0) {
+      logStatus("Error: No tickers loaded. Please check the ticker file for " + index + ".");
+    } else {
+      tickers.forEach(ticker => predeterminedTickers.push(ticker));
+      logStatus(`Loaded ${predeterminedTickers.length} tickers for ${index.toUpperCase()} index.`);
+    }
   } catch (error) {
     logStatus(`Error loading tickers for ${index}: ${error.message}`);
   }
 });
+
 
 // Optionally, trigger a change event on page load to load a default index.
 document.getElementById("indexSelect").dispatchEvent(new Event('change'));
@@ -938,15 +951,12 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
  ***********************************************************************/
  async function simulateOneTicker(ticker, periodMonths, T, regime) {
   let rri, techVal, sentVal, insVal, fundVal, congVal;
-  let errorMessages = [];
 
   // Step 1: RRI
   try {
     rri = await computeTickerRRI(ticker, T);
   } catch (e) {
-    let msg = `Error computing RRI for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('RRI');
+    logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
     rri = 50;
   }
 
@@ -957,17 +967,13 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
     hist = hist.filter(pt => pt.date >= cutoffDate);
     if (hist.length < 5) {
-      let msg = "Not enough filtered historical data for " + ticker;
-      logStatus(msg);
-      errorMessages.push('Technical');
+      logStatus("Not enough filtered historical data for " + ticker);
       techVal = 50;
     } else {
       techVal = await computeTechnical(hist);
     }
   } catch (e) {
-    let msg = `Error computing Technical for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('Technical');
+    logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
     techVal = 50;
   }
 
@@ -976,9 +982,7 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     let sentData = await fetchSentimentData(ticker, periodMonths);
     sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
   } catch (e) {
-    let msg = `Error computing Sentiment for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('Sentiment');
+    logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
     sentVal = 50;
   }
 
@@ -994,18 +998,9 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     } catch (e) {
       insiderSent = null;
     }
-    if (insiderSent) {
-      insVal = computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
-    } else {
-      let msg = `No insider sentiment data for ${ticker}; defaulting to 50`;
-      logStatus(msg);
-      errorMessages.push('Insider');
-      insVal = 50;
-    }
+    insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
   } catch (e) {
-    let msg = `Error computing Insider for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('Insider');
+    logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
     insVal = 50;
   }
 
@@ -1013,9 +1008,7 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
   try {
     fundVal = await fetchFundamentalData(ticker);
   } catch (e) {
-    let msg = `Error computing Fundamental for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('Fundamental');
+    logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
     fundVal = 50;
   }
 
@@ -1029,22 +1022,14 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
       congData.uniqueSellCount
     );
   } catch (e) {
-    let msg = `Error computing Congress for ${ticker}: ${e.message}`;
-    logStatus(msg);
-    errorMessages.push('Congress');
+    logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
     congVal = 50;
   }
 
-  // Log a consolidated note if there are any errors for this ticker.
-  if (errorMessages.length > 0) {
-    logStatus(`Note for ${ticker}: Default value 50 used for ${errorMessages.join(', ')}.`);
-  }
-
-  // Step 7: Aggregator – using your existing logic.
+  // Step 7: Aggregator
   let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
   return { ticker, aggregator };
 }
-
 
 
 /***********************************************************************
