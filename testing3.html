@@ -936,62 +936,88 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
 /***********************************************************************
  * SINGLE TICKER LOGIC
  ***********************************************************************/
-async function simulateOneTicker(ticker, periodMonths, T, regime){
-  try {
-    // Step 1: RRI
-    let rri = await computeTickerRRI(ticker, T);
+ async function simulateOneTicker(ticker, periodMonths, T, regime) {
+  let rri, techVal, sentVal, insVal, fundVal, congVal;
 
-    // Step 2: fetch + filter historical for technical
+  // Step 1: RRI
+  try {
+    rri = await computeTickerRRI(ticker, T);
+  } catch (e) {
+    logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
+    rri = 50;
+  }
+
+  // Step 2: Technical
+  try {
     let hist = await fetchHistoricalData(ticker);
     let cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
     hist = hist.filter(pt => pt.date >= cutoffDate);
     if (hist.length < 5) {
       logStatus("Not enough filtered historical data for " + ticker);
-      return { ticker, aggregator: 50 };
+      techVal = 50;
+    } else {
+      techVal = await computeTechnical(hist);
     }
-    let techVal = await computeTechnical(hist);
+  } catch (e) {
+    logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
+    techVal = 50;
+  }
 
-    // Step 3: Sentiment
+  // Step 3: Sentiment
+  try {
     let sentData = await fetchSentimentData(ticker, periodMonths);
-    let sentVal = (sentData.length < 2)? 50 : computeSentBull(sentData);
+    sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
+  } catch (e) {
+    logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
+    sentVal = 50;
+  }
 
-    // Step 4: Insider
-    let currentPrice = (hist.length > 0)? hist[hist.length - 1].close : 1;
+  // Step 4: Insider
+  try {
+    let hist = await fetchHistoricalData(ticker);
+    let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
     let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
     let insiderSent = null;
-    let simDate = (hist.length > 0)? hist[hist.length - 1].date : new Date();
+    let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
     try {
       insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
-    } catch(e) {
+    } catch (e) {
       insiderSent = null;
     }
-    let insVal = 50;
-    if (insiderSent) {
-      insVal = computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
-    }
+    insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
+  } catch (e) {
+    logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
+    insVal = 50;
+  }
 
-    // Step 5: Fundamental
-    let fundVal= await fetchFundamentalData(ticker);
+  // Step 5: Fundamental
+  try {
+    fundVal = await fetchFundamentalData(ticker);
+  } catch (e) {
+    logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
+    fundVal = 50;
+  }
 
-    // Step 6: Congress
-    let congData= await fetchCongressData(ticker, periodMonths);
-    let congVal= computeCongressScore(
+  // Step 6: Congress
+  try {
+    let congData = await fetchCongressData(ticker, periodMonths);
+    congVal = computeCongressScore(
       congData.totalPurchase,
       congData.totalSale,
       congData.uniqueBuyCount,
       congData.uniqueSellCount
     );
-
-    // Step 7: aggregator
-    let aggregator= aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
-    return { ticker, aggregator };
-
-  } catch(e){
-    logStatus(`Error with ${ticker}: ${e.message}`);
-    return { ticker, aggregator:50 };
+  } catch (e) {
+    logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
+    congVal = 50;
   }
+
+  // Step 7: Aggregator
+  let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
+  return { ticker, aggregator };
 }
+
 
 /***********************************************************************
  * BATCH ANALYSIS
