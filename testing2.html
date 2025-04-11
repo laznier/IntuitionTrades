@@ -938,56 +938,63 @@ function getAutoWeightsForRegime(regime){
 /***********************************************************************
  * SINGLE TICKER LOGIC
  ***********************************************************************/
- async function simulateOneTicker(ticker, periodMonths, T, regime){
+ async function simulateOneTicker(ticker, periodMonths, T, regime) {
   try {
-    // RiskReward => RRI
+    // RiskReward => RRI (uses T from investment timeframe)
     let rri = await computeTickerRRI(ticker, T);
 
-    // Technical
-    let hist= await fetchHistoricalData(ticker);
-    let techVal= await computeTechnical(hist);
-
-    // Sentiment
-    let sentData= await fetchSentimentData(ticker, periodMonths);
-    let sentVal= (sentData.length<2)? 50: computeSentBull(sentData);
-
-    // Insider
-    let currentPrice= (hist.length>0)? hist[hist.length-1].close : 1;
-    let insiderTx= await fetchInsiderData(ticker, periodMonths, currentPrice);
-    let insiderSent= null;
-    let simDate= (hist.length>0)? hist[hist.length-1].date : new Date();
-    try{
-      insiderSent= await fetchInsiderSentiment(ticker, periodMonths, simDate);
-    }catch(e){
-      // no data
-      insiderSent= null;
+    // Technical - fetch historical data and then restrict it to periodMonths
+    let hist = await fetchHistoricalData(ticker);
+    let cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
+    hist = hist.filter(pt => pt.date >= cutoffDate);
+    if (hist.length < 5) {
+      logStatus("Not enough filtered historical data for " + ticker);
+      return { ticker, aggregator: 50 };
     }
-    let insVal= 50;
-    if(insiderSent){
-      insVal= computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
+    let techVal = await computeTechnical(hist);
+
+    // Sentiment (uses periodMonths internally)
+    let sentData = await fetchSentimentData(ticker, periodMonths);
+    let sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
+
+    // Insider - use currentPrice from our filtered history
+    let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
+    let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
+    let insiderSent = null;
+    let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
+    try {
+      insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
+    } catch(e) {
+      // no data; default below
+      insiderSent = null;
+    }
+    let insVal = 50;
+    if (insiderSent) {
+      insVal = computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
     }
 
-    // Fundamental
-    let fundVal= await fetchFundamentalData(ticker);
+    // Fundamental (uses full data from its API)
+    let fundVal = await fetchFundamentalData(ticker);
 
-// Congress (updated calculation using new logic)
-let congData = await fetchCongressData(ticker, periodMonths);
-let congVal = computeCongressScore(
-  congData.totalPurchase,
-  congData.totalSale,
-  congData.uniqueBuyCount,
-  congData.uniqueSellCount
-);
+    // Congress (updated calculation using new logic)
+    let congData = await fetchCongressData(ticker, periodMonths);
+    let congVal = computeCongressScore(
+      congData.totalPurchase,
+      congData.totalSale,
+      congData.uniqueBuyCount,
+      congData.uniqueSellCount
+    );
 
-
-    // aggregator
-    let aggregator= aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
+    // aggregator: combine all signals (manual or auto)
+    let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
     return { ticker, aggregator };
-  } catch(e){
+  } catch(e) {
     logStatus(`Error with ${ticker}: ${e.message}`);
-    return { ticker, aggregator:50 };
+    return { ticker, aggregator: 50 };
   }
 }
+
 
 /***********************************************************************
  * BATCH ANALYSIS
