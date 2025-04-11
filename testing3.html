@@ -938,12 +938,15 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
  ***********************************************************************/
  async function simulateOneTicker(ticker, periodMonths, T, regime) {
   let rri, techVal, sentVal, insVal, fundVal, congVal;
+  let errorMessages = [];
 
   // Step 1: RRI
   try {
     rri = await computeTickerRRI(ticker, T);
   } catch (e) {
-    logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
+    let msg = `Error computing RRI for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('RRI');
     rri = 50;
   }
 
@@ -954,13 +957,17 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
     hist = hist.filter(pt => pt.date >= cutoffDate);
     if (hist.length < 5) {
-      logStatus("Not enough filtered historical data for " + ticker);
+      let msg = "Not enough filtered historical data for " + ticker;
+      logStatus(msg);
+      errorMessages.push('Technical');
       techVal = 50;
     } else {
       techVal = await computeTechnical(hist);
     }
   } catch (e) {
-    logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
+    let msg = `Error computing Technical for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('Technical');
     techVal = 50;
   }
 
@@ -969,7 +976,9 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     let sentData = await fetchSentimentData(ticker, periodMonths);
     sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
   } catch (e) {
-    logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
+    let msg = `Error computing Sentiment for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('Sentiment');
     sentVal = 50;
   }
 
@@ -985,9 +994,18 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
     } catch (e) {
       insiderSent = null;
     }
-    insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
+    if (insiderSent) {
+      insVal = computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells);
+    } else {
+      let msg = `No insider sentiment data for ${ticker}; defaulting to 50`;
+      logStatus(msg);
+      errorMessages.push('Insider');
+      insVal = 50;
+    }
   } catch (e) {
-    logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
+    let msg = `Error computing Insider for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('Insider');
     insVal = 50;
   }
 
@@ -995,7 +1013,9 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
   try {
     fundVal = await fetchFundamentalData(ticker);
   } catch (e) {
-    logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
+    let msg = `Error computing Fundamental for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('Fundamental');
     fundVal = 50;
   }
 
@@ -1009,14 +1029,22 @@ function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
       congData.uniqueSellCount
     );
   } catch (e) {
-    logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
+    let msg = `Error computing Congress for ${ticker}: ${e.message}`;
+    logStatus(msg);
+    errorMessages.push('Congress');
     congVal = 50;
   }
 
-  // Step 7: Aggregator
+  // Log a consolidated note if there are any errors for this ticker.
+  if (errorMessages.length > 0) {
+    logStatus(`Note for ${ticker}: Default value 50 used for ${errorMessages.join(', ')}.`);
+  }
+
+  // Step 7: Aggregator – using your existing logic.
   let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
   return { ticker, aggregator };
 }
+
 
 
 /***********************************************************************
