@@ -700,31 +700,73 @@ async function fetchFundamentalData(ticker){
 /***********************************************************************
  * Congress
  ***********************************************************************/
-async function fetchCongressData(ticker, periodMonths){
-  const url=`/api/congress?ticker=${encodeURIComponent(ticker)}`;
-  const resp= await fetch(url);
-  const j= await resp.json();
-  if(!j.data || !Array.isArray(j.data)){
-    throw new Error("Invalid congress data format.");
+ async function fetchCongressData(ticker, periodMonths) {
+  try {
+    const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+    const resp = await fetch(url);
+    const j = await resp.json();
+    if (!j.data || !Array.isArray(j.data)) {
+      throw new Error("Invalid congress data format.");
+    }
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - periodMonths);
+    let totalPurchase = 0, totalSale = 0;
+    let uniqueBuyMembers = new Set();
+    let uniqueSellMembers = new Set();
+
+    for (let item of j.data) {
+      if (!item.TransactionDate || !item.Transaction) continue;
+      let dt = new Date(item.TransactionDate);
+      if (isNaN(dt) || dt < cutoff) continue;
+      let amt = parseFloat(item.Amount) || 0;
+      
+      if (/purchase/i.test(item.Transaction)) {
+        totalPurchase += amt;
+        if (item.member) uniqueBuyMembers.add(item.member);
+      }
+      if (/sale/i.test(item.Transaction)) {
+        totalSale += amt;
+        if (item.member) uniqueSellMembers.add(item.member);
+      }
+    }
+    return {
+      totalPurchase,
+      totalSale,
+      uniqueBuyCount: uniqueBuyMembers.size,
+      uniqueSellCount: uniqueSellMembers.size
+    };
+  } catch (error) {
+    console.error("Error in fetchCongressData:", error.message);
+    return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
   }
-  let cutoff= new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalPurchase=0, totalSale=0;
-  for(let item of j.data){
-    if(!item.TransactionDate|| !item.Transaction) continue;
-    let dt= new Date(item.TransactionDate);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let amt= parseFloat(item.Amount)||0;
-    if(/purchase/i.test(item.Transaction)) totalPurchase+= amt;
-    if(/sale/i.test(item.Transaction)) totalSale+= amt;
+}
+function computeDollarsScore(netDollars) {
+  const cap = 10000000;  // $10M cap
+  let ratio;
+  if (netDollars >= 0) {
+    ratio = Math.log10(netDollars + 1) / Math.log10(cap + 1);
+  } else {
+    ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
   }
-  return { totalPurchase, totalSale };
+  const alpha = 2.2;
+  ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
+  return 50 + 50 * ratio;
 }
-function computeCongressBull(purchase, sale){
-  let sum= purchase+ sale;
-  if(sum<=0) return 50;
-  return ((purchase- sale)/ sum)*50 + 50;
+
+function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
+  let netUnique = uniqueBuyCount - uniqueSellCount;
+  // Cap netUnique between -5 and +5
+  netUnique = Math.max(-5, Math.min(5, netUnique));
+  return 50 + 50 * (netUnique / 5);
 }
+
+function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
+  let netDollars = totalPurchase - totalSale;
+  let dollarsScore = computeDollarsScore(netDollars);
+  let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
+  return (dollarsScore + uniqueScore) / 2;
+}
+
 
 /***********************************************************************
  * Market Regime detection
@@ -914,9 +956,14 @@ async function simulateOneTicker(ticker, periodMonths, regime){
     // Fundamental
     let fundVal= await fetchFundamentalData(ticker);
 
-    // Congress
-    let congData= await fetchCongressData(ticker, periodMonths);
-    let congVal= computeCongressBull(congData.totalPurchase, congData.totalSale);
+// Congress (updated calculation)
+let congData = await fetchCongressData(ticker, periodMonths);
+let congVal = computeCongressScore(
+  congData.totalPurchase,
+  congData.totalSale,
+  congData.uniqueBuyCount,
+  congData.uniqueSellCount
+);
 
     // aggregator
     let aggregator= aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
