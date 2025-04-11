@@ -942,11 +942,15 @@ function getAutoWeightsForRegime(regime){
 /***********************************************************************
  * SINGLE TICKER LOGIC
  ***********************************************************************/
- async function simulateOneTicker(ticker, periodMonths, T, regime) {
+ async function simulateOneTicker(ticker, periodMonths, T, regime){
   try {
-    // RiskReward => RRI (uses T from investment timeframe)
+    // Get the RiskReward Index using T:
     let rri = await computeTickerRRI(ticker, T);
-
+    // ... rest of your code
+  } catch(e){
+    // error handling...
+  }
+}
     // Technical - fetch historical data and then restrict it to periodMonths
     let hist = await fetchHistoricalData(ticker);
     let cutoffDate = new Date();
