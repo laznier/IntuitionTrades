@@ -106,6 +106,16 @@
     </label>
   </div>
 </div>
+<div class="param-section">
+  <label>Investment Timeframe:
+    <select id="investmentTimeframe">
+      <option value="">-- Select Timeframe --</option>
+      <option value="short">Short Term</option>
+      <option value="medium">Medium Term</option>
+      <option value="long">Long Term</option>
+    </select>
+  </label>
+</div>
 
 <button onclick="runBatchAnalysis()">Run Batch Analysis</button>
 
@@ -366,20 +376,18 @@ async function computeTickerRRI(ticker){
   let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
   let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
   let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
-  let T=1/12, dt=1/252, sims=5000;
+  let dt = 1/252, sims = 5000;
   // 4) run sim
-  let finals= runDBHJSimulation(
+  let finals = runDBHJSimulation(
     st.lastPrice, v10, v20, st.mu,
     kappa1, theta1, sigma1, rho1,
     kappa2, theta2, sigma2, rho2,
     lambda, jumpMean, jumpStd,
     T, dt, sims
   );
-  // 5) cvar => fraction
-  let risk= computeRiskMetrics(finals, st.lastPrice);
-  let cvarFrac= risk.cvarPct/100;
-  // 6) RRI
-  let rri= computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
+  let risk = computeRiskMetrics(finals, st.lastPrice);
+  let cvarFrac = risk.cvarPct / 100;
+  let rri = computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
   return rri;
 }
 
@@ -930,10 +938,10 @@ function getAutoWeightsForRegime(regime){
 /***********************************************************************
  * SINGLE TICKER LOGIC
  ***********************************************************************/
-async function simulateOneTicker(ticker, periodMonths, regime){
+ async function simulateOneTicker(ticker, periodMonths, T, regime){
   try {
     // RiskReward => RRI
-    let rri= await computeTickerRRI(ticker);
+    let rri = await computeTickerRRI(ticker, T);
 
     // Technical
     let hist= await fetchHistoricalData(ticker);
@@ -984,45 +992,69 @@ let congVal = computeCongressScore(
 /***********************************************************************
  * BATCH ANALYSIS
  ***********************************************************************/
-async function runBatchAnalysis(){
-  document.getElementById("status").textContent= "";
-  const progressContainer= document.getElementById("progressContainer");
-  const progressBar= document.getElementById("progressBar");
-  const progressText= document.getElementById("progressText");
-  progressContainer.style.display= "block";
-  progressBar.value= 0;
-  progressBar.max= 100;
-  progressText.textContent= "0% Completed";
+ async function runBatchAnalysis(){
+  // Get the user-defined investment timeframe.
+  let timeframe = document.getElementById("investmentTimeframe").value;
+  if(timeframe === ""){
+    alert("Please select an Investment Timeframe!");
+    return;
+  }
+  // Define parameters based on selected timeframe.
+  let periodMonths, T, timeframeText;
+  if(timeframe === "short"){
+    periodMonths = 4;
+    T = 1/12; // 1 month horizon
+    timeframeText = "Short Term (4 months historical, 1 month horizon)";
+  } else if(timeframe === "medium"){
+    periodMonths = 12;
+    T = 3/12; // 3 months horizon
+    timeframeText = "Medium Term (12 months historical, 3 months horizon)";
+  } else if(timeframe === "long"){
+    periodMonths = 24;
+    T = 6/12; // 6 months horizon
+    timeframeText = "Long Term (24 months historical, 6 months horizon)";
+  }
+  
+  // Log the market regime detection message including the timeframe text.
+  document.getElementById("status").textContent = "";
+  const progressContainer = document.getElementById("progressContainer");
+  const progressBar = document.getElementById("progressBar");
+  const progressText = document.getElementById("progressText");
+  progressContainer.style.display = "block";
+  progressBar.value = 0;
+  progressBar.max = 100;
+  progressText.textContent = "0% Completed";
 
   logStatus("Detecting SPY market regime...");
-  let regime= await determineSPYMarketRegime(4);
-  logStatus(`Detected Market Regime => ${regime}\n`);
+  let regime = await determineSPYMarketRegime(4);
+  logStatus(`Detected Market Regime => ${regime} (Assessing: ${timeframeText})\n`);
+  
+  // Use periodMonths and T when calling simulateOneTicker:
+  let results = [];
+  let processed = 0;
+  let total = predeterminedTickers.length;
+  let batchSize = 70; // or 50, up to you
 
-  let results= [];
-  let processed= 0;
-  let total= predeterminedTickers.length;
-  let batchSize= 70; // or 50, up to you
-
-  for(let i=0; i< total; i+= batchSize){
-    let batch= predeterminedTickers.slice(i, i+ batchSize);
-    logStatus(`Processing batch #${Math.floor(i/batchSize)+1}: ${batch.join(", ")}`);
+  for(let i=0; i< total; i += batchSize){
+    let batch = predeterminedTickers.slice(i, i + batchSize);
+    logStatus(`Processing batch #${Math.floor(i/batchSize) + 1}: ${batch.join(", ")}`);
     for(let tk of batch){
-      let one= await simulateOneTicker(tk, 4, regime);
+      let one = await simulateOneTicker(tk, periodMonths, T, regime);
       results.push(one);
       processed++;
       logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
-      let pct= Math.round((processed / total)*100);
-      progressBar.value= pct;
-      progressText.textContent= `${pct}% Completed`;
+      let pct = Math.round((processed / total) * 100);
+      progressBar.value = pct;
+      progressText.textContent = `${pct}% Completed`;
     }
-    if(i+ batchSize< total){
+    if(i + batchSize < total){
       logStatus("Waiting 60s before next batch...");
       await sleep(60000);
     }
   }
   results.sort((a,b)=> a.aggregator - b.aggregator);
-  let top5= results.slice(-5).reverse();
-  let bottom5= results.slice(0,5);
+  let top5 = results.slice(-5).reverse();
+  let bottom5 = results.slice(0,5);
 
   logStatus("\n=== Final Results ===");
   logStatus("Top 5:");
@@ -1035,6 +1067,7 @@ async function runBatchAnalysis(){
   });
   logStatus(`Done! Processed ${processed} tickers.`);
 }
+
 </script>
 
 </body>
