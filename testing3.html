@@ -148,9 +148,13 @@ async function loadTickers(index) {
   let filePath = `tickers/${index}-tickers.txt`;
   const response = await fetch(filePath);
   const text = await response.text();
-  // Assumes one ticker per line; adjust splitting logic if the format is different.
-  return text.split('\n').map(ticker => ticker.trim()).filter(ticker => ticker.length > 0);
+  return text
+    .replace(/"/g, "")            // Remove all double quotes
+    .split(",")                   // Split on commas
+    .map(ticker => ticker.trim()) // Trim whitespace from each ticker
+    .filter(ticker => ticker.length > 0); // Remove any empty entries
 }
+
 
 // Listen for changes on the index dropdown.
 document.getElementById("indexSelect").addEventListener("change", async function() {
