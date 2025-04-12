@@ -1192,33 +1192,67 @@ footer {
     </div>
   </header>
 
-  <!-- Google Sign-In Container (Using minimal flow with redirection) -->
-  <div class="google-signin-container">
-    <div id="google-signin-button"></div>
-  </div>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script>
-    window.onload = function() {
-      google.accounts.id.initialize({
-        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-        callback: handleCredentialResponse
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("google-signin-button"),
-        {
-          theme: "filled_black",
-          size: "large",
-          logo_alignment: "right"
-        }
-      );
-    };
+<!-- Google Sign-In Container -->
+<div class="google-signin-container" style="text-align: right; margin-top: 20px;">
+  <!-- Small indicator text above the sign-in button -->
+  <div id="user-type-indicator" style="font-size: 0.8rem; margin-bottom: 5px;"></div>
+  <div id="google-signin-button"></div>
+</div>
 
-    function handleCredentialResponse(response) {
-      console.log("Encoded JWT ID token: " + response.credential);
-      // Redirect to the callback page with the token appended as a query parameter.
-      window.location.href = "/auth/callback?credential=" + encodeURIComponent(response.credential);
-    }
-  </script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  window.onload = function() {
+    google.accounts.id.initialize({
+      client_id: "YOUR_CLIENT_ID.apps.googleusercontent.com",
+      callback: handleCredentialResponse
+    });
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "filled_black",
+        size: "large",
+        logo_alignment: "right"
+      }
+    );
+  };
+
+  /**
+   * The callback is triggered after a successful Google sign-in.
+   * It sends the credential (JWT) to our own verification endpoint.
+   * Depending on the response from verify-google.js, it shows either “Premium User”
+   * or “Basic User” above the sign-in button. If the user is premium, all locked
+   * apps are unlocked by removing the semi-transparent overlay.
+   * Finally, the user is redirected back to the main page.
+   */
+  function handleCredentialResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+
+    // Send the credential to our backend verify endpoint.
+    fetch('/api/verify-google?credential=' + encodeURIComponent(response.credential))
+      .then(res => res.json())
+      .then(data => {
+        // Expecting a response where data.isPremium is a boolean
+        if (data.isPremium) {
+          document.getElementById('user-type-indicator').textContent = "Premium User";
+
+          // Remove locked overlays from premium tool cards (set fully transparent).
+          document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
+            el.style.background = "transparent";
+          });
+        } else {
+          document.getElementById('user-type-indicator').textContent = "Basic User";
+        }
+        // Redirect back to the main page.
+        window.location.href = "/";
+      })
+      .catch(err => {
+        console.error("Error verifying user:", err);
+        // In case of error, still redirect.
+        window.location.href = "/";
+      });
+  }
+</script>
+
   
   
   
