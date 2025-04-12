@@ -1199,59 +1199,7 @@ footer {
   <div id="google-signin-button"></div>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>
-  window.onload = function() {
-    google.accounts.id.initialize({
-      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-      callback: handleCredentialResponse
-    });
-    google.accounts.id.renderButton(
-      document.getElementById("google-signin-button"),
-      {
-        theme: "filled_black",
-        size: "large",
-        logo_alignment: "right"
-      }
-    );
-  };
 
-  /**
-   * The callback is triggered after a successful Google sign-in.
-   * It sends the credential (JWT) to our own verification endpoint.
-   * Depending on the response from verify-google.js, it shows either “Premium User”
-   * or “Basic User” above the sign-in button. If the user is premium, all locked
-   * apps are unlocked by removing the semi-transparent overlay.
-   * Finally, the user is redirected back to the main page.
-   */
-  function handleCredentialResponse(response) {
-    console.log("Encoded JWT ID token: " + response.credential);
-
-    // Send the credential to our backend verify endpoint.
-    fetch('/api/verify-google?credential=' + encodeURIComponent(response.credential))
-      .then(res => res.json())
-      .then(data => {
-        // Expecting a response where data.isPremium is a boolean
-        if (data.isPremium) {
-          document.getElementById('user-type-indicator').textContent = "Premium User";
-
-          // Remove locked overlays from premium tool cards (set fully transparent).
-          document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
-            el.style.background = "transparent";
-          });
-        } else {
-          document.getElementById('user-type-indicator').textContent = "Basic User";
-        }
-        // Redirect back to the main page.
-        window.location.href = "/";
-      })
-      .catch(err => {
-        console.error("Error verifying user:", err);
-        // In case of error, still redirect.
-        window.location.href = "/";
-      });
-  }
-</script>
 
   
   
@@ -2156,25 +2104,10 @@ tickerSearchButton.addEventListener("click", async () => {
         clearInterval(refreshInterval);
       });
 
-      
-  document.addEventListener("DOMContentLoaded", () => {
-    const premiumButton = document.getElementById("premiumToolButton");
-
-    // When user clicks “Open Tool,” we check if they're signed in
-    premiumButton.addEventListener("click", () => {
-      // If not signed in yet, we can call “google.accounts.id.prompt()”
-      // But since you’re doing a redirect flow, we can just do the standard sign-in:
-      // 1) If user not signed in, Google will sign them in and redirect to /auth/callback
-      // 2) /auth/callback verifies if premium => send them to /top5
-      // We can simply do:
-      google.accounts.id.prompt(); // triggers the sign-in prompt if needed
-    });
-  });
+    
 </script>
 <script>
-  // Global flag to track premium tool click
-  let premiumToolClicked = false;
-  
+
   // Initialize Google Sign-In when window loads
   window.onload = function() {
     google.accounts.id.initialize({
