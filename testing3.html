@@ -1097,24 +1097,27 @@ footer {
  <!-- Container with flex display to right-align the content -->
 <div class="google-signin-container">
   <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <!-- Google Sign-In Button -->
-  <div id="g_id_onload"
-       data-client_id="989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com"
-       data-login_uri="https://www.intuitiontrades.com/auth/callback"
-       data-auto_prompt="false">
-  </div>
-
-  <div class="g_id_signin"
-       data-type="standard"
-       data-shape="rectangular"
-       data-theme="filled_black"
-       data-text="sign_in_with"
-       data-size="large"
-       data-logo_alignment="right">
-  </div>
-</div>
+ 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<div id="google-signin-button"></div>
+<script>
+  google.accounts.id.initialize({
+    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+    callback: handleCredentialResponse
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("google-signin-button"),
+    {
+      theme: "filled_black",
+      size: "large",
+      logo_alignment: "right"
+    }
+  );
+  function handleCredentialResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+    // You can then send the token to your backend, etc.
+  }
+</script>
 
 
 
