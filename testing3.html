@@ -1225,7 +1225,9 @@ footer {
       <span id="signupMinimize" title="Minimize">-</span>
       <span id="signupClose" title="Close">X</span>
     </div>
-    <!-- MailerLite Universal Embed Code -->
+    
+    <!-- Your sign-up content or embed code here -->
+  
     <script>
       (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},
         l=d.createElement(e),l.async=1,l.src=u,
@@ -1773,17 +1775,32 @@ heroPriceEl.appendChild(newPriceEl);
  <!-- ==========================
       Newsletter 
   =========================== -->
-<script>
-  // Minimize/Restore behavior for the sign-up container
-  document.getElementById("signupMinimize").addEventListener("click", function() {
-    const signupSection = document.getElementById("newsletter-signup");
-    // Toggle a "minimized" class to collapse/expand the container
-    if (signupSection.classList.contains("minimized")) {
-      signupSection.classList.remove("minimized");
-    } else {
-      signupSection.classList.add("minimized");
-    }
-  });
+  <script>
+    // Track the minimized state for the sign-up container
+    let isSignupMinimized = false;
+  
+    document.getElementById("signupMinimize").addEventListener("click", function() {
+      const signupSection = document.getElementById("newsletter-signup");
+      const btn = document.getElementById("signupMinimize");
+      
+      // Toggle minimized state and button text
+      if (!isSignupMinimized) {
+        signupSection.classList.add("minimized");
+        btn.textContent = "+";  // Change to plus when minimized
+        isSignupMinimized = true;
+      } else {
+        signupSection.classList.remove("minimized");
+        btn.textContent = "-";  // Change back to minus when restored
+        isSignupMinimized = false;
+      }
+    });
+  
+    // Close behavior for the sign-up container
+    document.getElementById("signupClose").addEventListener("click", function() {
+      document.getElementById("newsletter-signup").style.display = "none";
+    });
+  </script>
+  
 
   // Close behavior for the sign-up container
   document.getElementById("signupClose").addEventListener("click", function() {
