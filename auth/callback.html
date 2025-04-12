@@ -1,0 +1,26 @@
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("credential");
+  
+    if (token) {
+      fetch("/api/verify-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.authorized) {
+          window.location.href = "/top5/index.html";
+        } else {
+          alert("You are not a premium user.");
+          window.location.href = "/";
+        }
+      })
+      .catch(() => alert("Sign-in failed. Please try again."));
+    } else {
+      alert("No login token found.");
+      window.location.href = "/";
+    }
+  </script>
+  
