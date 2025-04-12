@@ -1004,10 +1004,6 @@ footer {
   height: 40px;
   margin-bottom: 0.5rem;
 }
-.premium-text {
-  font-size: 1rem;
-  font-weight: bold;
-}
 
 /* Modal Styling */
 .modal {
@@ -1071,30 +1067,37 @@ footer {
   position: relative;
 }
 
+.tool-card-image-container {
+  position: relative;
+}
+
 .premium-overlay {
   position: absolute;
-  top: 0; 
+  top: 0;
   left: 0;
-  width: 100%; 
+  width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  pointer-events: none; /* prevents clicks on the overlay */
+  pointer-events: none; /* so clicks go through */
 }
 
 .lock-icon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 0.5rem;
+  width: 60px;
+  height: 60px;
+  opacity: 0.7;
 }
+
 .premium-text {
-  font-size: 1rem;
-  font-weight: bold;
+  position: absolute;
+  font-size: 0.9rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  color: #fff;
 }
+
 
 
 </style>
@@ -1381,7 +1384,7 @@ footer {
   </div>
 </section>
 
-  
+
   <main>
     <!-- Tools Section -->
     <section id="tools">
@@ -1389,9 +1392,7 @@ footer {
       <div class="tool-grid">
         <!-- Place this card INSIDE the same .tool-grid so it matches the others -->
 <div class="tool-card premium">
-  <!-- Normal tool-card image -->
   <img src="images/top5.png" alt="Top Stocks Scanner" />
-
   <!-- Semi-transparent lock overlay -->
   <div class="premium-overlay">
     <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
@@ -1400,7 +1401,7 @@ footer {
 
   <!-- Everything else identical to the other cards -->
   <h2>Top Stocks Scanner</h2>
-  <p>Scan over 3500 US companies for Risk Reward Index, Technicals, Fundamentals, News Trends, Insider, and Congress trading to develop your top picks.</p>
+  <p>Scan over 3500 US companies for Risk Reward Index, Technicals, Fundamentals, News Trends, Insider, and Congress trading.</p>
   <button class="tool-button" id="premiumToolButton">Open Tool</button>
 </div>
 
