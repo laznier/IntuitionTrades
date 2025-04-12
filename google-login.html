@@ -1,48 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Google Sign-In Test</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minimal Tools Demo</title>
   <style>
-    /* Container that holds the sign-in button, right aligned */
-    #google-signin-button {
-      display: flex;
-      justify-content: flex-end;
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
       margin: 20px;
+    }
+    #user-type-indicator {
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+    .tool-grid {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .tool-card {
+      background: #333;
+      padding: 20px;
+      border-radius: 5px;
+      position: relative;
+      width: 250px;
+    }
+    .tool-card h2 {
+      margin-top: 0;
+    }
+    .tool-card p {
+      font-size: 0.95rem;
+    }
+    .tool-button {
+      background: #005fa3;
+      color: #fff;
+      padding: 10px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    /* Premium tool overlay (visible by default on premium tool card) */
+    .premium-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-size: 1.1rem;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
-  <!-- Div where the Google Sign-In button will be rendered -->
+  <!-- Indicator for user type (Basic or Premium) -->
+  <div id="user-type-indicator">Not signed in</div>
+  <!-- Container for the Google sign‑in button -->
   <div id="google-signin-button"></div>
 
-  <!-- Include the Google Identity Services JS Library -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <h1>Tool Demo</h1>
+  <div class="tool-grid">
+    <!-- Basic Tool Card (always accessible) -->
+    <div class="tool-card basic">
+      <h2>Basic Tool</h2>
+      <p>This tool is available for all users.</p>
+      <a href="/basic-tool" class="tool-button">Open Basic Tool</a>
+    </div>
+    <!-- Premium Tool Card (locked by default) -->
+    <div class="tool-card premium">
+      <h2>Premium Tool</h2>
+      <p>This tool is available only for premium users.</p>
+      <!-- Premium overlay that should be hidden for premium users -->
+      <div class="premium-overlay">Premium Locked</div>
+      <button class="tool-button" id="premiumToolButton">Open Premium Tool</button>
+    </div>
+  </div>
 
+  <!-- Load the Google Identity Services library -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
-    // Ensure this runs after the Google script has fully loaded
+    // Global flag to track premium tool flow.
+    let premiumToolClicked = false;
+
+    // Initialize Google Sign-In once the window loads.
     window.onload = function() {
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-        // Use a callback function to capture the token
         callback: handleCredentialResponse
       });
-      // Render the sign-in button
-      google.accounts.id.renderButton(
-        document.getElementById("google-signin-button"),
-        {
-          theme: "filled_black",
-          size: "large",
-          logo_alignment: "right"
-        }
-      );
+      // Render the sign-in button into its container.
+      const signInContainer = document.getElementById("google-signin-button");
+      if (signInContainer) {
+        google.accounts.id.renderButton(
+          signInContainer,
+          {
+            theme: "filled_black",
+            size: "large"
+          }
+        );
+      }
     };
 
-    // Callback function that receives the token and redirects to the callback page
+    // Attach event listener to the premium tool button.
+    document.addEventListener("DOMContentLoaded", () => {
+      const premiumButton = document.getElementById("premiumToolButton");
+      if (premiumButton) {
+        premiumButton.addEventListener("click", () => {
+          premiumToolClicked = true;
+          // Trigger the Google sign-in prompt (force re-authentication).
+          google.accounts.id.prompt();
+        });
+      }
+    });
+
+    // Common callback from Google sign-in.
     function handleCredentialResponse(response) {
-      console.log("Encoded JWT ID token: " + response.credential);
-      // Redirect to the callback page with the token appended as a query parameter.
-      window.location.href = "/auth/callback?credential=" + encodeURIComponent(response.credential);
+      console.log("Received JWT token:", response.credential);
+      // Send POST request with the token to the verification endpoint.
+      fetch('/api/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Verification response:", data);
+        if (premiumToolClicked) {
+          // Premium tool flow: user clicked the premium button.
+          if (data.isPremium) {
+            // Hide the premium overlay to show the unlocked tool.
+            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
+              el.style.display = "none";
+            });
+            // Redirect to the premium tool page.
+            window.location.href = "/premium-tool";
+          } else {
+            alert("Access denied – this tool is available for Premium Users only.");
+            window.location.href = "/";
+          }
+          premiumToolClicked = false;
+        } else {
+          // Normal sign-in flow: update the user-type indicator.
+          if (data.isPremium) {
+            document.getElementById('user-type-indicator').textContent = "Premium User";
+            // Optionally, unlock premium overlays even if not explicitly using a premium tool.
+            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
+              el.style.display = "none";
+            });
+          } else {
+            document.getElementById('user-type-indicator').textContent = "Basic User";
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Error verifying user:", err);
+        window.location.href = "/";
+      });
     }
   </script>
 </body>
