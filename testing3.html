@@ -1,821 +1,2464 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <link rel="manifest" href="/manifest.json">
-
-  <!-- Favicon and Apple Touch Icon -->
-  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-  <!-- Apple Web App Settings -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Intuition Trades" />
-
-  <!-- Meta for iOS Spotlight, Siri Suggestions, and SEO -->
-  <meta name="description" content="Stock research and trading insights from Intuition Trades." />
-  <meta property="og:title" content="Intuition Trades" />
-  <meta property="og:description" content="Smarter stock decisions powered by market intuition." />
-  <meta property="og:image" content="/apple-touch-icon.png" />
-
-  <!-- different sizes icons -->
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="manifest" href="/site.webmanifest">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Advanced Stock Analysis</title>
   
-  <script src="https://code.highcharts.com/stock/highstock.js"></script>
-  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+    <!-- Include Plotly for other charting needs -->
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+    <!-- Include Highcharts for Technical Analysis Chart -->
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <!-- Include Math.js so that 'math' is defined -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  </head>
+  
+<style>
+  /* Updated dark, modern styling similar to main page */
+  :root {
+    --primary-bg: #111;
+    --secondary-bg: #333;
+    --accent-color: #16a34a;
+    --text-color: #fff;
+    --font-family: 'Arial', sans-serif;
+    --transition-speed: 0.3s;
+  }
+  body {
+    font-family: var(--font-family);
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    margin: 0 auto;
+    max-width: 900px;
+    padding: 2rem;
+    line-height: 1.6;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  p, li {
+    margin-bottom: 0.75em;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: 500;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: var(--accent-color);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background var(--transition-speed);
+  }
+  button:hover {
+    background: #1e3a8a;
+  }
+  .section {
+    margin-top: 30px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  .section h2 {
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  /* Aggregated bar meter styling */
+  #aggregateSection {
+    display: none;
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  #aggregateBar {
+    position: relative;
+    background: linear-gradient(to right, red, var(--accent-color));
+    height: 30px;
+    border-radius: 15px;
+    margin: 10px 0;
+  }
+  #aggregateMarker {
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: #fff;
+  }
+  #aggregateScoreText {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    line-height: 30px;
+    font-weight: bold;
+    color: var(--text-color);
+    text-shadow: 1px 1px 2px #000;
+  }
+  /* Chart container styling (Highcharts will render into these divs) */
+  .chartContainer {
+    margin-top: 20px;
+    height: 400px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+  }
+  /* New overlay for simulation loading */
+  #countdownOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  #countdownOverlay .circle {
+    border: 8px solid #444;
+    border-top: 8px solid var(--accent-color);
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    animation: spin 2s linear infinite;
+    margin-bottom: 20px;
+  }
+  #loadingText {
+    font-size: 1.2rem;
+    color: var(--accent-color);
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  /* Back button style */
+  button.backBtn {
+    background: var(--accent-color);
+    margin-bottom: 20px;
+  }
+  /* Remove extra space under the Monte Carlo chart container */
+#mcSection {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
 
-  <meta name="google-site-verification" content="..." />
-  <meta charset="UTF-8">
-  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
-  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="api/ticker.js"></script>
+/* Style the slider to be wider */
+#mcSliderSection input[type="range"] {
+  width: 100%;   /* Make the slider span full width of its container */
+  margin: 10px 0; /* Optional: adjust vertical spacing */
+}
 
-  <style>
-    :root {
-      /* Base typography and color variables */
-      --font-family: 'Arial', sans-serif;
-      --text-color: #fff;
-      --primary-bg: #333;
-      --secondary-bg: #444;
-      --section-bg: rgba(0, 0, 0, 0.33);
-      --accent-color: #16a34a;
+/* Optional: reduce spacing inside the slider section */
+#mcSliderSection {
+  margin: 0;
+  padding: 0;
+}
+/* Styling for the ticker suggestions dropdown */
+#ticker-suggestions {
+  position: absolute;
+  background-color: var(--secondary-bg);
+  border: 1px solid #555;
+  width: calc(100% - 20px);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
 
-      /* Spacing and sizing */
-      --base-font-size: 16px;
-      --line-height: 1.5;
-      --heading-margin-bottom: 1rem;
-      --section-padding: 3rem 1rem;
-      --section-margin-bottom: 2rem;
-      --button-padding: 0.5rem 1rem;
-      --border-radius: 4px;
-      --transition-speed: 0.3s;
-    }
-    
-    /* Global Reset & Base Styles */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { font-size: var(--base-font-size); }
-    body {
-      font-family: var(--font-family);
-      color: var(--text-color);
-      background-color: #111;
-      line-height: var(--line-height);
-    }
-    a { text-decoration: none; color: inherit; }
-    h1, h2, h3, h4, h5, h6 { margin-bottom: var(--heading-margin-bottom); font-weight: normal; }
+#ticker-suggestions li {
+  padding: 8px;
+  cursor: pointer;
+}
 
-    /* Fixed Background Element */
-    .background-fixed {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: url('/images/hero-background.png') no-repeat center center;
-      background-size: cover;
-      z-index: -9999;
-      transform: translateZ(0);
-    }
-    @media (max-width: 768px) {
-      .background-fixed {
-        background: url('/images/hero-background.png') no-repeat center center;
-        background-size: cover;
-      }
-    }
+#ticker-suggestions li:hover {
+  background-color: var(--accent-color);
+  color: #fff;
+}
 
-    /* Hero Section */
-    .hero {
-      position: relative;
-      padding: var(--section-padding);
-      text-align: center;
-    }
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 0;
-    }
-    .hero-content { position: relative; z-index: 1; }
-    #heroChart {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: 1;
-    }
-    #heroPrice {
-      position: absolute;
-      top: 20px; right: 20px;
-      z-index: 3;
-      font-size: 2vw;
-      font-weight: bold;
-      color: var(--text-color);
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    }
-    @media (max-width: 600px) {
-      #heroPrice { font-size: 3vw; }
-    }
 
-    /* Top Navigation & Mobile Menu Styles (Kept as-is) */
-    .topnav {
-      background-color: var(--primary-bg);
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-    }
-    .topnav ul { display: flex; list-style: none; }
-    .topnav ul li { position: relative; flex: none; }
-    .topnav ul li a {
-      display: block; padding: 0.875rem 1.25rem;
-      color: var(--text-color);
-      transition: background-color var(--transition-speed), color var(--transition-speed);
-    }
-    .topnav ul li a:hover {
-      background-color: #ddd; color: #333;
-    }
-    .dropdown-menu {
-      position: absolute;
-      top: -9999px; left: -9999px;
-      display: none;
-      background-color: var(--primary-bg);
-      min-width: 9.375rem;
-      list-style: none; padding: 0; margin: 0;
-    }
-    .dropdown-menu li a {
-      display: block; padding: 0.875rem 1.25rem;
-      color: var(--text-color);
-      background-color: var(--primary-bg);
-      transition: background-color var(--transition-speed), color var(--transition-speed);
-    }
-    .dropdown-menu li a:hover {
-      background-color: #ddd; color: #333;
-    }
-    .mobile-menu-toggle {
-      background: none; border: none;
-      padding: 0.875rem 1.25rem;
-      cursor: pointer;
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      display: block;
-    }
-    .mobile-menu-toggle svg { vertical-align: middle; }
-    .mobile-menu {
-      position: fixed;
-      top: 0; left: -100%;
-      width: 80%;
-      max-width: 18.75rem;
-      height: 100%;
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      overflow-y: auto;
-      transition: left var(--transition-speed) ease;
-      z-index: 1500;
-      padding-top: 1rem;
-    }
-    .mobile-menu.open { left: 0; }
-    .mobile-menu nav ul { list-style: none; padding: 0; margin: 0; }
-    .mobile-menu nav ul li { border-bottom: 0.0625rem solid #444; }
-    .mobile-menu nav ul li a,
-    .mobile-menu nav ul li .submenu-toggle {
-      display: block; padding: 0.625rem 1.25rem;
-      color: var(--text-color);
-      cursor: pointer;
-    }
-    .mobile-menu nav ul li a:hover,
-    .mobile-menu nav ul li .submenu-toggle:hover {
-      background-color: #ddd; color: #333;
-    }
-    .mobile-menu nav ul li ul.submenu {
-      display: none; background-color: var(--secondary-bg);
-    }
-    .mobile-menu nav ul li ul.submenu li a { padding-left: 2.5rem; }
-    .mobile-menu .close-menu {
-      background: none; border: none;
-      color: var(--text-color); font-size: 1.5rem;
-      position: absolute;
-      top: 0.625rem; right: 0.625rem;
-      cursor: pointer;
-    }
-
-    /* Countdown Section */
-    .countdown-section {
-      text-align: center;
-      padding: var(--section-padding);
-      background-color: var(--section-bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: var(--section-margin-bottom);
-    }
-    .countdown-title {
-      font-size: 1.2rem; margin-bottom: 1rem;
-    }
-    .flip-clock {
-      display: flex; align-items: center; justify-content: center;
-      background: #222; padding: 1rem; border-radius: var(--border-radius);
-      margin-bottom: 1rem;
-    }
-    .flip-unit {
-      display: flex; flex-direction: column; align-items: center;
-      margin: 0 0.5rem;
-    }
-    .flip-number {
-      font-size: 2rem; background: var(--primary-bg);
-      padding: 0.5rem 1rem; border-radius: var(--border-radius);
-      margin-bottom: 0.25rem; min-width: 2ch; text-align: center;
-      box-shadow: inset 0 -0.25rem 0 rgba(0,0,0,0.3);
-    }
-    .flip-label { font-size: 0.8rem; text-transform: uppercase; }
-    .flip-separator { font-size: 2rem; margin: 0 0.5rem; user-select: none; }
-
-    /* Newsletter Signup Section */
-    #newsletter-signup {
-      padding: var(--section-padding);
-      background-color: var(--section-bg);
-      text-align: center;
-      margin-bottom: var(--section-margin-bottom);
-    }
-    #newsletter-signup h2 { font-size: 2rem; margin-bottom: 1rem; }
-    #newsletter-signup form {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 1rem; max-width: 25rem; margin: 0 auto;
-    }
-    #newsletter-signup input {
-      padding: 0.75rem; width: 100%;
-      border: 0.0625rem solid #ccc;
-      border-radius: var(--border-radius);
-      color: #000;
-    }
-    #newsletter-signup button {
-      padding: 0.75rem 1.5rem;
-      background-color: var(--primary-bg);
-      border-radius: var(--border-radius);
-      transition: background-color var(--transition-speed);
-    }
-    #newsletter-signup button:hover { background-color: #ddd; color: #333; }
-
-    /* Feedback Section */
-    #feedback-section {
-      text-align: center;
-      padding: var(--section-padding);
-      background-color: var(--section-bg);
-      margin-top: var(--section-margin-bottom);
-    }
-    #feedback-section h2 { font-size: 2rem; margin-bottom: 0.5rem; }
-    #feedback-section p { margin-bottom: 1.5rem; }
-    #feedback-section a {
-      padding: 0.75rem 1.5rem;
-      background-color: var(--primary-bg);
-      border-radius: 0.3125rem;
-      transition: background-color var(--transition-speed);
-    }
-    #feedback-section a:hover { background-color: #555; }
-
-    /* Back Button */
-    .back-button {
-      display: inline-block;
-      margin: 1rem 0;
-      padding: 0.75rem 1.5rem;
-      background-color: var(--primary-bg);
-      border-radius: var(--border-radius);
-      transition: background-color var(--transition-speed);
-      cursor: pointer;
-    }
-    .back-button:hover { background-color: #ddd; color: #333; }
-
-    /* Tools Section */
-    #tools {
-      padding: var(--section-padding);
-      background-color: var(--section-bg);
-      margin-bottom: var(--section-margin-bottom);
-    }
-    #tools h2 {
-      text-align: center;
-      margin-bottom: 1.5rem;
-      font-size: 2rem;
-    }
-    .tool-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
-      gap: 1.5rem;
-      padding: 0 2rem;
-    }
-    .tool-card {
-      background: rgba(0, 0, 0, 0.7);
-      border-radius: 0.375rem;
-      overflow: hidden;
-      box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
-      text-align: center;
-      padding-bottom: 1rem;
-      transition: transform 0.2s;
-    }
-    .tool-card:hover { transform: translateY(-0.125rem); }
-    .tool-card img {
-      width: 100%;
-      height: 9.375rem; /* 150px */
-      object-fit: cover;
-    }
-    .tool-card h2 {
-      margin: 1rem 0 0.5rem;
-      font-size: 1.25rem;
-    }
-    .tool-card p { margin: 0 1rem 1rem; }
-    .tool-button {
-      display: inline-block;
-      padding: var(--button-padding);
-      background: #000;
-      border-radius: var(--border-radius);
-      transition: background var(--transition-speed);
-      color: #fff;
-    }
-    .tool-button:hover { background: #005fa3; }
-
-    /* Live News Section Styles (Kept as-is) */
-    /* ... (you can leave these styles unchanged as needed) ... */
-  </style>
-</head>
+</style>
 <body>
-  <!-- Fixed Background Element -->
-  <div class="background-fixed"></div>
+  <!-- Back to Main Page button -->
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 
-  <!-- Mobile Header: Hamburger Toggle -->
-  <header>
-    <button class="mobile-menu-toggle" id="openMenu" aria-label="Open Menu">
-      <svg viewBox="0 0 18 16" width="24" height="24">
-        <rect y="2" width="18" height="2" fill="white"></rect>
-        <rect y="7" width="18" height="2" fill="white"></rect>
-        <rect y="12" width="18" height="2" fill="white"></rect>
-      </svg>
-    </button>
-  </header>
+  <h1>Advanced Stock Analysis</h1>
+  <p>Enter a ticker and pick an investment timeframe. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
+  Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, Monte Carlo, etc.</p>
 
-  <!-- Mobile Sidebar Menu -->
-  <div class="mobile-menu" id="mobileMenu">
-    <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
-    <nav>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li>
-          <span class="submenu-toggle">Tools &#9662;</span>
-          <ul class="submenu">
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
-            <li><a href="risk/">Risk Reward Index</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-          </ul>
-        </li>
-        <li>
-          <span class="submenu-toggle">Tutorials &#9662;</span>
-          <ul class="submenu">
-            <li><a href="/tutorials/">Go to Tutorials</a></li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
+  <!-- Replace the Future Date input with this dropdown -->
+<label for="investmentTimeframe">Select Investment Timeframe:</label>
+<select id="investmentTimeframe">
+    <option value="">-- Select Timeframe --</option>
+    <option value="short">Short Term</option>
+    <option value="medium">Medium Term</option>
+    <option value="long">Long Term</option>
+</select>
+
+
+
+  <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
+  <input type="text" id="ticker" value="AAPL">
+  <ul id="ticker-suggestions"></ul>
+  <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
+  
+  
+
+
+  <!-- Manual override for historical period (optional) -->
+  <label style="margin-top:15px;">
+    <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
+  </label>
+  <div id="manualPeriodDiv">
+    <label for="manualPeriod">Historical Period (months):</label>
+    <input type="number" id="manualPeriod" min="1">
   </div>
 
-  <!-- Desktop Inline Menu for Larger Screens -->
-  <header>
-    <nav class="header__inline-menu topnav">
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li class="dropdown">
-          <a href="#tools" class="parent-link">Tools</a>
-          <ul class="dropdown-menu">
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
-            <li><a href="risk/">Risk Reward Index</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-          </ul>
-        </li>
-        <li class="dropdown">
-          <a href="/tutorials/" class="parent-link">Tutorials</a>
-          <ul class="dropdown-menu"></ul>
-        </li>
-      </ul>
-    </nav>
-  </header>
+  <!-- Weights & Scaling override checkbox -->
+  <label style="margin-top:15px;">
+    <input type="checkbox" id="useManualWeightsCheckbox"> Use Manual Weights &amp; Scaling
+  </label>
+  <div id="manualWeightsSection">
+    <label>Select Market Regime (for quick auto-fill): 
+      <select id="manualRegimeSelect">
+        <option value="Neutral">Neutral</option>
+        <option value="Bull">Bull</option>
+        <option value="Bear">Bear</option>
+      </select>
+    </label>
 
-  <!-- Hero Section -->
-  <header class="hero">
-    <div id="heroChart"></div>
-    <div id="heroPrice"></div>
-    <div class="hero-content">
-      <h1>Intuition Trades</h1>
-      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
+    <label>Monte Carlo Weight (0..1):
+      <input type="number" id="wMC" value="0.10" min="0" max="1" step="0.01">
+    </label>
+    <label>Technical Weight (0..1):
+      <input type="number" id="wTech" value="0.15" min="0" max="1" step="0.01">
+    </label>
+    <label>Sentiment Weight (0..1):
+      <input type="number" id="wSent" value="0.20" min="0" max="1" step="0.01">
+    </label>
+    <label>Insider Weight (0..1):
+      <input type="number" id="wIns" value="0.15" min="0" max="1" step="0.01">
+    </label>
+    <label>Fundamental Weight (0..1):
+      <input type="number" id="wFund" value="0.25" min="0" max="1" step="0.01">
+    </label>
+    <label>Congress Weight (0..1):
+      <input type="number" id="wCong" value="0.15" min="0" max="1" step="0.01">
+    </label>
+    <label>Scaling Factor [0..2]:
+      <input type="number" id="manualScale" value="1.00" min="0" max="2" step="0.01">
+    </label>
+  </div>
+
+  <button id="simulateButton">Run Simulation</button>
+  <div id="loading" style="display:none;">Loading data and running simulation...</div>
+
+  <!-- Aggregated Signal Bar Meter -->
+  <div id="aggregateSection" class="section">
+    <h2>Aggregated Signal</h2>
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">Sell</span>
+      <div id="aggregateBar" style="flex-grow: 1; position: relative;">
+        <div id="aggregateMarker"></div>
+        <span id="aggregateScoreText"></span>
+      </div>
+      <span style="margin-left: 10px; font-weight: bold;">Buy</span>
     </div>
-  </header>
+  </div>
 
-  <!-- Countdown Section -->
-  <section class="countdown-section">
-    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
-    <div class="flip-clock" id="flipClock">
-      <div class="flip-unit">
-        <span class="flip-number" id="days">00</span>
-        <span class="flip-label">Days</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="hours">00</span>
-        <span class="flip-label">Hours</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="minutes">00</span>
-        <span class="flip-label">Minutes</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="seconds">00</span>
-        <span class="flip-label">Seconds</span>
-      </div>
+  <!-- Company Description -->
+  <div id="descriptionSection" class="section" style="display:none;">
+    <h2>Company Overview</h2>
+    <p id="companyDescription"></p>
+  </div>
+
+<!-- Fundamental Section (hidden until simulation runs) -->
+<div id="fundamentalSection" style="display: none;">
+  <h2>Fundamental Analysis Score</h2>
+  <div id="fundamentalCharts" style="height:400px;"></div>
+  <div id="fundamentalText" style="margin-top:10px; font-weight:600;"></div>
+  <button id="fundamentalLinkButton">More Fundamental Analysis</button>
+</div>
+
+  <!-- Technical -->
+  <div id="techSection" class="section" style="display:none;">
+    <h2>Technical Bullish Score</h2>
+    <div id="techChart"></div>
+    <div id="techDetails" style="margin-top:10px; font-weight:600;"></div>
+    <button id="technicalLinkButton">More Technical Analysis</button>
+  </div>
+
+  <!-- Monte Carlo -->
+  <div id="mcSection" class="section" style="display:none;">
+    <h2>Monte Carlo Simulation (GBM)</h2>
+    <div id="mcChart"></div>
+    <div id="mcBullScore" style="margin-top:10px; font-weight:600;"></div>
+    <div id="mcSliderSection" style="margin-top: 20px;"></div>
+  </div>
+
+  <!-- Sentiment -->
+  <div id="sentSection" class="section" style="display:none;">
+    <h2>Sentiment Analysis</h2>
+    <div id="sentChart"></div>
+    <div id="sentDetails" style="margin-top:10px; font-weight:600;"></div>
+    <button id="sentimentLinkButton">More Sentiment Analysis</button>
+  </div>
+
+  <!-- Insider -->
+  <div id="insiderSection" class="section" style="display:none;">
+    <h2>Insider Trading Activity</h2>
+    <div id="insiderChart"></div>
+    <div id="insiderDetails" style="margin-top:10px; font-weight:600;"></div>
+    <button id="insiderLinkButton">More Insider Analysis</button>
+  </div>
+
+  <!-- Congress -->
+  <div id="congressSection" class="section" style="display:none;">
+    <h2>Congress Trading Activity</h2>
+    <div id="congressChart"></div>
+    <div id="congressDetails" style="margin-top:10px; font-weight:600;"></div>
+    <div class="linkButtons">
+      <button id="congressLinkButton">More Congress Analysis</button>
     </div>
-    <button class="newsletter-btn" id="scrollToSignup">
-      Receive Top Picks Earlier
-    </button>
-  </section>
+  </div>
 
-  <!-- Tools Section (Only Two Tools) -->
-  <section id="tools">
-    <h2>Tools</h2>
-    <div class="tool-grid">
-      <!-- Basic Tool Card -->
-      <div class="tool-card basic">
-        <h2>Basic Tool</h2>
-        <p>This tool is available to all users.</p>
-        <a href="/basic-tool" class="tool-button">Open Basic Tool</a>
-      </div>
-      <!-- Premium Tool Card (Locked visual is removed) -->
-      <div class="tool-card premium">
-        <h2>Premium Tool</h2>
-        <p>This tool is available only to premium users.</p>
-        <!-- Instead of a lock overlay, we simply show the button -->
-        <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
-      </div>
-    </div>
-  </section>
+  <!-- Explanation Section -->
+  <div id="explanation">
+    <button id="explanationButton">View Detailed Explanation</button>
+  </div>
 
-  <!-- Feedback Section -->
-  <section id="feedback-section">
-    <h2>Your Feedback</h2>
-    <p>Help us improve our site. Share your requests or ideas.</p>
-    <a href="feedback.html" class="back-button">Leave Feedback</a>
-  </section>
+  <!-- NEW: Circular Buffer Overlay (Spinning Circle and Animated Text) -->
+  <div id="countdownOverlay">
+    <div class="circle"></div>
+    <div id="loadingText">Analysing data and running 10,000 simulations</div>
+  </div>
 
-  <!-- Footer -->
-  <footer>
-    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
-  </footer>
+ <script>
+  let simulationReport = null;
+  let globalFinalPrices = [];
+  let bufferDotInterval;
+  let debounceTimeout;
 
-  <!-- ============================================================
-       JavaScript Section
-  ============================================================ -->
-  <script>
-    // Desktop Dropdown & Mobile Menu Toggle
-    document.addEventListener("DOMContentLoaded", () => {
-      const canHover = window.matchMedia('(hover: hover)').matches;
-      const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
-      if (canHover) {
-        desktopDropdowns.forEach(drop => {
-          const dropdownMenu = drop.querySelector('.dropdown-menu');
-          drop.addEventListener('mouseenter', () => {
-            const rect = drop.getBoundingClientRect();
-            document.body.appendChild(dropdownMenu);
-            dropdownMenu.style.position = 'fixed';
-            dropdownMenu.style.top = rect.bottom + 'px';
-            dropdownMenu.style.left = rect.left + 'px';
-            dropdownMenu.style.display = 'block';
-            dropdownMenu.style.zIndex = '10000';
-          });
-          drop.addEventListener('mouseleave', () => {
-            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
-          dropdownMenu.addEventListener('mouseleave', () => {
-            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
-        });
-        window.addEventListener('scroll', () => {
-          desktopDropdowns.forEach(drop => {
-            const dropdownMenu = drop.querySelector('.dropdown-menu');
-            if (dropdownMenu.style.position === 'fixed') {
-              drop.appendChild(dropdownMenu);
-              dropdownMenu.style.position = '';
-              dropdownMenu.style.top = '';
-              dropdownMenu.style.left = '';
-              dropdownMenu.style.width = '';
-              dropdownMenu.style.display = 'none';
-            }
-          });
-        });
-      } else {
-        desktopDropdowns.forEach(drop => {
-          const parentLink = drop.querySelector('.parent-link');
-          const dropdownMenu = drop.querySelector('.dropdown-menu');
-          dropdownMenu.style.display = 'none';
-          parentLink.addEventListener('click', e => {
-            e.preventDefault();
-            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
-          });
+  // Auto-populate futureDate with next month's date
+  (function setDefaultFutureDate() {
+    const futureDateInput = document.getElementById('futureDate');
+    const today = new Date();
+    const nextMonthDate = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      today.getDate()
+    );
+    const isoDate = nextMonthDate.toISOString().split('T')[0];
+    futureDateInput.value = isoDate;
+  })();
+
+  // Show/hide manual historical period
+  document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
+    document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
+  });
+
+  // Show/hide manual weights
+  const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
+  const manualWeightsSection = document.getElementById("manualWeightsSection");
+  useManualWeightsCheckbox.addEventListener("change", () => {
+    manualWeightsSection.style.display = useManualWeightsCheckbox.checked ? "block" : "none";
+  });
+
+  // Update manual weight values based on regime selection.
+  document.getElementById("manualRegimeSelect").addEventListener("change", function(){
+    const val = this.value;
+    if(val==="Bear"){
+      document.getElementById("wMC").value   = 0.05;
+      document.getElementById("wTech").value = 0.05;
+      document.getElementById("wSent").value = 0.10;
+      document.getElementById("wIns").value  = 0.30;
+      document.getElementById("wFund").value = 0.30;
+      document.getElementById("wCong").value = 0.20;
+      document.getElementById("manualScale").value = 0.25;
+    } else if(val==="Bull"){
+      document.getElementById("wMC").value   = 0.20;
+      document.getElementById("wTech").value = 0.25;
+      document.getElementById("wSent").value = 0.15;
+      document.getElementById("wIns").value  = 0.15;
+      document.getElementById("wFund").value = 0.15;
+      document.getElementById("wCong").value = 0.10;
+      document.getElementById("manualScale").value = 1.00;
+    } else {
+      document.getElementById("wMC").value   = 0.15;
+      document.getElementById("wTech").value = 0.20;
+      document.getElementById("wSent").value = 0.15;
+      document.getElementById("wIns").value  = 0.15;
+      document.getElementById("wFund").value = 0.20;
+      document.getElementById("wCong").value = 0.15;
+      document.getElementById("manualScale").value = 0.50;
+    }
+  });
+
+  /***********************************************
+   * Utility Functions & Data Processing
+   ***********************************************/
+  function parseAlphaDate(str) {
+    const year  = str.substring(0,4);
+    const month = str.substring(4,6);
+    const day   = str.substring(6,8);
+    const hour  = str.substring(9,11) || "00";
+    const min   = str.substring(11,13) || "00";
+    const sec   = str.substring(13,15) || "00";
+    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+  }
+  function processHistoricalData(timeSeries, periodMonths) {
+    const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+    const endDate = new Date(dates[dates.length - 1]);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - periodMonths);
+    let prices = [];
+    for (let date of dates) {
+      const dt = new Date(date);
+      if (dt >= startDate && dt <= endDate) {
+        prices.push({
+          date: dt,
+          close: parseFloat(timeSeries[date]["5. adjusted close"]),
+          // Ensure high and low values are available:
+          high: parseFloat(timeSeries[date]["2. high"]),
+          low: parseFloat(timeSeries[date]["3. low"])
         });
       }
-    });
-    
-    const openMenuBtn = document.getElementById("openMenu");
-    const closeMenuBtn = document.getElementById("closeMenu");
-    const mobileMenu = document.getElementById("mobileMenu");
-    openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
-    closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
-    const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
-    submenuToggles.forEach(toggle => {
-      toggle.addEventListener("click", () => {
-        const submenu = toggle.nextElementSibling;
-        if (submenu.style.display === "block") {
-          submenu.style.display = "none";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
-        } else {
-          submenu.style.display = "block";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
-        }
+    }
+    prices.sort((a, b) => a.date - b.date);
+    return prices;
+  }
+  function computeFundScores(data) {
+    const norm = (val, min, max) => {
+      if(!val || isNaN(val)) return 50;
+      let ratio = (val - min)/(max - min);
+      let scaled = ratio * 100;
+      return Math.max(0, Math.min(100, scaled));
+    };
+    let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
+    let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
+    let roa    = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
+    let roe    = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
+    let profitability = (margin + opMarg + roa + roe) / 4;
+    let pe = parseFloat(data.PERatio);
+    let peScore = 100 - norm(pe, 5, 40);
+    let peg = parseFloat(data.PEGRatio);
+    let pegScore = 100 - norm(peg, 0.5, 2.5);
+    let ps = parseFloat(data.PriceToSalesRatioTTM);
+    let psScore = 100 - norm(ps, 1, 10);
+    let pb = parseFloat(data.PriceToBookRatio);
+    let pbScore = 100 - norm(pb, 1, 10);
+    let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+    let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+    let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+    let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
+    let ratio = 0;
+    if(pRef > 0 && data.AnalystTargetPrice){
+      ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
+    }
+    let tgtScore = norm(ratio, 0, 0.5);
+    let growth = (rg + eg + tgtScore) / 3;
+    let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
+    let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
+    let eps = norm(parseFloat(data.EPS), 0, 12);
+    let dividends = (dy + dps + eps) / 3;
+    let ebitda = parseFloat(data.EBITDA);
+    let revTTM = parseFloat(data.RevenueTTM);
+    let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+    let evEbitda = parseFloat(data.EVToEBITDA);
+    let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+    let beta = parseFloat(data.Beta);
+    let betaScore = 50;
+    if(!isNaN(beta)){
+      betaScore = 100 - norm(beta, 0, 2);
+    }
+    let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+    return {
+      profitability,
+      valuation,
+      growth,
+      dividends,
+      financial
+    };
+  }
+  function plotFundamentalCategories(categories) {
+    const catNames = [];
+    const seriesData = [];
+    for (const [key, value] of Object.entries(categories)) {
+      catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
+      seriesData.push({
+        y: value,
+        color: interpolateColor(value)
       });
+    }
+    Highcharts.chart('fundamentalCharts', {
+      chart: { type: 'column', backgroundColor: 'transparent' },
+      title: { text: 'Fundamental Categories', style: { color: '#fff' } },
+      xAxis: { categories: catNames, title: { text: null }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
+      yAxis: { min: 0, max: 100, title: { text: 'Score', style: { color: '#fff' } }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
+      tooltip: { formatter: function() { return this.x + ": " + Highcharts.numberFormat(this.y, 1); } },
+      series: [{ name: 'Score', data: seriesData }],
+      legend: { enabled: false },
+      credits: { enabled: false }
+    });
+  }
+
+  /***********************************************
+   * Technical Analysis & Ichimoku Calculation
+   ***********************************************/
+  function computeIchimoku(prices) {
+    let tenkan = [];
+    let kijun = [];
+    let senkouA = [];
+    let senkouB = [];
+    // Tenkan-sen (Conversion Line): 9-period high/low average
+    for (let i = 8; i < prices.length; i++) {
+      let period9 = prices.slice(i - 8, i + 1);
+      let high9 = Math.max(...period9.map(p => p.high));
+      let low9 = Math.min(...period9.map(p => p.low));
+      tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
+    }
+    // Kijun-sen (Base Line): 26-period high/low average
+    for (let i = 25; i < prices.length; i++) {
+      let period26 = prices.slice(i - 25, i + 1);
+      let high26 = Math.max(...period26.map(p => p.high));
+      let low26 = Math.min(...period26.map(p => p.low));
+      kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+    }
+    // Senkou Span A (Leading Span A): Average of Tenkan and Kijun, shifted 26 periods forward
+    let minLen = Math.min(tenkan.length, kijun.length);
+    for (let i = 0; i < minLen; i++) {
+      let baseDate = kijun[i].date;
+      let senkouDate = new Date(baseDate);
+      senkouDate.setDate(senkouDate.getDate() + 26);
+      senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+    }
+    // Senkou Span B (Leading Span B): 52-period high/low average, shifted 26 periods forward
+    for (let i = 51; i < prices.length; i++) {
+      let period52 = prices.slice(i - 51, i + 1);
+      let high52 = Math.max(...period52.map(p => p.high));
+      let low52 = Math.min(...period52.map(p => p.low));
+      let baseDate = prices[i].date;
+      let senkouDate = new Date(baseDate);
+      senkouDate.setDate(senkouDate.getDate() + 26);
+      senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+    }
+    // Chikou Span (Lagging Span): Current close shifted 26 periods back
+    let chikou = [];
+    for (let i = 26; i < prices.length; i++) {
+      chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+    }
+    return {
+      tenkan: tenkan,
+      kijun: kijun,
+      senkouA: senkouA,
+      senkouB: senkouB,
+      chikou: chikou
+    };
+  }
+  
+  function computeEMA(prices, period) {
+    let ema = [];
+    let multiplier = 2 / (period + 1);
+    let sum = 0;
+    for (let i = 0; i < period; i++) { sum += prices[i].close; }
+    let prevEma = sum / period;
+    ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+    for (let i = period; i < prices.length; i++){
+      let cur = prices[i].close;
+      let nextEma = (cur - prevEma) * multiplier + prevEma;
+      ema[i] = { date: prices[i].date, ema: nextEma };
+      prevEma = nextEma;
+    }
+    return ema.filter(x => x !== undefined);
+  }
+  function computeMACD(prices, fast=12, slow=26, signal=9) {
+    let fastEMA = computeEMA(prices, fast);
+    let slowEMA = computeEMA(prices, slow);
+    let macdLine = [];
+    for (let i = 0; i < slowEMA.length; i++){
+      let date = slowEMA[i].date;
+      let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+      if(match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
+    }
+    if(macdLine.length < signal) return { macdLine, signalLine: [] };
+    let m = 2 / (signal + 1);
+    let sumMacd = 0;
+    for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
+    let prevSig = sumMacd / signal;
+    let signalLine = [];
+    signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
+    for(let i = signal; i < macdLine.length; i++){
+      let s = (macdLine[i].macd - prevSig) * m + prevSig;
+      signalLine[i] = { date: macdLine[i].date, signal: s };
+      prevSig = s;
+    }
+    signalLine = signalLine.filter(x => x !== undefined);
+    return { macdLine, signalLine };
+  }
+  function computeRSI(prices, period=14){
+    let rsis = [];
+    for(let i = period; i < prices.length; i++){
+      let gains = 0, losses = 0;
+      for(let j = i - period + 1; j <= i; j++){
+        let diff = prices[j].close - prices[j-1].close;
+        if(diff > 0) gains += diff; else losses -= diff;
+      }
+      let avgGain = gains / period;
+      let avgLoss = losses / period;
+      let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+      let rsi = 100 - (100 / (1 + rs));
+      rsis.push({ date: prices[i].date, rsi });
+    }
+    return rsis;
+  }
+  function computeBollingerBands(prices, period=20, k=2){
+    let bands = [];
+    for(let i = period - 1; i < prices.length; i++){
+      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+      let sma = slice.reduce((a, b) => a + b, 0) / period;
+      let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
+      let std = Math.sqrt(variance);
+      bands.push({
+        date: prices[i].date,
+        sma: sma,
+        upper: sma + k * std,
+        lower: sma - k * std
+      });
+    }
+    return bands;
+  }
+  function computeWMA(prices, period=20){
+    let wmas = [];
+    for(let i = period - 1; i < prices.length; i++){
+      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+      let numerator = 0, denominator = 0;
+      for(let j = 0; j < period; j++){
+        let weight = j + 1;
+        numerator += slice[j] * weight;
+        denominator += weight;
+      }
+      wmas.push({ date: prices[i].date, wma: numerator / denominator });
+    }
+    return wmas;
+  }
+  function scoreRSI(latestRSI, prevRSI){
+    let rel = 50 - latestRSI;
+    let base = 100 / (1 + Math.exp(-0.05 * rel));
+    let dRSI = prevRSI - latestRSI;
+    return base * (1 + 0.01 * dRSI);
+  }
+  function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
+    let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+    let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+    let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+    let dPercentB = prevPercentB - currentPercentB;
+    return baseBB * (1 + 0.1 * dPercentB);
+  }
+  function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
+    let currentX = (latestPrice / latestWMA) - 1;
+    let prevX = (prevPrice / prevWMA) - 1;
+    let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+    let dx = prevX - currentX;
+    return baseWMA * (1 + 0.5 * dx);
+  }
+  function polynomialRegression(x, y, degree){
+    let X = [];
+    for(let i = 0; i < x.length; i++){
+      let row = [];
+      for(let j = 0; j <= degree; j++){
+        row.push(Math.pow(x[i], j));
+      }
+      X.push(row);
+    }
+    let XT = math.transpose(X);
+    let XTX = math.multiply(XT, X);
+    let XTy = math.multiply(XT, y);
+    let coeffsMatrix = math.lusolve(XTX, XTy);
+    return coeffsMatrix.map(val => val[0]);
+  }
+  function predictValue(coeffs, x){
+    return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
+  }
+  function computeMomentumScoreUsingRegression(histValues){
+    if(histValues.length < 6) return null;
+    const recent = histValues.slice(-6);
+    const x = [1, 2, 3, 4, 5, 6];
+    const coeffs = polynomialRegression(x, recent, 1);
+    const predicted = predictValue(coeffs, 7);
+    const lastValue = recent[recent.length - 1];
+    const delta = predicted - lastValue;
+    const k = 5;
+    const score = 100 / (1 + Math.exp(-k * delta));
+    return score;
+  }
+  function computeGapTrendScore(macdLine, signalLine){
+    if(macdLine.length < 6 || signalLine.length < 6) return null;
+    const recentMACD = macdLine.slice(-6).map(item => item.macd);
+    const recentSignal = signalLine.slice(-6).map(item => item.signal);
+    const x = [1, 2, 3, 4, 5, 6];
+    const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+    const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+    const predictedMACD = predictValue(macdCoeffs, 7);
+    const predictedSignal = predictValue(signalCoeffs, 7);
+    const predictedGap = predictedMACD - predictedSignal;
+    const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+    const delta = predictedGap - currentGap;
+    const k = 5;
+    const gapScore = 100 / (1 + Math.exp(-k * delta));
+    return { gapScore, delta, currentGap, predictedGap };
+  }
+  function computeNewMACDScore(prices){
+    const macdData = computeMACD(prices);
+    const macdLine = macdData.macdLine;
+    const signalLine = macdData.signalLine;
+    if(macdLine.length < 2 || signalLine.length < 2) return 50;
+    const len = Math.min(macdLine.length, signalLine.length);
+    const latestMACD = macdLine[len - 1].macd;
+    const positionScore = 100 / (1 + Math.exp(latestMACD));
+    const gapData = computeGapTrendScore(macdLine, signalLine);
+    const gapScore = gapData ? gapData.gapScore : 50;
+    let histValues = [];
+    for(let i = 0; i < len; i++){
+      histValues.push(macdLine[i].macd - signalLine[i].signal);
+    }
+    const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+    const finalScore = (positionScore + gapScore + momentumScore) / 3;
+    return finalScore;
+  }
+
+  /***********************************************
+   * updateTechChart() – Render Technical Chart in 4 Panes
+   ***********************************************/
+  function updateTechChart(prices) {
+    // Compute technical indicators
+    let bands = computeBollingerBands(prices);
+    let wmas = computeWMA(prices);
+    let rsivals = computeRSI(prices, 14);
+    let macdData = computeMACD(prices);
+    let ichimokuData = computeIchimoku(prices);
+
+    // Helper: Convert data to Highcharts series
+    const toTimeSeries = (data, valueKey) =>
+      data.map(item => [item.date.getTime(), item[valueKey]]);
+
+    // Price Pane (yAxis 0)
+    const priceSeries = {
+      name: 'Historical',
+      data: toTimeSeries(prices, 'close'),
+      type: 'line',
+      zIndex: 3,
+      yAxis: 0
+    };
+    const smaSeries = {
+      name: 'Bollinger SMA',
+      data: toTimeSeries(bands, 'sma'),
+      type: 'line',
+      dashStyle: 'Dash',
+      color: '#555',
+      zIndex: 2,
+      yAxis: 0
+    };
+    const upperSeries = {
+      name: 'Upper Band',
+      data: toTimeSeries(bands, 'upper'),
+      type: 'line',
+      color: 'red',
+      zIndex: 1,
+      yAxis: 0
+    };
+    const lowerSeries = {
+      name: 'Lower Band',
+      data: toTimeSeries(bands, 'lower'),
+      type: 'line',
+      color: 'red',
+      zIndex: 1,
+      yAxis: 0
+    };
+    const wmaSeries = {
+      name: 'WMA',
+      data: toTimeSeries(wmas, 'wma'),
+      type: 'line',
+      color: 'orange',
+      zIndex: 2,
+      yAxis: 0
+    };
+
+    // MACD Pane (yAxis 1)
+    const macdSeries = {
+      name: 'MACD',
+      data: toTimeSeries(macdData.macdLine, 'macd'),
+      type: 'line',
+      yAxis: 1,
+      zIndex: 3
+    };
+    const signalSeries = {
+      name: 'Signal',
+      data: toTimeSeries(macdData.signalLine, 'signal'),
+      type: 'line',
+      yAxis: 1,
+      zIndex: 3
+    };
+    const macdHistogram = {
+      name: 'MACD Histogram',
+      data: macdData.macdLine.map((m, i) => {
+        let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+        return [m.date.getTime(), m.macd - sig];
+      }),
+      type: 'column',
+      yAxis: 1,
+      zIndex: 1,
+      tooltip: { valueDecimals: 2 },
+      zones: [{
+        value: 0,      
+        color: 'red'
+      }, {
+        color: 'green'
+      }]
+    };
+
+    // Ichimoku Pane (yAxis 2)
+    const tenkanSeries = {
+      name: 'Tenkan-sen',
+      data: toTimeSeries(ichimokuData.tenkan, 'value'),
+      type: 'line',
+      color: 'blue',
+      zIndex: 4,
+      yAxis: 2
+    };
+    const kijunSeries = {
+      name: 'Kijun-sen',
+      data: toTimeSeries(ichimokuData.kijun, 'value'),
+      type: 'line',
+      color: 'red',
+      zIndex: 4,
+      yAxis: 2
+    };
+    const senkouASeries = {
+      name: 'Senkou Span A',
+      data: toTimeSeries(ichimokuData.senkouA, 'value'),
+      type: 'line',
+      color: 'green',
+      zIndex: 3,
+      yAxis: 2
+    };
+    const senkouBSeries = {
+      name: 'Senkou Span B',
+      data: toTimeSeries(ichimokuData.senkouB, 'value'),
+      type: 'line',
+      color: 'brown',
+      zIndex: 3,
+      yAxis: 2
+    };
+    const chikouSeries = {
+      name: 'Chikou Span',
+      data: toTimeSeries(ichimokuData.chikou, 'value'),
+      type: 'line',
+      color: 'purple',
+      zIndex: 2,
+      yAxis: 2
+    };
+
+    // RSI Pane (yAxis 3)
+    const rsiSeries = {
+      name: 'RSI',
+      data: toTimeSeries(rsivals, 'rsi'),
+      type: 'line',
+      yAxis: 3,
+      zIndex: 2
+    };
+
+    // Build the chart with 4 vertical panes:
+    // yAxis 0 (Price): Top 40%
+    // yAxis 1 (MACD): 20% (top: 40%)
+    // yAxis 2 (Ichimoku): 20% (top: 60%)
+    // yAxis 3 (RSI): 20% (top: 80%)
+    Highcharts.chart('techChart', {
+      chart: {
+        zoomType: 'x',
+        backgroundColor: 'transparent',
+        height: 1200
+      },
+      title: {
+        text: 'Combined Technical Indicators',
+        style: { color: '#fff' }
+      },
+      xAxis: {
+        type: 'datetime',
+        crosshair: true
+      },
+      
+  yAxis: [
+  {
+    title: { text: 'Price', style: { color: '#fff' } },
+    height: '40%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',  // You may choose 'left' if you prefer
+      x: -5,           // Adjust as needed
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'MACD', style: { color: '#fff' } },
+    top: '40%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'Ichimoku', style: { color: '#fff' } },
+    top: '60%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    }
+  },
+  {
+    title: { text: 'RSI', style: { color: '#fff' } },
+    top: '80%',
+    height: '20%',
+    lineWidth: 2,
+    gridLineColor: '#444',
+    offset: 0,
+    labels: {
+      align: 'right',
+      x: -5,
+      style: { color: '#fff' }
+    },
+    plotLines: [
+      {
+        value: 30,
+        color: 'red',
+        dashStyle: 'Dash',
+        width: 1,
+        label: { text: '30', style: { color: 'red' } }
+      },
+      {
+        value: 70,
+        color: 'red',
+        dashStyle: 'Dash',
+        width: 1,
+        label: { text: '70', style: { color: 'red' } }
+      }
+    ]
+  }
+],
+      tooltip: {
+        shared: true,
+        xDateFormat: '%Y-%m-%d'
+      },
+      legend: { itemStyle: { color: '#fff' } },
+      series: [
+        priceSeries,
+        smaSeries,
+        upperSeries,
+        lowerSeries,
+        wmaSeries,
+        macdHistogram,
+        macdSeries,
+        signalSeries,
+        tenkanSeries,
+        kijunSeries,
+        senkouASeries,
+        senkouBSeries,
+        chikouSeries,
+        rsiSeries
+      ],
+      credits: { enabled: false },
+      plotOptions: { series: { marker: { enabled: false } } },
+      style: { fontFamily: 'Arial, sans-serif' }
     });
 
-    // SPY Chart (Hero Section)
-    async function fetchSPYData() {
-      try {
-        const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
-        const data = await response.json();
-        return data;
-      } catch (err) {
-        console.error("Error fetching SPY data:", err);
-        return null;
-      }
+    // Compute individual indicator scores
+    if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
+      document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+      return 50;
     }
+    let latestPriceVal = prices[prices.length - 1].close;
+    let prevPriceVal = prices[prices.length - 2].close;
+    let latestRSI = rsivals[rsivals.length - 1].rsi;
+    let prevRSI = rsivals[rsivals.length - 2].rsi;
+    let rsiScore = scoreRSI(latestRSI, prevRSI);
+    let latestBand = bands[bands.length - 1];
+    let prevBand = bands[bands.length - 2];
+    let bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
+    let macdScore = computeNewMACDScore(prices);
+    let latestWMA = wmas[wmas.length - 1].wma;
+    let prevWMA = wmas[wmas.length - 2].wma;
+    let wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
+    let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+    let cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
+    let latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+    let latestKijunVal = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+    let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkanVal - latestKijunVal)));
+    let price26Ago = prices[prices.length - 26].close;
+    let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
+    let ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+    let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+    let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+    let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
+    document.getElementById('techDetails').innerText =
+      `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
+    
+    return aggregatedScore;
+  }
 
-    function parseSPYData(data) {
-      const seriesKey = "Time Series (1min)";
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const timestamp in raw) {
-        const rec = raw[timestamp];
-        const date = new Date(timestamp.replace(" ", "T"));
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"])
-        });
-      }
-      points.sort((a, b) => a.x - b.x);
-      return points;
+  /***********************************************
+   * Monte Carlo & Other Analysis Functions (unchanged)
+   ***********************************************/
+  function randn_bm() {
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function getMedian(arr) {
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return (sorted.length % 2 !== 0) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  function computeStats(prices) {
+    let logReturns = [];
+    for(let i = 1; i < prices.length; i++){
+      let prev = prices[i-1].close;
+      let curr = prices[i].close;
+      logReturns.push(Math.log(curr / prev));
     }
-
-    async function plotHeroChart() {
-      const rawData = await fetchSPYData();
-      if (!rawData) return;
-      const points = parseSPYData(rawData);
-      const now = new Date();
-      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const recentPoints = points.filter(p => p.x >= twentyFourHoursAgo.getTime());
-      if (recentPoints.length === 0) return;
-      const firstPrice = recentPoints[0].y;
-      const lastPrice = recentPoints[recentPoints.length - 1].y;
-      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
-      const heroPriceEl = document.getElementById('heroPrice');
-      const newPriceText = `SPY ${lastPrice.toFixed(2)}`;
-      const newColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
-      const newPriceEl = document.createElement('span');
-      newPriceEl.textContent = newPriceText;
-      newPriceEl.style.color = newColor;
-      newPriceEl.style.display = 'block';
-      newPriceEl.style.animation = 'rollUp 0.5s forwards';
-      heroPriceEl.innerHTML = '';
-      heroPriceEl.appendChild(newPriceEl);
-
-      Highcharts.stockChart('heroChart', {
-        chart: {
-          backgroundColor: 'transparent',
-          margin: [20, 20, 40, 20],
-          spacing: [0, 0, 0, 0],
-          events: { contextmenu: (e) => { e.preventDefault(); } }
-        },
-        exporting: { enabled: false, buttons: { contextButton: { enabled: false } } },
-        time: { useUTC: false },
-        rangeSelector: { enabled: false },
+    if(logReturns.length < 1){
+      return { mean: 0, stdDev: 0, lastPrice: prices[prices.length - 1].close };
+    }
+    let dailyMean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+    let variance = logReturns.reduce((sum, r) => sum + Math.pow(r - dailyMean, 2), 0) / (logReturns.length - 1);
+    let dailyStd = Math.sqrt(variance);
+    let tradingDays = 252;
+    return {
+      mean: dailyMean * tradingDays,
+      stdDev: dailyStd * Math.sqrt(tradingDays),
+      lastPrice: prices[prices.length - 1].close
+    };
+  }
+  function runMC(lastPrice, mean, stdDev, T, sims = 10000) {
+    let finals = [];
+    for(let i = 0; i < sims; i++){
+      let Z = randn_bm();
+      let ST = lastPrice * Math.exp((mean - 0.5 * Math.pow(stdDev,2)) * T + stdDev * Math.sqrt(T) * Z);
+      finals.push(ST);
+    }
+    return finals;
+  }
+  function updateMCChart(finalPrices, lastPrice) {
+    globalFinalPrices = finalPrices;
+    const minPrice = Math.min(...finalPrices);
+    const maxPrice = Math.max(...finalPrices);
+    const binCount = 20;
+    const binWidth = (maxPrice - minPrice) / binCount;
+    let bins = new Array(binCount).fill(0);
+    for (let p of finalPrices) {
+      let bin = Math.floor((p - minPrice) / binWidth);
+      if (bin >= binCount) bin = binCount - 1;
+      bins[bin]++;
+    }
+    let binCenters = [];
+    for (let i = 0; i < binCount; i++) {
+      let center = minPrice + binWidth * (i + 0.5);
+      binCenters.push(center);
+    }
+    let histogramData = [];
+    for (let i = 0; i < binCount; i++){
+      histogramData.push([binCenters[i], bins[i]]);
+    }
+    window.mcChart = Highcharts.chart('mcChart', {
+      chart: {
+        type: 'column',
+        backgroundColor: 'transparent'
+      },
+      title: {
+        text: 'Monte Carlo Distribution of Final Prices',
+        style: { color: '#fff' }
+      },
+      xAxis: {
         title: { text: null },
-        xAxis: { visible: false },
-        yAxis: { visible: false },
-        tooltip: { enabled: false },
-        credits: { enabled: false },
-        navigator: { enabled: false },
-        scrollbar: { enabled: false },
-        series: [{
-          name: 'SPY',
-          data: recentPoints.map(p => [p.x, p.y]),
-          type: 'line',
-          color: lineColor,
-          lineWidth: 2,
-          marker: { enabled: false },
-          enableMouseTracking: false
-        }]
+        crosshair: false
+      },
+      yAxis: {
+        title: { text: 'Frequency', style: { color: '#fff' } },
+        gridLineColor: '#444'
+      },
+      tooltip: {
+        formatter: function() { return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y; }
+      },
+      series: [{
+        name: 'Frequency',
+        data: histogramData,
+        color: 'gray'
+      }],
+      credits: { enabled: false }
+    });
+    let countCurrent = finalPrices.filter(p => p >= lastPrice).length;
+    let bullishScore = (countCurrent / finalPrices.length) * 100;
+    document.getElementById('mcBullScore').innerText =
+      `Monte Carlo Bullish Score: ${bullishScore.toFixed(2)}%`;
+    let medianPrice = getMedian(finalPrices);
+    let sliderHTML = `
+      <label for="priceSlider">Select Target Price:</label>
+      <input type="range" id="priceSlider" min="${minPrice.toFixed(2)}" max="${maxPrice.toFixed(2)}" step="0.01" value="${medianPrice.toFixed(2)}" oninput="updateMCSlider(this.value)">
+      <span id="sliderValue">${medianPrice.toFixed(2)}</span>
+      <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
+    `;
+    document.getElementById('mcSliderSection').innerHTML = sliderHTML;
+    updateMCSlider(medianPrice);
+    return bullishScore;
+  }
+  function updateMCSlider(val) {
+    val = parseFloat(val);
+    document.getElementById('sliderValue').textContent = val.toFixed(2);
+    let countTarget = globalFinalPrices.filter(p => p >= val).length;
+    let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+    document.getElementById('mcSliderProb').innerText =
+      `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
+    if (window.mcChart) {
+      let axis = window.mcChart.xAxis[0];
+      if (axis.removePlotLine) { axis.removePlotLine('targetPrice'); }
+      axis.addPlotLine({
+        id: 'targetPrice',
+        value: val,
+        color: 'red',
+        width: 2,
+        zIndex: 5,
+        dashStyle: 'Solid'
       });
     }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      plotHeroChart();
-      setInterval(plotHeroChart, 60000);
+  }
+  function logisticBullish(slope) {
+    const k = 0.3;
+    let raw = 100 / (1 + Math.exp(-k * slope));
+    return Math.max(0, Math.min(100, raw));
+  }
+  async function fetchSentimentData(ticker, periodMonths) {
+    let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+    let resp = await fetch(url);
+    let data = await resp.json();
+    if(!data.feed) throw new Error("No sentiment data from server.");
+    let startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - periodMonths);
+    let byHour = {};
+    for(let article of data.feed) {
+      let dt = parseAlphaDate(article.time_published);
+      if(isNaN(dt) || dt < startDate) continue;
+      if(!article.ticker_sentiment) continue;
+      let tItem = article.ticker_sentiment.find(ts => ts.ticker.toUpperCase() === ticker.toUpperCase());
+      if(!tItem) continue;
+      let raw = parseFloat(tItem.ticker_sentiment_score);
+      if(isNaN(raw)) continue;
+      let norm = ((raw + 1) / 2) * 100;
+      let hourKey = dt.toISOString().substring(0,13);
+      if(!byHour[hourKey]) byHour[hourKey] = [];
+      byHour[hourKey].push(norm);
+    }
+    let sentiments = [];
+    for(let hStr in byHour) {
+      let vals = byHour[hStr];
+      let avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      let dt = new Date(`${hStr}:00:00Z`);
+      sentiments.push({ date: dt, sentiment: avg });
+    }
+    sentiments.sort((a, b) => a.date - b.date);
+    return sentiments;
+  }
+  function updateSentimentChart(sentiments) {
+    if (sentiments.length < 2) {
+      Highcharts.chart("sentChart", {
+        chart: { type: "line", backgroundColor: "transparent" },
+        title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+        xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+        yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+        series: [{ name: "Sentiment", data: sentiments.map(s => [s.date.getTime(), s.sentiment]), marker: { enabled: true } }]
+      });
+      document.getElementById("sentDetails").innerText = "Insufficient data => 50.";
+      return 50;
+    }
+    let firstDate = sentiments[0].date;
+    let xs = sentiments.map(s => (s.date - firstDate) / (1000 * 60 * 60 * 24));
+    let ys = sentiments.map(s => s.sentiment);
+    let n = xs.length;
+    let sumX = xs.reduce((a, b) => a + b, 0);
+    let sumY = ys.reduce((a, b) => a + b, 0);
+    let sumXY = xs.reduce((acc, x, i) => acc + x * ys[i], 0);
+    let sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+    let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    let intercept = (sumY - slope * sumX) / n;
+    let minDate = sentiments[0].date;
+    let maxDate = sentiments[sentiments.length - 1].date;
+    let trendYstart = intercept + slope * xs[0];
+    let trendYend = intercept + slope * xs[xs.length - 1];
+    let rawData = sentiments.map(s => [s.date.getTime(), s.sentiment]);
+    let trendData = [
+      [minDate.getTime(), trendYstart],
+      [maxDate.getTime(), trendYend]
+    ];
+    Highcharts.chart("sentChart", {
+      chart: { type: "line", backgroundColor: "transparent" },
+      title: { text: "Sentiment Analysis", style: { color: "#fff" } },
+      xAxis: { type: "datetime", title: { text: "Date", style: { color: "#fff" } }, gridLineColor: "#444" },
+      yAxis: { title: { text: "Sentiment (0..100)", style: { color: "#fff" } }, gridLineColor: "#444" },
+      tooltip: { shared: true, xDateFormat: "%Y-%m-%d" },
+      series: [
+        { name: "Sentiment", data: rawData, marker: { enabled: true } },
+        { name: "Trend", data: trendData, dashStyle: "Dash", color: "red", marker: { enabled: false } }
+      ],
+      credits: { enabled: false },
+      legend: { itemStyle: { color: "#fff" } }
     });
+    let slopeBull = logisticBullish(slope);
+    let avgSentiment = sumY / n;
+    let finalBullishScore = 0.5 * slopeBull + 0.5 * avgSentiment;
+    document.getElementById("sentDetails").innerText =
+      `Slope: ${slope.toFixed(3)}, Avg: ${avgSentiment.toFixed(1)} ⇒ Sent: ${finalBullishScore.toFixed(2)}%`;
+    return finalBullishScore;
+  }
+  async function fetchAndProcessInsiderData(ticker, periodMonths, lastPrice) {
+  // --- Fetch Insider Transactions ---
+  const url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch insider data. Status: " + response.status);
+  }
+  const data = await response.json();
+  if (!data.data || !Array.isArray(data.data)) {
+    throw new Error("Invalid insider data format.");
+  }
+  const lowerBound = lastPrice * 0.5;
+  const upperBound = lastPrice * 1.5;
+  const cutoff = new Date();
+  // Use periodMonths here (months based cutoff)
+  cutoff.setMonth(cutoff.getMonth() - periodMonths);
+  
+  const filtered = data.data.filter(item => {
+    const d = new Date(item.transaction_date);
+    if (isNaN(d) || d < cutoff) return false;
+    const sharePrice = parseFloat(item.share_price);
+    if (isNaN(sharePrice) || sharePrice === 0) return false;
+    return sharePrice >= lowerBound && sharePrice <= upperBound;
+  });
+  filtered.sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
 
-    // Countdown
-    document.addEventListener('DOMContentLoaded', () => {
-      function getNextMondayTarget() {
-        const now = new Date();
-        const currentUTCDay = now.getUTCDay();
-        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) { 
-          return target; 
-        } else {
-          let daysUntilMonday = (8 - currentUTCDay) % 7;
-          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
-          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
-          return target;
+  let totalBuys = 0, totalSells = 0;
+  filtered.forEach(item => {
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') totalBuys += shares;
+    else if (item.acquisition_or_disposal === 'D') totalSells += shares;
+  });
+
+  // --- Aggregate Transactions by Day (for charting) ---
+  let aggregatedTimeSeries = {};
+  filtered.forEach(item => {
+    const d = new Date(item.transaction_date);
+    const dateStr = d.toISOString().substring(0,10);
+    if (!aggregatedTimeSeries[dateStr]) {
+      aggregatedTimeSeries[dateStr] = { date: new Date(dateStr), buys: 0, sells: 0 };
+    }
+    const shares = parseFloat(item.shares) || 0;
+    if (item.acquisition_or_disposal === 'A') aggregatedTimeSeries[dateStr].buys += shares;
+    else if (item.acquisition_or_disposal === 'D') aggregatedTimeSeries[dateStr].sells += shares;
+  });
+  let timeSeriesArray = Object.values(aggregatedTimeSeries).sort((a, b) => a.date - b.date);
+
+  // --- Compute Transaction Score Factor ---
+  let transactionScore = 0;
+  if (totalBuys + totalSells > 0) {
+    transactionScore = ((totalBuys - totalSells) / (totalBuys + totalSells)) * 100;
+  }
+  let normalizedTransactionScore = (transactionScore + 100) / 2;
+
+  // --- Fetch Insider Sentiment (MSPR) Data ---
+  let today = new Date();
+  let pastDate = new Date();
+  // Use months here as well:
+  pastDate.setMonth(today.getMonth() - periodMonths);
+  let fromDateStr = pastDate.toISOString().slice(0,10);
+  let toDateStr = today.toISOString().slice(0,10);
+  const sentimentUrl = `/api/insiderscore?symbol=${encodeURIComponent(ticker)}&from=${fromDateStr}&to=${toDateStr}`;
+  const sentimentResponse = await fetch(sentimentUrl);
+  if (!sentimentResponse.ok) {
+    throw new Error("Failed to fetch insider sentiment data. Status: " + sentimentResponse.status);
+  }
+  const sentimentJson = await sentimentResponse.json();
+
+  // --- Fill the Timeline for MSPR Data ---
+  let requestedFrom = new Date(fromDateStr);
+  let sentimentStart;
+  if (sentimentJson.data && sentimentJson.data.length > 0) {
+    let sortedSentiment = sentimentJson.data.slice().sort((a, b) => {
+      let d1 = new Date(a.year, a.month - 1, 1);
+      let d2 = new Date(b.year, b.month - 1, 1);
+      return d1 - d2;
+    });
+    let firstData = sortedSentiment[0];
+    let firstDataDate = new Date(firstData.year, firstData.month - 1, 1);
+    sentimentStart = firstDataDate < requestedFrom ? firstDataDate : requestedFrom;
+  } else {
+    sentimentStart = requestedFrom;
+  }
+  let endFillDate = new Date(toDateStr);
+  let filledData = [];
+  let currentDateForSentiment = new Date(sentimentStart);
+  while (currentDateForSentiment <= endFillDate) {
+    let year = currentDateForSentiment.getFullYear();
+    let month = currentDateForSentiment.getMonth() + 1; // JavaScript months are 0-indexed
+    let found = sentimentJson.data && sentimentJson.data.find(pt => pt.year === year && pt.month === month);
+    if (found) {
+      filledData.push({ year: year, month: month, mspr: parseFloat(found.mspr) });
+    } else {
+      // If no data exists for this month, default the MSPR to 0
+      filledData.push({ year: year, month: month, mspr: 0 });
+    }
+    currentDateForSentiment.setMonth(currentDateForSentiment.getMonth() + 1);
+  }
+  let filledSentimentCategories = filledData.map(pt => `${pt.year}-${pt.month.toString().padStart(2, '0')}`);
+  let filledSentimentValues = filledData.map(pt => pt.mspr);
+
+  // --- Compute Insider Sentiment Components ---
+  let finalMspr = filledData[filledData.length - 1].mspr;
+  let normalizedFinalMspr = (finalMspr + 100) / 2;
+  let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
+  let avgMspr = sumMspr / filledData.length;
+  let normalizedAvgMspr = (avgMspr + 100) / 2;
+  let n = filledData.length, sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    let x = i + 1;
+    let y = filledData[i].mspr;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+  }
+  let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  let normalizedSlope = isNaN(slope) ? 50 : (slope + 100) / 2;
+  let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+
+  // --- Final Insider Score Calculation ---
+  const finalInsiderScore = 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
+
+  return {
+    totalBuys: totalBuys,
+    totalSells: totalSells,
+    transactionScore: normalizedTransactionScore,
+    timeSeries: timeSeriesArray,
+    sentimentCategories: filledSentimentCategories,
+    sentimentValues: filledSentimentValues,
+    finalMspr: normalizedFinalMspr,
+    trendComponent: trendComponent,
+    insiderScore: finalInsiderScore
+  };
+}
+
+
+
+function updateInsiderCharts(insiderData) {
+  // Create column series for buys and sells from the aggregated time series.
+  const buyData = insiderData.timeSeries.map(item => [item.date.getTime(), item.buys]);
+  const sellData = insiderData.timeSeries.map(item => [item.date.getTime(), item.sells]);
+
+  // Create a spline series for the insider sentiment trend.
+  // Convert each filled sentiment category (formatted as YYYY-MM) into a timestamp (using the 1st of the month).
+  const trendData = insiderData.sentimentCategories.map((cat, i) => {
+    let d = new Date(cat + "-01");
+    return [d.getTime(), insiderData.sentimentValues[i]];
+  });
+
+  Highcharts.chart('insiderChart', {
+  chart: { backgroundColor: 'var(--secondary-bg)' },
+  title: { text: 'Combined Insider Transactions & MSPR Trend', style: { color: 'var(--text-color)' } },
+  xAxis: { 
+    type: 'datetime', 
+    labels: { style: { color: 'var(--text-color)' } }
+  },
+  yAxis: [
+    { // Left axis for MSPR scores
+      min: -100,
+      max: 100,
+      title: { text: 'Insider MSPR Score (-100 to +100)' },
+      labels: { style: { color: 'var(--text-color)' } }
+    },
+    { // Right axis for number of shares
+      title: { text: 'Number of Shares' },
+      opposite: true,
+      labels: { style: { color: 'var(--text-color)' } }
+    }
+  ],
+  tooltip: {
+    shared: true,
+    formatter: function() {
+      let tooltip = Highcharts.dateFormat('%Y-%m-%d', this.x) + '<br/>';
+      this.points.forEach(point => {
+        if (point.series.options.yAxis === 1) {
+          tooltip += point.series.name + ': ' + point.y + '<br/>';
+        } else if (point.series.options.yAxis === 0) {
+          tooltip += 'Insider MSPR Trend: ' + point.y.toFixed(2) + '<br/>';
         }
-      }
-      function updateCountdown() {
-        const now = new Date();
-        let target = getNextMondayTarget();
-        let diff = target - now;
-        if (diff <= 0) {
-          target = new Date(target.getTime() + 7 * 24 * 60 * 60 * 1000);
-          diff = target - now;
-        }
-        document.getElementById('days').textContent = Math.floor(diff / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
-        document.getElementById('hours').textContent = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-        document.getElementById('minutes').textContent = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-        document.getElementById('seconds').textContent = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
-      }
-      updateCountdown();
-      setInterval(updateCountdown, 1000);
-      document.getElementById('scrollToSignup').addEventListener('click', () => {
-        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
       });
-    });
+      return tooltip;
+    }
+  },
+  series: [
+    {
+      type: 'column',
+      name: 'Buys',
+      data: buyData,
+      color: '#16a34a',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'column',
+      name: 'Sells',
+      data: sellData,
+      color: '#dc2626',
+      yAxis: 1 // plot on right axis
+    },
+    {
+      type: 'spline',
+      name: 'Insider MSPR Trend',
+      // Ensure the second value is a number; if needed use parseFloat.
+      data: trendData.map(point => [ point[0], parseFloat(point[1]) ]),
+      color: 'yellow',
+      marker: { enabled: true },
+      yAxis: 0 // plot on left axis
+    }
+  ],
+  credits: { enabled: false },
+  legend: { itemStyle: { color: 'var(--text-color)' } }
+});
 
-    // Live News JavaScript (Unchanged - keep as-is or trim further as needed)
-    document.addEventListener("DOMContentLoaded", () => {
-      const newsHamburger = document.getElementById("newsHamburger");
-      const liveNewsMenu = document.getElementById("liveNewsMenu");
-      const menuButtons = document.querySelectorAll("#liveNewsMenu button");
-      newsHamburger.addEventListener("click", () => {
-        liveNewsMenu.classList.toggle("active");
+
+  
+  // Update the insider details element with the overall insider score.
+  document.getElementById('insiderDetails').innerText = 
+      `Insider Bullish Score: ${insiderData.insiderScore.toFixed(2)}%`;
+  return insiderData.insiderScore;
+}
+
+
+  async function fetchCongressData(ticker, periodMonths) {
+    const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+    const resp = await fetch(url);
+    const j = await resp.json();
+    if(!j.data || !Array.isArray(j.data)){
+      throw new Error("Invalid congress data format.");
+    }
+    const rawData = j.data;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - periodMonths);
+    let totalPurchase = 0, totalSale = 0;
+    for(let item of rawData){
+      if(!item.TransactionDate || !item.Transaction) continue;
+      let dt = new Date(item.TransactionDate);
+      if(isNaN(dt) || dt < cutoff) continue;
+      let amt = parseFloat(item.Amount) || 0;
+      if(/purchase/i.test(item.Transaction)) totalPurchase += amt;
+      if(/sale/i.test(item.Transaction)) totalSale += amt;
+    }
+    return { totalPurchase, totalSale };
+  }
+  function interpolateColor(value) {
+    const ratio = Math.max(0, Math.min(1, value / 100));
+    const r = Math.round(255 * (1 - ratio));
+    const g = Math.round(255 * ratio);
+    return `rgb(${r},${g},0)`;
+  }
+  function updateCongressChart(totalPurchase, totalSale) {
+    const categories = ["Purchase Amount", "Sale Amount"];
+    const data = [totalPurchase, totalSale];
+    Highcharts.chart("congressChart", {
+      chart: { type: "column", backgroundColor: "transparent" },
+      title: { text: "(USD)", style: { color: "#fff" } },
+      xAxis: { categories: categories, title: { text: null }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+      yAxis: { title: { text: "Amount", style: { color: "#fff" } }, gridLineColor: "#444", labels: { style: { color: "#fff" } } },
+      tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
+      series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
+      credits: { enabled: false },
+      legend: { enabled: false }
+    });
+    let sum = totalPurchase + totalSale;
+    let congressBull = 50;
+    if (sum > 0) { congressBull = ((totalPurchase - totalSale) / sum) * 50 + 50; }
+    document.getElementById("congressDetails").innerText =
+      `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
+    return congressBull;
+  }
+  function computeSMAforRegime(priceArray, period) {
+    if(!priceArray || priceArray.length < period) return null;
+    let slice = priceArray.slice(-period);
+    let sum = 0;
+    for(let p of slice){ sum += p.close; }
+    return sum / period;
+  }
+  function computeSlope(prices) {
+    let n = prices.length;
+    if(n < 2) return 0;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for(let i = 0; i < n; i++){
+      sumX += i;
+      sumY += prices[i].close;
+      sumXY += i * prices[i].close;
+      sumX2 += i * i;
+    }
+    let numerator = n * sumXY - sumX * sumY;
+    let denominator = n * sumX2 - sumX * sumX;
+    if(denominator === 0) return 0;
+    return numerator / denominator;
+  }
+  function classifyBySMAshortLong(shortSMA, longSMA) {
+    if(!shortSMA || !longSMA) return "Neutral";
+    let ratio = shortSMA / longSMA;
+    if(ratio > 1.01) return "Bull";
+    if(ratio < 0.99) return "Bear";
+    return "Neutral";
+  }
+  function classifyBySlopeVal(slopeVal) {
+    let bullThr = 0.2, bearThr = -0.2;
+    if(slopeVal > bullThr) return "Bull";
+    if(slopeVal < bearThr) return "Bear";
+    return "Neutral";
+  }
+  async function determineSPYMarketRegime(periodMonths = 4) {
+    try {
+      let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+      let resp = await fetch(url);
+      let j = await resp.json();
+      if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
+      let shortWindow = periodMonths * 5;
+      let longWindow = periodMonths * 15;
+      let totalDays = periodMonths * 30;
+      let allKeys = Object.keys(j["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
+      let arr = [];
+      for(let d of allKeys){
+        let dt = new Date(d);
+        let c = parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+        arr.push({ date: dt, close: c });
+      }
+      let end = arr[arr.length - 1].date;
+      let start = new Date(end);
+      start.setDate(start.getDate() - totalDays);
+      let filtered = arr.filter(pt => pt.date >= start && pt.date <= end);
+      if(filtered.length < Math.max(shortWindow, longWindow)){
+        console.log("Not enough SPY data => Neutral");
+        return "Neutral";
+      }
+      let shortSMA = computeSMAforRegime(filtered, shortWindow);
+      let longSMA = computeSMAforRegime(filtered, longWindow);
+      let smaSig = classifyBySMAshortLong(shortSMA, longSMA);
+      let slopeVal = computeSlope(filtered);
+      let slopeSig = classifyBySlopeVal(slopeVal);
+      let votes = 0;
+      if(smaSig === "Bull") votes++;
+      if(smaSig === "Bear") votes--;
+      if(slopeSig === "Bull") votes++;
+      if(slopeSig === "Bear") votes--;
+      if(votes >= 2) return "Bull";
+      if(votes <= -2) return "Bear";
+      return "Neutral";
+    } catch(e) {
+      console.log("Error in determineSPYMarketRegime =>", e.message);
+      return "Neutral";
+    }
+  }
+  function getAutoWeightsForRegime(regime) {
+  if (regime === "Bear") {
+    return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1.00 };
+  } else if (regime === "Bull") {
+    return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3.00 };
+  } else {
+    return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.00 };
+  }
+}
+
+
+function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
+  const manual = document.getElementById("useManualWeightsCheckbox").checked;
+  if (!manual) {
+    // Use auto weights and scaling
+    let auto = getAutoWeightsForRegime(regime);
+    let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+    return (raw - 50) * auto.scale + 50;
+  } else {
+    // Manual override logic remains as is.
+    // (You may adjust its validation if you want to allow different scaling ranges.)
+    const wMC = parseFloat(document.getElementById("wMC").value) || 0;
+    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+    const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+    let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+    // Optionally, remove or adjust the check for scale if you want to allow values beyond 2
+    let invalidScale = (sc < 0 /* || sc > 2 */);
+    if (invalidWeights || invalidScale) {
+      console.log("WARNING: manual weights invalid => fallback = direct average");
+      let eq = (mc + tech + sent + ins + fund + cong) / 6;
+      return eq;
+    } else {
+      let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+      return (raw - 50) * sc + 50;
+    }
+  }
+}
+
+
+  /***********************************************
+   * Buffer Overlay Functions
+   ***********************************************/
+  function showBufferOverlay() {
+    const overlay = document.getElementById("countdownOverlay");
+    overlay.style.display = "flex";
+    stepIndex = 0;
+    dotCount = 0;
+    dotInterval = setInterval(() => {
+      dotCount = (dotCount + 1) % 4;
+      const baseText = loadingSteps[Math.min(stepIndex, loadingSteps.length - 1)].text;
+      document.getElementById("loadingText").innerText = baseText + ".".repeat(dotCount);
+    }, 500);
+    cycleSteps();
+  }
+  function cycleSteps() {
+    if (stepIndex >= loadingSteps.length) return;
+    const currentStep = loadingSteps[stepIndex];
+    document.getElementById("loadingText").innerText = currentStep.text;
+    const t = setTimeout(() => { stepIndex++; cycleSteps(); }, currentStep.duration);
+    loadingTimeouts.push(t);
+  }
+  const loadingSteps = [
+    { text: "Running 10,000 simulations", duration: 1500 },
+    { text: "Analyzing technical indicators", duration: 1000 },
+    { text: "Analyzing fundamental indicators", duration: 1000 },
+    { text: "Analyzing recent news articles", duration: 2000 },
+    { text: "Checking for insider trading", duration: 700 },
+    { text: "Analyzing political trades", duration: 2000 }
+  ];
+  let stepIndex = 0;
+  let loadingTimeouts = [];
+  let dotCount = 0;
+
+  /***********************************************
+   * runSimulation() – Main Controller
+   ***********************************************/
+   async function runSimulation() {
+  document.getElementById('loading').style.display = 'block';
+  // Hide sections...
+  document.getElementById('aggregateSection').style.display = 'none';
+  document.getElementById('descriptionSection').style.display = 'none';
+  document.getElementById('fundamentalSection').style.display = 'none';
+  document.getElementById('techSection').style.display = 'none';
+  document.getElementById('mcSection').style.display = 'none';
+  document.getElementById('sentSection').style.display = 'none';
+  document.getElementById('insiderSection').style.display = 'none';
+  document.getElementById('congressSection').style.display = 'none';
+
+  let ticker = document.getElementById('ticker').value.trim();
+let timeframe = document.getElementById('investmentTimeframe').value;
+if (!ticker || !timeframe) {
+  alert("Please enter a ticker symbol and select an investment timeframe.");
+  document.getElementById('loading').style.display = 'none';
+  return;
+}
+
+let periodMonths, T;
+if (timeframe === "short") {
+  periodMonths = 4;   // 4 months historical data for short term
+  T = 1 / 12;         // 1 month future horizon (in years)
+} else if (timeframe === "medium") {
+  periodMonths = 12;  // 12 months historical data for medium term
+  T = 3 / 12;         // 3 months future horizon (in years)
+} else if (timeframe === "long") {
+  periodMonths = 24;  // 24 months historical data for long term
+  T = 6 / 12;         // 6 months future horizon (in years)
+} else {
+  // Fallback defaults
+  periodMonths = 4;
+  T = 1 / 12;
+}
+
+if (document.getElementById('manualOverrideCheckbox').checked) {
+  let manualPeriod = parseInt(document.getElementById('manualPeriod').value);
+  if (isNaN(manualPeriod) || manualPeriod < periodMonths) {
+    alert(`For more accurate predictions, recommended at least ${periodMonths} months.`);
+    periodMonths = periodMonths; // Or force manualPeriod = periodMonths if desired
+  } else {
+    periodMonths = manualPeriod;
+  }
+}
+
+
+  try {
+    let regime = await determineSPYMarketRegime(4);
+    console.log("Detected SPY Market Regime => ", regime);
+    let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+    let fundResp = await fetch(fundUrl);
+    let fundamentalData = await fundResp.json();
+    let companyDesc = fundamentalData.Description || "No description available.";
+    let fundBull = 50;
+    let categories = null;
+    if (fundamentalData.Symbol) {
+      categories = computeFundScores(fundamentalData);
+      let catSum = 0, nCats = 0;
+      for (let k in categories) { catSum += categories[k]; nCats++; }
+      fundBull = catSum / nCats;
+    }
+    let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+    let resp = await fetch(histUrl);
+    let data = await resp.json();
+    if (!data["Time Series (Daily)"]) {
+      throw new Error("Unable to retrieve valid historical data.");
+    }
+    let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+    if (prices.length < 2) {
+      alert("Not enough historical data.");
+      document.getElementById('loading').style.display = 'none';
+      return;
+    }
+
+    // **Compute mcStats here so that mcStats.lastPrice is defined.**
+    let mcStats = computeStats(prices);
+
+    document.getElementById('aggregateSection').style.display = 'block';
+    document.getElementById('descriptionSection').style.display = 'block';
+    document.getElementById('companyDescription').innerText = companyDesc;
+    if (categories) {
+      document.getElementById('fundamentalSection').style.display = 'block';
+      plotFundamentalCategories(categories);
+      document.getElementById('fundamentalText').innerText =
+        `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
+    }
+    document.getElementById('techSection').style.display = 'block';
+    let techBull = updateTechChart(prices);
+    let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
+    let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
+    document.getElementById('mcSection').style.display = 'block';
+    let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
+    let sentiments = await fetchSentimentData(ticker, periodMonths);
+    document.getElementById('sentSection').style.display = 'block';
+    let sentBull = updateSentimentChart(sentiments);
+
+    
+// Use mcStats.lastPrice (which is now defined from computeStats)
+let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+document.getElementById('insiderSection').style.display = 'block';
+let insiderBull = updateInsiderCharts(insiderData);
+
+
+    let congressObj = await fetchCongressData(ticker, periodMonths);
+    document.getElementById('congressSection').style.display = 'block';
+    let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
+    let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+    document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
+    document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+    simulationReport = {
+      ticker,
+      periodMonths,
+      futureDate: futureDate.toDateString(),
+      mcBull,
+      techBull,
+      sentBull,
+      insiderBull,
+      congressBull,
+      fundamentalBull: fundBull,
+      aggregatedBull,
+      mcStats,
+      description: companyDesc,
+      regime,
+      ichimokuScore: (function(){
+        let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
+        let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
+        let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
+        let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
+        let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
+        let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
+        let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
+        let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
+        let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+        return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+      })()
+    };
+  } catch(err) {
+    alert("Error: " + err.message);
+  }
+  document.getElementById('loading').style.display = 'none';
+}
+
+
+  // Run simulation with overlay on button click
+  document.getElementById("simulateButton").addEventListener("click", () => {
+    showBufferOverlay();
+    runSimulation().then(() => { hideBufferOverlay(); }).catch(() => { hideBufferOverlay(); });
+  });
+  function hideBufferOverlay() {
+    const overlay = document.getElementById("countdownOverlay");
+    overlay.style.display = "none";
+    loadingTimeouts.forEach(t => clearTimeout(t));
+    loadingTimeouts = [];
+    clearInterval(dotInterval);
+    dotInterval = null;
+  }
+
+  // Update link button texts based on ticker input
+  function updateLinkButtonTexts(){
+    const ticker = document.getElementById('ticker').value.trim();
+    if(ticker){
+      document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
+      document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
+      document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
+      document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
+      document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
+    } else {
+      document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
+      document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
+      document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
+      document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
+      document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
+    }
+  }
+  document.getElementById('ticker').addEventListener("input", updateLinkButtonTexts);
+  updateLinkButtonTexts();
+
+  // Link Buttons Event Listeners
+  document.getElementById("sentimentLinkButton").addEventListener("click", () => {
+    let ticker = document.getElementById("ticker").value.trim();
+    if(ticker){
+      window.open("https://www.intuitiontrades.com/sentiment?symbol=" + encodeURIComponent(ticker), "_blank");
+    } else {
+      alert("Enter a ticker first.");
+    }
+  });
+  document.getElementById("technicalLinkButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    const ticker = simulationReport.ticker;
+    const periodMonths = simulationReport.periodMonths;
+    const url = "https://www.intuitiontrades.com/technical/?symbol=" 
+                + encodeURIComponent(ticker) 
+                + "&period=" + periodMonths
+                + "&autoFetch=true";
+    window.open(url, "_blank");
+  });
+  document.getElementById("insiderLinkButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    const ticker = simulationReport.ticker;
+    const periodMonths = simulationReport.periodMonths;
+    const days = periodMonths * 30;
+    const url = "https://www.intuitiontrades.com/insider/?symbol=" 
+              + encodeURIComponent(ticker) 
+              + "&days=" + days
+              + "&autoFetch=true";
+    window.open(url, "_blank");
+  });
+  document.getElementById("congressLinkButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    let ticker = simulationReport.ticker;
+    let periodMonths = simulationReport.periodMonths;
+    let days = periodMonths * 30;
+    let url = "https://www.intuitiontrades.com/congress/?symbol=" 
+              + encodeURIComponent(ticker) 
+              + "&days=" + days 
+              + "&autoFetch=true";
+    window.open(url, "_blank");
+  });
+  document.getElementById("fundamentalLinkButton").addEventListener("click", () => {
+    let ticker = document.getElementById("ticker").value.trim();
+    if(ticker){
+      window.open("https://www.intuitiontrades.com/fundamental/?symbol=" + encodeURIComponent(ticker), "_blank");
+    } else {
+      alert("Enter a ticker.");
+    }
+  });
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("manualPeriodDiv").style.display =
+      document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
+    document.getElementById("manualWeightsSection").style.display =
+      document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
+  });
+
+  /***********************************************
+   * Explanation Page
+   ***********************************************/
+  document.getElementById("explanationButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    let win = window.open("", "_blank");
+    if (!win) {
+      alert("Please allow popups.");
+      return;
+    }
+    let html = `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>Detailed Simulation Report for ${simulationReport.ticker}</title>
+        <style>
+          
+    body { 
+    font-family: 'Arial', sans-serif; 
+    background: #111; 
+    color: #fff; 
+    margin: 0 auto; 
+    max-width: 900px; 
+    padding: 2rem; 
+    line-height: 1.6; 
+  }
+  h1, h2, h3 { text-align: center; }
+  section { margin-bottom: 2rem; }
+  pre { 
+    background: #333; 
+    padding: 1rem; 
+    border-radius: 4px; 
+    overflow-x: auto; 
+  }
+  a { color: #16a34a; }
+  table {
+    border-collapse: collapse;
+    margin-top: 1rem;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid #444; 
+    padding: 8px; 
+    text-align: left; 
+  }
+  th { background: #222; }
+  p { text-align: justify; }
+</style>
+
+  </head>
+  <body>
+    <h1>Detailed Simulation Report for ${simulationReport.ticker}</h1>
+    
+    <!-- Input Parameters -->
+    <section>
+      <h2>Input Parameters</h2>
+      <p><strong>Ticker:</strong> ${simulationReport.ticker}</p>
+      <p><strong>Historical Period (months):</strong> ${simulationReport.periodMonths}</p>
+      <p><strong>Future Date:</strong> ${simulationReport.futureDate}</p>
+      <p><strong>Data Source:</strong> Alpha Vantage, Finn Hub, and Quiver APIs (via Project Manager Helper API)</p>
+      <p>This report uses historical daily adjusted data to generate forecasts and technical indicators, as well as fundamentals, sentiment, insider, and congress trading data.</p>
+    </section>
+    
+    <!-- Market Regime & Weighting Explanation -->
+    <section>
+      <h2>SPY Market Regime & Weight Distribution</h2>
+      <p><strong>Detected SPY Regime:</strong> ${simulationReport.regime}</p>
+      <p>
+        We automatically analyze SPY's <em>short vs. long SMA</em> plus the <em>daily closing slope</em> over the last ~4 months 
+        to classify the broader market as <strong>Bull, Bear, or Neutral.</strong> This influences how we weight each factor:
+      </p>
+
+      <h3>Bear Market</h3>
+      <p>
+        In a <strong>Bear</strong> regime, the system applies smaller weights to <em>Monte Carlo</em> and 
+        <em>Technical</em> because short-term technical patterns can be highly volatile and less reliable when 
+        the overall market is trending downward. Meanwhile, heavier weights go to <em>Insider</em> and 
+        <em>Fundamental</em> factors, as strong fundamentals and insider buying can better signal resilience 
+        in a bear phase. A smaller <em>scaling factor</em> (e.g., 0.25) is used to keep the final aggregated 
+        result more conservative, recognizing the downward pressure of a bear trend.
+      </p>
+      <pre>
+Bear Weights (example):
+Monte Carlo = 5%
+Technical   = 5%
+Sentiment   = 10%
+Insider     = 30%
+Fundamental = 30%
+Congress    = 20%
+Scaling     = 0.25
+      </pre>
+      <p>
+        Because these percentages sum to 1, each factor’s raw bullish score is first averaged according to the 
+        distribution above. Then, we shift that average around 50 and apply only a 25% scale (meaning the final 
+        aggregator is depressed toward neutrality).
+      </p>
+
+      <h3>Neutral Market</h3>
+      <p>
+        In a <strong>Neutral</strong> regime, the weighting is more balanced across all six factors. Monte Carlo, 
+        Technical, Sentiment, Insider, Fundamentals, and Congress each receive moderate allocations, and the 
+        <em>scaling factor</em> is around 0.50. This scenario recognizes that the market lacks a strong directional 
+        bias, so each factor contributes roughly equally:
+      </p>
+      <pre>
+Neutral Weights (example):
+Monte Carlo = 15%
+Technical   = 20%
+Sentiment   = 15%
+Insider     = 15%
+Fundamental = 20%
+Congress    = 15%
+Scaling     = 0.50
+      </pre>
+      <p>
+        Here, we multiply <code>(rawScore - 50)</code> by 0.5, gently nudging the final aggregator above or below 50 
+        in proportion to the combined signals.
+      </p>
+
+      <h3>Bull Market</h3>
+      <p>
+        In a <strong>Bull</strong> regime, we give higher weight to <em>Monte Carlo</em> and 
+        <em>Technical</em> signals, reflecting that short-term technical momentum is more likely to be predictive 
+        when the overall market trend is strongly upward. Meanwhile, <em>Insider</em> and <em>Fundamental</em> 
+        remain important, but they share a smaller slice if the market is aggressively bullish. The <em>scaling 
+        factor</em> often goes up to 1.0, meaning we apply the raw aggregated score with minimal damping:
+      </p>
+      <pre>
+Bull Weights (example):
+Monte Carlo = 20%
+Technical   = 25%
+Sentiment   = 15%
+Insider     = 15%
+Fundamental = 15%
+Congress    = 10%
+Scaling     = 1.00
+      </pre>
+      <p>
+        As a result, strong buy signals push the aggregator well above 50 in a bullish environment, reflecting 
+        the synergy between short-term price trends and improving sentiment.
+      </p>
+
+      <p>
+        If the user <strong>overrides</strong> these with manual weights that sum to 1.0 plus a valid scaling 
+        factor (0..2), those manual values are used instead. Otherwise, if manual input is invalid, 
+        we fall back to a simple equal average of all six factors (with no shift).
+      </p>
+    </section>
+
+    <!-- Monte Carlo Section -->
+    <section>
+      <h2>Monte Carlo Simulation using Geometric Brownian Motion (GBM)</h2>
+      <p><strong>Bullish Probability:</strong> ${simulationReport.mcBull.toFixed(2)}%</p>
+      <p><strong>Drift (μ):</strong> ${simulationReport.mcStats.mean.toFixed(4)}</p>
+      <p><strong>Volatility (σ):</strong> ${simulationReport.mcStats.stdDev.toFixed(4)}</p>
+      <pre>
+Sₜ = S₀ × exp[(μ – 0.5σ²) × T + σ × √T × Z]
+      </pre>
+      <p><strong>Explanation:</strong></p>
+      <ul>
+        <li><strong>S₀</strong>: The current stock price at the last available historical date.</li>
+        <li><strong>μ</strong>: Annualized drift, computed as mean of daily log returns × 252 (trading days/year).</li>
+        <li><strong>σ</strong>: Annualized volatility, computed as stdev of daily log returns × √252.</li>
+        <li><strong>T</strong>: Time in years from the last historical date to the future date.</li>
+        <li><strong>Z</strong>: Random draw from a standard normal distribution (Z ~ N(0,1)).</li>
+      </ul>
+      <p>
+        The simulation runs 10,000 iterations, generating a distribution of final prices. 
+        The <em>Bullish Probability</em> is the % of runs where the final price exceeds the current price. 
+        You can also choose a different target price via the slider and see the probability of exceeding it.
+      </p>
+    </section>
+    
+    <!-- Technical Indicators Section -->
+    <section>
+      <h2>Combined Technical Indicators</h2>
+      <p><strong>Technical Bullish Score:</strong> ${simulationReport.techBull.toFixed(2)}%</p>
+      <p>
+        This score is the arithmetic mean of four indicators (RSI, Bollinger Bands, MACD, and WMA), 
+        each mapped into a 0–100 bullish range. A score near 100 suggests strong technical buy signals, 
+        while near 0 suggests strong sell signals.
+      </p>
+
+      <h3>Indicator Breakdown</h3>
+      <ul>
+        <li>
+          <strong>RSI (Relative Strength Index):</strong> 
+          <br>
+          Uses a logistic-based transform around RSI=50 and accounts for daily change in RSI:
+          <pre>
+rel = 50 - RSI
+Base_RSI = 100 / (1 + exp(-0.05 × rel))
+dRSI = RSI(previous) - RSI(current)
+Score_RSI = Base_RSI × (1 + 0.01 × dRSI)
+          </pre>
+        </li>
+        <li>
+          <strong>Bollinger Bands:</strong>
+          <br>
+          We compute %B and apply:
+          <pre>
+%B = (Price - Lower Band) / (Upper Band - Lower Band)
+Base_BB = 100 / (1 + exp(3 × (%B - 0.5)))
+d%B = %B(previous) - %B(current)
+Score_BB = Base_BB × (1 + 0.1 × d%B)
+          </pre>
+        </li>
+        <li>
+          <strong>MACD (Regression-Based Scoring):</strong>
+          <br>
+          1) Position Score (logistic function on latest MACD)<br>
+          2) Gap Trend Score (polynomial regression to predict next MACD-signal gap)<br>
+          3) Momentum Score (polynomial regression on MACD histogram)
+          <p>The final MACD score is the average of these three sub-scores.</p>
+        </li>
+        <li>
+          <strong>WMA (Weighted Moving Average):</strong>
+          <pre>
+x = (Price / WMA) - 1
+Base_WMA = 100 / (1 + exp(-10 × x))
+dx = x(previous) - x(current)
+Score_WMA = Base_WMA × (1 + 0.5 × dx)
+          </pre>
+        </li>
+        <strong>Ichimoku Cloud Analysis</strong>
+          <p>
+            The Ichimoku Cloud indicator provides a comprehensive view of support/resistance, trend, and momentum.
+            It consists of:
+          </p>
+          <ul>
+            <li><strong>Tenkan-sen:</strong> The 9-period average of the highest high and lowest low.</li>
+            <li><strong>Kijun-sen:</strong> The 26-period average of the highest high and lowest low.</li>
+            <li><strong>Senkou Span A:</strong> The average of Tenkan-sen and Kijun-sen shifted 26 periods forward.</li>
+            <li><strong>Senkou Span B:</strong> The 52-period average of the highest high and lowest low shifted 26 periods forward.</li>
+            <li><strong>Chikou Span:</strong> The closing price shifted 26 periods back.</li>
+          </ul>
+          <p><strong>Scoring Method:</strong></p>
+          <pre>
+  Cloud Score:     100 / (1 + exp(-1 × (Price - Senkou Span A)))
+  Tenkan/Kijun:    100 / (1 + exp(-0.2 × (Tenkan-sen - Kijun-sen)))
+  Chikou Score:    100 / (1 + exp(-0.1 × (Price - Price 26 periods ago)))
+  Senkou Cross:    100 / (1 + exp(-3 × ((Senkou Span A - Senkou Span B) / ((Senkou Span A + Senkou Span B)/2))))
+  Overall Ichimoku Score = (Cloud + Tenkan/Kijun + Chikou + Senkou) / 4
+          </pre>
+          <p>
+            Overall, the Ichimoku Cloud signal is: <strong>
+              ${simulationReport.ichimokuScore ? simulationReport.ichimokuScore.toFixed(2) : 'N/A'}%
+            </strong>
+          </p>
+      </ul>
+      <p>
+        <em>Technical Bullish Score</em> = (RSI + Bollinger + MACD + WMA + Ichimoku) / 5
+      </p>
+    </section>
+    
+    <!-- Sentiment Analysis Section -->
+    <section>
+      <h2>Sentiment Analysis (Logistic Transformation)</h2>
+      <p><strong>Sentiment Bullish Score:</strong> ${simulationReport.sentBull.toFixed(2)}%</p>
+      <p>
+        We gather news articles, convert each to a score from –1 to +1, then transform that into 0–100. 
+        We fit a simple linear trend to these hourly averages. The slope is passed through a logistic function 
+        (so extremely positive slopes approach 100, negative slopes approach 0), and the final sentiment score 
+        is an average of the slope-based score and the overall mean sentiment.
+      </p>
+      <pre>
+Score = 0.5 × (100 / [1 + e^(-k × slope)]) + 0.5 × (average sentiment)
+      </pre>
+      <p>
+        <em>k</em> is a scaling constant. This ensures that extremely steep trends yield near 0 or 100, 
+        while moderate slopes land in a mid-range.
+      </p>
+    </section>
+    
+<!-- Insider Trading Section -->
+<section>
+  <h2>Insider Trading Analysis</h2>
+  <p><strong>Insider Bullish Score:</strong> ${simulationReport.insiderBull.toFixed(2)}%</p>
+  <pre>
+Final Insider Score = (0.25 × Normalized Final MSPR) 
+                     + (0.50 × Normalized Transaction Score) 
+                     + (0.25 × Trend Component)
+  </pre>
+  <p>
+    This methodology integrates both insider transaction data from Alpha Vantage API and insider sentiment (MSPR) data from Finnhub API. The process is as follows:
+  </p>
+  <ol>
+    <li>
+      <strong>Data Filtering and Aggregation:</strong> Insider transactions are filtered by date (only those within the historical period)
+      and share price (only those within ±50% of the most recent closing price). Transactions are then aggregated by day—acquisitions (“buys”) and
+      dispositions (“sells”) are separately totaled. These volume figures are represented as columns on the right-hand side y-axis.
+    </li>
+    <li>
+      <strong>Insider Sentiment (MSPR):</strong> Simultaneously, insider sentiment data (known as MSPR) is fetched via our API.
+      The MSPR values are calculated on a monthly basis and are plotted as a spline on the left-hand y-axis that is scaled from –100 to +100.
+      Negative MSPR values indicate predominantly selling sentiment and positive MSPR values indicate buying sentiment.
+    </li>
+    <li>
+      <strong>Score Calculations:</strong>
+      <br>
+      • The <em>Normalized Final MSPR</em> is derived from the most recent monthly MSPR value on a –100 to +100 scale.
+      <br>
+      • The <em>Normalized Transaction Score</em> is calculated as: 
+      <br>
+        ((Total Buys – Total Sells) / (Total Buys + Total Sells)) × 100, then normalized to a scale of 0 to 100.
+      <br>
+      • The <em>Trend Component</em> is computed by applying a regression to the monthly MSPR values over the historical period and normalizing the resulting slope.
+    </li>
+  </ol>
+  <p>
+    The final Insider Bullish Score is a weighted average, reflecting both the raw transactions and the insider sentiment trend.
+    A score above 50 signals a net buying sentiment (bullish), while a score below 50 indicates net selling sentiment (bearish).
+  </p>
+  <p>
+    In the chart, the left y-axis plots the Insider MSPR Trend (–100 to +100), while the right y-axis shows the volume of insider shares bought or sold.
+  </p>
+</section>
+
+    
+    <!-- Congress Trading Section -->
+    <section>
+      <h2>Congress Trading Analysis</h2>
+      <p><strong>Congress Bullish Score:</strong> ${simulationReport.congressBull.toFixed(2)}%</p>
+      <pre>
+Congress Score = ((Total Purchase Amount - Total Sale Amount) / (Total Purchase Amount + Total Sale Amount)) × 50 + 50
+      </pre>
+      <p>
+        We collect publicly reported congressional trades over the chosen period, separate them 
+        into purchases and sales by dollar amount, and compute a net ratio. If total purchase amounts 
+        exceed sales, the Congress Bullish Score is above 50; if sales dominate, it goes below 50.
+      </p>
+    </section>
+    
+    <!-- Fundamental Analysis Section (Expanded) -->
+    <section>
+      <h2>Fundamental Analysis (Expanded Explanation)</h2>
+      <p><strong>Fundamental Score:</strong> ${simulationReport.fundamentalBull.toFixed(2)}%</p>
+
+      <p>This tool calculates five fundamental category scores for a given ticker:</p>
+      <ul>
+        <li><strong>Profitability</strong></li>
+        <li><strong>Valuation</strong></li>
+        <li><strong>Growth</strong></li>
+        <li><strong>Dividend & Return</strong></li>
+        <li><strong>Financial Health</strong></li>
+      </ul>
+
+      <p>Each category includes multiple metrics from the Alpha Vantage <code>OVERVIEW</code> API. We <em>normalize</em> each metric on a 0–100 scale. Some metrics are directly scored (where higher is better), while others are inverted (where lower is better). Next, we average the metrics within each category for its score, and finally average across all five categories to get the <strong>aggregated fundamental score</strong>.</p>
+
+      <h3>Normalization Method</h3>
+      <p>We use simple linear normalization from <code>min</code> to <code>max</code>:</p>
+      <pre>
+ratio = (value - min) / (max - min)
+score = clamp(ratio × 100, 0, 100)
+      </pre>
+      <p>If a value exceeds <code>max</code>, it caps at 100. Below <code>min</code> goes to 0. Some metrics (like P/E) are inverted: <code>invertedScore = 100 - norm(value)</code>. The table below shows common ranges used:</p>
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Typical Bounds</th><th>Interpretation</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Profit Margin</td>
+            <td>0 to 25% (0.25)</td>
+            <td>Margin &gt; 25% is very high (score near 100)</td>
+          </tr>
+          <tr>
+            <td>P/E (Price-to-Earnings)</td>
+            <td>5 to 40</td>
+            <td>Lower P/E is better → invert the normalization</td>
+          </tr>
+          <tr>
+            <td>Beta</td>
+            <td>0 to 2</td>
+            <td>Beta=1 is neutral (~50); Beta=0 is stable (~100)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Profitability</h3>
+      <p>Considers <strong>Net Profit Margin</strong>, <strong>Operating Margin</strong>, <strong>Return on Assets</strong>, and <strong>Return on Equity</strong>. We assume typical upper ranges, then average the four normalized values for a single <strong>Profitability Score</strong>.</p>
+
+      <h3>Valuation</h3>
+      <p>Looks at <strong>P/E Ratio</strong>, <strong>PEG Ratio</strong>, <strong>Price-to-Sales</strong>, and <strong>Price-to-Book</strong>. Since lower numbers typically suggest cheaper valuations, we do <code>100 - norm(value)</code> and average them into the <strong>Valuation Score</strong>.</p>
+
+      <h3>Growth</h3>
+      <p>Includes <strong>Quarterly Revenue Growth (YOY)</strong>, <strong>Quarterly Earnings Growth (YOY)</strong>, plus the difference between current price and <strong>Analyst Target Price</strong> (as a ratio). We normalize each and average them for the <strong>Growth Score</strong>.</p>
+
+      <h3>Dividend & Return</h3>
+      <p>Combines <strong>Dividend Yield</strong>, <strong>Dividend per Share</strong>, and <strong>Earnings per Share</strong>. We assume typical max bounds for each, normalize, then average them for the <strong>Dividend & Return Score</strong>.</p>
+
+      <h3>Financial Health</h3>
+      <p>Looks at <strong>EBITDA Margin</strong>, <strong>EV/EBITDA</strong> (inverted), and <strong>Beta</strong> (also inverted around 1). The average of these is the <strong>Financial Health Score</strong>.</p>
+
+      <h3>Final Aggregation</h3>
+      <p>After computing each category score, we simply take their average:</p>
+      <pre>
+Aggregated Fundamental Score
+= (Profitability + Valuation + Growth + Dividend & Return + Financial Health) / 5
+      </pre>
+      <p>A higher score implies stronger fundamentals relative to these generic thresholds, but always consider industry context and do your own research.</p>
+    </section>
+
+    <!-- Aggregated Score -->
+    <section>
+      <h2>Aggregated Bullish Score</h2>
+      <p><strong>Aggregated Score (all 6 factors):</strong> ${simulationReport.aggregatedBull.toFixed(2)}%</p>
+      <p>
+        We combine six distinct analyses — 
+        <em>Monte Carlo (MC), Technical Indicators, Sentiment, Insider, Congress, and Fundamentals</em> 
+        — each typically given equal weight (16.67% each). However, in this tool, the final weighting can be 
+        automatically adjusted based on the SPY market regime <em>(Bear, Neutral, or Bull)</em>, or overridden 
+        manually (if valid). This produces a single <strong>Aggregated Bullish Score</strong>.
+      </p>
+      <pre>
+Aggregated = WeightedSum - 50 all scaled, + 50
+      </pre>
+    </section>
+
+    <!-- Weighted Averages -->
+    <section>
+      <h2>Optional: Weighted Averages</h2>
+      <p>
+        By default, we rely on SPY-based or manual weighting. You may prefer a different approach if, for example, 
+        you have high conviction in Fundamentals or Insider metrics. An example weighting formula:
+      </p>
+      <pre>
+Weighted Score = ( w_MC × MC_Bull
+                 + w_Tech × Tech_Bull
+                 + w_Sent × Sent_Bull
+                 + w_Ins × Insider_Bull
+                 + w_Cong × Congress_Bull
+                 + w_Fund × Fundamental_Bull )
+</pre>
+      <p>…where all weights sum to 1. The final aggregator might also apply a “scale” factor around 50, 
+      reflecting the overall confidence in the signals. In a strongly bullish environment, scale might be 1.0; 
+      in a shaky or bear environment, scale might be 0.25, dampening the final reading closer to neutral.</p>
+    </section>
+
+    <!-- Disclaimers -->
+    <section>
+      <h2>Disclaimers</h2>
+      <p><strong>Market Data Disclaimer:</strong> The historical, fundamental, sentiment, insider trading, and congress trading data are provided by third-party APIs (Alpha Vantage, Quiver Quant) via the Project Manager Helper API and may not reflect real-time market conditions.</p>
+      <p><strong>Simulation Disclaimer:</strong> The Monte Carlo simulation assumes that future stock prices follow a lognormal distribution as described by Geometric Brownian Motion. Past performance is not necessarily indicative of future results.</p>
+      <p><strong>Analytical Disclaimer:</strong> These techniques and metrics are for informational purposes only and should not be construed as financial advice. Users should perform their own due diligence before making any investment decisions.</p>
+    </section>
+
+    <!-- Conclusion -->
+    <section>
+      <h2>Conclusion</h2>
+      <p>
+        This report integrates <em>Monte Carlo simulations, advanced technical indicators, sentiment analysis, 
+        insider trading activity, congress trading data, and fundamental metrics</em> into a single framework. 
+        Each method provides unique insights—from GBM-based probability distributions to continuous technical 
+        scores and fundamental health checks. The final aggregated bullish score merges these diverse signals 
+        to help inform your investment perspective.
+      </p>
+    </section>
+    
+    <!-- Company Description (Optional) -->
+    <section>
+      <h2>Company Description</h2>
+      <p>${simulationReport.description}</p>
+    </section>
+
+    <section style="text-align:center;">
+      <p><a href="#" onclick="window.close(); return false;">Close Report</a></p>
+    </section>
+
+  
+
+  </body>
+
+    </html>`;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  });
+
+  // Autocomplete functions for ticker input
+  function clearSuggestions() {
+    const list = document.getElementById('ticker-suggestions');
+    if (list) { list.innerHTML = ''; list.style.display = 'none'; }
+    const fullNameElem = document.getElementById('company-full-name');
+    if (fullNameElem) { fullNameElem.innerText = ''; }
+  }
+  async function fetchTickerSuggestions(searchQuery) {
+    try {
+      const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) { throw new Error(`API error: ${response.statusText}`); }
+      const data = await response.json();
+      return data.bestMatches || [];
+    } catch (error) {
+      console.error("Error fetching ticker suggestions:", error);
+      return [];
+    }
+  }
+  function renderTickerSuggestions(suggestions) {
+    const list = document.getElementById('ticker-suggestions');
+    list.innerHTML = '';
+    if (!suggestions || suggestions.length === 0) { list.style.display = 'none'; return; }
+    list.style.display = 'block';
+    suggestions.forEach(item => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
+      li.addEventListener('click', () => {
+        document.getElementById('ticker').value = item["1. symbol"];
+        const fullNameElem = document.getElementById('company-full-name');
+        if (fullNameElem) { fullNameElem.innerText = item["2. name"]; }
+        clearSuggestions();
       });
-      menuButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          selectedTopic = btn.getAttribute("data-topic") || "";
-          refreshNews();
-          if (liveNewsMenu.classList.contains("active")) {
-            liveNewsMenu.classList.remove("active");
-          }
-        });
-      });
+      list.appendChild(li);
     });
-    
-    async function fetchAllSentimentData(topic) {
-      let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
-      if (topic) { url += `&topic=${topic}`; }
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (!data.feed) { throw new Error("No sentiment data from server."); }
-      return data.feed;
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('ticker')) {
+      const tickerInput = document.getElementById('ticker');
+      if (tickerInput) { tickerInput.value = urlParams.get('ticker'); updateLinkButtonTexts(); }
+      const simulateBtn = document.getElementById('simulateButton');
+      if (simulateBtn) { setTimeout(() => { simulateBtn.click(); }, 100); }
     }
-    
-    async function fetchAllSentimentDataByTicker(ticker) {
-      const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (!data.feed) { throw new Error("No sentiment data returned for this ticker."); }
-      return data.feed;
-    }
-    
-    function renderNewsItem(item) {
-      const rawTime = item.time_published || "";
-      const displayTime = formatTimePublished(rawTime);
-      const container = document.createElement("div");
-      container.classList.add("live-news-item");
-      if (item.banner_image) {
-        const imgEl = document.createElement("img");
-        imgEl.src = item.banner_image;
-        imgEl.alt = item.title || "News Thumbnail";
-        imgEl.classList.add("news-thumbnail");
-        container.appendChild(imgEl);
-      }
-      const row = document.createElement("div");
-      row.classList.add("live-news-row");
-      const timeEl = document.createElement("div");
-      timeEl.classList.add("live-news-timestamp");
-      timeEl.textContent = displayTime;
-      const titleEl = document.createElement("div");
-      titleEl.classList.add("live-news-title");
-      titleEl.textContent = item.title || "Untitled";
-      row.appendChild(timeEl);
-      row.appendChild(titleEl);
-      container.appendChild(row);
-      const summaryEl = document.createElement("div");
-      summaryEl.classList.add("live-news-summary");
-      summaryEl.innerHTML = `<p>${item.summary || "No summary available."}</p>
-      <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>`;
-      container.appendChild(summaryEl);
-      titleEl.addEventListener("click", () => {
-        container.classList.toggle("expanded");
-      });
-      return container;
-    }
-    
-    function formatTimePublished(timeStr) {
-      if (!timeStr || timeStr.length < 8) return "";
-      const year = timeStr.slice(0, 4);
-      const month = timeStr.slice(4, 6);
-      const day = timeStr.slice(6, 8);
-      let hour = "00", minute = "00";
-      if (timeStr.length >= 13) { hour = timeStr.slice(9, 11); minute = timeStr.slice(11, 13); }
-      return `${year}-${month}-${day} ${hour}:${minute}`;
-    }
-    
-    function updateNewsFeed(articles) {
-      const feedContainer = document.getElementById("liveNewsFeed");
-      feedContainer.innerHTML = "";
-      articles.sort((a, b) => b.time_published.localeCompare(a.time_published));
-      articles.forEach(article => { feedContainer.appendChild(renderNewsItem(article)); });
-    }
-    
-    let selectedTopic = "";
-    let refreshInterval = null;
-    async function refreshNews() {
-      try {
-        const articles = await fetchAllSentimentData(selectedTopic);
-        updateNewsFeed(articles);
-      } catch (err) { console.error("Error refreshing news:", err); }
-    }
-    
-    const tickerSearchButton = document.getElementById("tickerSearchButton");
-    const tickerSearchInput = document.getElementById("tickerSearchInput");
-    tickerSearchButton.addEventListener("click", async () => {
-      const ticker = tickerSearchInput.value.trim().toUpperCase();
-      if (!ticker) { alert("Please enter a ticker symbol."); return; }
-      try {
-        const articles = await fetchAllSentimentDataByTicker(ticker);
-        updateNewsFeed(articles);
-      } catch (err) {
-        console.error("Error fetching ticker news:", err);
-        alert("Could not load news for ticker: " + ticker);
-      }
+    const tickerInput = document.getElementById('ticker');
+    tickerInput.addEventListener('input', () => {
+      const query = tickerInput.value.trim();
+      if (query.length < 2) { clearSuggestions(); return; }
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(async () => { const suggestions = await fetchTickerSuggestions(query); renderTickerSuggestions(suggestions); }, 300);
     });
-    
-    refreshNews();
-    refreshInterval = setInterval(refreshNews, 120000);
-    
-    const liveNewsSection = document.getElementById("live-news");
-    const minimizeBtn = document.getElementById("liveNewsMinimize");
-    const maximizeBtn = document.getElementById("liveNewsMaximize");
-    const closeBtn = document.getElementById("liveNewsClose");
-    let isMinimized = false;
-    minimizeBtn.addEventListener("click", () => {
-      if (!isMinimized) {
-        liveNewsSection.classList.add("minimized");
-        minimizeBtn.textContent = "+";
-        isMinimized = true;
-      } else {
-        liveNewsSection.classList.remove("minimized");
-        minimizeBtn.textContent = "-";
-        isMinimized = false;
-      }
-    });
-    maximizeBtn.addEventListener("click", () => {
-      if (liveNewsSection.classList.contains("maximized")) {
-        liveNewsSection.classList.remove("maximized");
-        document.body.style.overflow = "";
-      } else {
-        liveNewsSection.classList.add("maximized");
-        document.body.style.overflow = "hidden";
-      }
-    });
-    closeBtn.addEventListener("click", () => {
-      liveNewsSection.style.display = "none";
-      clearInterval(refreshInterval);
-    });
-  </script>
+    clearSuggestions();
+    updateLinkButtonTexts();
+  });
+</script>
+
+
 </body>
 </html>
