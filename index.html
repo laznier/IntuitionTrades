@@ -1001,6 +1001,12 @@ footer {
   .unlocked .premium-overlay {
     display: none;
   }
+
+  /* Add or update this rule */
+.tool-card.premium {
+  position: relative;
+}
+
 </style>
 <body>
   <!-- Fixed Background Element -->
@@ -1270,13 +1276,14 @@ footer {
       <h2>Tools</h2>
       <div class="tool-grid">
          <!-- Premium Tool (locked by default) -->
-    <div class="tool-card premium" id="premiumCard">
-      <h2>Premium Tool</h2>
-      <p>This tool is available only for premium users.</p>
-      <!-- Premium overlay: will disappear for premium users -->
-      <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
-      <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
-    </div>
+         <div class="tool-card premium" id="premiumCard">
+          <h2>Premium Tool</h2>
+          <p>This tool is available only for premium users.</p>
+          <!-- This is the only premium overlay element in your document -->
+          <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
+          <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
+        </div>
+        
 
         <div class="tool-card basic">
           <img src="images/intraday.PNG" alt="Live Stock Chart" />
