@@ -211,10 +211,9 @@
   </label>
 </div>
 
-<!-- Status Output -->
-<div id="status"></div>
 
-<!-- Run Button -->
+
+<div id="status"></div>
 <button onclick="runBatchAnalysis()">Run Batch Analysis</button>
 
 <!-- Progress Container mimicking 'SCANNING COMPANIES...' -->
@@ -1123,7 +1122,22 @@
       return { ticker, aggregator };
     }
     
-    
+     // Ensure the DOM is ready
+     document.addEventListener("DOMContentLoaded", () => {
+      // Define variables used throughout the script
+      const statusEl = document.getElementById("status");
+
+      function logStatus(msg){
+        statusEl.textContent += msg + "\n";
+        statusEl.scrollTop = statusEl.scrollHeight;
+      }
+      
+      async function runBatchAnalysis(){
+        logStatus("Run Batch Analysis started...");
+        // The rest of your runBatchAnalysis function code...
+      }
+      window.runBatchAnalysis = runBatchAnalysis; // if using inline onclick, ensure it's exposed globally
+    });
     /***********************************************************************
      * BATCH ANALYSIS
      ***********************************************************************/
