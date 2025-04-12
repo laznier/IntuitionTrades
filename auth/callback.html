@@ -3,6 +3,7 @@
     const token = params.get("credential");
   
     if (token) {
+      // POST the token to your serverless function for verification
       fetch("/api/verify-google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -13,13 +14,16 @@
         if (data.authorized) {
           window.location.href = "/top5/index.html";
         } else {
-          alert("You are not a premium user.");
+          alert("Premium access required.");
           window.location.href = "/";
         }
       })
-      .catch(() => alert("Sign-in failed. Please try again."));
+      .catch(() => {
+        alert("Failed to verify token.");
+        window.location.href = "/";
+      });
     } else {
-      alert("No login token found.");
+      alert("No token found.");
       window.location.href = "/";
     }
   </script>
