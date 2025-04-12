@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Sign-In Test</title>
+  <!-- You can add any additional styles here if needed -->
+  <style>
+    /* Container that holds the sign-in button, right aligned */
+    #google-signin-button {
+      display: flex;
+      justify-content: flex-end;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Include the Google Identity Services JavaScript library -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Div where the Google Sign-In button will be rendered -->
+  <div id="google-signin-button"></div>
+  
+  <script>
+    // Initialize Google Identity Services with your Client ID and a callback function
+    google.accounts.id.initialize({
+      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+      callback: handleCredentialResponse  // This function is called on successful sign-in
+    });
+
+    // Render the button into the container with desired options
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "filled_black",      // A dark theme
+        size: "large",              // Button size
+        logo_alignment: "right"     // Logo on the right
+      }
+    );
+
+    // Callback function that gets executed after a successful sign-in
+    function handleCredentialResponse(response) {
+      // response.credential contains the JWT (a long string)
+      console.log("Encoded JWT ID token: " + response.credential);
+      alert("Sign-in successful!\nToken: " + response.credential);
+      
+      // Here you could add code to send the token to your backend via fetch
+      // for further verification and to control access based on your app logic.
+    }
+  </script>
+</body>
+</html>
