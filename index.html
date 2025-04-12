@@ -1356,22 +1356,20 @@ footer {
     <!-- Tools Section -->
     <section id="tools">
       <h2>Tools</h2>
-      <!-- Premium Tool Card: Top Stocks Scanner -->
-<div class="tool-card premium">
-  <div class="tool-card-image-container">
-    <img src="images/top5.PNG" alt="Top Stocks Scanner" />
-    <!-- Premium Overlay -->
-    <div class="premium-overlay">
-      <!-- You can use your own lock icon image or an icon font -->
-      <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
-      <span class="premium-text">Premium App</span>
-    </div>
-  </div>
-  <h2>Top Stocks Scanner</h2>
-  <p>Discover top-performing stocks with our exclusive scanner.</p>
-  <!-- Instead of an anchor, we use a button to trigger the login modal -->
-  <button class="tool-button" id="premiumToolButton">Open Tool</button>
-</div>
+      <div class="tool-card premium">
+        <div class="tool-card-image-container">
+          <img src="images/top5.PNG" alt="Top Stocks Scanner" />
+          <div class="premium-overlay">
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
+            <span class="premium-text">Premium App</span>
+          </div>
+        </div>
+        <h2>Top Stocks Scanner</h2>
+        <p>Discover top-performing stocks with our exclusive scanner.</p>
+        <button class="tool-button" id="premiumToolButton">Open Tool</button>
+      </div>
+      
+
 
       <div class="tool-grid">
         <div class="tool-card">
@@ -2088,6 +2086,24 @@ tickerSearchButton.addEventListener("click", async () => {
         liveNewsSection.style.display = "none";
         clearInterval(refreshInterval);
       });
+
+      
+      // Event listener for premium tools
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumButton = document.getElementById("premiumToolButton");
+
+    // When user clicks “Open Tool,” we check if they're signed in
+    premiumButton.addEventListener("click", () => {
+      // If not signed in yet, we can call “google.accounts.id.prompt()”
+      // But since you’re doing a redirect flow, we can just do the standard sign-in:
+      // 1) If user not signed in, Google will sign them in and redirect to /auth/callback
+      // 2) /auth/callback verifies if premium => send them to /top5
+      // We can simply do:
+      google.accounts.id.prompt(); // triggers the sign-in prompt if needed
+  
+  });
+</script>
+
   </script>
   
 </body>
