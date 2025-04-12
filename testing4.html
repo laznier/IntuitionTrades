@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Favicon and Apple Touch Icon -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Apple Web App Settings -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Intuition Trades" />
+
+  <!-- Meta for iOS, SEO, etc. -->
+  <meta name="description" content="Stock research and trading insights from Intuition Trades." />
+  <meta property="og:title" content="Intuition Trades" />
+  <meta property="og:description" content="Smarter stock decisions powered by market intuition." />
+  <meta property="og:image" content="/apple-touch-icon.png" />
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
+  <meta charset="UTF-8">
+  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
+  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="api/ticker.js"></script>
+
+  <style>
+    :root {
+      /* Base typography and color variables */
+      --font-family: 'Arial', sans-serif;
+      --text-color: #fff;
+      --primary-bg: #333;
+      --secondary-bg: #444;
+      --section-bg: rgba(0, 0, 0, 0.33);
+      --accent-color: #16a34a;
+      /* Spacing and sizing */
+      --base-font-size: 16px;
+      --line-height: 1.5;
+      --heading-margin-bottom: 1rem;
+      --section-padding: 3rem 1rem;
+      --section-margin-bottom: 2rem;
+      --button-padding: 0.5rem 1rem;
+      --border-radius: 4px;
+      --transition-speed: 0.3s;
+    }
+    /* Global Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html {
+      font-size: var(--base-font-size);
+    }
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background-color: #111;
+      line-height: var(--line-height);
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+    /* Header: Navigation on left; Sign‑in on right */
+    header {
+      position: relative;
+      padding: 10px 20px;
+      background: var(--primary-bg);
+    }
+    .header-right {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    /* Fixed Background */
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('/images/hero-background.png') no-repeat center center;
+      background-size: cover;
+      z-index: -9999;
+    }
+    /* Hero Section */
+    .hero {
+      position: relative;
+      padding: var(--section-padding);
+      text-align: center;
+      color: var(--text-color);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+    #heroChart {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    #heroPrice {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 3;
+      font-size: 2vw;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    }
+    @media (max-width: 600px) {
+      #heroPrice { font-size: 3vw; }
+    }
+    /* Tools Section */
+    #tools {
+      padding: var(--section-padding);
+      background-color: var(--section-bg);
+      margin-bottom: var(--section-margin-bottom);
+    }
+    #tools h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+    }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
+      gap: 1.5rem;
+      padding: 0 2rem;
+    }
+    .tool-card {
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+      text-align: center;
+      padding: 1rem;
+      position: relative;
+      transition: transform var(--transition-speed);
+    }
+    .tool-card:hover { transform: translateY(-0.125rem); }
+    .tool-button {
+      display: inline-block;
+      padding: var(--button-padding);
+      background: #005fa3;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      margin-top: 10px;
+      color: #fff;
+    }
+    /* Premium overlay applies only within the premium tool card */
+    .premium-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-size: 1.1rem;
+      border-radius: var(--border-radius);
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+    /* When unlocked, the premium overlay is hidden */
+    .unlocked .premium-overlay { display: none; }
+    /* (Other sections omitted for brevity) */
+  </style>
+</head>
+<body>
+  <!-- Fixed Background -->
+  <div class="background-fixed"></div>
+
+  <!-- Header (Navigation on left, Sign-in on right) -->
+  <header>
+    <nav class="header__inline-menu topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="dropdown">
+          <a href="#tools" class="parent-link">Tools</a>
+          <ul class="dropdown-menu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="/tutorials/" class="parent-link">Tutorials</a>
+          <ul class="dropdown-menu"></ul>
+        </li>
+      </ul>
+    </nav>
+    <!-- Sign-in area positioned to the right -->
+    <div class="header-right">
+      <div id="user-type-indicator">Not signed in</div>
+      <div id="google-signin-button"></div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div id="heroChart"></div>
+    <div id="heroPrice"></div>
+    <div class="hero-content">
+      <h1>Intuition Trades</h1>
+      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
+    </div>
+  </header>
+
+  <!-- Tools Section -->
+  <section id="tools">
+    <h2>Tools</h2>
+    <div class="tool-grid">
+      <!-- Premium Tool Card (locked by default) -->
+      <div class="tool-card premium" id="premiumCard">
+        <h2>Premium Tool</h2>
+        <p>This tool is available only for premium users.</p>
+        <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
+        <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
+      </div>
+      <!-- Basic Tool Card (always accessible) -->
+      <div class="tool-card basic">
+        <h2>Basic Tool</h2>
+        <p>This tool is available for all users.</p>
+        <a href="/basic-tool" class="tool-button">Open Basic Tool</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- (Other sections such as Countdown, Newsletter, Live News, etc. are omitted for brevity) -->
+
+  <!-- Google Identity Services Setup -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    let premiumToolClicked = false;
+
+    // Check for a stored token and verify without prompting
+    function verifyStoredToken() {
+      const storedToken = localStorage.getItem("googleToken");
+      if (storedToken) {
+        fetch('/api/verify-google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: storedToken })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.isPremium) {
+            document.getElementById("user-type-indicator").textContent = "Premium User";
+            document.getElementById("premiumCard").classList.add("unlocked");
+          } else {
+            document.getElementById("user-type-indicator").textContent = "Basic User";
+          }
+        })
+        .catch(err => console.error("Stored token verification error:", err));
+      }
+    }
+
+    // Initialize Google Sign-In without forcing a prompt at page load
+    window.onload = function() {
+      google.accounts.id.initialize({
+        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+        callback: handleCredentialResponse
+      });
+      const signInContainer = document.getElementById("google-signin-button");
+      if (signInContainer) {
+        google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
+      }
+      verifyStoredToken();
+    };
+
+    // When the premium tool is clicked, force a prompt
+    document.addEventListener("DOMContentLoaded", () => {
+      const premiumCard = document.getElementById("premiumCard");
+      if (premiumCard) {
+        premiumCard.addEventListener("click", () => {
+          premiumToolClicked = true;
+          google.accounts.id.prompt();
+        });
+      }
+    });
+
+    function handleCredentialResponse(response) {
+      console.log("Received JWT token:", response.credential);
+      localStorage.setItem("googleToken", response.credential);
+      fetch('/api/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (premiumToolClicked) {
+          if (data.isPremium) {
+            document.getElementById("premiumCard").classList.add("unlocked");
+          } else {
+            alert("Access denied – Premium Users only.");
+          }
+          premiumToolClicked = false;
+        } else {
+          if (data.isPremium) {
+            document.getElementById("user-type-indicator").textContent = "Premium User";
+            document.getElementById("premiumCard").classList.add("unlocked");
+          } else {
+            document.getElementById("user-type-indicator").textContent = "Basic User";
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Error verifying user:", err);
+      });
+    }
+  </script>
+</body>
+</html>
