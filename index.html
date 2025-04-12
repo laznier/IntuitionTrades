@@ -2171,7 +2171,104 @@ tickerSearchButton.addEventListener("click", async () => {
     });
   });
 </script>
-
+<script>
+  // Global flag to track premium tool click
+  let premiumToolClicked = false;
+  
+  // Initialize Google Sign-In when window loads
+  window.onload = function() {
+    google.accounts.id.initialize({
+      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+      callback: handleCredentialResponse
+    });
+    
+    // Render the normal sign-in button on the page
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "filled_black",
+        size: "large",
+        logo_alignment: "right"
+      }
+    );
+  };
+  
+  /**
+   * The common callback for Google sign-in.
+   * 
+   * When invoked, it sends the credential to our verify endpoint. If the
+   * sign-in was initiated normally (premiumToolClicked is false), then it
+   * simply updates the user-type indicator and redirects to the main page.
+   * 
+   * If premiumToolClicked is true, then:
+   *    - If the user is premium, it removes the overlay (unlocking the tool card)
+   *      and immediately redirects the user to the unlocked premium app ("/top5").
+   *    - Otherwise, it alerts the user that access is denied.
+   * 
+   * In both cases the premiumToolClicked flag is then reset to false.
+   */
+  function handleCredentialResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+  
+    // Send the credential to our backend verify endpoint.
+    fetch('/api/verify-google?credential=' + encodeURIComponent(response.credential))
+      .then(res => res.json())
+      .then(data => {
+        if (premiumToolClicked) {
+          // Premium tool flow (triggered from clicking the premium card)
+          if (data.isPremium) {
+            // Remove overlay on the premium tool card(s)
+            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
+              el.style.background = "transparent";
+            });
+            // Redirect to unlocked premium app (adjust URL as needed)
+            window.location.href = "/top5";
+          } else {
+            alert("Access denied – this tool is available for Premium Users only.");
+            window.location.href = "/";
+          }
+          // Reset flag after handling premium tool flow
+          premiumToolClicked = false;
+        } else {
+          // Normal sign-in flow
+          if (data.isPremium) {
+            document.getElementById('user-type-indicator').textContent = "Premium User";
+            // Optionally, you can remove lock overlays from premium tool cards here too
+            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
+              el.style.background = "transparent";
+            });
+          } else {
+            document.getElementById('user-type-indicator').textContent = "Basic User";
+          }
+          // Normal redirect back to main page
+          window.location.href = "/";
+        }
+      })
+      .catch(err => {
+        console.error("Error verifying user:", err);
+        window.location.href = "/";
+      });
+  }
+  
+  /**
+   * Set up the premium tool button so that clicking it always triggers
+   * a fresh sign-in. This enables us to reauthenticate the user and ensure
+   * that only premium users access the tool.
+   */
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumButton = document.getElementById("premiumToolButton");
+    if (premiumButton) {
+      premiumButton.addEventListener("click", (e) => {
+        // Set the flag to indicate premium tool click
+        premiumToolClicked = true;
+        // Trigger the Google sign-in prompt.
+        // This always forces a fresh authentication.
+        google.accounts.id.prompt();
+      });
+    }
+  });
+  </script>
+  
   </script>
   
 </body>
