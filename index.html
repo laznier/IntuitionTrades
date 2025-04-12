@@ -2159,43 +2159,22 @@ tickerSearchButton.addEventListener("click", async () => {
   function handleCredentialResponse(response) {
     console.log("Encoded JWT ID token: " + response.credential);
 
-    fetch('/api/verify-google?credential=' + encodeURIComponent(response.credential))
-      .then(res => res.json())
-      .then(data => {
-        if (premiumToolClicked) {
-          // Premium tool flow.
-          if (data.isPremium) {
-            // Unlock the premium tool by removing the locked overlay.
-            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
-              el.style.background = "transparent";
-            });
-            // Redirect to unlocked premium app (adjust URL as needed).
-            window.location.href = "/top5";
-          } else {
-            alert("Access denied – this tool is available for Premium Users only.");
-            window.location.href = "/";
-          }
-          // Reset flag.
-          premiumToolClicked = false;
-        } else {
-          // Normal sign-in flow.
-          if (data.isPremium) {
-            document.getElementById('user-type-indicator').textContent = "Premium User";
-            // Optionally, unlock premium overlays here too.
-            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
-              el.style.background = "transparent";
-            });
-          } else {
-            document.getElementById('user-type-indicator').textContent = "Basic User";
-          }
-          // Redirect back to the main page.
-          window.location.href = "/";
-        }
-      })
-      .catch(err => {
-        console.error("Error verifying user:", err);
-        window.location.href = "/";
-      });
+    fetch('/api/verify-google', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ token: response.credential })
+})
+.then(res => res.json())
+.then(data => {
+  // ...
+})
+.catch(err => {
+  console.error("Error verifying user:", err);
+  window.location.href = "/";
+});
+
   }
 </script>
 
