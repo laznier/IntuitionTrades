@@ -975,6 +975,98 @@ footer {
   width: 100%;
   margin-top: 20px; /* or whatever spacing you prefer */
 }
+
+/* Ensure the image container is positioned relatively */
+.tool-card .tool-card-image-container {
+  position: relative;
+}
+
+/* Premium overlay: semitransparent lock and text */
+.premium-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* semitransparent black */
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none; /* so clicks pass through if needed */
+}
+
+/* Style the lock icon and text */
+.lock-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.5rem;
+}
+.premium-text {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+/* Modal Styling */
+.modal {
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  position: relative;
+  width: 90%;
+  max-width: 400px;
+  color: #000;
+  text-align: center;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Basic styling for the form inside the modal */
+#premiumLoginForm input {
+  width: 80%;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#premiumLoginForm button {
+  padding: 0.5rem 1rem;
+  background-color: var(--primary-bg);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  color: var(--text-color);
+  transition: background-color 0.3s;
+}
+
+#premiumLoginForm button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
 </style>
 </head>
 <body>
@@ -1264,6 +1356,23 @@ footer {
     <!-- Tools Section -->
     <section id="tools">
       <h2>Tools</h2>
+      <!-- Premium Tool Card: Top Stocks Scanner -->
+<div class="tool-card premium">
+  <div class="tool-card-image-container">
+    <img src="images/top5.PNG" alt="Top Stocks Scanner" />
+    <!-- Premium Overlay -->
+    <div class="premium-overlay">
+      <!-- You can use your own lock icon image or an icon font -->
+      <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
+      <span class="premium-text">Premium App</span>
+    </div>
+  </div>
+  <h2>Top Stocks Scanner</h2>
+  <p>Discover top-performing stocks with our exclusive scanner.</p>
+  <!-- Instead of an anchor, we use a button to trigger the login modal -->
+  <button class="tool-button" id="premiumToolButton">Open Tool</button>
+</div>
+
       <div class="tool-grid">
         <div class="tool-card">
           <img src="images/intraday.PNG" alt="Live Stock Chart" />
