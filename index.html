@@ -1067,6 +1067,34 @@ footer {
   background-color: #ddd;
   color: #333;
 }
+.tool-card.premium {
+  position: relative;
+}
+
+.premium-overlay {
+  position: absolute;
+  top: 0; 
+  left: 0;
+  width: 100%; 
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none; /* prevents clicks on the overlay */
+}
+
+.lock-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 0.5rem;
+}
+.premium-text {
+  font-size: 1rem;
+  font-weight: bold;
+}
 
 
 </style>
@@ -1358,26 +1386,24 @@ footer {
     <!-- Tools Section -->
     <section id="tools">
       <h2>Tools</h2>
-<!-- Premium Tool Card: Top Stocks Scanner -->
+      <div class="tool-grid">
+        <!-- Place this card INSIDE the same .tool-grid so it matches the others -->
 <div class="tool-card premium">
-  <div class="tool-card-image-container">
-    <img src="images/top5.png" alt="Top Stocks Scanner" />
-    <!-- Premium Overlay -->
-    <div class="premium-overlay">
-      <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
-      <span class="premium-text">Premium App</span>
-    </div>
+  <!-- Normal tool-card image -->
+  <img src="images/top5.png" alt="Top Stocks Scanner" />
+
+  <!-- Semi-transparent lock overlay -->
+  <div class="premium-overlay">
+    <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
+    <span class="premium-text">Premium App</span>
   </div>
+
+  <!-- Everything else identical to the other cards -->
   <h2>Top Stocks Scanner</h2>
   <p>Scan over 3500 US companies for Risk Reward Index, Technicals, Fundamentals, News Trends, Insider, and Congress trading to develop your top picks.</p>
-  <!-- Instead of an anchor, we use a button to trigger the sign-in check -->
   <button class="tool-button" id="premiumToolButton">Open Tool</button>
 </div>
 
-
-
-
-      <div class="tool-grid">
         <div class="tool-card">
           <img src="images/intraday.PNG" alt="Live Stock Chart" />
           <h2>Live Stock Chart</h2>
