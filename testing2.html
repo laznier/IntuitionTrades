@@ -972,23 +972,23 @@
     function getAutoWeightsForRegime(regime){
       if(regime==="Bear"){
         return {
-          wRRI: 0.05,
+          wRRI: 0.10,
           wTech: 0.05,
-          wSent: 0.10,
-          wIns: 0.30,
+          wSent: 0.20,
+          wIns: 0.20,
           wFund: 0.30,
-          wCong: 0.20,
-          scale: 0.25
+          wCong: 0.15,
+          scale: 1
         };
       } else if(regime==="Bull"){
         return {
           wRRI: 0.20,
-          wTech: 0.25,
+          wTech: 0.20,
           wSent: 0.15,
           wIns: 0.15,
           wFund: 0.15,
-          wCong: 0.10,
-          scale: 1.00
+          wCong: 0.15,
+          scale: 3
         };
       } else {
         // Neutral
@@ -999,7 +999,7 @@
           wIns: 0.15,
           wFund: 0.20,
           wCong: 0.15,
-          scale: 0.50
+          scale: 2
         };
       }
     }
@@ -1020,7 +1020,7 @@
     
         const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
         let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-        let invalidScale = (sc < 0 || sc > 2);
+        let invalidScale = (sc < 0);
         if(invalidWeights || invalidScale){
           logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => Equal weighting.");
           let eq = (rri + tech + sent + ins + fund + cong) / 6;
