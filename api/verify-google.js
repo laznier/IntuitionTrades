@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       }
   
       const email = data.email;
-      const premiumUsers = ["@yahoo.com"]; // Replace with a dynamic check if needed
+      const premiumUsers = ["laznier@yahoo.com"]; // Replace with a dynamic check if needed
   
       if (premiumUsers.includes(email)) {
         return res.status(200).json({ authorized: true });
