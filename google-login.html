@@ -15,19 +15,19 @@
 <body>
   <!-- Div where the Google Sign-In button will be rendered -->
   <div id="google-signin-button"></div>
-  
+
   <!-- Include the Google Identity Services JS Library -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
+
   <script>
-    // Ensure the code runs after everything, including the Google script, is loaded.
+    // Ensure this runs after the Google script has fully loaded
     window.onload = function() {
-      // Initialize Google Identity Services with your Client ID and callback.
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+        // Use a callback function to capture the token
         callback: handleCredentialResponse
       });
-      // Render the Google Sign-In button.
+      // Render the sign-in button
       google.accounts.id.renderButton(
         document.getElementById("google-signin-button"),
         {
@@ -38,11 +38,11 @@
       );
     };
 
-    // Callback function to handle the token response.
+    // Callback function that receives the token and redirects to the callback page
     function handleCredentialResponse(response) {
       console.log("Encoded JWT ID token: " + response.credential);
-      alert("Sign-in successful!\nToken: " + response.credential);
-      // Here you might send the token to your backend, etc.
+      // Redirect to the callback page with the token appended as a query parameter.
+      window.location.href = "/auth/callback?credential=" + encodeURIComponent(response.credential);
     }
   </script>
 </body>
