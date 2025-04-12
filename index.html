@@ -1016,26 +1016,7 @@ footer {
     <!-- Container where the Google sign‑in button will render -->
     <div id="google-signin-button"></div>
   
-    <h1>Tool Demo</h1>
-    
-    <div class="tool-grid">
-      <!-- Basic Tool (always unlocked) -->
-      <div class="tool-card basic">
-        <h2>Basic Tool</h2>
-        <p>This tool is available for all users.</p>
-        <a href="/basic-tool" class="tool-button">Open Basic Tool</a>
-      </div>
-      
-      <!-- Premium Tool (locked by default) -->
-      <div class="tool-card premium" id="premiumCard">
-        <h2>Premium Tool</h2>
-        <p>This tool is available only for premium users.</p>
-        <!-- Premium overlay: will disappear for premium users -->
-        <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
-        <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
-      </div>
-    </div>
-  </body>
+
   
   <!-- Mobile Sidebar Menu -->
   <div class="mobile-menu" id="mobileMenu">
@@ -1292,75 +1273,82 @@ footer {
     <section id="tools">
       <h2>Tools</h2>
       <div class="tool-grid">
+         <!-- Premium Tool (locked by default) -->
+    <div class="tool-card premium" id="premiumCard">
+      <h2>Premium Tool</h2>
+      <p>This tool is available only for premium users.</p>
+      <!-- Premium overlay: will disappear for premium users -->
+      <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
+      <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
+    </div>
 
-
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/intraday.PNG" alt="Live Stock Chart" />
           <h2>Live Stock Chart</h2>
           <p>View current stock price and historical charts.</p>
           <a href="intraday/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
           <h2>Stock Trend Forecast</h2>
           <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
           <a href="stocks/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/risk.PNG" alt="Risk Reward Index" />
           <h2>Risk Reward Index</h2>
           <p>Assess risk vs reward using a double Heston stochastic volatility jump‐diffusion (dbHJ) model with realtime calibration.</p>
           <a href="risk/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/fundamental.PNG" alt="Combined Fundamental Analysis" />
           <h2>Combined Fundamental Analysis</h2>
           <p>Combine the top 5 fundamental categories to assess overall financial strength.</p>
           <a href="fundamental/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/congress.PNG" alt="Congress Trades" />
           <h2>Congress Trades</h2>
           <p>Discover if politicians are trading your favorite stocks.</p>
           <a href="congress/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/topcongress.PNG" alt="Top 5 Congress Stocks" />
           <h2>Top 5 Congress Stocks</h2>
           <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
           <a href="topcongress/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/analyst.PNG" alt="Combined Analyst Ratings" />
           <h2>Combined Analyst Ratings</h2>
           <p>View current analyst ratings and target price.</p>
           <a href="analyst/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/insider.PNG" alt="Insider Tracker" />
           <h2>Insider Tracker</h2>
           <p>Uncover insider activity on your favorite stocks.</p>
           <a href="insider/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
           <h2>Market Sentiment Viewer</h2>
           <p>Analyze the latest news articles on your favorite stocks.</p>
           <a href="sentiment/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/technical.PNG" alt="Combined Technical Analysis" />
           <h2>Combined Technical Analysis</h2>
           <p>Analyze the top 5 technicals to generate a combined bullish or bearish signal.</p>
           <a href="technical/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/MACD.PNG" alt="MACD Analysis" />
           <h2>MACD Analysis</h2>
           <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
           <a href="MACD/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card">
+        <div class="tool-card basic">
           <img src="images/ichimoku.PNG" alt="Ichimoku Cloud Analysis" />
           <h2>Ichimoku Cloud Analysis</h2>
           <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
