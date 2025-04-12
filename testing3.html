@@ -1424,6 +1424,24 @@ footer {
       });
     });
   </script>
+<!-- Container for the Google Sign-In button -->
+<div id="google-signin-button"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  window.onload = function () {
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "filled_black",  // Options include "outline", "filled_blue", "filled_black"
+        size: "large",          // "small", "medium", or "large"
+        text: "signin_with",    // Other options: "signup_with" or "continue_with"
+        shape: "rectangular",   // "pill" for rounded, for example
+        logo_alignment: "left"  // Logo on left or right
+      }
+    );
+  };
+</script>
 
   <script>
     // This function fetches intraday data for a given ticker using 5min interval,
