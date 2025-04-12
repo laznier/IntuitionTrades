@@ -1121,35 +1121,6 @@ footer {
     }
   </script>
 
-  <!-- Countdown Section -->
-  <section class="countdown-section">
-    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
-    <div class="flip-clock" id="flipClock">
-      <div class="flip-unit">
-        <span class="flip-number" id="days">00</span>
-        <span class="flip-label">Days</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="hours">00</span>
-        <span class="flip-label">Hours</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="minutes">00</span>
-        <span class="flip-label">Minutes</span>
-      </div>
-      <span class="flip-separator">:</span>
-      <div class="flip-unit">
-        <span class="flip-number" id="seconds">00</span>
-        <span class="flip-label">Seconds</span>
-      </div>
-    </div>
-    <button class="newsletter-btn" id="scrollToSignup">
-      Receive Top Picks Earlier
-    </button>
-  </section>
-
   <!-- Newsletter Signup Section -->
   <section id="newsletter-signup">
     <div class="signup-controls">
@@ -1168,43 +1139,54 @@ footer {
     <div class="ml-embedded" data-form="N78gvr"></div>
   </section>
 
-  <!-- Live News Section -->
-  <section id="live-news" class="live-news">
-    <h2 class="live-news-header">
-      Live News
-      <div class="ticker-search-container">
+  <!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
+
+    <!-- NEW: Ticker Search Box -->
+    <div class="ticker-search-container">
         <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
         <ul id="ticker-suggestions" style="display:none;"></ul>
         <button id="tickerSearchButton" class="dark-input">Search</button>
       </div>
-      <div class="live-news-controls">
-        <span id="liveNewsMinimize" title="Minimize">-</span>
-        <span id="liveNewsMaximize" title="Maximize">▢</span>
-        <span id="liveNewsClose" title="Close">X</span>
-      </div>
-    </h2>
-    <div class="live-news-topics">
-      <div class="news-hamburger" id="newsHamburger">&#9776;</div>
-      <div class="live-news-menu" id="liveNewsMenu">
-        <button data-topic="">All News</button>
-        <button data-topic="financial_markets">Financial Markets</button>
-        <button data-topic="economy">Economy</button>
-        <button data-topic="finance">Finance</button>
-        <button data-topic="technology">Technology</button>
-        <button data-topic="earnings">Earnings</button>
-        <button data-topic="mergers_and_acquisitions">M&A</button>
-        <button data-topic="blockchain">Blockchain</button>
-        <button data-topic="real_estate">Real Estate</button>
-        <button data-topic="retail_wholesale">Retail & Wholesale</button>
-        <button data-topic="energy_transportation">Energy & Transport</button>
-        <button data-topic="life_sciences">Life Sciences</button>
-        <button data-topic="manufacturing">Manufacturing</button>
-        <button data-topic="ipo">IPO</button>
-      </div>
-      <div class="live-news-feed" id="liveNewsFeed">
-        <!-- Dynamically populated -->
-      </div>
-    </section>
+      
+  
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
+    </div>
+  </h2>
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button>
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
+
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
 
     <main>
       <!-- Tools Section -->
@@ -1423,12 +1405,10 @@ footer {
       const recentPoints = points.filter(p => p.x >= twentyFourHoursAgo.getTime());
       if (recentPoints.length === 0) return;
       
-      // Determine line color based on performance
       const firstPrice = recentPoints[0].y;
       const lastPrice = recentPoints[recentPoints.length - 1].y;
       const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
       
-      // Update hero price
       const heroPriceEl = document.getElementById('heroPrice');
       const newPriceText = `SPY ${lastPrice.toFixed(2)}`;
       const newColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
@@ -1451,12 +1431,7 @@ footer {
             }
           }
         },
-        exporting: {
-          enabled: false,
-          buttons: {
-            contextButton: { enabled: false }
-          }
-        },
+        exporting: { enabled: false },
         time: { useUTC: false },
         rangeSelector: { enabled: false },
         title: { text: null },
@@ -1482,45 +1457,107 @@ footer {
       plotHeroChart();
       setInterval(plotHeroChart, 60000);
     });
-
-    // Countdown
-    document.addEventListener('DOMContentLoaded', () => {
-      function getNextMondayTarget() {
-        const now = new Date();
-        const currentUTCDay = now.getUTCDay();
-        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
-        if (currentUTCDay === 1 && now < target) { 
-          return target; 
-        } else {
-          let daysUntilMonday = (8 - currentUTCDay) % 7;
-          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
-          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
-          return target;
-        }
-      }
-      function updateCountdown() {
-        const now = new Date();
-        let target = getNextMondayTarget();
-        let diff = target - now;
-        if (diff <= 0) {
-          target = new Date(target.getTime() + 7 * 24 * 60 * 60 * 1000);
-          diff = target - now;
-        }
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        document.getElementById('days').textContent = days.toString().padStart(2, '0');
-        document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-        document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-        document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
-      }
-      updateCountdown();
-      setInterval(updateCountdown, 1000);
-      document.getElementById('scrollToSignup').addEventListener('click', () => {
-        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+  
+    // ==========================
+    //    Live News JavaScript
+    // ==========================
+  
+    document.addEventListener("DOMContentLoaded", () => {
+      const newsHamburger = document.getElementById("newsHamburger");
+      const liveNewsMenu = document.getElementById("liveNewsMenu");
+      const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+  
+      newsHamburger.addEventListener("click", () => {
+        liveNewsMenu.classList.toggle("active");
       });
+  
+      menuButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedTopic = btn.getAttribute("data-topic") || "";
+          refreshNews();
+          if (liveNewsMenu.classList.contains("active")) {
+            liveNewsMenu.classList.remove("active");
+          }
+        });
+      });
+  
+      async function fetchAllSentimentData(topic) {
+        let url = `https://www.intuitiontrades.com/api/sentiment?limit=20${topic ? `&topic=${topic}` : ""}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!data.feed) throw new Error("No sentiment data from server.");
+        return data.feed;
+      }
+  
+      async function fetchAllSentimentDataByTicker(ticker) {
+        const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!data.feed) throw new Error("No sentiment data for ticker.");
+        return data.feed;
+      }
+  
+      function formatTimePublished(timeStr) {
+        if (!timeStr || timeStr.length < 8) return "";
+        return `${timeStr.slice(0,4)}-${timeStr.slice(4,6)}-${timeStr.slice(6,8)} ${timeStr.slice(9,11)}:${timeStr.slice(11,13)}`;
+      }
+  
+      function renderNewsItem(item) {
+        const container = document.createElement("div");
+        container.classList.add("live-news-item");
+  
+        if (item.banner_image) {
+          const imgEl = document.createElement("img");
+          imgEl.src = item.banner_image;
+          imgEl.classList.add("news-thumbnail");
+          container.appendChild(imgEl);
+        }
+  
+        const row = document.createElement("div");
+        row.classList.add("live-news-row");
+        row.innerHTML = `
+          <div class="live-news-timestamp">${formatTimePublished(item.time_published)}</div>
+          <div class="live-news-title">${item.title || "Untitled"}</div>`;
+        container.appendChild(row);
+  
+        const summaryEl = document.createElement("div");
+        summaryEl.classList.add("live-news-summary");
+        summaryEl.innerHTML = `<p>${item.summary || ""}</p><a href="${item.url}" target="_blank">See full article</a>`;
+        container.appendChild(summaryEl);
+  
+        row.onclick = () => container.classList.toggle("expanded");
+  
+        return container;
+      }
+  
+      function updateNewsFeed(articles) {
+        const feedContainer = document.getElementById("liveNewsFeed");
+        feedContainer.innerHTML = "";
+        articles.sort((a, b) => b.time_published.localeCompare(a.time_published));
+        articles.forEach(article => feedContainer.appendChild(renderNewsItem(article)));
+      }
+  
+      let selectedTopic = "";
+      async function refreshNews() {
+        try {
+          updateNewsFeed(await fetchAllSentimentData(selectedTopic));
+        } catch (err) { console.error(err); }
+      }
+  
+      document.getElementById("tickerSearchButton").onclick = async () => {
+        const ticker = document.getElementById("tickerSearchInput").value.toUpperCase().trim();
+        if (!ticker) return alert("Please enter a ticker symbol.");
+        updateNewsFeed(await fetchAllSentimentDataByTicker(ticker));
+      };
+  
+      refreshNews();
+      setInterval(refreshNews, 120000);
+  
+      document.getElementById("liveNewsMinimize").onclick = () => document.getElementById("live-news").classList.toggle("minimized");
+      document.getElementById("liveNewsMaximize").onclick = () => document.getElementById("live-news").classList.toggle("maximized");
+      document.getElementById("liveNewsClose").onclick = () => document.getElementById("live-news").style.display = "none";
     });
   </script>
+  
 </body>
 </html>
