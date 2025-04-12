@@ -1997,42 +1997,72 @@ tickerSearchButton.addEventListener("click", async () => {
       });
 
 </script>
-<!-- Load the Google Identity Services library -->
+
+<!-- Load Google Identity Services library -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-  // Global flag to track if the premium flow was triggered.
+  // Global flag to track if the premium flow was triggered by clicking the premium tool.
   let premiumToolClicked = false;
 
-  // Initialize Google Sign-In once the window loads.
+  // Function: Verify locally stored token (if any) on page load.
+  function verifyStoredToken() {
+    const storedToken = localStorage.getItem("googleToken");
+    if (storedToken) {
+      // Send the stored token to your backend for verification.
+      fetch('/api/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: storedToken })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Stored token verification:", data);
+        if (data.isPremium) {
+          document.getElementById("user-type-indicator").textContent = "Premium User";
+          document.getElementById("premiumCard").classList.add("unlocked");
+        } else {
+          document.getElementById("user-type-indicator").textContent = "Basic User";
+        }
+      })
+      .catch(err => {
+        console.error("Error verifying stored token:", err);
+      });
+    }
+  }
+
+  // Initialize Google Sign-In when the window loads.
   window.onload = function() {
     google.accounts.id.initialize({
       client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
       callback: handleCredentialResponse
     });
-    // Render the sign-in button in the container.
+    // Render the sign-in button.
     const signInContainer = document.getElementById("google-signin-button");
     if (signInContainer) {
       google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
     }
-    // Note: We intentionally do NOT call google.accounts.id.prompt() here to avoid auto‑logging in.
+    // On page load, do NOT force a prompt; only check stored token.
+    verifyStoredToken();
   };
 
-  // Attach premium tool click handler once the DOM is ready.
+  // Attach click event to the premium tool card so that a re-authentication is forced if the user clicks it.
   document.addEventListener("DOMContentLoaded", () => {
     const premiumCard = document.getElementById("premiumCard");
     if (premiumCard) {
-      // When the premium tool card is clicked, trigger a prompt for re‑authentication.
       premiumCard.addEventListener("click", () => {
         premiumToolClicked = true;
+        // Force prompt for premium tool flow.
         google.accounts.id.prompt();
       });
     }
   });
 
-  // Common Google sign‑in callback.
+  // Google sign-in callback. We store the token and then verify it.
   function handleCredentialResponse(response) {
     console.log("Received JWT token:", response.credential);
-    // Send the JWT to the backend for verification.
+    // Save the token locally so we remember the signed-in user.
+    localStorage.setItem("googleToken", response.credential);
+    // Send the token to backend verification.
     fetch('/api/verify-google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2042,21 +2072,18 @@ tickerSearchButton.addEventListener("click", async () => {
     .then(data => {
       console.log("Verification response:", data);
       if (premiumToolClicked) {
-        // If the premium tool flow was triggered:
         if (data.isPremium) {
-          // Mark the premium card as unlocked.
           document.getElementById("premiumCard").classList.add("unlocked");
-          // Optionally, you may also redirect immediately:
+          // Optionally redirect immediately to the premium tool page:
           // window.location.href = "/premium-tool";
         } else {
           alert("Access denied – this tool is available for Premium Users only.");
         }
         premiumToolClicked = false;
       } else {
-        // Normal sign‑in flow: update user-type indicator.
+        // Normal sign-in flow updates the user type indicator.
         if (data.isPremium) {
           document.getElementById("user-type-indicator").textContent = "Premium User";
-          // Unlock premium tool if signed in.
           document.getElementById("premiumCard").classList.add("unlocked");
         } else {
           document.getElementById("user-type-indicator").textContent = "Basic User";
