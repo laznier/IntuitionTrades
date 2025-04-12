@@ -4,5 +4,11 @@
     "api/**/*.js": {
       "maxDuration": 30
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/auth/callback",
+      "destination": "/auth/callback/index.html"
+    }
+  ]
 }
