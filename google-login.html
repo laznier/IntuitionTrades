@@ -41,8 +41,10 @@
       border-radius: 3px;
       cursor: pointer;
       margin-top: 10px;
+      text-decoration: none;
+      display: inline-block;
     }
-    /* Premium tool overlay (visible by default on premium tool card) */
+    /* Premium tool overlay: visible by default on the premium tool card */
     .premium-overlay {
       position: absolute;
       top: 0;
@@ -56,6 +58,11 @@
       color: #fff;
       font-size: 1.1rem;
       border-radius: 5px;
+      transition: opacity 0.3s ease;
+    }
+    /* When unlocked, the overlay is hidden */
+    .unlocked .premium-overlay {
+      display: none;
     }
   </style>
 </head>
@@ -74,22 +81,22 @@
       <a href="/basic-tool" class="tool-button">Open Basic Tool</a>
     </div>
     <!-- Premium Tool Card (locked by default) -->
-    <div class="tool-card premium">
+    <div class="tool-card premium" id="premiumCard">
       <h2>Premium Tool</h2>
       <p>This tool is available only for premium users.</p>
-      <!-- Premium overlay that should be hidden for premium users -->
-      <div class="premium-overlay">Premium Locked</div>
-      <button class="tool-button" id="premiumToolButton">Open Premium Tool</button>
+      <!-- Premium overlay which hides the tool if locked -->
+      <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
+      <a href="/premium-tool" class="tool-button">Open Premium Tool</a>
     </div>
   </div>
 
   <!-- Load the Google Identity Services library -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
-    // Global flag to track premium tool flow.
+    // Global flag to track if the premium tool button was clicked.
     let premiumToolClicked = false;
 
-    // Initialize Google Sign-In once the window loads.
+    // Initialize Google Sign-In and auto-select any previously signed in account.
     window.onload = function() {
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
@@ -100,30 +107,29 @@
       if (signInContainer) {
         google.accounts.id.renderButton(
           signInContainer,
-          {
-            theme: "filled_black",
-            size: "large"
-          }
+          { theme: "filled_black", size: "large" }
         );
       }
+      // Force auto-select to sign in immediately if the user is already signed in.
+      google.accounts.id.prompt({ auto_select: true });
     };
 
-    // Attach event listener to the premium tool button.
+    // If the user clicks the premium tool button, force re-authentication.
     document.addEventListener("DOMContentLoaded", () => {
-      const premiumButton = document.getElementById("premiumToolButton");
-      if (premiumButton) {
-        premiumButton.addEventListener("click", () => {
+      // For this demo, clicking anywhere on the premium tool card will trigger premium flow.
+      const premiumCard = document.getElementById("premiumCard");
+      if (premiumCard) {
+        premiumCard.addEventListener("click", () => {
           premiumToolClicked = true;
-          // Trigger the Google sign-in prompt (force re-authentication).
-          google.accounts.id.prompt();
+          google.accounts.id.prompt(); // Forces re-authentication.
         });
       }
     });
 
-    // Common callback from Google sign-in.
+    // Handle the sign-in response from Google.
     function handleCredentialResponse(response) {
       console.log("Received JWT token:", response.credential);
-      // Send POST request with the token to the verification endpoint.
+      // Send the token to your backend verification endpoint.
       fetch('/api/verify-google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -132,36 +138,31 @@
       .then(res => res.json())
       .then(data => {
         console.log("Verification response:", data);
+        // If the premium tool was clicked, use that flow.
         if (premiumToolClicked) {
-          // Premium tool flow: user clicked the premium button.
           if (data.isPremium) {
-            // Hide the premium overlay to show the unlocked tool.
-            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
-              el.style.display = "none";
-            });
-            // Redirect to the premium tool page.
-            window.location.href = "/premium-tool";
+            // Unlock the premium card by removing the overlay.
+            document.getElementById("premiumCard").classList.add("unlocked");
+            // Optionally redirect immediately:
+            // window.location.href = "/premium-tool";
           } else {
             alert("Access denied – this tool is available for Premium Users only.");
-            window.location.href = "/";
+            // Reset the premium flow flag.
+            premiumToolClicked = false;
           }
-          premiumToolClicked = false;
         } else {
-          // Normal sign-in flow: update the user-type indicator.
+          // Normal sign-in flow on page load.
           if (data.isPremium) {
-            document.getElementById('user-type-indicator').textContent = "Premium User";
-            // Optionally, unlock premium overlays even if not explicitly using a premium tool.
-            document.querySelectorAll('.tool-card.premium .premium-overlay').forEach(el => {
-              el.style.display = "none";
-            });
+            document.getElementById("user-type-indicator").textContent = "Premium User";
+            // Unlock any premium content.
+            document.getElementById("premiumCard").classList.add("unlocked");
           } else {
-            document.getElementById('user-type-indicator').textContent = "Basic User";
+            document.getElementById("user-type-indicator").textContent = "Basic User";
           }
         }
       })
       .catch(err => {
         console.error("Error verifying user:", err);
-        window.location.href = "/";
       });
     }
   </script>
