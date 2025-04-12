@@ -980,6 +980,7 @@ footer {
 .tool-card .tool-card-image-container {
   position: relative;
 }
+/* Remove these blocks: premium overlay, lock icon, premium text, modal styling, and form styling */
 
 /* Premium overlay: semitransparent lock and text */
 .premium-overlay {
@@ -994,10 +995,10 @@ footer {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  pointer-events: none; /* so clicks pass through if needed */
+  pointer-events: none;
 }
 
-/* Style the lock icon and text */
+/* Lock icon and text */
 .lock-icon {
   width: 40px;
   height: 40px;
@@ -1043,7 +1044,7 @@ footer {
   cursor: pointer;
 }
 
-/* Basic styling for the form inside the modal */
+/* Form styling inside the modal */
 #premiumLoginForm input {
   width: 80%;
   padding: 0.5rem;
@@ -1066,6 +1067,7 @@ footer {
   background-color: #ddd;
   color: #333;
 }
+
 
 </style>
 </head>
@@ -1356,19 +1358,17 @@ footer {
     <!-- Tools Section -->
     <section id="tools">
       <h2>Tools</h2>
-      <div class="tool-card premium">
-        <div class="tool-card-image-container">
-          <img src="images/top5.PNG" alt="Top Stocks Scanner" />
-          <div class="premium-overlay">
-            <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
-            <span class="premium-text">Premium App</span>
-          </div>
-        </div>
-        <h2>Top Stocks Scanner</h2>
-        <p>Discover top-performing stocks with our exclusive scanner.</p>
-        <button class="tool-button" id="premiumToolButton">Open Tool</button>
-      </div>
-      
+      <!-- Premium Tool Card: Top Stocks Scanner -->
+<div class="tool-card premium">
+  <div class="tool-card-image-container">
+    <img src="images/top5.PNG" alt="Top Stocks Scanner" />
+  </div>
+  <h2>Top Stocks Scanner</h2>
+  <p>Scan the S&P-500, Russell-3000, or 3500 US companies at once for Risk Reward Index, Technicals, Fundamenals, Sentiment, Insider, and Congress trading to generate your top picks.  </p>
+  <!-- Button triggers sign-in check -->
+  <button class="tool-button" id="premiumToolButton">Open Tool</button>
+</div>
+
 
 
       <div class="tool-grid">
