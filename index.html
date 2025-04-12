@@ -485,7 +485,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  max-width: 20rem;
+  max-width: 25rem;
   margin: 0 auto;
 }
 #newsletter-signup input {
@@ -852,32 +852,6 @@ footer {
   display: flex;
   flex-direction: column; /* We'll prepend new items */
 }
-.signup-controls {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0.5rem;
-}
-
-.signup-controls span {
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0.3rem 0.6rem;
-  background-color: #333;
-  border-radius: 4px;
-  color: #fff;
-  transition: background-color 0.3s;
-}
-
-.signup-controls span:hover {
-  background-color: #555;
-}
-
-/* Optional: styling for a minimized state */
-#newsletter-signup.minimized {
-  height: 20px; /* Adjust height as needed */
-  overflow: hidden;
-}
 
 /* Custom scrollbar styling for a darker "wheel" look */
 .live-news-feed::-webkit-scrollbar {
@@ -995,13 +969,6 @@ footer {
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
 }
-.google-signin-container {
-  display: flex;
-  justify-content: flex-end;
-  width: 100%;
-  margin-top: 20px; /* or whatever spacing you prefer */
-}
-
 
 </style>
 </head>
@@ -1091,36 +1058,8 @@ footer {
       <h1>Intuition Trades</h1>
       <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
-    
-
   </header>
- <!-- Container with flex display to right-align the content -->
-<div class="google-signin-container">
-  <!-- Google Identity Services -->
- 
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<div id="google-signin-button"></div>
-<script>
-  google.accounts.id.initialize({
-    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-    callback: handleCredentialResponse
-  });
-  google.accounts.id.renderButton(
-    document.getElementById("google-signin-button"),
-    {
-      theme: "filled_black",
-      size: "large",
-      logo_alignment: "right"
-    }
-  );
-  function handleCredentialResponse(response) {
-    console.log("Encoded JWT ID token: " + response.credential);
-    // You can then send the token to your backend, etc.
-  }
-</script>
-
-
-
+  
   <!-- Countdown Section -->
   <section class="countdown-section">
     <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
@@ -1223,26 +1162,18 @@ footer {
     </div>
   </section>  
 
+  <!-- Newsletter Signup Section -->
   <section id="newsletter-signup">
-    <div class="signup-controls">
-      <span id="signupMinimize" title="Minimize">-</span>
-      <span id="signupClose" title="Close">X</span>
-    </div>
-    
-    <!-- Your sign-up content or embed code here -->
-  
+    <!-- MailerLite Universal Embed Code -->
     <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},
-        l=d.createElement(e),l.async=1,l.src=u,
-        n=d.getElementsByTagName(e)[0],
-        n.parentNode.insertBefore(l,n);
-      })(window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
       ml('account', '1422635');
     </script>
     <div class="ml-embedded" data-form="N78gvr"></div>
   </section>
-  
-  
 
   <!-- ==========================
      Live News Section
@@ -1473,9 +1404,6 @@ footer {
       });
     });
   </script>
-<!-- Container for the Google Sign-In button -->
-<div id="google-signin-button"></div>
-
 
   <script>
     // This function fetches intraday data for a given ticker using 5min interval,
@@ -1775,41 +1703,6 @@ heroPriceEl.appendChild(newPriceEl);
       });
     });
   </script>
- <!-- ==========================
-      Newsletter 
-  =========================== -->
-  <script>
-    // Track the minimized state for the sign-up container
-    let isSignupMinimized = false;
-  
-    document.getElementById("signupMinimize").addEventListener("click", function() {
-      const signupSection = document.getElementById("newsletter-signup");
-      const btn = document.getElementById("signupMinimize");
-      
-      // Toggle minimized state and button text
-      if (!isSignupMinimized) {
-        signupSection.classList.add("minimized");
-        btn.textContent = "+";  // Change to plus when minimized
-        isSignupMinimized = true;
-      } else {
-        signupSection.classList.remove("minimized");
-        btn.textContent = "-";  // Change back to minus when restored
-        isSignupMinimized = false;
-      }
-    });
-  
-    // Close behavior for the sign-up container
-    document.getElementById("signupClose").addEventListener("click", function() {
-      document.getElementById("newsletter-signup").style.display = "none";
-    });
-  </script>
-  
-
-  // Close behavior for the sign-up container
-  document.getElementById("signupClose").addEventListener("click", function() {
-    document.getElementById("newsletter-signup").style.display = "none";
-  });
-</script>
 
   <!-- ==========================
        Live News JavaScript
