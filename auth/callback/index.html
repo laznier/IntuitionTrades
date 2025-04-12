@@ -1,39 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Processing Sign-In...</title>
+  <title>Callback: Verify Premium</title>
 </head>
 <body>
-  <script>
-    // Your token extraction and API call logic here
+<script>
+  (function() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("credential");
-    
-    if (token) {
-      fetch("/api/verify-google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.authorized) {
-            window.location.href = "/top5/index.html";
-          } else {
-            alert("Access denied: Premium membership required.");
-            window.location.href = "/";
-          }
-        })
-        .catch(error => {
-          console.error("Verification error:", error);
-          alert("Error verifying sign-in. Please try again.");
-          window.location.href = "/";
-        });
-    } else {
-      alert("No token received.");
+    if (!token) {
+      alert("No token received. Please sign in again.");
       window.location.href = "/";
+      return;
     }
-  </script>
+    // Send token to your /api/verify-google route
+    fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.authorized) {
+        // Premium user => proceed to /top5
+        window.location.href = "/top5/index.html";
+      } else {
+        // Not premium => show error, redirect
+        alert("Access denied: Premium membership required.");
+        window.location.href = "/";
+      }
+    })
+    .catch(err => {
+      console.error("Error verifying token:", err);
+      alert("There was a problem verifying your sign in. Please try again.");
+      window.location.href = "/";
+    });
+  })();
+</script>
 </body>
 </html>
