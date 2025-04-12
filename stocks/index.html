@@ -247,8 +247,8 @@
     <label>Congress Weight (0..1):
       <input type="number" id="wCong" value="0.15" min="0" max="1" step="0.01">
     </label>
-    <label>Scaling Factor [0..2]:
-      <input type="number" id="manualScale" value="1.00" min="0" max="2" step="0.01">
+    <label>Scaling Factor [0..5]:
+      <input type="number" id="manualScale" value="1.00" min="0" max="5" step="0.01">
     </label>
   </div>
 
@@ -1812,11 +1812,11 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
   }
   function getAutoWeightsForRegime(regime) {
     if(regime === "Bear"){
-      return { wMC: 0.05, wTech: 0.05, wSent: 0.10, wIns: 0.30, wFund: 0.30, wCong: 0.20, scale: 0.25 };
+      return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1.00 };
     } else if(regime === "Bull"){
-      return { wMC: 0.20, wTech: 0.25, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.10, scale: 1.00 };
+      return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3.00 };
     } else {
-      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
+      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.0 };
     }
   }
   function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
@@ -2273,13 +2273,13 @@ window.open(url, "_blank");
           </p>
           <pre>
 Bear Weights (example):
-Risk vs Reward Index = 5%
+Risk vs Reward Index = 10%
 Technical            = 5%
-Sentiment            = 10%
-Insider              = 30%
+Sentiment            = 20%
+Insider              = 20%
 Fundamental          = 30%
-Congress             = 20%
-Scaling              = 0.25
+Congress             = 15%
+Scaling              = 1.00
           </pre>
           <h3>Neutral Market</h3>
           <p>
@@ -2293,7 +2293,7 @@ Sentiment            = 15%
 Insider              = 15%
 Fundamental          = 20%
 Congress             = 15%
-Scaling              = 0.50
+Scaling              = 2.00
           </pre>
           <h3>Bull Market</h3>
           <p>
@@ -2302,12 +2302,12 @@ Scaling              = 0.50
           <pre>
 Bull Weights (example):
 Risk vs Reward Index = 20%
-Technical            = 25%
+Technical            = 20%
 Sentiment            = 15%
 Insider              = 15%
 Fundamental          = 15%
-Congress             = 10%
-Scaling              = 1.00
+Congress             = 15%
+Scaling              = 3.00
           </pre>
         </section>
         
