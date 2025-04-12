@@ -1091,12 +1091,11 @@ footer {
     </div>
   </header>
 
-<!-- Google Sign-In Container -->
-<div class="google-signin-container" style="text-align: right; margin-top: 20px;">
-  <!-- Small indicator text above the sign-in button -->
-  <div id="user-type-indicator" style="font-size: 0.8rem; margin-bottom: 5px;"></div>
+<!-- User type indicator -->
+  <div id="user-type-indicator">Not signed in</div>
+  <!-- Container for Google sign‑in button -->
   <div id="google-signin-button"></div>
-</div>
+
 
 
 
@@ -2001,39 +2000,39 @@ tickerSearchButton.addEventListener("click", async () => {
 <!-- Load the Google Identity Services library -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-  // Global flag to check if the premium tool flow has been triggered.
+  // Global flag to track if the premium flow was triggered.
   let premiumToolClicked = false;
 
-  // Initialize Google Sign-In and render the sign-in button.
+  // Initialize Google Sign-In once the window loads.
   window.onload = function() {
     google.accounts.id.initialize({
       client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
       callback: handleCredentialResponse
     });
-    // Render the sign-in button.
+    // Render the sign-in button in the container.
     const signInContainer = document.getElementById("google-signin-button");
     if (signInContainer) {
       google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
     }
-    // Auto-select if a user is already signed in.
-    google.accounts.id.prompt({ auto_select: true });
+    // Note: We intentionally do NOT call google.accounts.id.prompt() here to avoid auto‑logging in.
   };
 
-  // If the premium tool card is clicked, set the flag and prompt re-authentication.
+  // Attach premium tool click handler once the DOM is ready.
   document.addEventListener("DOMContentLoaded", () => {
     const premiumCard = document.getElementById("premiumCard");
     if (premiumCard) {
+      // When the premium tool card is clicked, trigger a prompt for re‑authentication.
       premiumCard.addEventListener("click", () => {
         premiumToolClicked = true;
-        // Force re-authentication for premium tools.
         google.accounts.id.prompt();
       });
     }
   });
 
-  // Common Google sign-in callback.
+  // Common Google sign‑in callback.
   function handleCredentialResponse(response) {
     console.log("Received JWT token:", response.credential);
+    // Send the JWT to the backend for verification.
     fetch('/api/verify-google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2043,19 +2042,21 @@ tickerSearchButton.addEventListener("click", async () => {
     .then(data => {
       console.log("Verification response:", data);
       if (premiumToolClicked) {
-        // Premium flow: if premium, unlock the premium tool; otherwise, alert.
+        // If the premium tool flow was triggered:
         if (data.isPremium) {
+          // Mark the premium card as unlocked.
           document.getElementById("premiumCard").classList.add("unlocked");
-          // Optionally, you can redirect immediately:
+          // Optionally, you may also redirect immediately:
           // window.location.href = "/premium-tool";
         } else {
           alert("Access denied – this tool is available for Premium Users only.");
         }
         premiumToolClicked = false;
       } else {
-        // Normal flow: update the user-type indicator and unlock premium tool if premium.
+        // Normal sign‑in flow: update user-type indicator.
         if (data.isPremium) {
           document.getElementById("user-type-indicator").textContent = "Premium User";
+          // Unlock premium tool if signed in.
           document.getElementById("premiumCard").classList.add("unlocked");
         } else {
           document.getElementById("user-type-indicator").textContent = "Basic User";
