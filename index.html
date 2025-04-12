@@ -1091,10 +1091,7 @@ footer {
       <h1>Intuition Trades</h1>
       <p>Empowering your stock decisions with free analysis & forecast tools.</p>
     </div>
-    
-
-  </header>
- <!-- Container with flex display to right-align the content -->
+     <!-- Container with flex display to right-align the content -->
 <div class="google-signin-container">
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1114,9 +1111,8 @@ footer {
        data-size="large"
        data-logo_alignment="right">
   </div>
-</div>
 
-
+  </header>
 
   <!-- Countdown Section -->
   <section class="countdown-section">
@@ -1229,6 +1225,28 @@ footer {
     <!-- Your sign-up content or embed code here -->
   
     <script>
+      
+  window.onload = function() {
+    google.accounts.id.initialize({
+      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+      callback: handleCredentialResponse
+    });
+    google.accounts.id.renderButton(
+      document.getElementById("google-signin-button"),
+      {
+        theme: "filled_black",
+        size: "large",
+        logo_alignment: "right"
+      }
+    );
+  };
+
+  function handleCredentialResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+  }
+</script>
+
+
       (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},
         l=d.createElement(e),l.async=1,l.src=u,
         n=d.getElementsByTagName(e)[0],
@@ -1381,7 +1399,7 @@ footer {
 
   <!-- Footer -->
   <footer>
-    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
   </footer>
 
   <!-- ============================================================
@@ -1470,9 +1488,6 @@ footer {
       });
     });
   </script>
-<!-- Container for the Google Sign-In button -->
-<div id="google-signin-button"></div>
-
 
   <script>
     // This function fetches intraday data for a given ticker using 5min interval,
