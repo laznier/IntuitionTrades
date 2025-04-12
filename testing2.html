@@ -247,6 +247,12 @@
         .filter(ticker => ticker.length > 0); // Remove any empty entries
     }
     
+        /***********************************************************************
+    TICKER LIST
+     ***********************************************************************/
+    // Replace the hard-coded ticker list with an empty array to be populated later.
+    const predeterminedTickers = [];
+    
     
     // Listen for changes on the index dropdown.
     document.getElementById("indexSelect").addEventListener("change", async function() {
@@ -276,13 +282,7 @@
     // Optionally, trigger a change event on page load to load a default index.
     document.getElementById("indexSelect").dispatchEvent(new Event('change'));
     
-    /***********************************************************************
-    TICKER LIST
-     ***********************************************************************/
-    // Replace the hard-coded ticker list with an empty array to be populated later.
-    const predeterminedTickers = [];
-    
-    
+
     
     /***********************************************************************
      * Show/hide manual inputs
