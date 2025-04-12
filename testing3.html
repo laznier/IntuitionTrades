@@ -362,19 +362,6 @@
   let bufferDotInterval;
   let debounceTimeout;
 
-  // Auto-populate futureDate with next month's date
-  (function setDefaultFutureDate() {
-    const futureDateInput = document.getElementById('futureDate');
-    const today = new Date();
-    const nextMonthDate = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      today.getDate()
-    );
-    const isoDate = nextMonthDate.toISOString().split('T')[0];
-    futureDateInput.value = isoDate;
-  })();
-
   // Show/hide manual historical period
   document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
     document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
@@ -1768,7 +1755,6 @@ if (document.getElementById('manualOverrideCheckbox').checked) {
     }
     document.getElementById('techSection').style.display = 'block';
     let techBull = updateTechChart(prices);
-    let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
     let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
     document.getElementById('mcSection').style.display = 'block';
     let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
