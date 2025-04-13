@@ -255,6 +255,20 @@
     }
   });
   document.getElementById("indexSelect").dispatchEvent(new Event('change'));
+  <!-- Add this helper function near the top of your script section -->
+
+// Helper: Compute the median of an array of numbers
+function getMedian(arr) {
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 !== 0) {
+    return sorted[mid];
+  } else {
+    // For an even number of elements, take the average of the two middle values
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+}
+
 
   /***********************************************************************
    * Show/hide manual inputs
@@ -425,43 +439,107 @@
       cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
     };
   }
-  function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let medianPrice = sorted[Math.floor(sorted.length / 2)];
-    let rawReturn = (medianPrice / currentPrice) - 1;
-    let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
-    let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
-    let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
-    const alpha = 1;
-    return 50 * (1 + Math.tanh(alpha * ratio));
+// Then update your computeRiskVsRewardIndex function:
+function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
+  // Use getMedian to correctly compute the median simulated price.
+  let medianPrice = getMedian(finalPrices);
+  let rawReturn = (medianPrice / currentPrice) - 1;
+  // Annualize the median return
+  let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
+  // Downside risk (annualized) from CVaR
+  let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
+  // Compute the risk/reward ratio, handling edge cases gracefully
+  let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
+  const alpha = 1;
+  return 50 * (1 + Math.tanh(alpha * ratio));
+}
+
+// In your computeTickerRRI (RRI section) function, call the above functions:
+async function computeTickerRRI(ticker, T) {
+  const prices = await fetchHistoricalData(ticker);
+  if (prices.length < 5) {
+    logStatus("Not enough historical data for " + ticker);
+    return 50;
   }
-  async function computeTickerRRI(ticker, T) {
-    const prices = await fetchHistoricalData(ticker);
-    if (prices.length < 5) {
-      logStatus("Not enough historical data for " + ticker);
-      return 50;
-    }
-    const st = computeHistStats(prices);
-    let iv = await fetchOptionsIV(ticker);
-    if (!iv) iv = st.sigma;
-    const v10 = iv * iv;
-    const v20 = 0.5 * v10;
-    const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
-    const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
-    const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
-    const dt = 1 / 252;
-    const sims = 10000;
-    const finals = runDBHJSimulation(
-      st.lastPrice, v10, v20, st.mu,
-      kappa1, theta1, sigma1, rho1,
-      kappa2, theta2, sigma2, rho2,
-      lambda, jumpMean, jumpStd,
-      T, dt, sims
-    );
-    const risk = computeRiskMetrics(finals, st.lastPrice);
-    const cvarFraction = risk.cvarPct / 100;
-    return computeRiskVsRewardIndex(finals, st.lastPrice, cvarFraction, T);
+  const st = computeHistStats(prices);
+  let iv = await fetchOptionsIV(ticker);
+  if (!iv) iv = st.sigma;
+  
+  const v10 = iv * iv;
+  const v20 = 0.5 * v10;
+  // DBHJ simulation parameters (matching Stocks tool)
+  const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
+  const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
+  const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+  const dt = 1 / 252;
+  const sims = 10000;
+  
+  const finals = runDBHJSimulation(
+    st.lastPrice, v10, v20, st.mu,
+    kappa1, theta1, sigma1, rho1,
+    kappa2, theta2, sigma2, rho2,
+    lambda, jumpMean, jumpStd,
+    T, dt, sims
+  );
+  
+  const risk = computeRiskMetrics(finals, st.lastPrice);
+  const cvarFraction = risk.cvarPct / 100;
+  const rri = computeRiskVsRewardIndex(finals, st.lastPrice, cvarFraction, T);
+  // Render the RRI chart just like in the Stocks tool
+  renderRRIChart(finals, st.lastPrice);
+  document.getElementById("rriDetails").innerText = `Risk vs Reward Index: ${rri.toFixed(2)}%`;
+  return rri;
+}
+
+// Render the RRI Chart with Highcharts (same as in the Stocks tool)
+function renderRRIChart(finalPrices, currentPrice) {
+  const minPrice = Math.min(...finalPrices);
+  const maxPrice = Math.max(...finalPrices);
+  const binCount = 20;
+  const binWidth = (maxPrice - minPrice) / binCount;
+  let bins = new Array(binCount).fill(0);
+  for (let p of finalPrices) {
+    let bin = Math.floor((p - minPrice) / binWidth);
+    if (bin >= binCount) bin = binCount - 1;
+    bins[bin]++;
   }
+  let binCenters = [];
+  for (let i = 0; i < binCount; i++) {
+    binCenters.push(minPrice + binWidth * (i + 0.5));
+  }
+  let histogramData = binCenters.map((center, i) => [center, bins[i]]);
+  Highcharts.chart('rriChart', {
+    chart: { type: 'column', backgroundColor: 'transparent' },
+    title: { text: 'Simulated Final Prices Distribution', style: { color: '#fff' } },
+    xAxis: {
+      title: { text: 'Price', style: { color: '#fff' } },
+      min: minPrice,
+      max: maxPrice,
+      labels: { style: { color: '#fff' } },
+      plotLines: [{
+        id: 'currentPriceLine',
+        value: currentPrice,
+        color: 'red',
+        dashStyle: 'Dash',
+        width: 2,
+        zIndex: 5,
+        label: { text: 'Current Price', style: { color: 'red' } }
+      }]
+    },
+    yAxis: {
+      title: { text: 'Frequency', style: { color: '#fff' } },
+      labels: { style: { color: '#fff' } },
+      gridLineColor: '#444'
+    },
+    tooltip: {
+      formatter: function() {
+        return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+      }
+    },
+    series: [{ name: 'Frequency', data: histogramData, color: 'gray' }],
+    credits: { enabled: false }
+  });
+}
 
   /***********************************************************************
    * TECHNICAL INDICATORS SECTION – from Stocks Tool (Exact version)
