@@ -355,21 +355,21 @@
     document.getElementById("manualRegimeSelect").addEventListener("change", function(){
       const val = this.value;
       if(val==="Bear"){
-        document.getElementById("wMC").value   = 0.05;
+        document.getElementById("wMC").value   = 0.10;
         document.getElementById("wTech").value = 0.05;
-        document.getElementById("wSent").value = 0.10;
-        document.getElementById("wIns").value  = 0.30;
+        document.getElementById("wSent").value = 0.20;
+        document.getElementById("wIns").value  = 0.20;
         document.getElementById("wFund").value = 0.30;
-        document.getElementById("wCong").value = 0.20;
-        document.getElementById("manualScale").value = 0.25;
+        document.getElementById("wCong").value = 0.15;
+        document.getElementById("manualScale").value = 1;
       } else if(val==="Bull"){
         document.getElementById("wMC").value   = 0.20;
-        document.getElementById("wTech").value = 0.25;
+        document.getElementById("wTech").value = 0.20;
         document.getElementById("wSent").value = 0.15;
         document.getElementById("wIns").value  = 0.15;
         document.getElementById("wFund").value = 0.15;
-        document.getElementById("wCong").value = 0.10;
-        document.getElementById("manualScale").value = 1.00;
+        document.getElementById("wCong").value = 0.15;
+        document.getElementById("manualScale").value = 3;
       } else {
         document.getElementById("wMC").value   = 0.15;
         document.getElementById("wTech").value = 0.20;
@@ -377,7 +377,7 @@
         document.getElementById("wIns").value  = 0.15;
         document.getElementById("wFund").value = 0.20;
         document.getElementById("wCong").value = 0.15;
-        document.getElementById("manualScale").value = 0.50;
+        document.getElementById("manualScale").value = 2;
       }
     });
   
@@ -1469,11 +1469,11 @@ function computeStats(prices) {
     }
     function getAutoWeightsForRegime(regime) {
       if(regime === "Bear"){
-        return { wMC: 0.05, wTech: 0.05, wSent: 0.10, wIns: 0.30, wFund: 0.30, wCong: 0.20, scale: 0.25 };
+        return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1 };
       } else if(regime === "Bull"){
-        return { wMC: 0.20, wTech: 0.25, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.10, scale: 1.00 };
+        return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3 };
       } else {
-        return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
+        return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2 };
       }
     }
     function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
@@ -1492,7 +1492,7 @@ function computeStats(prices) {
         let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
         let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
         let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-        let invalidScale = (sc < 0 || sc > 2);
+        let invalidScale = (sc < 0 || sc > 5);
         if(invalidWeights || invalidScale){
           console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
           let eq = (rri + tech + sent + ins + fund + cong) / 6;
@@ -1820,7 +1820,7 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
       let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
       let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-      let invalidScale = (sc < 0 || sc > 2);
+      let invalidScale = (sc < 0 || sc > 5);
       if(invalidWeights || invalidScale){
         console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
         let eq = (mc + tech + sent + ins + fund + cong) / 6;
