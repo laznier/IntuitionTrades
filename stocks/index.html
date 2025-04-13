@@ -231,9 +231,9 @@
       </select>
     </label>
 
-    <label>Monte Carlo Weight (0..1):
-      <input type="number" id="wMC" value="0.15" min="0" max="1" step="0.01">
-    </label>
+    <label>Risk vs Reward Index Weight (0..1):
+      <input type="number" id="wRRI" value="0.15" min="0" max="1" step="0.01">
+    </label>    
     <label>Technical Weight (0..1):
       <input type="number" id="wTech" value="0.20" min="0" max="1" step="0.01">
     </label>
@@ -1468,41 +1468,73 @@ function computeStats(prices) {
       }
     }
     function getAutoWeightsForRegime(regime) {
-      if(regime === "Bear"){
-        return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1 };
-      } else if(regime === "Bull"){
-        return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3 };
-      } else {
-        return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2 };
-      }
+  if(regime === "Bear"){
+    return { 
+      wRRI: 0.10,  // risk vs reward (RRI) weight for bear mode
+      wTech: 0.05, 
+      wSent: 0.20, 
+      wIns:  0.20, 
+      wFund: 0.30, 
+      wCong: 0.15, 
+      scale: 1.00 
+    };
+  } else if(regime === "Bull"){
+    return { 
+      wRRI: 0.20, 
+      wTech: 0.20, 
+      wSent: 0.15, 
+      wIns:  0.15, 
+      wFund: 0.15, 
+      wCong: 0.15, 
+      scale: 3.00 
+    };
+  } else { // Neutral
+    return { 
+      wRRI: 0.15, 
+      wTech: 0.20, 
+      wSent: 0.15, 
+      wIns:  0.15, 
+      wFund: 0.20, 
+      wCong: 0.15, 
+      scale: 2.00 
+    };
+  }
+}
+
+function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
+  // For manual override, you might want to use the same naming for the first factor.
+  const manual = document.getElementById("useManualWeightsCheckbox").checked;
+  if (!manual){
+    let auto = getAutoWeightsForRegime(regime);
+    // Use the auto weight for RRI (wRRI) and multiply it by the first parameter "rri"
+    let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent +
+              auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+    return (raw - 50) * auto.scale + 50;
+  } else {
+    // In the manual case, you might update the field IDs and labels accordingly.
+    // For consistency, change "wMC" to "wRRI" in the manual fields:
+    const wRRI_manual = parseFloat(document.getElementById("wRRI").value) || 0;
+    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+    const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+    let sumW = wRRI_manual + wTech + wSent + wIns + wFund + wCong;
+    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+    let invalidScale = (sc < 0 || sc > 5);
+    if(invalidWeights || invalidScale){
+      console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
+      let eq = (rri + tech + sent + ins + fund + cong) / 6;
+      return eq;
+    } else {
+      let raw = wRRI_manual * rri + wTech * tech + wSent * sent +
+                wIns * ins + wFund * fund + wCong * cong;
+      return (raw - 50) * sc + 50;
     }
-    function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
-      const manual = document.getElementById("useManualWeightsCheckbox").checked;
-      if(!manual){
-        let auto = getAutoWeightsForRegime(regime);
-        let raw = auto.wMC * rri + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-        return (raw - 50) * auto.scale + 50;
-      } else {
-        const wMC = parseFloat(document.getElementById("wMC").value) || 0;
-        const wTech = parseFloat(document.getElementById("wTech").value) || 0;
-        const wSent = parseFloat(document.getElementById("wSent").value) || 0;
-        const wIns = parseFloat(document.getElementById("wIns").value) || 0;
-        const wFund = parseFloat(document.getElementById("wFund").value) || 0;
-        const wCong = parseFloat(document.getElementById("wCong").value) || 0;
-        let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
-        let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
-        let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-        let invalidScale = (sc < 0 || sc > 5);
-        if(invalidWeights || invalidScale){
-          console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
-          let eq = (rri + tech + sent + ins + fund + cong) / 6;
-          return eq;
-        } else {
-          let raw = wMC * rri + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
-          return (raw - 50) * sc + 50;
-        }
-      }
-    }
+  }
+}
+
     function updateInsiderCharts(insiderData) {
   // Create column series for buys and sells from the aggregated time series.
   const buyData = insiderData.timeSeries.map(item => [item.date.getTime(), item.buys]);
@@ -1990,7 +2022,8 @@ document.getElementById('congressSection').style.display = 'block';
 // Pass both uniqueBuyCount and uniqueSellCount
 let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
 
-      let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+
       document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
       document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
       simulationReport = {
