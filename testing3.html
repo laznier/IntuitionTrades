@@ -225,17 +225,6 @@
   <ul id="ticker-suggestions"></ul>
   <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
   
-  
-
-
-  <!-- Manual override for historical period (optional) -->
-  <label style="margin-top:15px;">
-    <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
-  </label>
-  <div id="manualPeriodDiv">
-    <label for="manualPeriod">Historical Period (months):</label>
-    <input type="number" id="manualPeriod" min="1">
-  </div>
 
   <!-- Weights & Scaling override checkbox -->
   <label style="margin-top:15px;">
@@ -1778,7 +1767,6 @@ let insiderBull = updateInsiderCharts(insiderData);
     simulationReport = {
       ticker,
       periodMonths,
-      futureDate: futureDate.toDateString(),
       mcBull,
       techBull,
       sentBull,
