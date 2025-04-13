@@ -199,22 +199,24 @@
   <p>Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
   Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, and the new Risk vs Reward Index.</p>
 
-  <label for="futureDate">Future Date:</label>
-  <input type="date" id="futureDate">
+<!-- Investment Timeframe -->
+<div class="section" style="margin-top:15px;">
+    <label>Investment Timeframe:
+      <select id="investmentTimeframe">
+        <option value="">-- Select Timeframe --</option>
+        <option value="short">Short Term</option>
+        <option value="medium">Medium Term</option>
+        <option value="long">Long Term</option>
+      </select>
+    </label>
+  </div>
+  
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
   <ul id="ticker-suggestions"></ul>
   <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
   
-  <!-- Manual override for historical period (optional) -->
-  <label style="margin-top:15px;">
-    <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
-  </label>
-  <div id="manualPeriodDiv">
-    <label for="manualPeriod">Historical Period (months):</label>
-    <input type="number" id="manualPeriod" min="1">
-  </div>
 
   <!-- Weights & Scaling override checkbox -->
   <label style="margin-top:15px;">
@@ -341,23 +343,6 @@
     let bufferDotInterval;
     let debounceTimeout;
   
-    // Auto-populate futureDate with next month's date
-    (function setDefaultFutureDate() {
-      const futureDateInput = document.getElementById('futureDate');
-      const today = new Date();
-      const nextMonthDate = new Date(
-        today.getFullYear(),
-        today.getMonth() + 1,
-        today.getDate()
-      );
-      const isoDate = nextMonthDate.toISOString().split('T')[0];
-      futureDateInput.value = isoDate;
-    })();
-  
-    // Show/hide manual historical period
-    document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
-      document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
-    });
   
     // Show/hide manual weights
     const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
@@ -1896,28 +1881,27 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
     document.getElementById('congressSection').style.display = 'none';
 
     let ticker = document.getElementById('ticker').value.trim();
-    let futureDateStr = document.getElementById('futureDate').value;
-    if (!ticker || !futureDateStr) {
-      alert("Please enter both a ticker symbol and a future date.");
-      document.getElementById('loading').style.display = 'none';
-      return;
-    }
-    let futureDate = new Date(futureDateStr);
-    let currentDate = new Date();
-    let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
-                       (futureDate.getMonth() - currentDate.getMonth());
-    if (diffInMonths < 1) diffInMonths = 1;
-    let recommendedPeriod = diffInMonths * 4;
-    let periodMonths;
-    if (document.getElementById('manualOverrideCheckbox').checked) {
-      periodMonths = parseInt(document.getElementById('manualPeriod').value);
-      if (isNaN(periodMonths) || periodMonths < recommendedPeriod) {
-        alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
-        periodMonths = recommendedPeriod;
-      }
-    } else {
-      periodMonths = recommendedPeriod;
-    }
+    // Get the timeframe from the new dropdown:
+let timeframe = document.getElementById('investmentTimeframe').value;
+if (!timeframe) {
+  alert("Please select an Investment Timeframe!");
+  document.getElementById('loading').style.display = 'none';
+  return;
+}
+
+// Map the timeframe selection to periodMonths and T (time horizon in years)
+let periodMonths, T;
+if (timeframe === "short") {
+  periodMonths = 4;         // 4 months historical data
+  T = 1 / 12;               // 1 month simulation horizon (in years)
+} else if (timeframe === "medium") {
+  periodMonths = 12;        // 12 months historical data
+  T = 3 / 12;               // 3 months horizon
+} else if (timeframe === "long") {
+  periodMonths = 24;        // 24 months historical data
+  T = 6 / 12;               // 6 months horizon
+}
+
 
     try {
       let regime = await determineSPYMarketRegime(4);
@@ -1960,9 +1944,6 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       document.getElementById('techSection').style.display = 'block';
       let techBull = updateTechChart(prices);
       
-      // Calculate T (time in years from last price date to future date)
-      let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
-
       // NEW: Use the dbHJ model to generate Risk vs Reward Index (RRI) replacing the old Monte Carlo simulation
       let optionsIV = await fetchOptionsIV(ticker);
       if (!optionsIV) { optionsIV = mcStats.stdDev; }
@@ -2015,7 +1996,6 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
       simulationReport = {
         ticker,
         periodMonths,
-        futureDate: futureDate.toDateString(),
         rri,
         techBull,
         sentBull,
@@ -2149,24 +2129,20 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
     window.open(url, "_blank");
   });
   document.getElementById("rriLinkButton").addEventListener("click", () => {
-    if (!simulationReport) {
-      alert("Please run a simulation first.");
-      return;
-    }
-    const ticker = simulationReport.ticker;
-const periodMonths = simulationReport.periodMonths;
-// Get the correct ISO date from the futureDate input
-const futureDateValue = document.getElementById("futureDate").value;
-const url = "https://www.intuitiontrades.com/risk/?ticker=" 
-          + encodeURIComponent(ticker) 
-          + "&period=" + periodMonths
-          + "&futureDate=" + encodeURIComponent(futureDateValue)
-          + "&autoFetch=true";
-window.open(url, "_blank");
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  const ticker = simulationReport.ticker;
+  const periodMonths = simulationReport.periodMonths;
+  // Remove futureDate since it no longer exists.
+  const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+            + encodeURIComponent(ticker) 
+            + "&period=" + periodMonths
+            + "&autoFetch=true";
+  window.open(url, "_blank");
+});
 
-
-
-  });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
     if (!simulationReport) {
       alert("Please run a simulation first.");
@@ -2190,8 +2166,6 @@ window.open(url, "_blank");
     }
   });
   document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("manualPeriodDiv").style.display =
-      document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
     document.getElementById("manualWeightsSection").style.display =
       document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
   });
@@ -2269,10 +2243,10 @@ window.open(url, "_blank");
           </p>
           <h3>Bear Market</h3>
           <p>
-            In a <strong>Bear</strong> regime, lower weights are applied to the Risk vs Reward Index and technical indicators, while heavier emphasis is placed on insider and fundamental factors. A lower scaling factor is also used.
+            The following weights are automatically applied to each idicator based on the S&P500 market (bull/bear/neutral) that is detected in the user specified timeframe.
           </p>
           <pre>
-Bear Weights (example):
+Bear Weights:
 Risk vs Reward Index = 10%
 Technical            = 5%
 Sentiment            = 20%
@@ -2286,7 +2260,7 @@ Scaling              = 1.00
             In a <strong>Neutral</strong> regime, weights are balanced more evenly across all factors.
           </p>
           <pre>
-Neutral Weights (example):
+Neutral Weights:
 Risk vs Reward Index = 15%
 Technical            = 20%
 Sentiment            = 15%
@@ -2300,7 +2274,7 @@ Scaling              = 2.00
             In a <strong>Bull</strong> regime, higher weight is given to risk/reward and technical signals. The scaling factor is also increased to amplify the final aggregated score.
           </p>
           <pre>
-Bull Weights (example):
+Bull Weights:
 Risk vs Reward Index = 20%
 Technical            = 20%
 Sentiment            = 15%
