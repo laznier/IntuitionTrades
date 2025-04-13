@@ -363,21 +363,21 @@
   document.getElementById("manualRegimeSelect").addEventListener("change", function(){
     const val = this.value;
     if(val==="Bear"){
-      document.getElementById("wMC").value   = 0.05;
+      document.getElementById("wMC").value   = 0.10;
       document.getElementById("wTech").value = 0.05;
-      document.getElementById("wSent").value = 0.10;
-      document.getElementById("wIns").value  = 0.30;
+      document.getElementById("wSent").value = 0.20;
+      document.getElementById("wIns").value  = 0.20;
       document.getElementById("wFund").value = 0.30;
-      document.getElementById("wCong").value = 0.20;
-      document.getElementById("manualScale").value = 0.25;
+      document.getElementById("wCong").value = 0.15;
+      document.getElementById("manualScale").value = 1.00;
     } else if(val==="Bull"){
       document.getElementById("wMC").value   = 0.20;
-      document.getElementById("wTech").value = 0.25;
+      document.getElementById("wTech").value = 0.20;
       document.getElementById("wSent").value = 0.15;
       document.getElementById("wIns").value  = 0.15;
       document.getElementById("wFund").value = 0.15;
-      document.getElementById("wCong").value = 0.10;
-      document.getElementById("manualScale").value = 1.00;
+      document.getElementById("wCong").value = 0.15;
+      document.getElementById("manualScale").value = 3.00;
     } else {
       document.getElementById("wMC").value   = 0.15;
       document.getElementById("wTech").value = 0.20;
@@ -385,7 +385,7 @@
       document.getElementById("wIns").value  = 0.15;
       document.getElementById("wFund").value = 0.20;
       document.getElementById("wCong").value = 0.15;
-      document.getElementById("manualScale").value = 0.50;
+      document.getElementById("manualScale").value = 2.00;
     }
   });
 
