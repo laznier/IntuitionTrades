@@ -2,58 +2,139 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Top 5 Analysis (RRI Replacement)</title>
+  <title>Top Stocks Scanner (Premium Tool)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+
+  <!-- Dark Theme Styling -->
   <style>
+    /* Use CSS variables for consistent theming */
+    :root {
+      --primary-bg: #111;         /* Very dark background */
+      --secondary-bg: #333;       /* Slightly lighter dark background */
+      --accent-color: #16a34a;    /* Green accent color */
+      --text-color: #fff;         /* Primary text color */
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+      --progress-bar-bg: #222;    /* Background of the custom progress bar */
+      --progress-fill-color: #06b6d4; /* Teal color for the fill portion of the bar */
+    }
+
     body {
-      font-family: sans-serif;
-      margin: 2rem;
-      line-height: 1.5;
-      max-width: 1000px;
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
+      margin: 0 auto;
+      line-height: 1.6;
+      max-width: 900px;    /* Sets a maximum width */
+      padding: 2rem;       /* Adds padding on all sides */
     }
     h1 {
       margin-bottom: 1rem;
+      text-align: center;
+      font-weight: 600;
     }
-    label, input, select {
-      display: block;
-      margin: 0.3rem 0;
-    }
-    .param-section {
-      border: 1px solid #ccc;
-      padding: 1rem;
-      border-radius: 4px;
-      background: #f9f9f9;
+    p {
       margin-bottom: 1rem;
     }
+
+    label,
+    input,
+    select {
+      display: block;
+      margin: 0.3rem 0;
+      font-size: 1rem;
+    }
+
+    .param-section {
+      border: 1px solid #444;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
     button {
       font-size: 1rem;
       padding: 0.5rem 1rem;
       cursor: pointer;
       margin-bottom: 1rem;
+      border: none;
+      border-radius: 4px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      transition: background var(--transition-speed), transform 0.2s ease;
     }
+    button:hover {
+      background: #1e3a8a; /* Example of a hover color (dark blue) */
+      transform: scale(1.05);
+    }
+
+    /* Status area */
     #status {
       margin-top: 1rem;
       white-space: pre-wrap;
       font-family: monospace;
-      background: #f9fafb;
+      background: var(--secondary-bg);
       padding: 1rem;
-      border: 1px solid #ccc;
+      border: 1px solid #444;
       border-radius: 4px;
       max-height: 300px;
       overflow-y: auto;
     }
+
+    /* Custom Progress Container to mimic the 'Scanning Companies...' style */
     #progressContainer {
       margin-top: 1rem;
-      display: none;
-    }
-    #progressBar {
-      width: 100%;
-      height: 20px;
-    }
-    #progressText {
+      display: none; /* Hidden until loading starts */
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+      border-radius: 8px;
       text-align: center;
-      margin-top: 5px;
+      position: relative;
+    }
+    #progressLabel {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Custom progress bar base */
+    .progress-bar-base {
+      width: 100%;
+      background-color: var(--progress-bar-bg);
+      border-radius: 10px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    /* The colored fill for the progress bar */
+    .progress-bar-fill {
+      height: 100%;
+      width: 0;
+      background-color: var(--progress-fill-color);
+      transition: width var(--transition-speed) ease-in-out;
+    }
+    /* Percentage text inside the bar (optional) */
+    .progress-bar-text {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      text-align: center;
+      line-height: 24px;
       font-weight: bold;
+      color: #fff;
+    }
+
+    /* If aggregator > 50 => green, < 50 => red. We'll apply this via inline style or small utility classes */
+    .score-positive {
+      color: #00ff00; /* Bright green */
+    }
+    .score-negative {
+      color: #ff2d2d; /* Bright red */
     }
   </style>
 </head>
@@ -63,12 +144,12 @@
 
 <p>
   This tool evaluates each ticker using Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.
-  If “Use Manual Weights &amp; Scaling” is unchecked, it auto‑detects SPY’s market regime (Bull/Bear/Neutral) and picks a weighting distribution.
-  If checked, you can pick Bear/Neutral/Bull to auto‑fill – or override any.
-  
+  If “Use Manual Weights &amp; Scaling” is unchecked, it auto-detects SPY’s market regime (Bull/Bear/Neutral) and picks
+  a weighting distribution. If checked, you can pick Bear/Neutral/Bull to auto-fill – or override any.
   At the end, it highlights the top 5 and bottom 5 aggregator scores.
 </p>
 
+<!-- Manual Weights & Scaling Section -->
 <div class="param-section">
   <label>
     <input type="checkbox" id="manualModeCheckbox">
@@ -106,6 +187,8 @@
     </label>
   </div>
 </div>
+
+<!-- Index Selection -->
 <div class="param-section">
   <label>Select Index:
     <select id="indexSelect">
@@ -117,7 +200,7 @@
   </label>
 </div>
 
-
+<!-- Investment Timeframe -->
 <div class="param-section">
   <label>Investment Timeframe:
     <select id="investmentTimeframe">
@@ -129,915 +212,1031 @@
   </label>
 </div>
 
-<button onclick="runBatchAnalysis()">Run Batch Analysis</button>
 
-<div id="progressContainer">
-  <progress id="progressBar" value="0" max="100"></progress>
-  <div id="progressText">0% Completed</div>
-</div>
 
 <div id="status"></div>
+<button onclick="runBatchAnalysis()">Run Batch Analysis</button>
+
+<!-- Progress Container mimicking 'SCANNING COMPANIES...' -->
+<div id="progressContainer">
+  <div id="progressLabel">Scanning Companies...</div>
+
+  <!-- Custom progress bar -->
+  <div class="progress-bar-base">
+    <div id="progressBarFill" class="progress-bar-fill"></div>
+    <div id="progressBarText" class="progress-bar-text">0%</div>
+  </div>
+</div>
+
+
 
 <script>
-/***********************************************************************
- * math.js setup
- ***********************************************************************/
-const { create, all } = math;
-const mathInstance = create(all);
-
-// Function to load tickers from the corresponding text file.
-async function loadTickers(index) {
-  let filePath = `tickers/${index}-tickers.txt`;
-  const response = await fetch(filePath);
-  const text = await response.text();
-  return text
-    .replace(/"/g, "")            // Remove all double quotes
-    .split(",")                   // Split on commas
-    .map(ticker => ticker.trim()) // Trim whitespace from each ticker
-    .filter(ticker => ticker.length > 0); // Remove any empty entries
-}
-
-
-// Listen for changes on the index dropdown.
-document.getElementById("indexSelect").addEventListener("change", async function() {
-  const index = this.value;
-  // Clear any previously loaded tickers.
-  predeterminedTickers.length = 0;
-  
-  if (!index) {
-    logStatus("Please select an index to load tickers.");
-    return;
-  }
-  
-  try {
-    const tickers = await loadTickers(index);
-    if (tickers.length === 0) {
-      logStatus("Error: No tickers loaded. Please check the ticker file for " + index + ".");
-    } else {
-      tickers.forEach(ticker => predeterminedTickers.push(ticker));
-      logStatus(`Loaded ${predeterminedTickers.length} tickers for ${index.toUpperCase()} index.`);
+    /***********************************************************************
+     * math.js setup
+     ***********************************************************************/
+    const { create, all } = math;
+    const mathInstance = create(all);
+    
+    // Function to load tickers from the corresponding text file.
+    async function loadTickers(index) {
+      let filePath = `tickers/${index}-tickers.txt`;
+      const response = await fetch(filePath);
+      const text = await response.text();
+      return text
+        .replace(/"/g, "")            // Remove all double quotes
+        .split(",")                   // Split on commas
+        .map(ticker => ticker.trim()) // Trim whitespace from each ticker
+        .filter(ticker => ticker.length > 0); // Remove any empty entries
     }
-  } catch (error) {
-    logStatus(`Error loading tickers for ${index}: ${error.message}`);
-  }
-});
-
-
-// Optionally, trigger a change event on page load to load a default index.
-document.getElementById("indexSelect").dispatchEvent(new Event('change'));
-
-/***********************************************************************
-TICKER LIST
- ***********************************************************************/
-// Replace the hard-coded ticker list with an empty array to be populated later.
-const predeterminedTickers = [];
-
-
-
-/***********************************************************************
- * Show/hide manual inputs
- ***********************************************************************/
-const manualModeCheckbox = document.getElementById("manualModeCheckbox");
-const manualInputsDiv    = document.getElementById("manualInputs");
-manualModeCheckbox.addEventListener("change", () => {
-  manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none";
-});
-
-/***********************************************************************
- * If user changes the <select> Market Regime in manual mode,
- * auto-fill the user fields
- ***********************************************************************/
-document.getElementById("marketRegimeSelect").addEventListener("change", function(){
-  const val = this.value;
-  if(val==="Bear"){
-    document.getElementById("wRRI").value      = 0.05;
-    document.getElementById("wTech").value     = 0.05;
-    document.getElementById("wSent").value     = 0.10;
-    document.getElementById("wInsider").value  = 0.30;
-    document.getElementById("wFund").value     = 0.30;
-    document.getElementById("wCongress").value = 0.20;
-    document.getElementById("scalingFactor").value = 0.25;
-  } else if(val==="Bull"){
-    document.getElementById("wRRI").value      = 0.20;
-    document.getElementById("wTech").value     = 0.25;
-    document.getElementById("wSent").value     = 0.15;
-    document.getElementById("wInsider").value  = 0.15;
-    document.getElementById("wFund").value     = 0.15;
-    document.getElementById("wCongress").value = 0.10;
-    document.getElementById("scalingFactor").value = 1.00;
-  } else {
-    document.getElementById("wRRI").value      = 0.15;
-    document.getElementById("wTech").value     = 0.20;
-    document.getElementById("wSent").value     = 0.15;
-    document.getElementById("wInsider").value  = 0.15;
-    document.getElementById("wFund").value     = 0.20;
-    document.getElementById("wCongress").value = 0.15;
-    document.getElementById("scalingFactor").value = 0.50;
-  }
-});
-
-/***********************************************************************
- * Logging & Sleep
- ***********************************************************************/
-function logStatus(msg){
-  const s = document.getElementById("status");
-  s.textContent += msg + "\n";
-  s.scrollTop = s.scrollHeight;
-}
-function sleep(ms){
-  return new Promise(resolve=> setTimeout(resolve,ms));
-}
-
-/***********************************************************************
- * parseAlphaDate (Used for sentiment date parsing)
- ***********************************************************************/
-function parseAlphaDate(str){
-  const year  = str.substring(0,4);
-  const month = str.substring(4,6);
-  const day   = str.substring(6,8);
-  const hour  = str.substring(9,11) || "00";
-  const min   = str.substring(11,13) || "00";
-  const sec   = str.substring(13,15) || "00";
-  return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
-}
-
-/***********************************************************************
- * fetchHistoricalData
- ***********************************************************************/
-async function fetchHistoricalData(ticker){
-  let url= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-  const resp = await fetch(url);
-  const j = await resp.json();
-  if(!j["Time Series (Daily)"]){
-    throw new Error("No daily data for " + ticker);
-  }
-  const ts = j["Time Series (Daily)"];
-  let out = [];
-  Object.keys(ts).forEach(d=>{
-    out.push({
-      date: new Date(d),
-      close: parseFloat(ts[d]["5. adjusted close"])
+    
+        /***********************************************************************
+    TICKER LIST
+     ***********************************************************************/
+    // Replace the hard-coded ticker list with an empty array to be populated later.
+    const predeterminedTickers = [];
+    
+    
+    // Listen for changes on the index dropdown.
+    document.getElementById("indexSelect").addEventListener("change", async function() {
+      const index = this.value;
+      // Clear any previously loaded tickers.
+      predeterminedTickers.length = 0;
+      
+      if (!index) {
+        logStatus("Please select an index to load tickers.");
+        return;
+      }
+      
+      try {
+        const tickers = await loadTickers(index);
+        if (tickers.length === 0) {
+          logStatus("Error: No tickers loaded. Please check the ticker file for " + index + ".");
+        } else {
+          tickers.forEach(ticker => predeterminedTickers.push(ticker));
+          logStatus(`Loaded ${predeterminedTickers.length} tickers for ${index.toUpperCase()} index.`);
+        }
+      } catch (error) {
+        logStatus(`Error loading tickers for ${index}: ${error.message}`);
+      }
     });
-  });
-  out.sort((a,b)=> a.date - b.date);
-  return out;
-}
-
-/***********************************************************************
- * DBHJ-based RRI logic
- ***********************************************************************/
-// Standard Normal via Box-Muller
-function randn() {
-  let u = 0, v = 0;
-  while(u === 0) u = Math.random();
-  while(v === 0) v = Math.random();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-// Basic stats
-function computeHistStats(prices){
-  let logs = [];
-  for(let i=1; i< prices.length; i++){
-    let r= Math.log(prices[i].close / prices[i-1].close);
-    logs.push(r);
-  }
-  if(logs.length<2){
-    return { mu: 0, sigma: 0, lastPrice: prices[prices.length-1].close };
-  }
-  let meanDaily= logs.reduce((a,b)=> a+b, 0)/ logs.length;
-  let variance= logs.reduce((acc,r)=> acc+ (r- meanDaily)**2, 0)/(logs.length -1);
-  let stdDaily= Math.sqrt(variance);
-  let tradingDays= 252;
-  return {
-    mu: meanDaily * tradingDays,
-    sigma: stdDaily * Math.sqrt(tradingDays),
-    lastPrice: prices[prices.length-1].close
-  };
-}
-// Attempt to fetch live IV:
-async function fetchOptionsIV(ticker){
-  try {
-    let url= `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
-    let resp= await fetch(url);
-    let j= await resp.json();
-    if(j.data && Array.isArray(j.data) && j.data.length>0){
-      let contract= j.data[0];
-      return parseFloat(contract.impliedVolatility) || null;
-    }
-  }catch(e){
-    return null;
-  }
-  return null;
-}
-// Double Heston + Jump
-function runDBHJSimulation(S0, v10, v20, mu,
-                           kappa1, theta1, sigma1, rho1,
-                           kappa2, theta2, sigma2, rho2,
-                           lambda, jumpMean, jumpStd,
-                           T, dt, sims) {
-  const steps = Math.floor(T / dt);
-  let finals = [];
-  for(let i = 0; i < sims; i++){
-    let S = S0, v1 = v10, v2 = v20;
-    for(let j = 0; j < steps; j++){
-      let Z1 = randn();
-      let Z2 = randn();
-      let Z3 = randn();
-      const dW_a = Math.sqrt(dt) * Z1;
-      const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1*rho1) * Z2);
-      const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2*rho2) * Z3);
-      
-      v1 = Math.max(v1 + kappa1*(theta1 - v1)* dt + sigma1* Math.sqrt(Math.max(v1,0))* dW_v1, 0);
-      v2 = Math.max(v2 + kappa2*(theta2 - v2)* dt + sigma2* Math.sqrt(Math.max(v2,0))* dW_v2, 0);
-      
-      const totalVar = v1 + v2;
-      let jumpMultiplier = 1;
-      if (Math.random() < lambda * dt) {
-        jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
-      }
-      S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar)* dW_a);
-    }
-    finals.push(S);
-  }
-  return finals;
-}
-// Basic 5% VaR and CVaR
-function computeRiskMetrics(finals, currentPrice){
-  let sorted= finals.slice().sort((a,b)=> a-b);
-  let idx= Math.floor(0.05* sorted.length);
-  let varPrice= sorted[idx];
-  let tail= sorted.slice(0, idx+1);
-  let cvarPrice= tail.reduce((sum,p)=> sum+p, 0)/ tail.length;
-  return {
-    varPrice,
-    varPct: 100*(currentPrice - varPrice)/ currentPrice,
-    cvarPrice,
-    cvarPct: 100*(currentPrice - cvarPrice)/ currentPrice
-  };
-}
-function computeRiskVsRewardIndex(finals, currentPrice, cvarFraction, T){
-  let sorted= finals.slice().sort((a,b)=> a-b);
-  let medianPrice= sorted[Math.floor(sorted.length/2)];
-  let rawReturn= (medianPrice/ currentPrice)-1;
-  // annualize
-  let E_ann= Math.pow(1+ rawReturn, 1/T)-1;
-  let D_ann= 1- Math.pow(1- cvarFraction, 1/T);
-  let ratio = (D_ann> 1e-6)? (E_ann/ D_ann) : ((E_ann>=0)? 9999: -9999);
-  let alpha=1;
-  let rri= 50*(1+ Math.tanh(alpha* ratio));
-  return rri;
-}
-async function computeTickerRRI(ticker, T){
-  let prices= await fetchHistoricalData(ticker);
-  if(prices.length<5){
-    logStatus("Not enough historical data for "+ ticker);
-    return 50;
-  }
-  let st= computeHistStats(prices);
-  let iv= await fetchOptionsIV(ticker);
-  if(!iv) iv= st.sigma;
-  
-  let v10= iv* iv;
-  let v20= 0.5* v10;
-  let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
-  let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
-  let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
-  
-  let dt=1/252, sims=5000;
-  let finals= runDBHJSimulation(st.lastPrice, v10, v20, st.mu,
-                                kappa1, theta1, sigma1, rho1,
-                                kappa2, theta2, sigma2, rho2,
-                                lambda, jumpMean, jumpStd,
-                                T, dt, sims);
-  let risk= computeRiskMetrics(finals, st.lastPrice);
-  let cvarFrac= risk.cvarPct/100;
-  return computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
-}
-
-/***********************************************************************
- * Technical (MACD) functions
- ***********************************************************************/
-function computeEMA(series, period){
-  if(series.length< period) return [];
-  let alpha= 2/(period+1);
-  let sum=0;
-  for(let i=0;i< period;i++){
-    sum+= series[i].close;
-  }
-  let prevEma= sum/ period;
-  let out=[];
-  out[period-1]= { date: series[period-1].date, ema: prevEma };
-  for(let i= period; i< series.length; i++){
-    let cur= series[i].close;
-    let nxt= (cur- prevEma)* alpha + prevEma;
-    out[i]= { date: series[i].date, ema: nxt };
-    prevEma= nxt;
-  }
-  return out.filter(Boolean);
-}
-function computeMACD(series, fast=12, slow=26, signal=9){
-  let fEMA= computeEMA(series, fast);
-  let sEMA= computeEMA(series, slow);
-  let macdLine=[];
-  for(let i=0; i< sEMA.length; i++){
-    let dt= sEMA[i].date;
-    let match= fEMA.find(x=> x.date.getTime()=== dt.getTime());
-    if(match){
-      macdLine.push({ date: dt, macd: match.ema - sEMA[i].ema });
-    }
-  }
-  if(macdLine.length< signal) return { macdLine, signalLine:[] };
-  let m= 2/(signal+1);
-  let sum=0;
-  for(let i=0;i< signal;i++){
-    sum+= macdLine[i].macd;
-  }
-  let prevSig= sum/ signal;
-  let signalLine=[];
-  signalLine[signal-1]= { date: macdLine[signal-1].date, signal: prevSig };
-  for(let i= signal;i< macdLine.length;i++){
-    let s= (macdLine[i].macd- prevSig)* m + prevSig;
-    signalLine[i]= { date: macdLine[i].date, signal: s };
-    prevSig= s;
-  }
-  return { macdLine, signalLine: signalLine.filter(Boolean) };
-}
-function polynomialRegression(x, y, deg){
-  let X=[];
-  for(let i=0;i<x.length;i++){
-    let row=[];
-    for(let j=0; j<= deg; j++){
-      row.push(Math.pow(x[i], j));
-    }
-    X.push(row);
-  }
-  let XT= mathInstance.transpose(X);
-  let XTX= mathInstance.multiply(XT, X);
-  let XTy= mathInstance.multiply(XT, y);
-  let sol= mathInstance.lusolve(XTX, XTy);
-  return sol.map(v=> v[0]);
-}
-function predictValue(coefs,xx){
-  return coefs.reduce((acc,c,i)=> acc+ c*Math.pow(xx,i), 0);
-}
-function computeMomentumScoreUsingRegression(hist){
-  if(hist.length<6) return 50;
-  let recent= hist.slice(-6);
-  let x=[1,2,3,4,5,6];
-  let coefs= polynomialRegression(x, recent,1);
-  let pred= predictValue(coefs,7);
-  let last= recent[recent.length-1];
-  let delta= pred - last;
-  let k=5;
-  let sc= 100/(1+ Math.exp(-k* delta));
-  return isNaN(sc)? 50: sc;
-}
-function computeGapTrendScore(macdLine, signalLine){
-  if(macdLine.length<6 || signalLine.length<6) return { gapScore:50 };
-  let rMacd= macdLine.slice(-6).map(x=> x.macd);
-  let rSig=  signalLine.slice(-6).map(x=> x.signal);
-  let x=[1,2,3,4,5,6];
-  let macdCoefs= polynomialRegression(x, rMacd,3);
-  let sigCoefs = polynomialRegression(x, rSig,3);
-  let predMACD= predictValue(macdCoefs,7);
-  let predSig=  predictValue(sigCoefs,7);
-  let predGap=  predMACD- predSig;
-  let curGap= macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
-  let delta= predGap - curGap;
-  let k=5;
-  let gapScore= 100/(1+ Math.exp(-k* delta));
-  return { gapScore };
-}
-async function computeTechnical(prices){
-  if(prices.length<2) return 50;
-  let { macdLine, signalLine }= computeMACD(prices,12,26,9);
-  if(macdLine.length<2 || signalLine.length<2) return 50;
-  let len= Math.min(macdLine.length, signalLine.length);
-  let latestMACD= macdLine[len-1].macd;
-  let positionScore= 100/(1+ Math.exp(latestMACD));
-  let gapObj= computeGapTrendScore(macdLine, signalLine);
-  let gapScore= gapObj.gapScore||50;
-  let hist=[];
-  for(let i=0;i<len;i++){
-    hist.push(macdLine[i].macd - signalLine[i].signal);
-  }
-  let momentum= computeMomentumScoreUsingRegression(hist);
-  if(!momentum) momentum=50;
-  return (positionScore+ gapScore+ momentum)/3;
-}
-
-/***********************************************************************
- * Sentiment
- ***********************************************************************/
-async function fetchSentimentData(ticker, periodMonths){
-  try {
-    let url= `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-    let resp= await fetch(url);
-    let j= await resp.json();
-    if(!j.feed) return [];
-    let cutoff= new Date();
-    cutoff.setMonth(cutoff.getMonth()- periodMonths);
-    let byHour= {};
-    for(let art of j.feed){
-      let dt= parseAlphaDate(art.time_published);
-      if(isNaN(dt)|| dt< cutoff) continue;
-      if(!art.ticker_sentiment) continue;
-      let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
-      if(!tItem) continue;
-      let raw= parseFloat(tItem.ticker_sentiment_score);
-      if(isNaN(raw)) continue;
-      let norm= ((raw+1)/2)*100;
-      let hr= dt.toISOString().substring(0,13);
-      if(!byHour[hr]) byHour[hr]= [];
-      byHour[hr].push(norm);
-    }
-    let sentiments=[];
-    for(let hStr in byHour){
-      let arr= byHour[hStr];
-      let avg= arr.reduce((a,b)=> a+b, 0)/ arr.length;
-      let dt= new Date(`${hStr}:00:00Z`);
-      sentiments.push({ date: dt, sentiment: avg });
-    }
-    sentiments.sort((a,b)=> a.date- b.date);
-    return sentiments;
-  } catch(e){
-    return [];
-  }
-}
-function computeSentBull(arr){
-  if(arr.length<2) return 50;
-  let first= arr[0].date;
-  let xs= arr.map(d=> (d.date- first)/(1000*60*60*24));
-  let ys= arr.map(d=> d.sentiment);
-  let n= xs.length;
-  let sumX= xs.reduce((a,b)=> a+b,0);
-  let sumY= ys.reduce((a,b)=> a+b,0);
-  let sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    sumXY+= xs[i]* ys[i];
-    sumX2+= xs[i]* xs[i];
-  }
-  let slope= (n*sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
-  let avg= sumY/n;
-  let k=0.3;
-  let slopeScore= 100/(1+ Math.exp(-k* slope));
-  return 0.5*slopeScore + 0.5* avg;
-}
-
-/***********************************************************************
- * Insider
- ***********************************************************************/
-async function fetchInsiderData(ticker, periodMonths, currentPrice){
-  let url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-  let r= await fetch(url);
-  let j= await r.json();
-  if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
-  let cutoff= new Date();
-  cutoff.setMonth(cutoff.getMonth()- periodMonths);
-  let totalBuy=0, totalSell=0;
-  for(let item of j.data){
-    if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
-    if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-    let tradePrice= parseFloat(item.share_price);
-    let lb= currentPrice*0.5, ub= currentPrice*1.5;
-    if(tradePrice< lb|| tradePrice> ub) continue;
-    let dt= new Date(item.transaction_date);
-    if(isNaN(dt)|| dt< cutoff) continue;
-    let shares= parseFloat(item.shares);
-    if(item.acquisition_or_disposal==="A") totalBuy+= shares;
-    else if(item.acquisition_or_disposal==="D") totalSell+= shares;
-  }
-  return { totalBuys: totalBuy, totalSells: totalSell };
-}
-async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-  let fromDate= new Date(simDate);
-  fromDate.setMonth(fromDate.getMonth()- periodMonths);
-  let fromDateStr= fromDate.toISOString().slice(0,10);
-  let toDateStr= simDate.toISOString().slice(0,10);
-  let url= `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-  let r= await fetch(url);
-  let j= await r.json();
-  if(!j.data|| !Array.isArray(j.data)|| j.data.length===0){
-    throw new Error("No insider sentiment data available.");
-  }
-  return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
-}
-function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-  let fromDate= new Date(insiderSentimentData.fromDateStr);
-  let toDate=   new Date(insiderSentimentData.toDateStr);
-  let filledData= [];
-  let currentDate= new Date(fromDate);
-  while(currentDate<= toDate){
-    let year= currentDate.getFullYear();
-    let month= currentDate.getMonth()+1;
-    let found= insiderSentimentData.data.find(pt=> pt.year===year && pt.month===month);
-    if(found){
-      filledData.push({ year, month, mspr: parseFloat(found.mspr) });
-    } else {
-      filledData.push({ year, month, mspr: 0 });
-    }
-    currentDate.setMonth(currentDate.getMonth()+1);
-  }
-  let finalMspr= filledData[filledData.length-1].mspr;
-  let normalizedFinalMspr= (finalMspr+100)/2;
-  let sumMspr= filledData.reduce((sum,pt)=> sum+ pt.mspr, 0);
-  let avgMspr= sumMspr/ filledData.length;
-  let normalizedAvgMspr= (avgMspr+100)/2;
-  let n= filledData.length;
-  let sumX=0, sumY=0, sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    let x= i+1;
-    let y= filledData[i].mspr;
-    sumX+= x; sumY+= y; sumXY+= x*y; sumX2+= x*x;
-  }
-  let denom= n* sumX2 - sumX* sumX;
-  let slope= (denom===0)? 0 : (n* sumXY - sumX* sumY)/ denom;
-  let normalizedSlope= (isNaN(slope)|| !isFinite(slope))? 50: (slope+100)/2;
-  let trendComponent= (normalizedAvgMspr+ normalizedSlope)/2;
-  let transactionScore=0;
-  let totalTrans= transactionBuys+ transactionSells;
-  if(totalTrans>0){
-    transactionScore= ((transactionBuys- transactionSells)/ totalTrans)* 100;
-  }
-  let normalizedTransactionScore= (transactionScore+ 100)/2;
-  return 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
-}
-
-/***********************************************************************
- * Fundamental
- ***********************************************************************/
-function computeFundScores(data){
-  const norm=(val,min,max)=>{
-    if(!val|| isNaN(val)) return 50;
-    let ratio= (val- min)/(max- min);
-    return Math.max(0, Math.min(100, ratio*100));
-  };
-  let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
-  let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-  let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-  let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-  let profitability= (margin+ opMarg+ roa+ roe)/4;
-  
-  let pe= parseFloat(data.PERatio);
-  let peScore= 100- norm(pe,5,40);
-  let peg= parseFloat(data.PEGRatio);
-  let pegScore= 100- norm(peg,0.5,2.5);
-  let ps= parseFloat(data.PriceToSalesRatioTTM);
-  let psScore= 100- norm(ps,1,10);
-  let pb= parseFloat(data.PriceToBookRatio);
-  let pbScore= 100- norm(pb,1,10);
-  let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
-  
-  let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
-  let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
-  let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-  let ratio= 0;
-  if(pRef>0 && data.AnalystTargetPrice){
-    ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
-  }
-  let tgtScore= norm(ratio,0,0.5);
-  let growth= (rg+ eg+ tgtScore)/3;
-  
-  let dy= norm(parseFloat(data.DividendYield),0,0.07);
-  let dps= norm(parseFloat(data.DividendPerShare),0,10);
-  let eps= norm(parseFloat(data.EPS),0,12);
-  let dividends= (dy+ dps+ eps)/3;
-  
-  let ebitda= parseFloat(data.EBITDA);
-  let revTTM= parseFloat(data.RevenueTTM);
-  let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3): 50;
-  let evEbitda= parseFloat(data.EVToEBITDA);
-  let evEbitdaScore= 100- norm(evEbitda,5,30);
-  let beta= parseFloat(data.Beta);
-  let betaScore= 50;
-  if(!isNaN(beta)){
-    betaScore= 100- norm(beta,0,2);
-  }
-  let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-  
-  return { profitability, valuation, growth, dividends, financial };
-}
-async function fetchFundamentalData(ticker){
-  let url= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-  let r= await fetch(url);
-  let j= await r.json();
-  if(!j.Symbol) return 50;
-  let cat= computeFundScores(j);
-  let s=0,c=0;
-  for(let k in cat){ s+= cat[k]; c++; }
-  return s/c;
-}
-
-/***********************************************************************
- * Congress
- ***********************************************************************/
-async function fetchCongressData(ticker, periodMonths) {
-  try {
-    const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
-    const resp = await fetch(url);
-    const j = await resp.json();
-    if (!j.data || !Array.isArray(j.data)) {
-      throw new Error("Invalid congress data format.");
-    }
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - periodMonths);
-    let totalPurchase = 0, totalSale = 0;
-    let uniqueBuyMembers = new Set();
-    let uniqueSellMembers = new Set();
     
-    for (let item of j.data) {
-      if (!item.TransactionDate || !item.Transaction) continue;
-      let dt = new Date(item.TransactionDate);
-      if (isNaN(dt) || dt < cutoff) continue;
-      let amt = parseFloat(item.Amount) || 0;
-      if (/purchase/i.test(item.Transaction)) {
-        totalPurchase += amt;
-        if (item.member) uniqueBuyMembers.add(item.member);
-      }
-      if (/sale/i.test(item.Transaction)) {
-        totalSale += amt;
-        if (item.member) uniqueSellMembers.add(item.member);
-      }
-    }
-    return {
-      totalPurchase,
-      totalSale,
-      uniqueBuyCount: uniqueBuyMembers.size,
-      uniqueSellCount: uniqueSellMembers.size
-    };
-  } catch (error) {
-    console.error("Error in fetchCongressData:", error.message);
-    return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
-  }
-}
-function computeDollarsScore(netDollars) {
-  const cap = 10000000;  // $10M cap
-  let ratio;
-  if (netDollars >= 0) {
-    ratio = Math.log10(netDollars + 1) / Math.log10(cap + 1);
-  } else {
-    ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
-  }
-  const alpha = 2.2;
-  ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
-  return 50 + 50 * ratio;
-}
-function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
-  let netUnique = uniqueBuyCount - uniqueSellCount;
-  netUnique = Math.max(-5, Math.min(5, netUnique));
-  return 50 + 50 * (netUnique / 5);
-}
-function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
-  let netDollars = totalPurchase - totalSale;
-  let dollarsScore = computeDollarsScore(netDollars);
-  let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
-  return (dollarsScore + uniqueScore) / 2;
-}
-
-/***********************************************************************
- * Market Regime detection
- ***********************************************************************/
-async function determineSPYMarketRegime(periodMonths){
-  try {
-    let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-    let resp= await fetch(url);
-    let j= await resp.json();
-    if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
     
-    let shortWindow= periodMonths*5;
-    let longWindow=  periodMonths*15;
-    let totalDays= periodMonths*30;
-    let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-    let arr=[];
-    for(let d of allKeys){
-      let dt= new Date(d);
-      let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-      arr.push({ date:dt, close:c });
+    // Optionally, trigger a change event on page load to load a default index.
+    document.getElementById("indexSelect").dispatchEvent(new Event('change'));
+    
+
+    
+    /***********************************************************************
+     * Show/hide manual inputs
+     ***********************************************************************/
+    const manualModeCheckbox = document.getElementById("manualModeCheckbox");
+    const manualInputsDiv    = document.getElementById("manualInputs");
+    manualModeCheckbox.addEventListener("change", () => {
+      manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none";
+    });
+    
+    /***********************************************************************
+     * If user changes the <select> Market Regime in manual mode,
+     * auto-fill the user fields
+     ***********************************************************************/
+    document.getElementById("marketRegimeSelect").addEventListener("change", function(){
+      const val = this.value;
+      if(val==="Bear"){
+        document.getElementById("wRRI").value      = 0.10;
+        document.getElementById("wTech").value     = 0.05;
+        document.getElementById("wSent").value     = 0.20;
+        document.getElementById("wInsider").value  = 0.20;
+        document.getElementById("wFund").value     = 0.30;
+        document.getElementById("wCongress").value = 0.15;
+        document.getElementById("scalingFactor").value = 1.00;
+      } else if(val==="Bull"){
+        document.getElementById("wRRI").value      = 0.20;
+        document.getElementById("wTech").value     = 0.20;
+        document.getElementById("wSent").value     = 0.15;
+        document.getElementById("wInsider").value  = 0.15;
+        document.getElementById("wFund").value     = 0.15;
+        document.getElementById("wCongress").value = 0.15;
+        document.getElementById("scalingFactor").value = 3.00;
+      } else {
+        document.getElementById("wRRI").value      = 0.15;
+        document.getElementById("wTech").value     = 0.20;
+        document.getElementById("wSent").value     = 0.15;
+        document.getElementById("wInsider").value  = 0.15;
+        document.getElementById("wFund").value     = 0.20;
+        document.getElementById("wCongress").value = 0.15;
+        document.getElementById("scalingFactor").value = 2.00;
+      }
+    });
+    
+    /***********************************************************************
+     * Logging & Sleep
+     ***********************************************************************/
+    function logStatus(msg){
+      const s = document.getElementById("status");
+      s.textContent += msg + "\n";
+      s.scrollTop = s.scrollHeight;
     }
-    let end= arr[arr.length-1].date;
-    let start= new Date(end);
-    start.setDate(start.getDate()- totalDays);
-    let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-    if(filtered.length< Math.max(shortWindow, longWindow)){
-      logStatus("Not enough SPY data => neutral");
+    function sleep(ms){
+      return new Promise(resolve=> setTimeout(resolve,ms));
+    }
+    
+    /***********************************************************************
+     * parseAlphaDate (Used for sentiment date parsing)
+     ***********************************************************************/
+    function parseAlphaDate(str){
+      const year  = str.substring(0,4);
+      const month = str.substring(4,6);
+      const day   = str.substring(6,8);
+      const hour  = str.substring(9,11) || "00";
+      const min   = str.substring(11,13) || "00";
+      const sec   = str.substring(13,15) || "00";
+      return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+    }
+    
+    /***********************************************************************
+     * fetchHistoricalData
+     ***********************************************************************/
+    async function fetchHistoricalData(ticker){
+      let url= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+      const resp = await fetch(url);
+      const j = await resp.json();
+      if(!j["Time Series (Daily)"]){
+        throw new Error("No daily data for " + ticker);
+      }
+      const ts = j["Time Series (Daily)"];
+      let out = [];
+      Object.keys(ts).forEach(d=>{
+        out.push({
+          date: new Date(d),
+          close: parseFloat(ts[d]["5. adjusted close"])
+        });
+      });
+      out.sort((a,b)=> a.date - b.date);
+      return out;
+    }
+    
+    /***********************************************************************
+     * DBHJ-based RRI logic
+     ***********************************************************************/
+    // Standard Normal via Box-Muller
+    function randn() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    // Basic stats
+    function computeHistStats(prices){
+      let logs = [];
+      for(let i=1; i< prices.length; i++){
+        let r= Math.log(prices[i].close / prices[i-1].close);
+        logs.push(r);
+      }
+      if(logs.length<2){
+        return { mu: 0, sigma: 0, lastPrice: prices[prices.length-1].close };
+      }
+      let meanDaily= logs.reduce((a,b)=> a+b, 0)/ logs.length;
+      let variance= logs.reduce((acc,r)=> acc+ (r- meanDaily)**2, 0)/(logs.length -1);
+      let stdDaily= Math.sqrt(variance);
+      let tradingDays= 252;
+      return {
+        mu: meanDaily * tradingDays,
+        sigma: stdDaily * Math.sqrt(tradingDays),
+        lastPrice: prices[prices.length-1].close
+      };
+    }
+    // Attempt to fetch live IV:
+    async function fetchOptionsIV(ticker){
+      try {
+        let url= `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
+        let resp= await fetch(url);
+        let j= await resp.json();
+        if(j.data && Array.isArray(j.data) && j.data.length>0){
+          let contract= j.data[0];
+          return parseFloat(contract.impliedVolatility) || null;
+        }
+      }catch(e){
+        return null;
+      }
+      return null;
+    }
+    // Double Heston + Jump
+    function runDBHJSimulation(S0, v10, v20, mu,
+                               kappa1, theta1, sigma1, rho1,
+                               kappa2, theta2, sigma2, rho2,
+                               lambda, jumpMean, jumpStd,
+                               T, dt, sims) {
+      const steps = Math.floor(T / dt);
+      let finals = [];
+      for(let i = 0; i < sims; i++){
+        let S = S0, v1 = v10, v2 = v20;
+        for(let j = 0; j < steps; j++){
+          let Z1 = randn();
+          let Z2 = randn();
+          let Z3 = randn();
+          const dW_a = Math.sqrt(dt) * Z1;
+          const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1*rho1) * Z2);
+          const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2*rho2) * Z3);
+          
+          v1 = Math.max(v1 + kappa1*(theta1 - v1)* dt + sigma1* Math.sqrt(Math.max(v1,0))* dW_v1, 0);
+          v2 = Math.max(v2 + kappa2*(theta2 - v2)* dt + sigma2* Math.sqrt(Math.max(v2,0))* dW_v2, 0);
+          
+          const totalVar = v1 + v2;
+          let jumpMultiplier = 1;
+          if (Math.random() < lambda * dt) {
+            jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
+          }
+          S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar)* dW_a);
+        }
+        finals.push(S);
+      }
+      return finals;
+    }
+    // Basic 5% VaR and CVaR
+    function computeRiskMetrics(finals, currentPrice){
+      let sorted= finals.slice().sort((a,b)=> a-b);
+      let idx= Math.floor(0.05* sorted.length);
+      let varPrice= sorted[idx];
+      let tail= sorted.slice(0, idx+1);
+      let cvarPrice= tail.reduce((sum,p)=> sum+p, 0)/ tail.length;
+      return {
+        varPrice,
+        varPct: 100*(currentPrice - varPrice)/ currentPrice,
+        cvarPrice,
+        cvarPct: 100*(currentPrice - cvarPrice)/ currentPrice
+      };
+    }
+    function computeRiskVsRewardIndex(finals, currentPrice, cvarFraction, T){
+      let sorted= finals.slice().sort((a,b)=> a-b);
+      let medianPrice= sorted[Math.floor(sorted.length/2)];
+      let rawReturn= (medianPrice/ currentPrice)-1;
+      // annualize
+      let E_ann= Math.pow(1+ rawReturn, 1/T)-1;
+      let D_ann= 1- Math.pow(1- cvarFraction, 1/T);
+      let ratio = (D_ann> 1e-6)? (E_ann/ D_ann) : ((E_ann>=0)? 9999: -9999);
+      let alpha=1;
+      let rri= 50*(1+ Math.tanh(alpha* ratio));
+      return rri;
+    }
+    async function computeTickerRRI(ticker, T){
+      let prices= await fetchHistoricalData(ticker);
+      if(prices.length<5){
+        logStatus("Not enough historical data for "+ ticker);
+        return 50;
+      }
+      let st= computeHistStats(prices);
+      let iv= await fetchOptionsIV(ticker);
+      if(!iv) iv= st.sigma;
+      
+      let v10= iv* iv;
+      let v20= 0.5* v10;
+      let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
+      let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
+      let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
+      
+      let dt=1/252, sims=5000;
+      let finals= runDBHJSimulation(st.lastPrice, v10, v20, st.mu,
+                                    kappa1, theta1, sigma1, rho1,
+                                    kappa2, theta2, sigma2, rho2,
+                                    lambda, jumpMean, jumpStd,
+                                    T, dt, sims);
+      let risk= computeRiskMetrics(finals, st.lastPrice);
+      let cvarFrac= risk.cvarPct/100;
+      return computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
+    }
+    
+    /***********************************************************************
+     * Technical (MACD) functions
+     ***********************************************************************/
+    function computeEMA(series, period){
+      if(series.length< period) return [];
+      let alpha= 2/(period+1);
+      let sum=0;
+      for(let i=0;i< period;i++){
+        sum+= series[i].close;
+      }
+      let prevEma= sum/ period;
+      let out=[];
+      out[period-1]= { date: series[period-1].date, ema: prevEma };
+      for(let i= period; i< series.length; i++){
+        let cur= series[i].close;
+        let nxt= (cur- prevEma)* alpha + prevEma;
+        out[i]= { date: series[i].date, ema: nxt };
+        prevEma= nxt;
+      }
+      return out.filter(Boolean);
+    }
+    function computeMACD(series, fast=12, slow=26, signal=9){
+      let fEMA= computeEMA(series, fast);
+      let sEMA= computeEMA(series, slow);
+      let macdLine=[];
+      for(let i=0; i< sEMA.length; i++){
+        let dt= sEMA[i].date;
+        let match= fEMA.find(x=> x.date.getTime()=== dt.getTime());
+        if(match){
+          macdLine.push({ date: dt, macd: match.ema - sEMA[i].ema });
+        }
+      }
+      if(macdLine.length< signal) return { macdLine, signalLine:[] };
+      let m= 2/(signal+1);
+      let sum=0;
+      for(let i=0;i< signal;i++){
+        sum+= macdLine[i].macd;
+      }
+      let prevSig= sum/ signal;
+      let signalLine=[];
+      signalLine[signal-1]= { date: macdLine[signal-1].date, signal: prevSig };
+      for(let i= signal;i< macdLine.length;i++){
+        let s= (macdLine[i].macd- prevSig)* m + prevSig;
+        signalLine[i]= { date: macdLine[i].date, signal: s };
+        prevSig= s;
+      }
+      return { macdLine, signalLine: signalLine.filter(Boolean) };
+    }
+    function polynomialRegression(x, y, deg){
+      let X=[];
+      for(let i=0;i<x.length;i++){
+        let row=[];
+        for(let j=0; j<= deg; j++){
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      let XT= mathInstance.transpose(X);
+      let XTX= mathInstance.multiply(XT, X);
+      let XTy= mathInstance.multiply(XT, y);
+      let sol= mathInstance.lusolve(XTX, XTy);
+      return sol.map(v=> v[0]);
+    }
+    function predictValue(coefs,xx){
+      return coefs.reduce((acc,c,i)=> acc+ c*Math.pow(xx,i), 0);
+    }
+    function computeMomentumScoreUsingRegression(hist){
+      if(hist.length<6) return 50;
+      let recent= hist.slice(-6);
+      let x=[1,2,3,4,5,6];
+      let coefs= polynomialRegression(x, recent,1);
+      let pred= predictValue(coefs,7);
+      let last= recent[recent.length-1];
+      let delta= pred - last;
+      let k=5;
+      let sc= 100/(1+ Math.exp(-k* delta));
+      return isNaN(sc)? 50: sc;
+    }
+    function computeGapTrendScore(macdLine, signalLine){
+      if(macdLine.length<6 || signalLine.length<6) return { gapScore:50 };
+      let rMacd= macdLine.slice(-6).map(x=> x.macd);
+      let rSig=  signalLine.slice(-6).map(x=> x.signal);
+      let x=[1,2,3,4,5,6];
+      let macdCoefs= polynomialRegression(x, rMacd,3);
+      let sigCoefs = polynomialRegression(x, rSig,3);
+      let predMACD= predictValue(macdCoefs,7);
+      let predSig=  predictValue(sigCoefs,7);
+      let predGap=  predMACD- predSig;
+      let curGap= macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
+      let delta= predGap - curGap;
+      let k=5;
+      let gapScore= 100/(1+ Math.exp(-k* delta));
+      return { gapScore };
+    }
+    async function computeTechnical(prices){
+      if(prices.length<2) return 50;
+      let { macdLine, signalLine }= computeMACD(prices,12,26,9);
+      if(macdLine.length<2 || signalLine.length<2) return 50;
+      let len= Math.min(macdLine.length, signalLine.length);
+      let latestMACD= macdLine[len-1].macd;
+      let positionScore= 100/(1+ Math.exp(latestMACD));
+      let gapObj= computeGapTrendScore(macdLine, signalLine);
+      let gapScore= gapObj.gapScore||50;
+      let hist=[];
+      for(let i=0;i<len;i++){
+        hist.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      let momentum= computeMomentumScoreUsingRegression(hist);
+      if(!momentum) momentum=50;
+      return (positionScore+ gapScore+ momentum)/3;
+    }
+    
+    /***********************************************************************
+     * Sentiment
+     ***********************************************************************/
+    async function fetchSentimentData(ticker, periodMonths){
+      try {
+        let url= `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+        let resp= await fetch(url);
+        let j= await resp.json();
+        if(!j.feed) return [];
+        let cutoff= new Date();
+        cutoff.setMonth(cutoff.getMonth()- periodMonths);
+        let byHour= {};
+        for(let art of j.feed){
+          let dt= parseAlphaDate(art.time_published);
+          if(isNaN(dt)|| dt< cutoff) continue;
+          if(!art.ticker_sentiment) continue;
+          let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
+          if(!tItem) continue;
+          let raw= parseFloat(tItem.ticker_sentiment_score);
+          if(isNaN(raw)) continue;
+          let norm= ((raw+1)/2)*100;
+          let hr= dt.toISOString().substring(0,13);
+          if(!byHour[hr]) byHour[hr]= [];
+          byHour[hr].push(norm);
+        }
+        let sentiments=[];
+        for(let hStr in byHour){
+          let arr= byHour[hStr];
+          let avg= arr.reduce((a,b)=> a+b, 0)/ arr.length;
+          let dt= new Date(`${hStr}:00:00Z`);
+          sentiments.push({ date: dt, sentiment: avg });
+        }
+        sentiments.sort((a,b)=> a.date- b.date);
+        return sentiments;
+      } catch(e){
+        return [];
+      }
+    }
+    function computeSentBull(arr){
+      if(arr.length<2) return 50;
+      let first= arr[0].date;
+      let xs= arr.map(d=> (d.date- first)/(1000*60*60*24));
+      let ys= arr.map(d=> d.sentiment);
+      let n= xs.length;
+      let sumX= xs.reduce((a,b)=> a+b,0);
+      let sumY= ys.reduce((a,b)=> a+b,0);
+      let sumXY=0, sumX2=0;
+      for(let i=0;i<n;i++){
+        sumXY+= xs[i]* ys[i];
+        sumX2+= xs[i]* xs[i];
+      }
+      let slope= (n*sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
+      let avg= sumY/n;
+      let k=0.3;
+      let slopeScore= 100/(1+ Math.exp(-k* slope));
+      return 0.5*slopeScore + 0.5* avg;
+    }
+    
+    /***********************************************************************
+     * Insider
+     ***********************************************************************/
+    async function fetchInsiderData(ticker, periodMonths, currentPrice){
+      let url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
+      let r= await fetch(url);
+      let j= await r.json();
+      if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
+      let cutoff= new Date();
+      cutoff.setMonth(cutoff.getMonth()- periodMonths);
+      let totalBuy=0, totalSell=0;
+      for(let item of j.data){
+        if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
+        if(!item.share_price|| parseFloat(item.share_price)===0) continue;
+        let tradePrice= parseFloat(item.share_price);
+        let lb= currentPrice*0.5, ub= currentPrice*1.5;
+        if(tradePrice< lb|| tradePrice> ub) continue;
+        let dt= new Date(item.transaction_date);
+        if(isNaN(dt)|| dt< cutoff) continue;
+        let shares= parseFloat(item.shares);
+        if(item.acquisition_or_disposal==="A") totalBuy+= shares;
+        else if(item.acquisition_or_disposal==="D") totalSell+= shares;
+      }
+      return { totalBuys: totalBuy, totalSells: totalSell };
+    }
+    async function fetchInsiderSentiment(ticker, periodMonths, simDate){
+      let fromDate= new Date(simDate);
+      fromDate.setMonth(fromDate.getMonth()- periodMonths);
+      let fromDateStr= fromDate.toISOString().slice(0,10);
+      let toDateStr= simDate.toISOString().slice(0,10);
+      let url= `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
+      let r= await fetch(url);
+      let j= await r.json();
+      if(!j.data|| !Array.isArray(j.data)|| j.data.length===0){
+        throw new Error("No insider sentiment data available.");
+      }
+      return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
+    }
+    function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
+      let fromDate= new Date(insiderSentimentData.fromDateStr);
+      let toDate=   new Date(insiderSentimentData.toDateStr);
+      let filledData= [];
+      let currentDate= new Date(fromDate);
+      while(currentDate<= toDate){
+        let year= currentDate.getFullYear();
+        let month= currentDate.getMonth()+1;
+        let found= insiderSentimentData.data.find(pt=> pt.year===year && pt.month===month);
+        if(found){
+          filledData.push({ year, month, mspr: parseFloat(found.mspr) });
+        } else {
+          filledData.push({ year, month, mspr: 0 });
+        }
+        currentDate.setMonth(currentDate.getMonth()+1);
+      }
+      let finalMspr= filledData[filledData.length-1].mspr;
+      let normalizedFinalMspr= (finalMspr+100)/2;
+      let sumMspr= filledData.reduce((sum,pt)=> sum+ pt.mspr, 0);
+      let avgMspr= sumMspr/ filledData.length;
+      let normalizedAvgMspr= (avgMspr+100)/2;
+      let n= filledData.length;
+      let sumX=0, sumY=0, sumXY=0, sumX2=0;
+      for(let i=0;i<n;i++){
+        let x= i+1;
+        let y= filledData[i].mspr;
+        sumX+= x; sumY+= y; sumXY+= x*y; sumX2+= x*x;
+      }
+      let denom= n* sumX2 - sumX* sumX;
+      let slope= (denom===0)? 0 : (n* sumXY - sumX* sumY)/ denom;
+      let normalizedSlope= (isNaN(slope)|| !isFinite(slope))? 50: (slope+100)/2;
+      let trendComponent= (normalizedAvgMspr+ normalizedSlope)/2;
+      let transactionScore=0;
+      let totalTrans= transactionBuys+ transactionSells;
+      if(totalTrans>0){
+        transactionScore= ((transactionBuys- transactionSells)/ totalTrans)* 100;
+      }
+      let normalizedTransactionScore= (transactionScore+ 100)/2;
+      return 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
+    }
+    
+    /***********************************************************************
+     * Fundamental
+     ***********************************************************************/
+    function computeFundScores(data){
+      const norm=(val,min,max)=>{
+        if(!val|| isNaN(val)) return 50;
+        let ratio= (val- min)/(max- min);
+        return Math.max(0, Math.min(100, ratio*100));
+      };
+      let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
+      let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
+      let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
+      let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
+      let profitability= (margin+ opMarg+ roa+ roe)/4;
+      
+      let pe= parseFloat(data.PERatio);
+      let peScore= 100- norm(pe,5,40);
+      let peg= parseFloat(data.PEGRatio);
+      let pegScore= 100- norm(peg,0.5,2.5);
+      let ps= parseFloat(data.PriceToSalesRatioTTM);
+      let psScore= 100- norm(ps,1,10);
+      let pb= parseFloat(data.PriceToBookRatio);
+      let pbScore= 100- norm(pb,1,10);
+      let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
+      
+      let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
+      let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
+      let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
+      let ratio= 0;
+      if(pRef>0 && data.AnalystTargetPrice){
+        ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
+      }
+      let tgtScore= norm(ratio,0,0.5);
+      let growth= (rg+ eg+ tgtScore)/3;
+      
+      let dy= norm(parseFloat(data.DividendYield),0,0.07);
+      let dps= norm(parseFloat(data.DividendPerShare),0,10);
+      let eps= norm(parseFloat(data.EPS),0,12);
+      let dividends= (dy+ dps+ eps)/3;
+      
+      let ebitda= parseFloat(data.EBITDA);
+      let revTTM= parseFloat(data.RevenueTTM);
+      let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3): 50;
+      let evEbitda= parseFloat(data.EVToEBITDA);
+      let evEbitdaScore= 100- norm(evEbitda,5,30);
+      let beta= parseFloat(data.Beta);
+      let betaScore= 50;
+      if(!isNaN(beta)){
+        betaScore= 100- norm(beta,0,2);
+      }
+      let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
+      
+      return { profitability, valuation, growth, dividends, financial };
+    }
+    async function fetchFundamentalData(ticker){
+      let url= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+      let r= await fetch(url);
+      let j= await r.json();
+      if(!j.Symbol) return 50;
+      let cat= computeFundScores(j);
+      let s=0,c=0;
+      for(let k in cat){ s+= cat[k]; c++; }
+      return s/c;
+    }
+    
+    /***********************************************************************
+     * Congress
+     ***********************************************************************/
+    async function fetchCongressData(ticker, periodMonths) {
+      try {
+        const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
+        const resp = await fetch(url);
+        const j = await resp.json();
+        if (!j.data || !Array.isArray(j.data)) {
+          throw new Error("Invalid congress data format.");
+        }
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - periodMonths);
+        let totalPurchase = 0, totalSale = 0;
+        let uniqueBuyMembers = new Set();
+        let uniqueSellMembers = new Set();
+        
+        for (let item of j.data) {
+          if (!item.TransactionDate || !item.Transaction) continue;
+          let dt = new Date(item.TransactionDate);
+          if (isNaN(dt) || dt < cutoff) continue;
+          let amt = parseFloat(item.Amount) || 0;
+          if (/purchase/i.test(item.Transaction)) {
+            totalPurchase += amt;
+            if (item.member) uniqueBuyMembers.add(item.member);
+          }
+          if (/sale/i.test(item.Transaction)) {
+            totalSale += amt;
+            if (item.member) uniqueSellMembers.add(item.member);
+          }
+        }
+        return {
+          totalPurchase,
+          totalSale,
+          uniqueBuyCount: uniqueBuyMembers.size,
+          uniqueSellCount: uniqueSellMembers.size
+        };
+      } catch (error) {
+        console.error("Error in fetchCongressData:", error.message);
+        return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
+      }
+    }
+    function computeDollarsScore(netDollars) {
+      const cap = 10000000;  // $10M cap
+      let ratio;
+      if (netDollars >= 0) {
+        ratio = Math.log10(netDollars + 1) / Math.log10(cap + 1);
+      } else {
+        ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
+      }
+      const alpha = 2.2;
+      ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
+      return 50 + 50 * ratio;
+    }
+    function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
+      let netUnique = uniqueBuyCount - uniqueSellCount;
+      netUnique = Math.max(-5, Math.min(5, netUnique));
+      return 50 + 50 * (netUnique / 5);
+    }
+    function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
+      let netDollars = totalPurchase - totalSale;
+      let dollarsScore = computeDollarsScore(netDollars);
+      let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
+      return (dollarsScore + uniqueScore) / 2;
+    }
+    
+    /***********************************************************************
+     * Market Regime detection
+     ***********************************************************************/
+    async function determineSPYMarketRegime(periodMonths){
+      try {
+        let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+        let resp= await fetch(url);
+        let j= await resp.json();
+        if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
+        
+        let shortWindow= periodMonths*5;
+        let longWindow=  periodMonths*15;
+        let totalDays= periodMonths*30;
+        let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
+        let arr=[];
+        for(let d of allKeys){
+          let dt= new Date(d);
+          let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+          arr.push({ date:dt, close:c });
+        }
+        let end= arr[arr.length-1].date;
+        let start= new Date(end);
+        start.setDate(start.getDate()- totalDays);
+        let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
+        if(filtered.length< Math.max(shortWindow, longWindow)){
+          logStatus("Not enough SPY data => neutral");
+          return "Neutral";
+        }
+        let shortSMA= computeSMA(filtered, shortWindow);
+        let longSMA= computeSMA(filtered, longWindow);
+        let smaSig= classifyBySMA(shortSMA, longSMA);
+        let slopeVal= computePriceSlope(filtered);
+        let slopeSig= classifyBySlope(slopeVal);
+        let votes=0;
+        if(smaSig==="Bull") votes++;
+        if(smaSig==="Bear") votes--;
+        if(slopeSig==="Bull") votes++;
+        if(slopeSig==="Bear") votes--;
+        if(votes>=2) return "Bull";
+        if(votes<=-2) return "Bear";
+        return "Neutral";
+      } catch(e){
+        logStatus("Error in determineSPYMarketRegime => "+ e.message);
+        return "Neutral";
+      }
+    }
+    function computeSMA(priceArray, period){
+      if(!priceArray|| priceArray.length< period) return null;
+      let slice= priceArray.slice(-period);
+      let sum=0;
+      for(let p of slice) sum+= p.close;
+      return sum/ period;
+    }
+    function classifyBySMA(shortSMA, longSMA){
+      if(!shortSMA|| !longSMA) return "Neutral";
+      let ratio= shortSMA/ longSMA;
+      if(ratio>1.01) return "Bull";
+      if(ratio<0.99) return "Bear";
       return "Neutral";
     }
-    let shortSMA= computeSMA(filtered, shortWindow);
-    let longSMA= computeSMA(filtered, longWindow);
-    let smaSig= classifyBySMA(shortSMA, longSMA);
-    let slopeVal= computePriceSlope(filtered);
-    let slopeSig= classifyBySlope(slopeVal);
-    let votes=0;
-    if(smaSig==="Bull") votes++;
-    if(smaSig==="Bear") votes--;
-    if(slopeSig==="Bull") votes++;
-    if(slopeSig==="Bear") votes--;
-    if(votes>=2) return "Bull";
-    if(votes<=-2) return "Bear";
-    return "Neutral";
-  } catch(e){
-    logStatus("Error in determineSPYMarketRegime => "+ e.message);
-    return "Neutral";
-  }
-}
-function computeSMA(priceArray, period){
-  if(!priceArray|| priceArray.length< period) return null;
-  let slice= priceArray.slice(-period);
-  let sum=0;
-  for(let p of slice) sum+= p.close;
-  return sum/ period;
-}
-function classifyBySMA(shortSMA, longSMA){
-  if(!shortSMA|| !longSMA) return "Neutral";
-  let ratio= shortSMA/ longSMA;
-  if(ratio>1.01) return "Bull";
-  if(ratio<0.99) return "Bear";
-  return "Neutral";
-}
-function computePriceSlope(prices){
-  let n= prices.length;
-  if(n<2) return 0;
-  let sumX=0, sumY=0, sumXY=0, sumX2=0;
-  for(let i=0;i<n;i++){
-    sumX+= i;
-    sumY+= prices[i].close;
-    sumXY+= i* prices[i].close;
-    sumX2+= i*i;
-  }
-  let numerator= n* sumXY - sumX* sumY;
-  let denominator= n* sumX2 - sumX* sumX;
-  if(denominator===0) return 0;
-  return numerator/ denominator;
-}
-function classifyBySlope(slope){
-  let bullThr=0.2, bearThr=-0.2;
-  if(slope> bullThr) return "Bull";
-  if(slope< bearThr) return "Bear";
-  return "Neutral";
-}
-
-/***********************************************************************
- * getAutoWeightsForRegime => returns { wRRI, wTech, wSent, wIns, wFund, wCong, scale }
- ***********************************************************************/
-function getAutoWeightsForRegime(regime){
-  if(regime==="Bear"){
-    return {
-      wRRI: 0.05,
-      wTech: 0.05,
-      wSent: 0.10,
-      wIns: 0.30,
-      wFund: 0.30,
-      wCong: 0.20,
-      scale: 0.25
-    };
-  } else if(regime==="Bull"){
-    return {
-      wRRI: 0.20,
-      wTech: 0.25,
-      wSent: 0.15,
-      wIns: 0.15,
-      wFund: 0.15,
-      wCong: 0.10,
-      scale: 1.00
-    };
-  } else {
-    // Neutral
-    return {
-      wRRI: 0.15,
-      wTech: 0.20,
-      wSent: 0.15,
-      wIns: 0.15,
-      wFund: 0.20,
-      wCong: 0.15,
-      scale: 0.50
-    };
-  }
-}
-
-/***********************************************************************
- * aggregatorFinal => picks auto or manual
- ***********************************************************************/
-function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
-  const manual = document.getElementById("manualModeCheckbox").checked;
-  if(manual){
-    const wRRI   = parseFloat(document.getElementById("wRRI").value) || 0;
-    const wTech  = parseFloat(document.getElementById("wTech").value) || 0;
-    const wSent  = parseFloat(document.getElementById("wSent").value) || 0;
-    const wIns   = parseFloat(document.getElementById("wInsider").value) || 0;
-    const wFund  = parseFloat(document.getElementById("wFund").value) || 0;
-    const wCong  = parseFloat(document.getElementById("wCongress").value) || 0;
-    let sc = parseFloat(document.getElementById("scalingFactor").value) || 1.0;
-
-    const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
-    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-    let invalidScale = (sc < 0 || sc > 2);
-    if(invalidWeights || invalidScale){
-      logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => Equal weighting.");
-      let eq = (rri + tech + sent + ins + fund + cong) / 6;
-      return eq;
-    } else {
-      let raw = wRRI * rri + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
-      return (raw - 50) * sc + 50;
+    function computePriceSlope(prices){
+      let n= prices.length;
+      if(n<2) return 0;
+      let sumX=0, sumY=0, sumXY=0, sumX2=0;
+      for(let i=0;i<n;i++){
+        sumX+= i;
+        sumY+= prices[i].close;
+        sumXY+= i* prices[i].close;
+        sumX2+= i*i;
+      }
+      let numerator= n* sumXY - sumX* sumY;
+      let denominator= n* sumX2 - sumX* sumX;
+      if(denominator===0) return 0;
+      return numerator/ denominator;
     }
-  } else {
-    let auto = getAutoWeightsForRegime(regime);
-    let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent
-            + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-    return (raw - 50) * auto.scale + 50;
-  }
-}
-
-/***********************************************************************
- * SINGLE TICKER LOGIC
- ***********************************************************************/
- async function simulateOneTicker(ticker, periodMonths, T, regime) {
-  let rri, techVal, sentVal, insVal, fundVal, congVal;
-
-  // Step 1: RRI
-  try {
-    rri = await computeTickerRRI(ticker, T);
-  } catch (e) {
-    logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
-    rri = 50;
-  }
-
-  // Step 2: Technical
-  try {
-    let hist = await fetchHistoricalData(ticker);
-    let cutoffDate = new Date();
-    cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
-    hist = hist.filter(pt => pt.date >= cutoffDate);
-    if (hist.length < 5) {
-      logStatus("Not enough filtered historical data for " + ticker);
-      techVal = 50;
-    } else {
-      techVal = await computeTechnical(hist);
+    function classifyBySlope(slope){
+      let bullThr=0.2, bearThr=-0.2;
+      if(slope> bullThr) return "Bull";
+      if(slope< bearThr) return "Bear";
+      return "Neutral";
     }
-  } catch (e) {
-    logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
-    techVal = 50;
-  }
-
-  // Step 3: Sentiment
-  try {
-    let sentData = await fetchSentimentData(ticker, periodMonths);
-    sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
-  } catch (e) {
-    logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
-    sentVal = 50;
-  }
-
-  // Step 4: Insider
-  try {
-    let hist = await fetchHistoricalData(ticker);
-    let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
-    let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
-    let insiderSent = null;
-    let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
-    try {
-      insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
-    } catch (e) {
-      insiderSent = null;
+    
+    /***********************************************************************
+     * getAutoWeightsForRegime => returns { wRRI, wTech, wSent, wIns, wFund, wCong, scale }
+     ***********************************************************************/
+    function getAutoWeightsForRegime(regime){
+      if(regime==="Bear"){
+        return {
+          wRRI: 0.10,
+          wTech: 0.05,
+          wSent: 0.20,
+          wIns: 0.20,
+          wFund: 0.30,
+          wCong: 0.15,
+          scale: 1
+        };
+      } else if(regime==="Bull"){
+        return {
+          wRRI: 0.20,
+          wTech: 0.20,
+          wSent: 0.15,
+          wIns: 0.15,
+          wFund: 0.15,
+          wCong: 0.15,
+          scale: 3
+        };
+      } else {
+        // Neutral
+        return {
+          wRRI: 0.15,
+          wTech: 0.20,
+          wSent: 0.15,
+          wIns: 0.15,
+          wFund: 0.20,
+          wCong: 0.15,
+          scale: 2
+        };
+      }
     }
-    insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
-  } catch (e) {
-    logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
-    insVal = 50;
-  }
+    
+    /***********************************************************************
+     * aggregatorFinal => picks auto or manual
+     ***********************************************************************/
+    function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
+      const manual = document.getElementById("manualModeCheckbox").checked;
+      if(manual){
+        const wRRI   = parseFloat(document.getElementById("wRRI").value) || 0;
+        const wTech  = parseFloat(document.getElementById("wTech").value) || 0;
+        const wSent  = parseFloat(document.getElementById("wSent").value) || 0;
+        const wIns   = parseFloat(document.getElementById("wInsider").value) || 0;
+        const wFund  = parseFloat(document.getElementById("wFund").value) || 0;
+        const wCong  = parseFloat(document.getElementById("wCongress").value) || 0;
+        let sc = parseFloat(document.getElementById("scalingFactor").value) || 1.0;
+    
+        const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
+        let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+        let invalidScale = (sc < 0);
+        if(invalidWeights || invalidScale){
+          logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => Equal weighting.");
+          let eq = (rri + tech + sent + ins + fund + cong) / 6;
+          return eq;
+        } else {
+          let raw = wRRI * rri + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+          return (raw - 50) * sc + 50;
+        }
+      } else {
+        let auto = getAutoWeightsForRegime(regime);
+        let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent
+                + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+        return (raw - 50) * auto.scale + 50;
+      }
+    }
+    
+    /***********************************************************************
+     * SINGLE TICKER LOGIC
+     ***********************************************************************/
+     async function simulateOneTicker(ticker, periodMonths, T, regime) {
+      let rri, techVal, sentVal, insVal, fundVal, congVal;
+    
+      // Step 1: RRI
+      try {
+        rri = await computeTickerRRI(ticker, T);
+      } catch (e) {
+        logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
+        rri = 50;
+      }
+    
+      // Step 2: Technical
+      try {
+        let hist = await fetchHistoricalData(ticker);
+        let cutoffDate = new Date();
+        cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
+        hist = hist.filter(pt => pt.date >= cutoffDate);
+        if (hist.length < 5) {
+          logStatus("Not enough filtered historical data for " + ticker);
+          techVal = 50;
+        } else {
+          techVal = await computeTechnical(hist);
+        }
+      } catch (e) {
+        logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
+        techVal = 50;
+      }
+    
+      // Step 3: Sentiment
+      try {
+        let sentData = await fetchSentimentData(ticker, periodMonths);
+        sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
+      } catch (e) {
+        logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
+        sentVal = 50;
+      }
+    
+      // Step 4: Insider
+      try {
+        let hist = await fetchHistoricalData(ticker);
+        let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
+        let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
+        let insiderSent = null;
+        let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
+        try {
+          insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
+        } catch (e) {
+          insiderSent = null;
+        }
+        insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
+      } catch (e) {
+        logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
+        insVal = 50;
+      }
+    
+      // Step 5: Fundamental
+      try {
+        fundVal = await fetchFundamentalData(ticker);
+      } catch (e) {
+        logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
+        fundVal = 50;
+      }
+    
+      // Step 6: Congress
+      try {
+        let congData = await fetchCongressData(ticker, periodMonths);
+        congVal = computeCongressScore(
+          congData.totalPurchase,
+          congData.totalSale,
+          congData.uniqueBuyCount,
+          congData.uniqueSellCount
+        );
+      } catch (e) {
+        logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
+        congVal = 50;
+      }
+    
+      // Step 7: Aggregator
+      let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
+      return { ticker, aggregator };
+    }
+    
+     // Ensure the DOM is ready
+     document.addEventListener("DOMContentLoaded", () => {
+    // Grab all elements once the DOM is ready.
+    const statusEl = document.getElementById("status");
+    const progressContainer = document.getElementById("progressContainer");
+    const progressBarFill = document.getElementById("progressBarFill");
+    const progressBarText = document.getElementById("progressBarText");
 
-  // Step 5: Fundamental
-  try {
-    fundVal = await fetchFundamentalData(ticker);
-  } catch (e) {
-    logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
-    fundVal = 50;
-  }
+    function logStatus(msg) {
+        // If you want to support HTML (for colored spans), use innerHTML.
+        statusEl.innerHTML += msg + "<br>";
+        statusEl.scrollTop = statusEl.scrollHeight;
+    }
 
-  // Step 6: Congress
-  try {
-    let congData = await fetchCongressData(ticker, periodMonths);
-    congVal = computeCongressScore(
-      congData.totalPurchase,
-      congData.totalSale,
-      congData.uniqueBuyCount,
-      congData.uniqueSellCount
-    );
-  } catch (e) {
-    logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
-    congVal = 50;
-  }
+    async function runBatchAnalysis() {
+        logStatus("Run Batch Analysis started...");
 
-  // Step 7: Aggregator
-  let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
-  return { ticker, aggregator };
-}
+        // 0) Check if tickers loaded (make sure predeterminedTickers is defined globally or here)
+        if (predeterminedTickers.length === 0) {
+            alert("No tickers loaded. Please select an index from the dropdown to load tickers first.");
+            return;
+        }
 
+        // 1) Get and validate investment timeframe…
+        let timeframe = document.getElementById("investmentTimeframe").value;
+        if (timeframe === "") {
+            alert("Please select an Investment Timeframe!");
+            return;
+        }
 
-/***********************************************************************
- * BATCH ANALYSIS
- ***********************************************************************/
-async function runBatchAnalysis(){
+        let periodMonths, T, timeframeText;
+        if (timeframe === "short") {
+            periodMonths = 4;
+            T = 1 / 12;
+            timeframeText = "Short Term (4 months historical, 1 month horizon)";
+        } else if (timeframe === "medium") {
+            periodMonths = 12;
+            T = 3 / 12;
+            timeframeText = "Medium Term (12 months historical, 3 months horizon)";
+        } else {
+            periodMonths = 24;
+            T = 6 / 12;
+            timeframeText = "Long Term (24 months historical, 6 months horizon)";
+        }
+
+        // Clear and show progress bar
+        statusEl.innerHTML = "";
+        progressContainer.style.display = "block";
+        progressBarFill.style.width = "0%";
+        progressBarText.textContent = "0%";
+
+        // 2) Detect SPY regime
+        logStatus("Detecting SPY market regime...");
+        let regime = await determineSPYMarketRegime(4);
+        logStatus(`Detected Market Regime => ${regime} (Assessing: ${timeframeText})<br>`);
+
+        // 3) Process tickers in batches
+        let results = [];
+        let processed = 0;
+        let total = predeterminedTickers.length;
+        let batchSize = 70;
+
+        for (let i = 0; i < total; i += batchSize) {
+            let batch = predeterminedTickers.slice(i, i + batchSize);
+            logStatus(`Processing batch #${Math.floor(i / batchSize) + 1}: ${batch.join(", ")}`);
+
+            for (let tk of batch) {
+                let one = await simulateOneTicker(tk, periodMonths, T, regime);
+                results.push(one);
+                processed++;
+                let pct = Math.round((processed / total) * 100);
+                progressBarFill.style.width = pct + "%";
+                progressBarText.textContent = pct + "%";
+
+                // Use HTML spans for coloring since console styling (%c) doesn't work in an innerHTML update.
+                let colorClass = (one.aggregator > 50) ? "score-positive" : "score-negative";
+                logStatus(`→ ${tk} => aggregator: <span class="${colorClass}">${one.aggregator.toFixed(2)}</span>`);
+            }
+
+            // Sleep between batches if needed.
+            if (i + batchSize < total) {
+                logStatus("Waiting 60s before next batch...");
+                await sleep(60000);
+            }
+        }
+
+        // 4) Display final results
+        results.sort((a, b) => a.aggregator - b.aggregator);
+        let top5 = results.slice(-5).reverse();
+        let bottom5 = results.slice(0, 5);
+
+        logStatus("<br>=== Final Results ===<br>");
+        logStatus("Top 5:");
+        for (let item of top5) {
+            let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
+            logStatus(`${item.ticker}: <span class="${colorClass}">${item.aggregator.toFixed(2)}</span>`);
+        }
+        logStatus("Bottom 5:");
+        for (let item of bottom5) {
+            let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
+            logStatus(`${item.ticker}: <span class="${colorClass}">${item.aggregator.toFixed(2)}</span>`);
+        }
+        logStatus(`Done! Processed ${processed} tickers.`);
+    }
+
+    // Expose the function globally so the inline onclick works.
+    window.runBatchAnalysis = runBatchAnalysis;
+});
+
+    /***********************************************************************
+     * BATCH ANALYSIS
+     ***********************************************************************/
+     async function runBatchAnalysis(){
   // 0) Check if tickers loaded
-
   if (predeterminedTickers.length === 0) {
     alert("No tickers loaded. Please select an index from the dropdown to load tickers first.");
     return;
@@ -1048,7 +1247,8 @@ async function runBatchAnalysis(){
     alert("Please select an Investment Timeframe!");
     return;
   }
-  // 2) Translate to periodMonths, T, timeframeText
+
+  // Map timeframe to periodMonths, T, etc. (same logic)
   let periodMonths, T, timeframeText;
   if(timeframe === "short"){
     periodMonths = 4;
@@ -1058,21 +1258,17 @@ async function runBatchAnalysis(){
     periodMonths = 12;
     T = 3/12;  // 3 months
     timeframeText = "Medium Term (12 months historical, 3 months horizon)";
-  } else if(timeframe === "long"){
+  } else {
     periodMonths = 24;
     T = 6/12;  // 6 months
     timeframeText = "Long Term (24 months historical, 6 months horizon)";
   }
 
   // Clear & show progress
-  document.getElementById("status").textContent = "";
-  const progressContainer = document.getElementById("progressContainer");
-  const progressBar = document.getElementById("progressBar");
-  const progressText = document.getElementById("progressText");
+  statusEl.textContent = "";
   progressContainer.style.display = "block";
-  progressBar.value = 0;
-  progressBar.max = 100;
-  progressText.textContent = "0% Completed";
+  progressBarFill.style.width = "0%";
+  progressBarText.textContent = "0%";
 
   // 3) Detect SPY regime
   logStatus("Detecting SPY market regime...");
@@ -1091,12 +1287,19 @@ async function runBatchAnalysis(){
     for(let tk of batch){
       let one= await simulateOneTicker(tk, periodMonths, T, regime);
       results.push(one);
+      
       processed++;
-      logStatus(`→ ${tk} => aggregator: ${one.aggregator.toFixed(2)}`);
       let pct= Math.round((processed / total)*100);
-      progressBar.value= pct;
-      progressText.textContent= `${pct}% Completed`;
+      // Update progress bar fill
+      progressBarFill.style.width = pct + "%";
+      progressBarText.textContent = pct + "%";
+      
+      // Color aggregator > 50 => green, < 50 => red
+      let colorClass = (one.aggregator > 50) ? "score-positive" : "score-negative";
+      logStatus(`→ ${tk} => aggregator: %c${one.aggregator.toFixed(2)}`, colorClass);
     }
+
+    // Optional: sleep between batches
     if(i+ batchSize< total){
       logStatus("Waiting 60s before next batch...");
       await sleep(60000);
@@ -1110,17 +1313,20 @@ async function runBatchAnalysis(){
 
   logStatus("\n=== Final Results ===");
   logStatus("Top 5:");
-  top5.forEach(item=>{
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
+  for(let item of top5){
+    let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
+    logStatus(`${item.ticker}: %c${item.aggregator.toFixed(2)}`, colorClass);
+  }
   logStatus("Bottom 5:");
-  bottom5.forEach(item=>{
-    logStatus(`${item.ticker}: ${item.aggregator.toFixed(2)}`);
-  });
+  for(let item of bottom5){
+    let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
+    logStatus(`${item.ticker}: %c${item.aggregator.toFixed(2)}`, colorClass);
+  }
   logStatus(`Done! Processed ${processed} tickers.`);
 }
 
-</script>
-
-</body>
-</html>
+</script
+    
+    </body>
+    </html>
+    
