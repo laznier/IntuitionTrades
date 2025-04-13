@@ -1601,7 +1601,7 @@ function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
     let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
     let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
     // Optionally, remove or adjust the check for scale if you want to allow values beyond 2
-    let invalidScale = (sc < 0 /* || sc > 2 */);
+    let invalidScale = (sc < 0 /* || sc > 5 */);
     if (invalidWeights || invalidScale) {
       console.log("WARNING: manual weights invalid => fallback = direct average");
       let eq = (mc + tech + sent + ins + fund + cong) / 6;
