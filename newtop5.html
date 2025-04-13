@@ -355,97 +355,149 @@
   /***********************************************************************
    * DBHJ-based RRI logic (Stocks Tool version with 10,000 sims)
    ***********************************************************************/
-  async function fetchOptionsIV(ticker) {
-    try {
-      let url = `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
-      let resp = await fetch(url);
-      let j = await resp.json();
-      if (j.data && Array.isArray(j.data) && j.data.length > 0) {
-        let contract = j.data[0];
-        return parseFloat(contract.impliedVolatility) || null;
-      }
-    } catch (e) {
-      return null;
+  // Fetch Options Implied Volatility
+async function fetchOptionsIV(ticker) {
+  try {
+    const url = `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
+    const resp = await fetch(url);
+    const j = await resp.json();
+    if (j.data && Array.isArray(j.data) && j.data.length > 0) {
+      const contract = j.data[0];
+      return parseFloat(contract.impliedVolatility) || null;
     }
+  } catch (e) {
     return null;
   }
-  function computeHistStats(prices) {
-    let logs = [];
-    for (let i = 1; i < prices.length; i++) {
-      let r = Math.log(prices[i].close / prices[i - 1].close);
-      logs.push(r);
-    }
-    if (logs.length < 2) {
-      return { mu: 0, sigma: 0, lastPrice: prices[prices.length - 1].close };
-    }
-    let meanDaily = logs.reduce((a, b) => a + b, 0) / logs.length;
-    let variance = logs.reduce((acc, r) => acc + Math.pow(r - meanDaily, 2), 0) / (logs.length - 1);
-    let stdDaily = Math.sqrt(variance);
-    const tradingDays = 252;
-    return {
-      mu: meanDaily * tradingDays,
-      sigma: stdDaily * Math.sqrt(tradingDays),
-      lastPrice: prices[prices.length - 1].close
-    };
+  return null;
+}
+
+// Compute historical statistics (annual drift and volatility) from the price data.
+// Make sure 'prices' is an array of objects each containing at least a 'close' value.
+function computeHistStats(prices) {
+  const logs = [];
+  for (let i = 1; i < prices.length; i++) {
+    const r = Math.log(prices[i].close / prices[i - 1].close);
+    logs.push(r);
   }
-  function runDBHJSimulation(S0, v10, v20, mu,
-                             kappa1, theta1, sigma1, rho1,
-                             kappa2, theta2, sigma2, rho2,
-                             lambda, jumpMean, jumpStd,
-                             T, dt, sims) {
-    const steps = Math.floor(T / dt);
-    let finals = [];
-    for (let i = 0; i < sims; i++) {
-      let S = S0, v1 = v10, v2 = v20;
-      for (let j = 0; j < steps; j++) {
-        let Z1 = randn();
-        let Z2 = randn();
-        let Z3 = randn();
-        const dW_a = Math.sqrt(dt) * Z1;
-        const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
-        const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
-        v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
-        v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
-        const totalVar = v1 + v2;
-        let jumpMultiplier = 1;
-        if (Math.random() < lambda * dt) {
-          jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
-        }
-        S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar) * dW_a);
+  if (logs.length < 2) {
+    return { mu: 0, sigma: 0, lastPrice: prices[prices.length - 1].close };
+  }
+  const meanDaily = logs.reduce((a, b) => a + b, 0) / logs.length;
+  const variance = logs.reduce((acc, r) => acc + Math.pow(r - meanDaily, 2), 0) / (logs.length - 1);
+  const stdDaily = Math.sqrt(variance);
+  const tradingDays = 252;
+  return {
+    mu: meanDaily * tradingDays,
+    sigma: stdDaily * Math.sqrt(tradingDays),
+    lastPrice: prices[prices.length - 1].close
+  };
+}
+
+// Standard Normal Random Number via Box-Muller
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+// Run the double Heston Jump-Diffusion (dbHJ) Simulation
+function runDBHJSimulation(S0, v10, v20, mu,
+                           kappa1, theta1, sigma1, rho1,
+                           kappa2, theta2, sigma2, rho2,
+                           lambda, jumpMean, jumpStd,
+                           T, dt, sims) {
+  const steps = Math.floor(T / dt);
+  const finals = [];
+  for (let i = 0; i < sims; i++) {
+    let S = S0, v1 = v10, v2 = v20;
+    for (let j = 0; j < steps; j++) {
+      const Z1 = randn();
+      const Z2 = randn();
+      const Z3 = randn();
+      const dW_a = Math.sqrt(dt) * Z1;
+      const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
+      const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
+      
+      v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
+      v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
+      
+      const totalVar = v1 + v2;
+      let jumpMultiplier = 1;
+      if (Math.random() < lambda * dt) {
+        jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
       }
-      finals.push(S);
+      S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar) * dW_a);
     }
-    return finals;
+    finals.push(S);
   }
-  function randn() {
-    let u = 0, v = 0;
-    while (u === 0) u = Math.random();
-    while (v === 0) v = Math.random();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return finals;
+}
+
+// Compute VaR and CVaR from the simulated final prices.
+function computeRiskMetrics(finalPrices, currentPrice) {
+  const sorted = finalPrices.slice().sort((a, b) => a - b);
+  const idx = Math.floor(0.05 * sorted.length);
+  const varPrice = sorted[idx];
+  const tail = sorted.slice(0, idx + 1);
+  const cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
+  return {
+    varPrice: varPrice,
+    varPct: 100 * (currentPrice - varPrice) / currentPrice,
+    cvarPrice: cvarPrice,
+    cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
+  };
+}
+
+// Compute the stable Risk vs Reward Index (RRI) on a 0–100 scale.
+function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
+  const sorted = finalPrices.slice().sort((a, b) => a - b);
+  const medianPrice = sorted[Math.floor(sorted.length / 2)];
+  const rawReturn = (medianPrice / currentPrice) - 1;
+  // Annualize the median return.
+  const E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
+  // Annualized downside risk derived from CVaR.
+  const D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
+  const ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
+  const alpha = 1;
+  return 50 * (1 + Math.tanh(alpha * ratio));
+}
+
+// NEW: This is the unified function to compute the ticker's RRI.
+// It uses the helper functions defined above.
+async function computeTickerRRI(ticker, T) {
+  const prices = await fetchHistoricalData(ticker);
+  if (prices.length < 5) {
+    logStatus("Not enough historical data for " + ticker);
+    return 50;
   }
-  function computeRiskMetrics(finalPrices, currentPrice) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let idx = Math.floor(0.05 * sorted.length);
-    let varPrice = sorted[idx];
-    let tail = sorted.slice(0, idx + 1);
-    let cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
-    return {
-      varPrice: varPrice,
-      varPct: 100 * (currentPrice - varPrice) / currentPrice,
-      cvarPrice: cvarPrice,
-      cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
-    };
-  }
-  function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let medianPrice = sorted[Math.floor(sorted.length / 2)];
-    let rawReturn = (medianPrice / currentPrice) - 1;
-    let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
-    let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
-    let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
-    const alpha = 1;
-    return 50 * (1 + Math.tanh(alpha * ratio));
-  }
+  const st = computeHistStats(prices);
+  let iv = await fetchOptionsIV(ticker);
+  if (!iv) iv = st.sigma;
+  
+  const v10 = iv * iv;
+  const v20 = 0.5 * v10;
+  // DBHJ parameters
+  const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
+  const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
+  const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+  const dt = 1 / 252;
+  const sims = 10000;
+  
+  const finals = runDBHJSimulation(
+    st.lastPrice, v10, v20, st.mu,
+    kappa1, theta1, sigma1, rho1,
+    kappa2, theta2, sigma2, rho2,
+    lambda, jumpMean, jumpStd,
+    T, dt, sims
+  );
+  
+  const risk = computeRiskMetrics(finals, st.lastPrice);
+  const cvarFraction = risk.cvarPct / 100;
+  return computeRiskVsRewardIndex(finals, st.lastPrice, cvarFraction, T);
+}
+
+
 
   /***********************************************************************
    * TECHNICAL INDICATORS SECTION (from Stocks Tool)
