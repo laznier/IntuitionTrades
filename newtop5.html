@@ -324,10 +324,7 @@
   /***********************************************************************
    * RRI Section: DBHJ-based Risk vs Reward Index & Chart
    ***********************************************************************/
-/***********************************************************************
-   * RRI Section: DBHJ-based Risk vs Reward Index & Chart
-   ***********************************************************************/
-   async function computeTickerRRI(ticker, T) {
+  async function computeTickerRRI(ticker, T) {
     const prices = await fetchHistoricalData(ticker);
     if (prices.length < 5) { logStatus("Not enough historical data for " + ticker); return 50; }
     const st = computeHistStats(prices);
