@@ -1042,86 +1042,60 @@
      * SINGLE TICKER LOGIC
      ***********************************************************************/
      async function simulateOneTicker(ticker, periodMonths, T, regime) {
-      let rri, techVal, sentVal, insVal, fundVal, congVal;
-    
-      // Step 1: RRI
-      try {
-        rri = await computeTickerRRI(ticker, T);
-      } catch (e) {
-        logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
-        rri = 50;
-      }
-    
-      // Step 2: Technical
-      try {
-        let hist = await fetchHistoricalData(ticker);
-        let cutoffDate = new Date();
-        cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
-        hist = hist.filter(pt => pt.date >= cutoffDate);
-        if (hist.length < 5) {
-          logStatus("Not enough filtered historical data for " + ticker);
-          techVal = 50;
-        } else {
-          techVal = await computeTechnical(hist);
-        }
-      } catch (e) {
-        logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
-        techVal = 50;
-      }
-    
-      // Step 3: Sentiment
-      try {
-        let sentData = await fetchSentimentData(ticker, periodMonths);
-        sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
-      } catch (e) {
-        logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
-        sentVal = 50;
-      }
-    
-      // Step 4: Insider
-      try {
-        let hist = await fetchHistoricalData(ticker);
-        let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
-        let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
-        let insiderSent = null;
-        let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
-        try {
-          insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
-        } catch (e) {
-          insiderSent = null;
-        }
-        insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
-      } catch (e) {
-        logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
-        insVal = 50;
-      }
-    
-      // Step 5: Fundamental
-      try {
-        fundVal = await fetchFundamentalData(ticker);
-      } catch (e) {
-        logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
-        fundVal = 50;
-      }
-    
-      // Step 6: Congress
-      try {
-        let congData = await fetchCongressData(ticker, periodMonths);
-        congVal = computeCongressScore(
-          congData.totalPurchase,
-          congData.totalSale,
-          congData.uniqueBuyCount,
-          congData.uniqueSellCount
-        );
-      } catch (e) {
-        logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
-        congVal = 50;
-      }
-    
-      // Step 7: Aggregator
-      let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
-      return { ticker, aggregator };
-    }
+  let rri, techVal, sentVal, insVal, fundVal, congVal;
+
+  // 1. Calculate Risk vs Reward Index (RRI)
+  try { rri = await computeTickerRRI(ticker, T); } catch (e) { rri = 50; }
+
+  // 2. Calculate Technical Score
+  try { 
+    let hist = await fetchHistoricalData(ticker);
+    // filter hist by cutoff date...
+    techVal = await computeTechnical(hist); 
+  } catch (e) { techVal = 50; }
+
+  // 3. Calculate Sentiment Score
+  try { 
+    let sentData = await fetchSentimentData(ticker, periodMonths);
+    sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
+  } catch (e) { sentVal = 50; }
+
+  // 4. Insider Score
+  try { 
+    let hist = await fetchHistoricalData(ticker);
+    let currentPrice = hist[hist.length - 1].close;
+    let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
+    let insiderSent = await fetchInsiderSentiment(ticker, periodMonths, hist[hist.length - 1].date);
+    insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
+  } catch (e) { insVal = 50; }
+
+  // 5. Fundamental Score
+  try { fundVal = await fetchFundamentalData(ticker); } catch (e) { fundVal = 50; }
+
+  // 6. Congress Score
+  try { 
+    let congData = await fetchCongressData(ticker, periodMonths);
+    congVal = computeCongressScore(
+      congData.totalPurchase, congData.totalSale, 
+      congData.uniqueBuyCount, congData.uniqueSellCount);
+  } catch (e) { congVal = 50; }
+
+  // 7. Final Aggregation
+  let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
+
+  // *** INSERT THE LOG MESSAGE HERE ***
+  logStatus(`Ticker ${ticker} evaluation: ` +
+            `RRI: ${rri.toFixed(2)}, ` +
+            `Technical: ${techVal.toFixed(2)}, ` +
+            `Sentiment: ${sentVal.toFixed(2)}, ` +
+            `Insider: ${insVal.toFixed(2)}, ` +
+            `Fundamental: ${fundVal.toFixed(2)}, ` +
+            `Congress: ${congVal.toFixed(2)} => ` +
+            `Aggregator: ${aggregator.toFixed(2)}`);
+
+  return { ticker, aggregator };
+}
+
     
      // Ensure the DOM is ready
      document.addEventListener("DOMContentLoaded", () => {
