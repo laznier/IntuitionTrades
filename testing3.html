@@ -351,10 +351,6 @@
   let bufferDotInterval;
   let debounceTimeout;
 
-  // Show/hide manual historical period
-  document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
-    document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
-  });
 
   // Show/hide manual weights
   const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
@@ -1689,18 +1685,6 @@ if (timeframe === "short") {
   periodMonths = 4;
   T = 1 / 12;
 }
-
-if (document.getElementById('manualOverrideCheckbox').checked) {
-  let manualPeriod = parseInt(document.getElementById('manualPeriod').value);
-  if (isNaN(manualPeriod) || manualPeriod < periodMonths) {
-    alert(`For more accurate predictions, recommended at least ${periodMonths} months.`);
-    periodMonths = periodMonths; // Or force manualPeriod to recommended value.
-  } else {
-    periodMonths = manualPeriod;
-  }
-}
-
-
 
   try {
     let regime = await determineSPYMarketRegime(4);
