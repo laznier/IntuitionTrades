@@ -154,7 +154,7 @@
       background: var(--accent-color);
       margin-bottom: 20px;
     }
-    /* Remove extra space under the MC (now RRI) chart container */
+    /* Remove extra space under the  RRI chart container */
     #mcSection {
       margin-bottom: 0;
       padding-bottom: 0;
@@ -247,8 +247,8 @@
     <label>Congress Weight (0..1):
       <input type="number" id="wCong" value="0.15" min="0" max="1" step="0.01">
     </label>
-    <label>Scaling Factor [0..2]:
-      <input type="number" id="manualScale" value="1.00" min="0" max="2" step="0.01">
+    <label>Scaling Factor [0..5]:
+      <input type="number" id="manualScale" value="1.00" min="0" max="5" step="0.01">
     </label>
   </div>
 
@@ -1812,11 +1812,11 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
   }
   function getAutoWeightsForRegime(regime) {
     if(regime === "Bear"){
-      return { wMC: 0.05, wTech: 0.05, wSent: 0.10, wIns: 0.30, wFund: 0.30, wCong: 0.20, scale: 0.25 };
+      return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1.00 };
     } else if(regime === "Bull"){
-      return { wMC: 0.20, wTech: 0.25, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.10, scale: 1.00 };
+      return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3.00 };
     } else {
-      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 0.50 };
+      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.0 };
     }
   }
   function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
@@ -2154,13 +2154,18 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
       return;
     }
     const ticker = simulationReport.ticker;
-    const periodMonths = simulationReport.periodMonths;
-    const days = periodMonths * 30;
-    const url = "https://www.intuitiontrades.com/risk/?symbol=" 
-              + encodeURIComponent(ticker) 
-              + "&days=" + days
-              + "&autoFetch=true";
-    window.open(url, "_blank");
+const periodMonths = simulationReport.periodMonths;
+// Get the correct ISO date from the futureDate input
+const futureDateValue = document.getElementById("futureDate").value;
+const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+          + encodeURIComponent(ticker) 
+          + "&period=" + periodMonths
+          + "&futureDate=" + encodeURIComponent(futureDateValue)
+          + "&autoFetch=true";
+window.open(url, "_blank");
+
+
+
   });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
     if (!simulationReport) {
@@ -2264,17 +2269,17 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
           </p>
           <h3>Bear Market</h3>
           <p>
-            In a <strong>Bear</strong> regime, lower weights are applied to risk-based signals (now represented by the Risk vs Reward Index) and technical indicators, while heavier emphasis is placed on insider and fundamental factors. A lower scaling factor is also used.
+            In a <strong>Bear</strong> regime, lower weights are applied to the Risk vs Reward Index and technical indicators, while heavier emphasis is placed on insider and fundamental factors. A lower scaling factor is also used.
           </p>
           <pre>
 Bear Weights (example):
-Risk vs Reward Index = 5%
+Risk vs Reward Index = 10%
 Technical            = 5%
-Sentiment            = 10%
-Insider              = 30%
+Sentiment            = 20%
+Insider              = 20%
 Fundamental          = 30%
-Congress             = 20%
-Scaling              = 0.25
+Congress             = 15%
+Scaling              = 1.00
           </pre>
           <h3>Neutral Market</h3>
           <p>
@@ -2288,7 +2293,7 @@ Sentiment            = 15%
 Insider              = 15%
 Fundamental          = 20%
 Congress             = 15%
-Scaling              = 0.50
+Scaling              = 2.00
           </pre>
           <h3>Bull Market</h3>
           <p>
@@ -2297,12 +2302,12 @@ Scaling              = 0.50
           <pre>
 Bull Weights (example):
 Risk vs Reward Index = 20%
-Technical            = 25%
+Technical            = 20%
 Sentiment            = 15%
 Insider              = 15%
 Fundamental          = 15%
-Congress             = 10%
-Scaling              = 1.00
+Congress             = 15%
+Scaling              = 3.00
           </pre>
         </section>
         
@@ -2360,16 +2365,27 @@ Final Insider Score = (0.25 × Normalized Final MSPR)
         </section>
         
         <!-- Congress Trading Section -->
-        <section>
-          <h2>Congress Trading Analysis</h2>
-          <p><strong>Congress Bullish Score:</strong> ${simulationReport.congressBull.toFixed(2)}%</p>
-          <pre>
-Congress Score = ((Total Purchase - Total Sale) / (Total Purchase + Total Sale)) × 50 + 50
-          </pre>
-          <p>
-            This score is derived from congressional trading activity, comparing purchase amounts against sales.
-          </p>
-        </section>
+<section>
+  <h2>Congress Trading Analysis</h2>
+  <p><strong>Congress Bullish Score:</strong> ${simulationReport.congressBull.toFixed(2)}%</p>
+  <pre>
+Congress Score = Average of 2 components:
+
+1. Dollars Component:
+   - Computes net dollars = (Total Purchase – Total Sale).
+   - Uses a logarithmic scale (capped at $10M) so that a net buy of $0 yields 50% (neutral),
+     while very high net buys approach 100% and high net sells approach 0%.
+
+2. Unique Component:
+   - Computes net unique = (Unique Buy Count – Unique Sell Count), capped between -5 and +5.
+   - Maps -5 to 0%, 0 to 50%, and +5 to 100%.
+  </pre>
+  <p>
+    This score reflects both the magnitude of congress trading and the balance between unique buyers and sellers.
+    A higher Dollars Component and more unique buying congress members (relative to sellers)
+    raise the score, while predominant selling from congress members lowers it.
+  </p>
+</section>
         
         <!-- Fundamental Analysis Section -->
         <section>
