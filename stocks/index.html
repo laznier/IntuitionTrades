@@ -196,23 +196,26 @@
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 
   <h1>Advanced Stock Analysis</h1>
-  <p>Enter a ticker and pick an investment timeframe. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
+  <p>Enter a ticker and pick a future date. You may let the tool auto-detect SPY's Bull/Bear/Neutral regime to set factor weights automatically, or check “Use Manual Weights &amp; Scaling” to specify your own distribution.  
   Then click "Run Simulation" to analyze fundamentals, trends, sentiment, insider trading, congress trading, and the new Risk vs Reward Index.</p>
 
-  <!-- Replace the Future Date input with this dropdown -->
-  <label for="investmentTimeframe">Select Investment Timeframe:</label>
-  <select id="investmentTimeframe">
-      <option value="">-- Select Timeframe --</option>
-      <option value="short">Short Term</option>
-      <option value="medium">Medium Term</option>
-      <option value="long">Long Term</option>
-  </select>
+  <label for="futureDate">Future Date:</label>
+  <input type="date" id="futureDate">
 
   <label for="ticker">Ticker Symbol (e.g. AAPL):</label>
   <input type="text" id="ticker" value="AAPL">
   <ul id="ticker-suggestions"></ul>
   <div id="company-full-name" style="margin-top:5px; font-size:1rem; color:#16a34a;"></div>
   
+  <!-- Manual override for historical period (optional) -->
+  <label style="margin-top:15px;">
+    <input type="checkbox" id="manualOverrideCheckbox"> Use Manual Historical Period
+  </label>
+  <div id="manualPeriodDiv">
+    <label for="manualPeriod">Historical Period (months):</label>
+    <input type="number" id="manualPeriod" min="1">
+  </div>
+
   <!-- Weights & Scaling override checkbox -->
   <label style="margin-top:15px;">
     <input type="checkbox" id="useManualWeightsCheckbox"> Use Manual Weights &amp; Scaling
@@ -245,7 +248,7 @@
       <input type="number" id="wCong" value="0.15" min="0" max="1" step="0.01">
     </label>
     <label>Scaling Factor [0..5]:
-      <input type="number" id="manualScale" value="1.00" min="0" max="2" step="0.01">
+      <input type="number" id="manualScale" value="1.00" min="0" max="5" step="0.01">
     </label>
   </div>
 
@@ -332,671 +335,696 @@
     <div class="circle"></div>
     <div id="loadingText">Analysing data and running 10,000 simulations</div>
   </div>
-
   <script>
     let simulationReport = null;
     let globalFinalPrices = [];
     let bufferDotInterval;
     let debounceTimeout;
   
-  // Show/hide manual weights
-  const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
-  const manualWeightsSection = document.getElementById("manualWeightsSection");
-  useManualWeightsCheckbox.addEventListener("change", () => {
-    manualWeightsSection.style.display = useManualWeightsCheckbox.checked ? "block" : "none";
-  });
+    // Auto-populate futureDate with next month's date
+    (function setDefaultFutureDate() {
+      const futureDateInput = document.getElementById('futureDate');
+      const today = new Date();
+      const nextMonthDate = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        today.getDate()
+      );
+      const isoDate = nextMonthDate.toISOString().split('T')[0];
+      futureDateInput.value = isoDate;
+    })();
   
-  // Update manual weight values based on regime selection.
-  document.getElementById("manualRegimeSelect").addEventListener("change", function(){
-    const val = this.value;
-    if(val==="Bear"){
-      document.getElementById("wMC").value   = 0.10;
-      document.getElementById("wTech").value = 0.05;
-      document.getElementById("wSent").value = 0.20;
-      document.getElementById("wIns").value  = 0.20;
-      document.getElementById("wFund").value = 0.30;
-      document.getElementById("wCong").value = 0.15;
-      document.getElementById("manualScale").value = 1.00;
-    } else if(val==="Bull"){
-      document.getElementById("wMC").value   = 0.20;
-      document.getElementById("wTech").value = 0.20;
-      document.getElementById("wSent").value = 0.15;
-      document.getElementById("wIns").value  = 0.15;
-      document.getElementById("wFund").value = 0.15;
-      document.getElementById("wCong").value = 0.15;
-      document.getElementById("manualScale").value = 3.00;
-    } else {
-      document.getElementById("wMC").value   = 0.15;
-      document.getElementById("wTech").value = 0.20;
-      document.getElementById("wSent").value = 0.15;
-      document.getElementById("wIns").value  = 0.15;
-      document.getElementById("wFund").value = 0.20;
-      document.getElementById("wCong").value = 0.15;
-      document.getElementById("manualScale").value = 2.00;
-    }
-  });
+    // Show/hide manual historical period
+    document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
+      document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
+    });
+  
+    // Show/hide manual weights
+    const useManualWeightsCheckbox = document.getElementById("useManualWeightsCheckbox");
+    const manualWeightsSection = document.getElementById("manualWeightsSection");
+    useManualWeightsCheckbox.addEventListener("change", () => {
+      manualWeightsSection.style.display = useManualWeightsCheckbox.checked ? "block" : "none";
+    });
+  
+    // Update manual weight values based on regime selection.
+    document.getElementById("manualRegimeSelect").addEventListener("change", function(){
+      const val = this.value;
+      if(val==="Bear"){
+        document.getElementById("wMC").value   = 0.05;
+        document.getElementById("wTech").value = 0.05;
+        document.getElementById("wSent").value = 0.10;
+        document.getElementById("wIns").value  = 0.30;
+        document.getElementById("wFund").value = 0.30;
+        document.getElementById("wCong").value = 0.20;
+        document.getElementById("manualScale").value = 0.25;
+      } else if(val==="Bull"){
+        document.getElementById("wMC").value   = 0.20;
+        document.getElementById("wTech").value = 0.25;
+        document.getElementById("wSent").value = 0.15;
+        document.getElementById("wIns").value  = 0.15;
+        document.getElementById("wFund").value = 0.15;
+        document.getElementById("wCong").value = 0.10;
+        document.getElementById("manualScale").value = 1.00;
+      } else {
+        document.getElementById("wMC").value   = 0.15;
+        document.getElementById("wTech").value = 0.20;
+        document.getElementById("wSent").value = 0.15;
+        document.getElementById("wIns").value  = 0.15;
+        document.getElementById("wFund").value = 0.20;
+        document.getElementById("wCong").value = 0.15;
+        document.getElementById("manualScale").value = 0.50;
+      }
+    });
   
     /***********************************************
      * Utility Functions & Data Processing
      ***********************************************/
-     function parseAlphaDate(str) {
-    const year  = str.substring(0,4);
-    const month = str.substring(4,6);
-    const day   = str.substring(6,8);
-    const hour  = str.substring(9,11) || "00";
-    const min   = str.substring(11,13) || "00";
-    const sec   = str.substring(13,15) || "00";
-    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
-  }
-  function processHistoricalData(timeSeries, periodMonths) {
-    const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
-    const endDate = new Date(dates[dates.length - 1]);
-    const startDate = new Date(endDate);
-    startDate.setMonth(startDate.getMonth() - periodMonths);
-    let prices = [];
-    for (let date of dates) {
-      const dt = new Date(date);
-      if (dt >= startDate && dt <= endDate) {
-        prices.push({
-          date: dt,
-          close: parseFloat(timeSeries[date]["5. adjusted close"]),
-          // Ensure high and low values are available:
-          high: parseFloat(timeSeries[date]["2. high"]),
-          low: parseFloat(timeSeries[date]["3. low"])
+    function parseAlphaDate(str) {
+      const year  = str.substring(0,4);
+      const month = str.substring(4,6);
+      const day   = str.substring(6,8);
+      const hour  = str.substring(9,11) || "00";
+      const min   = str.substring(11,13) || "00";
+      const sec   = str.substring(13,15) || "00";
+      return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+    }
+    function processHistoricalData(timeSeries, periodMonths) {
+      const dates = Object.keys(timeSeries).sort((a, b) => new Date(a) - new Date(b));
+      const endDate = new Date(dates[dates.length - 1]);
+      const startDate = new Date(endDate);
+      startDate.setMonth(startDate.getMonth() - periodMonths);
+      let prices = [];
+      for (let date of dates) {
+        const dt = new Date(date);
+        if (dt >= startDate && dt <= endDate) {
+          prices.push({
+            date: dt,
+            close: parseFloat(timeSeries[date]["5. adjusted close"]),
+            high: parseFloat(timeSeries[date]["2. high"]),
+            low: parseFloat(timeSeries[date]["3. low"])
+          });
+        }
+      }
+      prices.sort((a, b) => a.date - b.date);
+      return prices;
+    }
+    function computeFundScores(data) {
+      const norm = (val, min, max) => {
+        if(!val || isNaN(val)) return 50;
+        let ratio = (val - min)/(max - min);
+        let scaled = ratio * 100;
+        return Math.max(0, Math.min(100, scaled));
+      };
+      let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
+      let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
+      let roa    = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
+      let roe    = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
+      let profitability = (margin + opMarg + roa + roe) / 4;
+      let pe = parseFloat(data.PERatio);
+      let peScore = 100 - norm(pe, 5, 40);
+      let peg = parseFloat(data.PEGRatio);
+      let pegScore = 100 - norm(peg, 0.5, 2.5);
+      let ps = parseFloat(data.PriceToSalesRatioTTM);
+      let psScore = 100 - norm(ps, 1, 10);
+      let pb = parseFloat(data.PriceToBookRatio);
+      let pbScore = 100 - norm(pb, 1, 10);
+      let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+      let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
+      let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+      let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
+      let ratio = 0;
+      if(pRef > 0 && data.AnalystTargetPrice){
+        ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
+      }
+      let tgtScore = norm(ratio, 0, 0.5);
+      let growth = (rg + eg + tgtScore) / 3;
+      let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
+      let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
+      let eps = norm(parseFloat(data.EPS), 0, 12);
+      let dividends = (dy + dps + eps) / 3;
+      let ebitda = parseFloat(data.EBITDA);
+      let revTTM = parseFloat(data.RevenueTTM);
+      let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+      let evEbitda = parseFloat(data.EVToEBITDA);
+      let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+      let beta = parseFloat(data.Beta);
+      let betaScore = 50;
+      if(!isNaN(beta)){
+        betaScore = 100 - norm(beta, 0, 2);
+      }
+      let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+      return {
+        profitability,
+        valuation,
+        growth,
+        dividends,
+        financial
+      };
+    }
+    function plotFundamentalCategories(categories) {
+      const catNames = [];
+      const seriesData = [];
+      for (const [key, value] of Object.entries(categories)) {
+        catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
+        seriesData.push({
+          y: value,
+          color: interpolateColor(value)
         });
       }
-    }
-    prices.sort((a, b) => a.date - b.date);
-    return prices;
-  }
-  function computeFundScores(data) {
-    const norm = (val, min, max) => {
-      if(!val || isNaN(val)) return 50;
-      let ratio = (val - min)/(max - min);
-      let scaled = ratio * 100;
-      return Math.max(0, Math.min(100, scaled));
-    };
-    let margin = norm(parseFloat(data.ProfitMargin), 0, 0.25);
-    let opMarg = norm(parseFloat(data.OperatingMarginTTM), 0, 0.3);
-    let roa    = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
-    let roe    = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
-    let profitability = (margin + opMarg + roa + roe) / 4;
-    let pe = parseFloat(data.PERatio);
-    let peScore = 100 - norm(pe, 5, 40);
-    let peg = parseFloat(data.PEGRatio);
-    let pegScore = 100 - norm(peg, 0.5, 2.5);
-    let ps = parseFloat(data.PriceToSalesRatioTTM);
-    let psScore = 100 - norm(ps, 1, 10);
-    let pb = parseFloat(data.PriceToBookRatio);
-    let pbScore = 100 - norm(pb, 1, 10);
-    let valuation = (peScore + pegScore + psScore + pbScore) / 4;
-    let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
-    let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
-    let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
-    let ratio = 0;
-    if(pRef > 0 && data.AnalystTargetPrice){
-      ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
-    }
-    let tgtScore = norm(ratio, 0, 0.5);
-    let growth = (rg + eg + tgtScore) / 3;
-    let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
-    let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
-    let eps = norm(parseFloat(data.EPS), 0, 12);
-    let dividends = (dy + dps + eps) / 3;
-    let ebitda = parseFloat(data.EBITDA);
-    let revTTM = parseFloat(data.RevenueTTM);
-    let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
-    let evEbitda = parseFloat(data.EVToEBITDA);
-    let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
-    let beta = parseFloat(data.Beta);
-    let betaScore = 50;
-    if(!isNaN(beta)){
-      betaScore = 100 - norm(beta, 0, 2);
-    }
-    let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
-    return {
-      profitability,
-      valuation,
-      growth,
-      dividends,
-      financial
-    };
-  }
-  function plotFundamentalCategories(categories) {
-    const catNames = [];
-    const seriesData = [];
-    for (const [key, value] of Object.entries(categories)) {
-      catNames.push(key.charAt(0).toUpperCase() + key.slice(1));
-      seriesData.push({
-        y: value,
-        color: interpolateColor(value)
+      Highcharts.chart('fundamentalCharts', {
+        chart: { type: 'column', backgroundColor: 'transparent' },
+        title: { text: 'Fundamental Categories', style: { color: '#fff' } },
+        xAxis: { categories: catNames, title: { text: null }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
+        yAxis: { min: 0, max: 100, title: { text: 'Score', style: { color: '#fff' } }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
+        tooltip: { formatter: function() { return this.x + ": " + Highcharts.numberFormat(this.y, 1); } },
+        series: [{ name: 'Score', data: seriesData }],
+        legend: { enabled: false },
+        credits: { enabled: false }
       });
     }
-    Highcharts.chart('fundamentalCharts', {
-      chart: { type: 'column', backgroundColor: 'transparent' },
-      title: { text: 'Fundamental Categories', style: { color: '#fff' } },
-      xAxis: { categories: catNames, title: { text: null }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
-      yAxis: { min: 0, max: 100, title: { text: 'Score', style: { color: '#fff' } }, gridLineColor: '#444', labels: { style: { color: '#fff' } } },
-      tooltip: { formatter: function() { return this.x + ": " + Highcharts.numberFormat(this.y, 1); } },
-      series: [{ name: 'Score', data: seriesData }],
-      legend: { enabled: false },
-      credits: { enabled: false }
-    });
-  }
   
     /***********************************************
-   * Technical Analysis & Ichimoku Calculation
-   ***********************************************/
-  function computeIchimoku(prices) {
-    let tenkan = [];
-    let kijun = [];
-    let senkouA = [];
-    let senkouB = [];
-    // Tenkan-sen (Conversion Line): 9-period high/low average
-    for (let i = 8; i < prices.length; i++) {
-      let period9 = prices.slice(i - 8, i + 1);
-      let high9 = Math.max(...period9.map(p => p.high));
-      let low9 = Math.min(...period9.map(p => p.low));
-      tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
-    }
-    // Kijun-sen (Base Line): 26-period high/low average
-    for (let i = 25; i < prices.length; i++) {
-      let period26 = prices.slice(i - 25, i + 1);
-      let high26 = Math.max(...period26.map(p => p.high));
-      let low26 = Math.min(...period26.map(p => p.low));
-      kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
-    }
-    // Senkou Span A (Leading Span A): Average of Tenkan and Kijun, shifted 26 periods forward
-    let minLen = Math.min(tenkan.length, kijun.length);
-    for (let i = 0; i < minLen; i++) {
-      let baseDate = kijun[i].date;
-      let senkouDate = new Date(baseDate);
-      senkouDate.setDate(senkouDate.getDate() + 26);
-      senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
-    }
-    // Senkou Span B (Leading Span B): 52-period high/low average, shifted 26 periods forward
-    for (let i = 51; i < prices.length; i++) {
-      let period52 = prices.slice(i - 51, i + 1);
-      let high52 = Math.max(...period52.map(p => p.high));
-      let low52 = Math.min(...period52.map(p => p.low));
-      let baseDate = prices[i].date;
-      let senkouDate = new Date(baseDate);
-      senkouDate.setDate(senkouDate.getDate() + 26);
-      senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
-    }
-    // Chikou Span (Lagging Span): Current close shifted 26 periods back
-    let chikou = [];
-    for (let i = 26; i < prices.length; i++) {
-      chikou.push({ date: prices[i - 26].date, value: prices[i].close });
-    }
-    return {
-      tenkan: tenkan,
-      kijun: kijun,
-      senkouA: senkouA,
-      senkouB: senkouB,
-      chikou: chikou
-    };
-  }
-  
-  function computeEMA(prices, period) {
-    let ema = [];
-    let multiplier = 2 / (period + 1);
-    let sum = 0;
-    for (let i = 0; i < period; i++) { sum += prices[i].close; }
-    let prevEma = sum / period;
-    ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
-    for (let i = period; i < prices.length; i++){
-      let cur = prices[i].close;
-      let nextEma = (cur - prevEma) * multiplier + prevEma;
-      ema[i] = { date: prices[i].date, ema: nextEma };
-      prevEma = nextEma;
-    }
-    return ema.filter(x => x !== undefined);
-  }
-  function computeMACD(prices, fast=12, slow=26, signal=9) {
-    let fastEMA = computeEMA(prices, fast);
-    let slowEMA = computeEMA(prices, slow);
-    let macdLine = [];
-    for (let i = 0; i < slowEMA.length; i++){
-      let date = slowEMA[i].date;
-      let match = fastEMA.find(f => f.date.getTime() === date.getTime());
-      if(match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
-    }
-    if(macdLine.length < signal) return { macdLine, signalLine: [] };
-    let m = 2 / (signal + 1);
-    let sumMacd = 0;
-    for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
-    let prevSig = sumMacd / signal;
-    let signalLine = [];
-    signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
-    for(let i = signal; i < macdLine.length; i++){
-      let s = (macdLine[i].macd - prevSig) * m + prevSig;
-      signalLine[i] = { date: macdLine[i].date, signal: s };
-      prevSig = s;
-    }
-    signalLine = signalLine.filter(x => x !== undefined);
-    return { macdLine, signalLine };
-  }
-  function computeRSI(prices, period=14){
-    let rsis = [];
-    for(let i = period; i < prices.length; i++){
-      let gains = 0, losses = 0;
-      for(let j = i - period + 1; j <= i; j++){
-        let diff = prices[j].close - prices[j-1].close;
-        if(diff > 0) gains += diff; else losses -= diff;
+     * Technical Analysis & Ichimoku Calculation
+     ***********************************************/
+    function computeIchimoku(prices) {
+      let tenkan = [];
+      let kijun = [];
+      let senkouA = [];
+      let senkouB = [];
+      for (let i = 8; i < prices.length; i++) {
+        let period9 = prices.slice(i - 8, i + 1);
+        let high9 = Math.max(...period9.map(p => p.high));
+        let low9 = Math.min(...period9.map(p => p.low));
+        tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
       }
-      let avgGain = gains / period;
-      let avgLoss = losses / period;
-      let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
-      let rsi = 100 - (100 / (1 + rs));
-      rsis.push({ date: prices[i].date, rsi });
+      for (let i = 25; i < prices.length; i++) {
+        let period26 = prices.slice(i - 25, i + 1);
+        let high26 = Math.max(...period26.map(p => p.high));
+        let low26 = Math.min(...period26.map(p => p.low));
+        kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+      }
+      let minLen = Math.min(tenkan.length, kijun.length);
+      for (let i = 0; i < minLen; i++) {
+        let baseDate = kijun[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+      }
+      for (let i = 51; i < prices.length; i++) {
+        let period52 = prices.slice(i - 51, i + 1);
+        let high52 = Math.max(...period52.map(p => p.high));
+        let low52 = Math.min(...period52.map(p => p.low));
+        let baseDate = prices[i].date;
+        let senkouDate = new Date(baseDate);
+        senkouDate.setDate(senkouDate.getDate() + 26);
+        senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+      }
+      let chikou = [];
+      for (let i = 26; i < prices.length; i++) {
+        chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+      }
+      return {
+        tenkan: tenkan,
+        kijun: kijun,
+        senkouA: senkouA,
+        senkouB: senkouB,
+        chikou: chikou
+      };
     }
-    return rsis;
+    function computeEMA(prices, period) {
+      let ema = [];
+      let multiplier = 2 / (period + 1);
+      let sum = 0;
+      for (let i = 0; i < period; i++) { sum += prices[i].close; }
+      let prevEma = sum / period;
+      ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+      for (let i = period; i < prices.length; i++){
+        let cur = prices[i].close;
+        let nextEma = (cur - prevEma) * multiplier + prevEma;
+        ema[i] = { date: prices[i].date, ema: nextEma };
+        prevEma = nextEma;
+      }
+      return ema.filter(x => x !== undefined);
+    }
+    function computeMACD(prices, fast=12, slow=26, signal=9) {
+      let fastEMA = computeEMA(prices, fast);
+      let slowEMA = computeEMA(prices, slow);
+      let macdLine = [];
+      for (let i = 0; i < slowEMA.length; i++){
+        let date = slowEMA[i].date;
+        let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+        if(match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
+      }
+      if(macdLine.length < signal) return { macdLine, signalLine: [] };
+      let m = 2 / (signal + 1);
+      let sumMacd = 0;
+      for(let i = 0; i < signal; i++){ sumMacd += macdLine[i].macd; }
+      let prevSig = sumMacd / signal;
+      let signalLine = [];
+      signalLine[signal-1] = { date: macdLine[signal-1].date, signal: prevSig };
+      for(let i = signal; i < macdLine.length; i++){
+        let s = (macdLine[i].macd - prevSig) * m + prevSig;
+        signalLine[i] = { date: macdLine[i].date, signal: s };
+        prevSig = s;
+      }
+      signalLine = signalLine.filter(x => x !== undefined);
+      return { macdLine, signalLine };
+    }
+    function computeRSI(prices, period=14){
+      let rsis = [];
+      for(let i = period; i < prices.length; i++){
+        let gains = 0, losses = 0;
+        for(let j = i - period + 1; j <= i; j++){
+          let diff = prices[j].close - prices[j-1].close;
+          if(diff > 0) gains += diff; else losses -= diff;
+        }
+        let avgGain = gains / period;
+        let avgLoss = losses / period;
+        let rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+        let rsi = 100 - (100 / (1 + rs));
+        rsis.push({ date: prices[i].date, rsi });
+      }
+      return rsis;
+    }
+    function computeBollingerBands(prices, period=20, k=2){
+      let bands = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let sma = slice.reduce((a, b) => a + b, 0) / period;
+        let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
+        let std = Math.sqrt(variance);
+        bands.push({
+          date: prices[i].date,
+          sma: sma,
+          upper: sma + k * std,
+          lower: sma - k * std
+        });
+      }
+      return bands;
+    }
+    function computeWMA(prices, period=20){
+      let wmas = [];
+      for(let i = period - 1; i < prices.length; i++){
+        let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+        let numerator = 0, denominator = 0;
+        for(let j = 0; j < period; j++){
+          let weight = j + 1;
+          numerator += slice[j] * weight;
+          denominator += weight;
+        }
+        wmas.push({ date: prices[i].date, wma: numerator / denominator });
+      }
+      return wmas;
+    }
+    function scoreRSI(latestRSI, prevRSI){
+      let rel = 50 - latestRSI;
+      let base = 100 / (1 + Math.exp(-0.05 * rel));
+      let dRSI = prevRSI - latestRSI;
+      return base * (1 + 0.01 * dRSI);
+    }
+    function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
+      let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+      let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+      let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+      let dPercentB = prevPercentB - currentPercentB;
+      return baseBB * (1 + 0.1 * dPercentB);
+    }
+    function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
+      let currentX = (latestPrice / latestWMA) - 1;
+      let prevX = (prevPrice / prevWMA) - 1;
+      let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+      let dx = prevX - currentX;
+      return baseWMA * (1 + 0.5 * dx);
+    }
+    function polynomialRegression(x, y, degree){
+      let X = [];
+      for(let i = 0; i < x.length; i++){
+        let row = [];
+        for(let j = 0; j <= degree; j++){
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      let XT = math.transpose(X);
+      let XTX = math.multiply(XT, X);
+      let XTy = math.multiply(XT, y);
+      let coeffsMatrix = math.lusolve(XTX, XTy);
+      return coeffsMatrix.map(val => val[0]);
+    }
+    function predictValue(coeffs, x){
+      return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
+    }
+    function computeMomentumScoreUsingRegression(histValues){
+      if(histValues.length < 6) return null;
+      const recent = histValues.slice(-6);
+      const x = [1, 2, 3, 4, 5, 6];
+      const coeffs = polynomialRegression(x, recent, 1);
+      const predicted = predictValue(coeffs, 7);
+      const lastValue = recent[recent.length - 1];
+      const delta = predicted - lastValue;
+      const k = 5;
+      const score = 100 / (1 + Math.exp(-k * delta));
+      return score;
+    }
+    function computeGapTrendScore(macdLine, signalLine){
+      if(macdLine.length < 6 || signalLine.length < 6) return null;
+      const recentMACD = macdLine.slice(-6).map(item => item.macd);
+      const recentSignal = signalLine.slice(-6).map(item => item.signal);
+      const x = [1, 2, 3, 4, 5, 6];
+      const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+      const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+      const predictedMACD = predictValue(macdCoeffs, 7);
+      const predictedSignal = predictValue(signalCoeffs, 7);
+      const predictedGap = predictedMACD - predictedSignal;
+      const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+      const delta = predictedGap - currentGap;
+      const k = 5;
+      const gapScore = 100 / (1 + Math.exp(-k * delta));
+      return { gapScore, delta, currentGap, predictedGap };
+    }
+    function computeNewMACDScore(prices){
+      const macdData = computeMACD(prices);
+      const macdLine = macdData.macdLine;
+      const signalLine = macdData.signalLine;
+      if(macdLine.length < 2 || signalLine.length < 2) return 50;
+      const len = Math.min(macdLine.length, signalLine.length);
+      const latestMACD = macdLine[len - 1].macd;
+      const positionScore = 100 / (1 + Math.exp(latestMACD));
+      const gapData = computeGapTrendScore(macdLine, signalLine);
+      const gapScore = gapData ? gapData.gapScore : 50;
+      let histValues = [];
+      for(let i = 0; i < len; i++){
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
+      return finalScore;
+    }
+  // Helper function to compute the median of an array of numbers
+function getMedian(arr) {
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return (sorted.length % 2 !== 0) ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// Compute key statistical measures (annual drift, volatility, and last price) from historical price data.
+function computeStats(prices) {
+  let logReturns = [];
+  for (let i = 1; i < prices.length; i++) {
+    let prev = prices[i - 1].close;
+    let curr = prices[i].close;
+    logReturns.push(Math.log(curr / prev));
   }
-  function computeBollingerBands(prices, period=20, k=2){
-    let bands = [];
-    for(let i = period - 1; i < prices.length; i++){
-      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-      let sma = slice.reduce((a, b) => a + b, 0) / period;
-      let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
-      let std = Math.sqrt(variance);
-      bands.push({
-        date: prices[i].date,
-        sma: sma,
-        upper: sma + k * std,
-        lower: sma - k * std
+  if (logReturns.length < 1) {
+    return { mean: 0, stdDev: 0, lastPrice: prices[prices.length - 1].close };
+  }
+  let dailyMean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
+  let variance = logReturns.reduce((sum, r) => sum + Math.pow(r - dailyMean, 2), 0) / (logReturns.length - 1);
+  let dailyStd = Math.sqrt(variance);
+  const tradingDays = 252;
+  return {
+    mean: dailyMean * tradingDays,
+    stdDev: dailyStd * Math.sqrt(tradingDays),
+    lastPrice: prices[prices.length - 1].close
+  };
+}
+
+    /***********************************************
+     * updateTechChart() – Render Technical Chart in 4 Panes
+     ***********************************************/
+    function updateTechChart(prices) {
+      let bands = computeBollingerBands(prices);
+      let wmas = computeWMA(prices);
+      let rsivals = computeRSI(prices, 14);
+      let macdData = computeMACD(prices);
+      let ichimokuData = computeIchimoku(prices);
+  
+      const toTimeSeries = (data, valueKey) =>
+        data.map(item => [item.date.getTime(), item[valueKey]]);
+  
+      const priceSeries = {
+        name: 'Historical',
+        data: toTimeSeries(prices, 'close'),
+        type: 'line',
+        zIndex: 3,
+        yAxis: 0
+      };
+      const smaSeries = {
+        name: 'Bollinger SMA',
+        data: toTimeSeries(bands, 'sma'),
+        type: 'line',
+        dashStyle: 'Dash',
+        color: '#555',
+        zIndex: 2,
+        yAxis: 0
+      };
+      const upperSeries = {
+        name: 'Upper Band',
+        data: toTimeSeries(bands, 'upper'),
+        type: 'line',
+        color: 'red',
+        zIndex: 1,
+        yAxis: 0
+      };
+      const lowerSeries = {
+        name: 'Lower Band',
+        data: toTimeSeries(bands, 'lower'),
+        type: 'line',
+        color: 'red',
+        zIndex: 1,
+        yAxis: 0
+      };
+      const wmaSeries = {
+        name: 'WMA',
+        data: toTimeSeries(wmas, 'wma'),
+        type: 'line',
+        color: 'orange',
+        zIndex: 2,
+        yAxis: 0
+      };
+  
+      const macdSeries = {
+        name: 'MACD',
+        data: toTimeSeries(macdData.macdLine, 'macd'),
+        type: 'line',
+        yAxis: 1,
+        zIndex: 3
+      };
+      const signalSeries = {
+        name: 'Signal',
+        data: toTimeSeries(macdData.signalLine, 'signal'),
+        type: 'line',
+        yAxis: 1,
+        zIndex: 3
+      };
+      const macdHistogram = {
+        name: 'MACD Histogram',
+        data: macdData.macdLine.map((m, i) => {
+          let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+          return [m.date.getTime(), m.macd - sig];
+        }),
+        type: 'column',
+        yAxis: 1,
+        zIndex: 1,
+        tooltip: { valueDecimals: 2 },
+        zones: [{
+          value: 0,      
+          color: 'red'
+        }, {
+          color: 'green'
+        }]
+      };
+  
+      const tenkanSeries = {
+        name: 'Tenkan-sen',
+        data: toTimeSeries(ichimokuData.tenkan, 'value'),
+        type: 'line',
+        color: 'blue',
+        zIndex: 4,
+        yAxis: 2
+      };
+      const kijunSeries = {
+        name: 'Kijun-sen',
+        data: toTimeSeries(ichimokuData.kijun, 'value'),
+        type: 'line',
+        color: 'red',
+        zIndex: 4,
+        yAxis: 2
+      };
+      const senkouASeries = {
+        name: 'Senkou Span A',
+        data: toTimeSeries(ichimokuData.senkouA, 'value'),
+        type: 'line',
+        color: 'green',
+        zIndex: 3,
+        yAxis: 2
+      };
+      const senkouBSeries = {
+        name: 'Senkou Span B',
+        data: toTimeSeries(ichimokuData.senkouB, 'value'),
+        type: 'line',
+        color: 'brown',
+        zIndex: 3,
+        yAxis: 2
+      };
+      const chikouSeries = {
+        name: 'Chikou Span',
+        data: toTimeSeries(ichimokuData.chikou, 'value'),
+        type: 'line',
+        color: 'purple',
+        zIndex: 2,
+        yAxis: 2
+      };
+  
+      const rsiSeries = {
+        name: 'RSI',
+        data: toTimeSeries(rsivals, 'rsi'),
+        type: 'line',
+        yAxis: 3,
+        zIndex: 2
+      };
+  
+      Highcharts.chart('techChart', {
+        chart: {
+          zoomType: 'x',
+          backgroundColor: 'transparent',
+          height: 1200
+        },
+        title: {
+          text: 'Combined Technical Indicators',
+          style: { color: '#fff' }
+        },
+        xAxis: {
+          type: 'datetime',
+          crosshair: true
+        },
+        yAxis: [
+          {
+            title: { text: 'Price', style: { color: '#fff' } },
+            height: '40%',
+            lineWidth: 2,
+            gridLineColor: '#444',
+            offset: 0,
+            labels: {
+              align: 'right',
+              x: -5,
+              style: { color: '#fff' }
+            }
+          },
+          {
+            title: { text: 'MACD', style: { color: '#fff' } },
+            top: '40%',
+            height: '20%',
+            lineWidth: 2,
+            gridLineColor: '#444',
+            offset: 0,
+            labels: {
+              align: 'right',
+              x: -5,
+              style: { color: '#fff' }
+            }
+          },
+          {
+            title: { text: 'Ichimoku', style: { color: '#fff' } },
+            top: '60%',
+            height: '20%',
+            lineWidth: 2,
+            gridLineColor: '#444',
+            offset: 0,
+            labels: {
+              align: 'right',
+              x: -5,
+              style: { color: '#fff' }
+            }
+          },
+          {
+            title: { text: 'RSI', style: { color: '#fff' } },
+            top: '80%',
+            height: '20%',
+            lineWidth: 2,
+            gridLineColor: '#444',
+            offset: 0,
+            labels: {
+              align: 'right',
+              x: -5,
+              style: { color: '#fff' }
+            },
+            plotLines: [
+              {
+                value: 30,
+                color: 'red',
+                dashStyle: 'Dash',
+                width: 1,
+                label: { text: '30', style: { color: 'red' } }
+              },
+              {
+                value: 70,
+                color: 'red',
+                dashStyle: 'Dash',
+                width: 1,
+                label: { text: '70', style: { color: 'red' } }
+              }
+            ]
+          }
+        ],
+        tooltip: {
+          shared: true,
+          xDateFormat: '%Y-%m-%d'
+        },
+        legend: { itemStyle: { color: '#fff' } },
+        series: [
+          priceSeries,
+          smaSeries,
+          upperSeries,
+          lowerSeries,
+          wmaSeries,
+          macdHistogram,
+          macdSeries,
+          signalSeries,
+          tenkanSeries,
+          kijunSeries,
+          senkouASeries,
+          senkouBSeries,
+          chikouSeries,
+          rsiSeries
+        ],
+        credits: { enabled: false },
+        plotOptions: { series: { marker: { enabled: false } } },
+        style: { fontFamily: 'Arial, sans-serif' }
       });
-    }
-    return bands;
-  }
-  function computeWMA(prices, period=20){
-    let wmas = [];
-    for(let i = period - 1; i < prices.length; i++){
-      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-      let numerator = 0, denominator = 0;
-      for(let j = 0; j < period; j++){
-        let weight = j + 1;
-        numerator += slice[j] * weight;
-        denominator += weight;
+  
+      if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
+        document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+        return 50;
       }
-      wmas.push({ date: prices[i].date, wma: numerator / denominator });
-    }
-    return wmas;
-  }
-  function scoreRSI(latestRSI, prevRSI){
-    let rel = 50 - latestRSI;
-    let base = 100 / (1 + Math.exp(-0.05 * rel));
-    let dRSI = prevRSI - latestRSI;
-    return base * (1 + 0.01 * dRSI);
-  }
-  function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand){
-    let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
-    let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
-    let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
-    let dPercentB = prevPercentB - currentPercentB;
-    return baseBB * (1 + 0.1 * dPercentB);
-  }
-  function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA){
-    let currentX = (latestPrice / latestWMA) - 1;
-    let prevX = (prevPrice / prevWMA) - 1;
-    let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
-    let dx = prevX - currentX;
-    return baseWMA * (1 + 0.5 * dx);
-  }
-  function polynomialRegression(x, y, degree){
-    let X = [];
-    for(let i = 0; i < x.length; i++){
-      let row = [];
-      for(let j = 0; j <= degree; j++){
-        row.push(Math.pow(x[i], j));
-      }
-      X.push(row);
-    }
-    let XT = math.transpose(X);
-    let XTX = math.multiply(XT, X);
-    let XTy = math.multiply(XT, y);
-    let coeffsMatrix = math.lusolve(XTX, XTy);
-    return coeffsMatrix.map(val => val[0]);
-  }
-  function predictValue(coeffs, x){
-    return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
-  }
-  function computeMomentumScoreUsingRegression(histValues){
-    if(histValues.length < 6) return null;
-    const recent = histValues.slice(-6);
-    const x = [1, 2, 3, 4, 5, 6];
-    const coeffs = polynomialRegression(x, recent, 1);
-    const predicted = predictValue(coeffs, 7);
-    const lastValue = recent[recent.length - 1];
-    const delta = predicted - lastValue;
-    const k = 5;
-    const score = 100 / (1 + Math.exp(-k * delta));
-    return score;
-  }
-  function computeGapTrendScore(macdLine, signalLine){
-    if(macdLine.length < 6 || signalLine.length < 6) return null;
-    const recentMACD = macdLine.slice(-6).map(item => item.macd);
-    const recentSignal = signalLine.slice(-6).map(item => item.signal);
-    const x = [1, 2, 3, 4, 5, 6];
-    const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-    const signalCoeffs = polynomialRegression(x, recentSignal, 3);
-    const predictedMACD = predictValue(macdCoeffs, 7);
-    const predictedSignal = predictValue(signalCoeffs, 7);
-    const predictedGap = predictedMACD - predictedSignal;
-    const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
-    const delta = predictedGap - currentGap;
-    const k = 5;
-    const gapScore = 100 / (1 + Math.exp(-k * delta));
-    return { gapScore, delta, currentGap, predictedGap };
-  }
-  function computeNewMACDScore(prices){
-    const macdData = computeMACD(prices);
-    const macdLine = macdData.macdLine;
-    const signalLine = macdData.signalLine;
-    if(macdLine.length < 2 || signalLine.length < 2) return 50;
-    const len = Math.min(macdLine.length, signalLine.length);
-    const latestMACD = macdLine[len - 1].macd;
-    const positionScore = 100 / (1 + Math.exp(latestMACD));
-    const gapData = computeGapTrendScore(macdLine, signalLine);
-    const gapScore = gapData ? gapData.gapScore : 50;
-    let histValues = [];
-    for(let i = 0; i < len; i++){
-      histValues.push(macdLine[i].macd - signalLine[i].signal);
-    }
-    const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
-    const finalScore = (positionScore + gapScore + momentumScore) / 3;
-    return finalScore;
-  }
-
-    /***********************************************
-   * updateTechChart() – Render Technical Chart in 4 Panes
-   ***********************************************/
-  function updateTechChart(prices) {
-    // Compute technical indicators
-    let bands = computeBollingerBands(prices);
-    let wmas = computeWMA(prices);
-    let rsivals = computeRSI(prices, 14);
-    let macdData = computeMACD(prices);
-    let ichimokuData = computeIchimoku(prices);
-
-    // Helper: Convert data to Highcharts series
-    const toTimeSeries = (data, valueKey) =>
-      data.map(item => [item.date.getTime(), item[valueKey]]);
-
-    // Price Pane (yAxis 0)
-    const priceSeries = {
-      name: 'Historical',
-      data: toTimeSeries(prices, 'close'),
-      type: 'line',
-      zIndex: 3,
-      yAxis: 0
-    };
-    const smaSeries = {
-      name: 'Bollinger SMA',
-      data: toTimeSeries(bands, 'sma'),
-      type: 'line',
-      dashStyle: 'Dash',
-      color: '#555',
-      zIndex: 2,
-      yAxis: 0
-    };
-    const upperSeries = {
-      name: 'Upper Band',
-      data: toTimeSeries(bands, 'upper'),
-      type: 'line',
-      color: 'red',
-      zIndex: 1,
-      yAxis: 0
-    };
-    const lowerSeries = {
-      name: 'Lower Band',
-      data: toTimeSeries(bands, 'lower'),
-      type: 'line',
-      color: 'red',
-      zIndex: 1,
-      yAxis: 0
-    };
-    const wmaSeries = {
-      name: 'WMA',
-      data: toTimeSeries(wmas, 'wma'),
-      type: 'line',
-      color: 'orange',
-      zIndex: 2,
-      yAxis: 0
-    };
-
-    // MACD Pane (yAxis 1)
-    const macdSeries = {
-      name: 'MACD',
-      data: toTimeSeries(macdData.macdLine, 'macd'),
-      type: 'line',
-      yAxis: 1,
-      zIndex: 3
-    };
-    const signalSeries = {
-      name: 'Signal',
-      data: toTimeSeries(macdData.signalLine, 'signal'),
-      type: 'line',
-      yAxis: 1,
-      zIndex: 3
-    };
-    const macdHistogram = {
-      name: 'MACD Histogram',
-      data: macdData.macdLine.map((m, i) => {
-        let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
-        return [m.date.getTime(), m.macd - sig];
-      }),
-      type: 'column',
-      yAxis: 1,
-      zIndex: 1,
-      tooltip: { valueDecimals: 2 },
-      zones: [{
-        value: 0,      
-        color: 'red'
-      }, {
-        color: 'green'
-      }]
-    };
-
-    // Ichimoku Pane (yAxis 2)
-    const tenkanSeries = {
-      name: 'Tenkan-sen',
-      data: toTimeSeries(ichimokuData.tenkan, 'value'),
-      type: 'line',
-      color: 'blue',
-      zIndex: 4,
-      yAxis: 2
-    };
-    const kijunSeries = {
-      name: 'Kijun-sen',
-      data: toTimeSeries(ichimokuData.kijun, 'value'),
-      type: 'line',
-      color: 'red',
-      zIndex: 4,
-      yAxis: 2
-    };
-    const senkouASeries = {
-      name: 'Senkou Span A',
-      data: toTimeSeries(ichimokuData.senkouA, 'value'),
-      type: 'line',
-      color: 'green',
-      zIndex: 3,
-      yAxis: 2
-    };
-    const senkouBSeries = {
-      name: 'Senkou Span B',
-      data: toTimeSeries(ichimokuData.senkouB, 'value'),
-      type: 'line',
-      color: 'brown',
-      zIndex: 3,
-      yAxis: 2
-    };
-    const chikouSeries = {
-      name: 'Chikou Span',
-      data: toTimeSeries(ichimokuData.chikou, 'value'),
-      type: 'line',
-      color: 'purple',
-      zIndex: 2,
-      yAxis: 2
-    };
-
-    // RSI Pane (yAxis 3)
-    const rsiSeries = {
-      name: 'RSI',
-      data: toTimeSeries(rsivals, 'rsi'),
-      type: 'line',
-      yAxis: 3,
-      zIndex: 2
-    };
-
-    // Build the chart with 4 vertical panes:
-    // yAxis 0 (Price): Top 40%
-    // yAxis 1 (MACD): 20% (top: 40%)
-    // yAxis 2 (Ichimoku): 20% (top: 60%)
-    // yAxis 3 (RSI): 20% (top: 80%)
-    Highcharts.chart('techChart', {
-      chart: {
-        zoomType: 'x',
-        backgroundColor: 'transparent',
-        height: 1200
-      },
-      title: {
-        text: 'Combined Technical Indicators',
-        style: { color: '#fff' }
-      },
-      xAxis: {
-        type: 'datetime',
-        crosshair: true
-      },
+      let latestPriceVal = prices[prices.length - 1].close;
+      let prevPriceVal = prices[prices.length - 2].close;
+      let latestRSI = rsivals[rsivals.length - 1].rsi;
+      let prevRSI = rsivals[rsivals.length - 2].rsi;
+      let rsiScore = scoreRSI(latestRSI, prevRSI);
+      let latestBand = bands[bands.length - 1];
+      let prevBand = bands[bands.length - 2];
+      let bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
+      let macdScore = computeNewMACDScore(prices);
+      let latestWMA = wmas[wmas.length - 1].wma;
+      let prevWMA = wmas[wmas.length - 2].wma;
+      let wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
+      let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+      let cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
+      let latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+      let latestKijunVal = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+      let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkanVal - latestKijunVal)));
+      let price26Ago = prices[prices.length - 26].close;
+      let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
+      let ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+      let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+      let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+      let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
+      document.getElementById('techDetails').innerText =
+        `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
       
-  yAxis: [
-  {
-    title: { text: 'Price', style: { color: '#fff' } },
-    height: '40%',
-    lineWidth: 2,
-    gridLineColor: '#444',
-    offset: 0,
-    labels: {
-      align: 'right',  // You may choose 'left' if you prefer
-      x: -5,           // Adjust as needed
-      style: { color: '#fff' }
+      return aggregatedScore;
     }
-  },
-  {
-    title: { text: 'MACD', style: { color: '#fff' } },
-    top: '40%',
-    height: '20%',
-    lineWidth: 2,
-    gridLineColor: '#444',
-    offset: 0,
-    labels: {
-      align: 'right',
-      x: -5,
-      style: { color: '#fff' }
-    }
-  },
-  {
-    title: { text: 'Ichimoku', style: { color: '#fff' } },
-    top: '60%',
-    height: '20%',
-    lineWidth: 2,
-    gridLineColor: '#444',
-    offset: 0,
-    labels: {
-      align: 'right',
-      x: -5,
-      style: { color: '#fff' }
-    }
-  },
-  {
-    title: { text: 'RSI', style: { color: '#fff' } },
-    top: '80%',
-    height: '20%',
-    lineWidth: 2,
-    gridLineColor: '#444',
-    offset: 0,
-    labels: {
-      align: 'right',
-      x: -5,
-      style: { color: '#fff' }
-    },
-    plotLines: [
-      {
-        value: 30,
-        color: 'red',
-        dashStyle: 'Dash',
-        width: 1,
-        label: { text: '30', style: { color: 'red' } }
-      },
-      {
-        value: 70,
-        color: 'red',
-        dashStyle: 'Dash',
-        width: 1,
-        label: { text: '70', style: { color: 'red' } }
-      }
-    ]
-  }
-],
-      tooltip: {
-        shared: true,
-        xDateFormat: '%Y-%m-%d'
-      },
-      legend: { itemStyle: { color: '#fff' } },
-      series: [
-        priceSeries,
-        smaSeries,
-        upperSeries,
-        lowerSeries,
-        wmaSeries,
-        macdHistogram,
-        macdSeries,
-        signalSeries,
-        tenkanSeries,
-        kijunSeries,
-        senkouASeries,
-        senkouBSeries,
-        chikouSeries,
-        rsiSeries
-      ],
-      credits: { enabled: false },
-      plotOptions: { series: { marker: { enabled: false } } },
-      style: { fontFamily: 'Arial, sans-serif' }
-    });
-
-    // Compute individual indicator scores
-    if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
-      document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-      return 50;
-    }
-    let latestPriceVal = prices[prices.length - 1].close;
-    let prevPriceVal = prices[prices.length - 2].close;
-    let latestRSI = rsivals[rsivals.length - 1].rsi;
-    let prevRSI = rsivals[rsivals.length - 2].rsi;
-    let rsiScore = scoreRSI(latestRSI, prevRSI);
-    let latestBand = bands[bands.length - 1];
-    let prevBand = bands[bands.length - 2];
-    let bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
-    let macdScore = computeNewMACDScore(prices);
-    let latestWMA = wmas[wmas.length - 1].wma;
-    let prevWMA = wmas[wmas.length - 2].wma;
-    let wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
-    let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
-    let cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
-    let latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
-    let latestKijunVal = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
-    let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkanVal - latestKijunVal)));
-    let price26Ago = prices[prices.length - 26].close;
-    let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
-    let ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
-    let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
-    let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-    let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
-    document.getElementById('techDetails').innerText =
-      `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-    
-    return aggregatedScore;
-  }
   
     /***********************************************
      * New: dbHJ Simulation Functions for Risk vs Reward Index
@@ -1792,36 +1820,32 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
     }
   }
   function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
-  const manual = document.getElementById("useManualWeightsCheckbox").checked;
-  if (!manual) {
-    // Use auto weights and scaling
-    let auto = getAutoWeightsForRegime(regime);
-    let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-    return (raw - 50) * auto.scale + 50;
-  } else {
-    // Manual override logic remains as is.
-    // (You may adjust its validation if you want to allow different scaling ranges.)
-    const wMC = parseFloat(document.getElementById("wMC").value) || 0;
-    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
-    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
-    const wIns = parseFloat(document.getElementById("wIns").value) || 0;
-    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
-    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
-    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
-    let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
-    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-    // Optionally, remove or adjust the check for scale if you want to allow values beyond 2
-    let invalidScale = (sc < 0 /* || sc > 5 */);
-    if (invalidWeights || invalidScale) {
-      console.log("WARNING: manual weights invalid => fallback = direct average");
-      let eq = (mc + tech + sent + ins + fund + cong) / 6;
-      return eq;
+    const manual = document.getElementById("useManualWeightsCheckbox").checked;
+    if(!manual){
+      let auto = getAutoWeightsForRegime(regime);
+      let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+      return (raw - 50) * auto.scale + 50;
     } else {
-      let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
-      return (raw - 50) * sc + 50;
+      const wMC = parseFloat(document.getElementById("wMC").value) || 0;
+      const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+      const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+      const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+      const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+      const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+      let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+      let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+      let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+      let invalidScale = (sc < 0 || sc > 2);
+      if(invalidWeights || invalidScale){
+        console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
+        let eq = (mc + tech + sent + ins + fund + cong) / 6;
+        return eq;
+      } else {
+        let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+        return (raw - 50) * sc + 50;
+      }
     }
   }
-}
     /***********************************************
      * Buffer Overlay Functions
      ***********************************************/
@@ -1857,157 +1881,169 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
     let dotCount = 0;
   
     /***********************************************
-   * runSimulation() – Main Controller
-   ***********************************************/
-   async function runSimulation() {
-  document.getElementById('loading').style.display = 'block';
-  // Hide sections...
-  document.getElementById('aggregateSection').style.display = 'none';
-  document.getElementById('descriptionSection').style.display = 'none';
-  document.getElementById('fundamentalSection').style.display = 'none';
-  document.getElementById('techSection').style.display = 'none';
-  document.getElementById('mcSection').style.display = 'none';
-  document.getElementById('sentSection').style.display = 'none';
-  document.getElementById('insiderSection').style.display = 'none';
-  document.getElementById('congressSection').style.display = 'none';
+     * runSimulation() – Main Controller
+     ***********************************************/
+     async function runSimulation() {
+    document.getElementById('loading').style.display = 'block';
+    // Hide sections...
+    document.getElementById('aggregateSection').style.display = 'none';
+    document.getElementById('descriptionSection').style.display = 'none';
+    document.getElementById('fundamentalSection').style.display = 'none';
+    document.getElementById('techSection').style.display = 'none';
+    document.getElementById('mcSection').style.display = 'none';
+    document.getElementById('sentSection').style.display = 'none';
+    document.getElementById('insiderSection').style.display = 'none';
+    document.getElementById('congressSection').style.display = 'none';
 
-  let ticker = document.getElementById('ticker').value.trim();
-let timeframe = document.getElementById('investmentTimeframe').value;
-if (!ticker || !timeframe) {
-  alert("Please enter a ticker symbol and select an investment timeframe.");
-  document.getElementById('loading').style.display = 'none';
-  return;
-}
-
-let periodMonths, T;
-if (timeframe === "short") {
-  periodMonths = 4;   // 4 months historical data for short term
-  T = 1 / 12;         // 1 month horizon (in years)
-} else if (timeframe === "medium") {
-  periodMonths = 12;  // 12 months historical data for medium term
-  T = 3 / 12;         // 3 months horizon (in years)
-} else if (timeframe === "long") {
-  periodMonths = 24;  // 24 months historical data for long term
-  T = 6 / 12;         // 6 months horizon (in years)
-} else {
-  periodMonths = 4;
-  T = 1 / 12;
-}
-
-  try {
-    let regime = await determineSPYMarketRegime(4);
-    console.log("Detected SPY Market Regime => ", regime);
-    let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-    let fundResp = await fetch(fundUrl);
-    let fundamentalData = await fundResp.json();
-    let companyDesc = fundamentalData.Description || "No description available.";
-    let fundBull = 50;
-    let categories = null;
-    if (fundamentalData.Symbol) {
-      categories = computeFundScores(fundamentalData);
-      let catSum = 0, nCats = 0;
-      for (let k in categories) { catSum += categories[k]; nCats++; }
-      fundBull = catSum / nCats;
-    }
-    let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-    let resp = await fetch(histUrl);
-    let data = await resp.json();
-    if (!data["Time Series (Daily)"]) {
-      throw new Error("Unable to retrieve valid historical data.");
-    }
-    let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
-    if (prices.length < 2) {
-      alert("Not enough historical data.");
+    let ticker = document.getElementById('ticker').value.trim();
+    let futureDateStr = document.getElementById('futureDate').value;
+    if (!ticker || !futureDateStr) {
+      alert("Please enter both a ticker symbol and a future date.");
       document.getElementById('loading').style.display = 'none';
       return;
     }
-
-    // **Compute mcStats here so that mcStats.lastPrice is defined.**
-    let mcStats = computeStats(prices);
-    function computeStats(prices) {
-  let logReturns = [];
-  for (let i = 1; i < prices.length; i++) {
-    let prev = prices[i - 1].close;
-    let curr = prices[i].close;
-    logReturns.push(Math.log(curr / prev));
-  }
-  if (logReturns.length < 1) {
-    return { mean: 0, stdDev: 0, lastPrice: prices[prices.length - 1].close };
-  }
-  let dailyMean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
-  let variance = logReturns.reduce((sum, r) => sum + Math.pow(r - dailyMean, 2), 0) / (logReturns.length - 1);
-  let dailyStd = Math.sqrt(variance);
-  const tradingDays = 252;
-  return {
-    mean: dailyMean * tradingDays,
-    stdDev: dailyStd * Math.sqrt(tradingDays),
-    lastPrice: prices[prices.length - 1].close
-  };
-}
-
-    document.getElementById('aggregateSection').style.display = 'block';
-    document.getElementById('descriptionSection').style.display = 'block';
-    document.getElementById('companyDescription').innerText = companyDesc;
-    if (categories) {
-      document.getElementById('fundamentalSection').style.display = 'block';
-      plotFundamentalCategories(categories);
-      document.getElementById('fundamentalText').innerText =
-        `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
+    let futureDate = new Date(futureDateStr);
+    let currentDate = new Date();
+    let diffInMonths = (futureDate.getFullYear() - currentDate.getFullYear()) * 12 +
+                       (futureDate.getMonth() - currentDate.getMonth());
+    if (diffInMonths < 1) diffInMonths = 1;
+    let recommendedPeriod = diffInMonths * 4;
+    let periodMonths;
+    if (document.getElementById('manualOverrideCheckbox').checked) {
+      periodMonths = parseInt(document.getElementById('manualPeriod').value);
+      if (isNaN(periodMonths) || periodMonths < recommendedPeriod) {
+        alert(`For more accurate predictions, recommended >= ${recommendedPeriod} months.`);
+        periodMonths = recommendedPeriod;
+      }
+    } else {
+      periodMonths = recommendedPeriod;
     }
-    document.getElementById('techSection').style.display = 'block';
-    let techBull = updateTechChart(prices);
-    let mcFinals = runMC(mcStats.lastPrice, mcStats.mean, mcStats.stdDev, T);
-    document.getElementById('mcSection').style.display = 'block';
-    let mcBull = updateMCChart(mcFinals, mcStats.lastPrice);
-    let sentiments = await fetchSentimentData(ticker, periodMonths);
-    document.getElementById('sentSection').style.display = 'block';
-    let sentBull = updateSentimentChart(sentiments);
 
-    
-// Use mcStats.lastPrice (which is now defined from computeStats)
-let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
-document.getElementById('insiderSection').style.display = 'block';
-let insiderBull = updateInsiderCharts(insiderData);
+    try {
+      let regime = await determineSPYMarketRegime(4);
+      let fundUrl = `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
+      let fundResp = await fetch(fundUrl);
+      let fundamentalData = await fundResp.json();
+      let companyDesc = fundamentalData.Description || "No description available.";
+      let fundBull = 50;
+      let categories = null;
+      if (fundamentalData.Symbol) {
+        categories = computeFundScores(fundamentalData);
+        let catSum = 0, nCats = 0;
+        for (let k in categories) { catSum += categories[k]; nCats++; }
+        fundBull = catSum / nCats;
+      }
+      let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+      let resp = await fetch(histUrl);
+      let data = await resp.json();
+      if (!data["Time Series (Daily)"]) {
+        throw new Error("Unable to retrieve valid historical data.");
+      }
+      let prices = processHistoricalData(data["Time Series (Daily)"], periodMonths);
+      if (prices.length < 2) {
+        alert("Not enough historical data.");
+        document.getElementById('loading').style.display = 'none';
+        return;
+      }
+      
+      let mcStats = computeStats(prices);
 
+      document.getElementById('aggregateSection').style.display = 'block';
+      document.getElementById('descriptionSection').style.display = 'block';
+      document.getElementById('companyDescription').innerText = companyDesc;
+      if (categories) {
+        document.getElementById('fundamentalSection').style.display = 'block';
+        plotFundamentalCategories(categories);
+        document.getElementById('fundamentalText').innerText =
+          `Overall Fundamental Score: ${fundBull.toFixed(1)}%`;
+      }
+      document.getElementById('techSection').style.display = 'block';
+      let techBull = updateTechChart(prices);
+      
+      // Calculate T (time in years from last price date to future date)
+      let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
 
-    let congressObj = await fetchCongressData(ticker, periodMonths);
-    document.getElementById('congressSection').style.display = 'block';
-    let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale);
-    let aggregatedBull = aggregatorFinal(mcBull, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
-    document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
-    document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
-    simulationReport = {
-      ticker,
-      periodMonths,
-      mcBull,
-      techBull,
-      sentBull,
-      insiderBull,
-      congressBull,
-      fundamentalBull: fundBull,
-      aggregatedBull,
-      mcStats,
-      description: companyDesc,
-      regime,
-      ichimokuScore: (function(){
-        let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
-        let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
-        let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
-        let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
-        let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
-        let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
-        let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
-        let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
-        let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
-        return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-      })()
-    };
-  } catch(err) {
-    alert("Error: " + err.message);
+      // NEW: Use the dbHJ model to generate Risk vs Reward Index (RRI) replacing the old Monte Carlo simulation
+      let optionsIV = await fetchOptionsIV(ticker);
+      if (!optionsIV) { optionsIV = mcStats.stdDev; }
+      let v10 = optionsIV * optionsIV;
+      let v20 = v10 * 0.5;
+      const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
+      const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
+      const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
+      const dt = 1 / 252;
+      let numSims = 10000;
+      let finalPrices = runDBHJSimulation(mcStats.lastPrice, v10, v20, mcStats.mean,
+          kappa1, theta1, sigma1, rho1,
+          kappa2, theta2, sigma2, rho2,
+          lambda, jumpMean, jumpStd,
+          T, dt, numSims);
+
+      let riskMetrics = computeRiskMetrics(finalPrices, mcStats.lastPrice);
+      let cvarFraction = riskMetrics.cvarPct / 100;
+      let rri = computeRiskVsRewardIndex(finalPrices, mcStats.lastPrice, cvarFraction, T);
+      document.getElementById('mcSection').style.display = 'block';
+      renderHistogram(finalPrices, mcStats.lastPrice);
+      document.getElementById('mcBullScore').innerText =
+        `Risk vs Reward Index: ${rri.toFixed(2)}%`;
+      let medianPrice = getMedian(finalPrices);
+      let sliderHTML = `
+        <label for="priceSlider">Select Target Price:</label>
+        <input type="range" id="priceSlider" min="${Math.min(...finalPrices).toFixed(2)}" max="${Math.max(...finalPrices).toFixed(2)}" step="0.01" value="${medianPrice.toFixed(2)}" oninput="updateMCSlider(this.value)">
+        <span id="sliderValue">${medianPrice.toFixed(2)}</span>
+        <div id="mcSliderProb" style="margin-top:5px; font-weight:600;"></div>
+      `;
+      document.getElementById('mcSliderSection').innerHTML = sliderHTML;
+      updateMCSlider(medianPrice);
+
+      let sentiments = await fetchSentimentData(ticker, periodMonths);
+      document.getElementById('sentSection').style.display = 'block';
+      let sentBull = updateSentimentChart(sentiments);
+      
+      let insiderData = await fetchAndProcessInsiderData(ticker, periodMonths, mcStats.lastPrice);
+      document.getElementById('insiderSection').style.display = 'block';
+      let insiderBull = updateInsiderCharts(insiderData);
+
+      let congressObj = await fetchCongressData(ticker, periodMonths);
+document.getElementById('congressSection').style.display = 'block';
+// Pass both uniqueBuyCount and uniqueSellCount
+let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
+
+      let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+      document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
+      document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+      simulationReport = {
+        ticker,
+        periodMonths,
+        futureDate: futureDate.toDateString(),
+        rri,
+        techBull,
+        sentBull,
+        insiderBull,
+        congressBull,
+        fundamentalBull: fundBull,
+        aggregatedBull,
+        mcStats,
+        description: companyDesc,
+        regime,
+        ichimokuScore: (function(){
+          let ichimokuLatestSenkouA = prices.length ? computeIchimoku(prices).senkouA.slice(-1)[0].value : 0;
+          let latestTenkan = prices.length ? computeIchimoku(prices).tenkan.slice(-1)[0].value : 0;
+          let latestKijun = prices.length ? computeIchimoku(prices).kijun.slice(-1)[0].value : 0;
+          let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkan - latestKijun)));
+          let price26Ago = prices[prices.length - 26] ? prices[prices.length - 26].close : 0;
+          let chikouScore = 100 / (1 + Math.exp(-0.1 * (prices[prices.length - 1].close - price26Ago)));
+          let ichimokuLatestSenkouB = prices.length ? computeIchimoku(prices).senkouB.slice(-1)[0].value : 0;
+          let cloudScore = 100 / (1 + Math.exp(-1 * (prices[prices.length - 1].close - ichimokuLatestSenkouA)));
+          let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+          return (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+        })()
+      };
+    } catch(err) {
+      alert("Error: " + err.message);
+    }
+    document.getElementById('loading').style.display = 'none';
   }
-  document.getElementById('loading').style.display = 'none';
-}
-
   async function fetchSentimentData(ticker, periodMonths) {
   let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
   let resp = await fetch(url);
@@ -2060,12 +2096,14 @@ let insiderBull = updateInsiderCharts(insiderData);
     if(ticker){
       document.getElementById("fundamentalLinkButton").innerText = "More " + ticker.toUpperCase() + " Fundamental Analysis";
       document.getElementById("technicalLinkButton").innerText = "More " + ticker.toUpperCase() + " Technical Analysis";
+      document.getElementById("rriLinkButton").innerText = "More " + ticker.toUpperCase() + " Risk vs Reward Analysis";
       document.getElementById("insiderLinkButton").innerText = "More " + ticker.toUpperCase() + " Insider Analysis";
       document.getElementById("congressLinkButton").innerText = "More " + ticker.toUpperCase() + " Congress Analysis";
       document.getElementById("sentimentLinkButton").innerText = "More " + ticker.toUpperCase() + " Sentiment Analysis";
     } else {
       document.getElementById("fundamentalLinkButton").innerText = "More Fundamental Analysis";
       document.getElementById("technicalLinkButton").innerText = "More Technical Analysis";
+      document.getElementById("rriLinkButton").innerText = "More Risk vs Reward Analysis";
       document.getElementById("insiderLinkButton").innerText = "More Insider Analysis";
       document.getElementById("congressLinkButton").innerText = "More Congress Analysis";
       document.getElementById("sentimentLinkButton").innerText = "More Sentiment Analysis";
@@ -2110,6 +2148,25 @@ let insiderBull = updateInsiderCharts(insiderData);
               + "&autoFetch=true";
     window.open(url, "_blank");
   });
+  document.getElementById("rriLinkButton").addEventListener("click", () => {
+    if (!simulationReport) {
+      alert("Please run a simulation first.");
+      return;
+    }
+    const ticker = simulationReport.ticker;
+const periodMonths = simulationReport.periodMonths;
+// Get the correct ISO date from the futureDate input
+const futureDateValue = document.getElementById("futureDate").value;
+const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+          + encodeURIComponent(ticker) 
+          + "&period=" + periodMonths
+          + "&futureDate=" + encodeURIComponent(futureDateValue)
+          + "&autoFetch=true";
+window.open(url, "_blank");
+
+
+
+  });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
     if (!simulationReport) {
       alert("Please run a simulation first.");
@@ -2133,6 +2190,8 @@ let insiderBull = updateInsiderCharts(insiderData);
     }
   });
   document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("manualPeriodDiv").style.display =
+      document.getElementById("manualOverrideCheckbox").checked ? "block" : "none";
     document.getElementById("manualWeightsSection").style.display =
       document.getElementById("useManualWeightsCheckbox").checked ? "block" : "none";
   });
