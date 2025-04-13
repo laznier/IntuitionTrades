@@ -1175,10 +1175,7 @@
                 progressBarFill.style.width = pct + "%";
                 progressBarText.textContent = pct + "%";
 
-                // Use HTML spans for coloring since console styling (%c) doesn't work in an innerHTML update.
-                let colorClass = (one.aggregator > 50) ? "score-positive" : "score-negative";
-                logStatus(`→ ${tk} => aggregator: <span class="${colorClass}">${one.aggregator.toFixed(2)}</span>`);
-            }
+   
 
             // Sleep between batches if needed.
             if (i + batchSize < total) {
