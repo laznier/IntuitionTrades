@@ -343,19 +343,6 @@
     let bufferDotInterval;
     let debounceTimeout;
   
-    // Auto-populate futureDate with next month's date
-    (function setDefaultFutureDate() {
-      const futureDateInput = document.getElementById('futureDate');
-      const today = new Date();
-      const nextMonthDate = new Date(
-        today.getFullYear(),
-        today.getMonth() + 1,
-        today.getDate()
-      );
-      const isoDate = nextMonthDate.toISOString().split('T')[0];
-      futureDateInput.value = isoDate;
-    })();
-  
     // Show/hide manual historical period
     document.getElementById("manualOverrideCheckbox").addEventListener("change", function() {
       document.getElementById("manualPeriodDiv").style.display = this.checked ? "block" : "none";
@@ -1961,9 +1948,6 @@ if (timeframe === "short") {
       document.getElementById('techSection').style.display = 'block';
       let techBull = updateTechChart(prices);
       
-      // Calculate T (time in years from last price date to future date)
-      let T = (futureDate - prices[prices.length - 1].date) / (365 * 24 * 60 * 60 * 1000);
-
       // NEW: Use the dbHJ model to generate Risk vs Reward Index (RRI) replacing the old Monte Carlo simulation
       let optionsIV = await fetchOptionsIV(ticker);
       if (!optionsIV) { optionsIV = mcStats.stdDev; }
@@ -2016,7 +2000,6 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
       simulationReport = {
         ticker,
         periodMonths,
-        futureDate: futureDate.toDateString(),
         rri,
         techBull,
         sentBull,
@@ -2150,24 +2133,20 @@ let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.to
     window.open(url, "_blank");
   });
   document.getElementById("rriLinkButton").addEventListener("click", () => {
-    if (!simulationReport) {
-      alert("Please run a simulation first.");
-      return;
-    }
-    const ticker = simulationReport.ticker;
-const periodMonths = simulationReport.periodMonths;
-// Get the correct ISO date from the futureDate input
-const futureDateValue = document.getElementById("futureDate").value;
-const url = "https://www.intuitiontrades.com/risk/?ticker=" 
-          + encodeURIComponent(ticker) 
-          + "&period=" + periodMonths
-          + "&futureDate=" + encodeURIComponent(futureDateValue)
-          + "&autoFetch=true";
-window.open(url, "_blank");
+  if (!simulationReport) {
+    alert("Please run a simulation first.");
+    return;
+  }
+  const ticker = simulationReport.ticker;
+  const periodMonths = simulationReport.periodMonths;
+  // Remove futureDate since it no longer exists.
+  const url = "https://www.intuitiontrades.com/risk/?ticker=" 
+            + encodeURIComponent(ticker) 
+            + "&period=" + periodMonths
+            + "&autoFetch=true";
+  window.open(url, "_blank");
+});
 
-
-
-  });
   document.getElementById("congressLinkButton").addEventListener("click", () => {
     if (!simulationReport) {
       alert("Please run a simulation first.");
