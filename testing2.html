@@ -302,21 +302,21 @@
     document.getElementById("marketRegimeSelect").addEventListener("change", function(){
       const val = this.value;
       if(val==="Bear"){
-        document.getElementById("wRRI").value      = 0.05;
+        document.getElementById("wRRI").value      = 0.10;
         document.getElementById("wTech").value     = 0.05;
-        document.getElementById("wSent").value     = 0.10;
-        document.getElementById("wInsider").value  = 0.30;
+        document.getElementById("wSent").value     = 0.20;
+        document.getElementById("wInsider").value  = 0.20;
         document.getElementById("wFund").value     = 0.30;
-        document.getElementById("wCongress").value = 0.20;
-        document.getElementById("scalingFactor").value = 0.25;
+        document.getElementById("wCongress").value = 0.15;
+        document.getElementById("scalingFactor").value = 1.00;
       } else if(val==="Bull"){
         document.getElementById("wRRI").value      = 0.20;
-        document.getElementById("wTech").value     = 0.25;
+        document.getElementById("wTech").value     = 0.20;
         document.getElementById("wSent").value     = 0.15;
         document.getElementById("wInsider").value  = 0.15;
         document.getElementById("wFund").value     = 0.15;
-        document.getElementById("wCongress").value = 0.10;
-        document.getElementById("scalingFactor").value = 1.00;
+        document.getElementById("wCongress").value = 0.15;
+        document.getElementById("scalingFactor").value = 3.00;
       } else {
         document.getElementById("wRRI").value      = 0.15;
         document.getElementById("wTech").value     = 0.20;
@@ -324,7 +324,7 @@
         document.getElementById("wInsider").value  = 0.15;
         document.getElementById("wFund").value     = 0.20;
         document.getElementById("wCongress").value = 0.15;
-        document.getElementById("scalingFactor").value = 0.50;
+        document.getElementById("scalingFactor").value = 2.00;
       }
     });
     
