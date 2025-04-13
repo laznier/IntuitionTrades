@@ -212,13 +212,18 @@
   </div>
 </div>
 
-<!-- Container for technical chart and details -->
+  <!-- Risk vs Reward Section (Replacing Monte Carlo Simulation) -->
+  <div id="mcSection" class="section" style="display:none;">
+    <h2>Risk vs Reward Index (dbHJ Model)</h2>
+    <div id="mcChart"></div>
+    <div id="mcBullScore" style="margin-top:10px; font-weight:600;"></div>
+    <div id="mcSliderSection" style="margin-top: 20px;"></div>
+    <button id="rriLinkButton">More Risk vs Reward Analysis</button>
+
+    <!-- Container for technical chart and details -->
 <div id="techChart"></div>
 <div id="techDetails"></div>
-<!-- Container for RRI chart and details -->
-<div id="rriChart"></div>
-<div id="rriDetails" style="margin-top:10px;font-weight:bold;"></div>
-
+  </div>
 <script>
   /***********************************************************************
    * math.js setup
@@ -362,187 +367,174 @@ function getMedian(arr) {
   /***********************************************************************
    * DBHJ-based RRI logic – EXACTLY as in Stocks tool
    ***********************************************************************/
-  async function fetchOptionsIV(ticker) {
-    try {
-      const url = `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        let contract = data.data[0];
-        return parseFloat(contract.impliedVolatility) || null;
+  // Standard Normal Random Number using Box-Muller method
+    function randn() {
+      let u = 0, v = 0;
+      while(u === 0) u = Math.random();
+      while(v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+  
+    // Fetch live options IV (implied volatility)
+    async function fetchOptionsIV(ticker) {
+      try {
+        const url = `/api/liveoptions?symbol=${ticker}&require_greeks=true`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+          let contract = data.data[0];
+          return parseFloat(contract.impliedVolatility) || null;
+        }
+      } catch (error) {
+        console.error("Error fetching options IV:", error);
       }
-    } catch (error) {
-      console.error("Error fetching options IV:", error);
       return null;
     }
-    return null;
-  }
-  function computeHistStats(prices) {
-    let logs = [];
-    for (let i = 1; i < prices.length; i++) {
-      let r = Math.log(prices[i].close / prices[i - 1].close);
-      logs.push(r);
-    }
-    if (logs.length < 2) {
-      return { mu: 0, sigma: 0, lastPrice: prices[prices.length - 1].close };
-    }
-    let meanDaily = logs.reduce((a, b) => a + b, 0) / logs.length;
-    let variance = logs.reduce((acc, r) => acc + Math.pow(r - meanDaily, 2), 0) / (logs.length - 1);
-    let stdDaily = Math.sqrt(variance);
-    const tradingDays = 252;
-    return {
-      mu: meanDaily * tradingDays,
-      sigma: stdDaily * Math.sqrt(tradingDays),
-      lastPrice: prices[prices.length - 1].close
-    };
-  }
-  function randn() {
-    let u = 0, v = 0;
-    while(u === 0) u = Math.random();
-    while(v === 0) v = Math.random();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  }
-  function runDBHJSimulation(S0, v10, v20, mu,
-                             kappa1, theta1, sigma1, rho1,
-                             kappa2, theta2, sigma2, rho2,
-                             lambda, jumpMean, jumpStd,
-                             T, dt, sims) {
-    const steps = Math.floor(T / dt);
-    let finals = [];
-    for (let i = 0; i < sims; i++) {
-      let S = S0, v1 = v10, v2 = v20;
-      for (let j = 0; j < steps; j++) {
-        let Z1 = randn(), Z2 = randn(), Z3 = randn();
-        const dW_a = Math.sqrt(dt) * Z1;
-        const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
-        const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
-        v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
-        v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
-        const totalVar = v1 + v2;
-        let jumpMultiplier = 1;
-        if (Math.random() < lambda * dt) {
-          jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
+  
+    // Double Heston Jump-Diffusion Simulation (dbHJ)
+    function runDBHJSimulation(S0, v10, v20, mu,
+                               kappa1, theta1, sigma1, rho1,
+                               kappa2, theta2, sigma2, rho2,
+                               lambda, jumpMean, jumpStd,
+                               T, dt, sims) {
+      const steps = Math.floor(T / dt);
+      let finals = [];
+      for(let i = 0; i < sims; i++){
+        let S = S0, v1 = v10, v2 = v20;
+        for(let j = 0; j < steps; j++){
+          let Z1 = randn();
+          let Z2 = randn();
+          let Z3 = randn();
+          const dW_a = Math.sqrt(dt) * Z1;
+          const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
+          const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
+          
+          v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
+          v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
+          
+          const totalVar = v1 + v2;
+          let jumpMultiplier = 1;
+          if (Math.random() < lambda * dt) {
+            jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
+          }
+          S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar) * dW_a);
         }
-        S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar) * dW_a);
+        finals.push(S);
       }
-      finals.push(S);
+      return finals;
     }
-    return finals;
-  }
-  function computeRiskMetrics(finalPrices, currentPrice) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let idx = Math.floor(0.05 * sorted.length);
-    let varPrice = sorted[idx];
-    let tail = sorted.slice(0, idx + 1);
-    let cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
-    return {
-      varPrice: varPrice,
-      varPct: 100 * (currentPrice - varPrice) / currentPrice,
-      cvarPrice: cvarPrice,
-      cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
-    };
-  }
-// Then update your computeRiskVsRewardIndex function:
-function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
-  // Use getMedian to correctly compute the median simulated price.
-  let medianPrice = getMedian(finalPrices);
-  let rawReturn = (medianPrice / currentPrice) - 1;
-  // Annualize the median return
-  let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
-  // Downside risk (annualized) from CVaR
-  let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
-  // Compute the risk/reward ratio, handling edge cases gracefully
-  let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
-  const alpha = 1;
-  return 50 * (1 + Math.tanh(alpha * ratio));
-}
-
-// In your computeTickerRRI (RRI section) function, call the above functions:
-async function computeTickerRRI(ticker, T) {
-  const prices = await fetchHistoricalData(ticker);
-  if (prices.length < 5) {
-    logStatus("Not enough historical data for " + ticker);
-    return 50;
-  }
-  const st = computeHistStats(prices);
-  let iv = await fetchOptionsIV(ticker);
-  if (!iv) iv = st.sigma;
   
-  const v10 = iv * iv;
-  const v20 = 0.5 * v10;
-  // DBHJ simulation parameters (matching Stocks tool)
-  const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
-  const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
-  const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
-  const dt = 1 / 252;
-  const sims = 10000;
+    // Compute VaR & CVaR from final simulated prices
+    function computeRiskMetrics(finalPrices, currentPrice) {
+      let sorted = finalPrices.slice().sort((a, b) => a - b);
+      let idx = Math.floor(0.05 * sorted.length);
+      let varPrice = sorted[idx];
+      let tail = sorted.slice(0, idx + 1);
+      let cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
+      return {
+        varPrice: varPrice,
+        varPct: 100 * (currentPrice - varPrice) / currentPrice,
+        cvarPrice: cvarPrice,
+        cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
+      };
+    }
   
-  const finals = runDBHJSimulation(
-    st.lastPrice, v10, v20, st.mu,
-    kappa1, theta1, sigma1, rho1,
-    kappa2, theta2, sigma2, rho2,
-    lambda, jumpMean, jumpStd,
-    T, dt, sims
-  );
+    // Compute the stable Risk vs Reward Index (RRI) on a 0–100 scale
+    function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
+      let sorted = finalPrices.slice().sort((a, b) => a - b);
+      let medianPrice = sorted[Math.floor(sorted.length / 2)];
+      let rawReturn = (medianPrice / currentPrice) - 1;
+      let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
+      let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
+      let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
+      const alpha = 1;
+      return 50 * (1 + Math.tanh(alpha * ratio));
+    }
   
-  const risk = computeRiskMetrics(finals, st.lastPrice);
-  const cvarFraction = risk.cvarPct / 100;
-  const rri = computeRiskVsRewardIndex(finals, st.lastPrice, cvarFraction, T);
-  // Render the RRI chart just like in the Stocks tool
-  renderRRIChart(finals, st.lastPrice);
-  document.getElementById("rriDetails").innerText = `Risk vs Reward Index: ${rri.toFixed(2)}%`;
-  return rri;
-}
-
-// Render the RRI Chart with Highcharts (same as in the Stocks tool)
-function renderRRIChart(finalPrices, currentPrice) {
-  const minPrice = Math.min(...finalPrices);
-  const maxPrice = Math.max(...finalPrices);
-  const binCount = 20;
-  const binWidth = (maxPrice - minPrice) / binCount;
-  let bins = new Array(binCount).fill(0);
-  for (let p of finalPrices) {
-    let bin = Math.floor((p - minPrice) / binWidth);
-    if (bin >= binCount) bin = binCount - 1;
-    bins[bin]++;
-  }
-  let binCenters = [];
-  for (let i = 0; i < binCount; i++) {
-    binCenters.push(minPrice + binWidth * (i + 0.5));
-  }
-  let histogramData = binCenters.map((center, i) => [center, bins[i]]);
-  Highcharts.chart('rriChart', {
-    chart: { type: 'column', backgroundColor: 'transparent' },
-    title: { text: 'Simulated Final Prices Distribution', style: { color: '#fff' } },
-    xAxis: {
-      title: { text: 'Price', style: { color: '#fff' } },
-      min: minPrice,
-      max: maxPrice,
-      labels: { style: { color: '#fff' } },
-      plotLines: [{
-        id: 'currentPriceLine',
-        value: currentPrice,
-        color: 'red',
-        dashStyle: 'Dash',
-        width: 2,
-        zIndex: 5,
-        label: { text: 'Current Price', style: { color: 'red' } }
-      }]
-    },
-    yAxis: {
-      title: { text: 'Frequency', style: { color: '#fff' } },
-      labels: { style: { color: '#fff' } },
-      gridLineColor: '#444'
-    },
-    tooltip: {
-      formatter: function() {
-        return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+    // Render the histogram of final simulated prices using Highcharts
+    function renderHistogram(finalPrices, currentPrice) {
+      globalFinalPrices = finalPrices;
+      const minPrice = Math.min(...finalPrices);
+      const maxPrice = Math.max(...finalPrices);
+      const binCount = 20;
+      const binWidth = (maxPrice - minPrice) / binCount;
+      let bins = new Array(binCount).fill(0);
+      for (let p of finalPrices) {
+        let bin = Math.floor((p - minPrice) / binWidth);
+        if (bin >= binCount) bin = binCount - 1;
+        bins[bin]++;
       }
-    },
-    series: [{ name: 'Frequency', data: histogramData, color: 'gray' }],
-    credits: { enabled: false }
-  });
-}
+      let binCenters = [];
+      for (let i = 0; i < binCount; i++) {
+        let center = minPrice + binWidth * (i + 0.5);
+        binCenters.push(center);
+      }
+      let histogramData = binCenters.map((center, i) => [center, bins[i]]);
+      window.mcChart = Highcharts.chart('mcChart', {
+        chart: {
+          type: 'column',
+          backgroundColor: 'transparent'
+        },
+        title: {
+          text: 'Simulated Final Prices Distribution',
+          style: { color: '#fff' }
+        },
+        xAxis: {
+          type: 'linear',
+          title: { text: 'Price', style: { color: '#fff' } },
+          min: minPrice,
+          max: maxPrice,
+          labels: { style: { color: '#fff' } },
+          plotLines: [{
+            id: 'targetLine',
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 2,
+            value: currentPrice,
+            zIndex: 5,
+            label: { text: 'Current Price', style: { color: 'red' } }
+          }]
+        },
+        yAxis: {
+          title: { text: 'Frequency', style: { color: '#fff' } },
+          labels: { style: { color: '#fff' } },
+          gridLineColor: '#444'
+        },
+        tooltip: {
+          formatter: function() {
+            return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
+          }
+        },
+        series: [{
+          name: 'Frequency',
+          data: histogramData,
+          color: 'gray'
+        }],
+        credits: { enabled: false }
+      });
+    }
+  
+    // Update slider for target price and probability display
+    function updateMCSlider(val) {
+      val = parseFloat(val);
+      document.getElementById('sliderValue').textContent = val.toFixed(2);
+      let countTarget = globalFinalPrices.filter(p => p >= val).length;
+      let sliderProb = (countTarget / globalFinalPrices.length) * 100;
+      document.getElementById('mcSliderProb').innerText =
+        `Probability of closing above selected target price: ${sliderProb.toFixed(2)}%`;
+      if (window.mcChart && window.mcChart.xAxis[0]) {
+        let axis = window.mcChart.xAxis[0];
+        if (axis.removePlotLine) { axis.removePlotLine('targetPrice'); }
+        axis.addPlotLine({
+          id: 'targetPrice',
+          value: val,
+          color: 'red',
+          width: 2,
+          zIndex: 5,
+          dashStyle: 'Solid'
+        });
+      }
+    }
 
   /***********************************************************************
    * TECHNICAL INDICATORS SECTION – from Stocks Tool (Exact version)
