@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>Top Stocks Scanner (Premium Tool)</title>
+  <!-- Load math.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-
+  <!-- Load Highcharts -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <!-- Dark Theme Styling -->
   <style>
-    /* Use CSS variables for consistent theming */
     :root {
       --primary-bg: #111;
       --secondary-bg: #333;
@@ -124,6 +125,15 @@
     .score-negative {
       color: #ff2d2d;
     }
+    /* Container for technical chart and details */
+    #techChart {
+      margin-top: 20px;
+      height: 600px;  /* Adjust height as needed */
+    }
+    #techDetails {
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -210,6 +220,10 @@
   </div>
 </div>
 
+<!-- Container for technical chart and details (for the technical analysis section) -->
+<div id="techChart"></div>
+<div id="techDetails"></div>
+
 <script>
   /***********************************************************************
    * math.js setup
@@ -251,7 +265,6 @@
       logStatus(`Error loading tickers for ${index}: ${error.message}`);
     }
   });
-
   document.getElementById("indexSelect").dispatchEvent(new Event('change'));
 
   /***********************************************************************
@@ -340,12 +353,8 @@
   }
 
   /***********************************************************************
-   * DBHJ-based RRI logic – FIX: Use 10,000 sims instead of 5,000
+   * DBHJ-based RRI logic (Stocks Tool version with 10,000 sims)
    ***********************************************************************/
-
-  // ---------- DBHJ-based RRI Logic (from Stocks Tool) ---------- //
-
-  // Attempt to fetch live options IV (implied volatility).
   async function fetchOptionsIV(ticker) {
     try {
       let url = `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
@@ -356,13 +365,10 @@
         return parseFloat(contract.impliedVolatility) || null;
       }
     } catch (e) {
-      // If fetching fails, return null so that we can use the fallback (sigma) below.
       return null;
     }
     return null;
   }
-
-  // Compute historical statistics from price data (annual drift, volatility, last price)
   function computeHistStats(prices) {
     let logs = [];
     for (let i = 1; i < prices.length; i++) {
@@ -382,8 +388,6 @@
       lastPrice: prices[prices.length - 1].close
     };
   }
-
-  // Double Heston Jump-Diffusion Simulation (dbHJ)
   function runDBHJSimulation(S0, v10, v20, mu,
                              kappa1, theta1, sigma1, rho1,
                              kappa2, theta2, sigma2, rho2,
@@ -400,10 +404,8 @@
         const dW_a = Math.sqrt(dt) * Z1;
         const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
         const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
-        
         v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
         v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
-        
         const totalVar = v1 + v2;
         let jumpMultiplier = 1;
         if (Math.random() < lambda * dt) {
@@ -415,16 +417,12 @@
     }
     return finals;
   }
-
-  // Standard Normal via Box-Muller method.
   function randn() {
     let u = 0, v = 0;
     while (u === 0) u = Math.random();
     while (v === 0) v = Math.random();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   }
-
-  // Compute VaR (5th percentile) and CVaR from final simulated prices.
   function computeRiskMetrics(finalPrices, currentPrice) {
     let sorted = finalPrices.slice().sort((a, b) => a - b);
     let idx = Math.floor(0.05 * sorted.length);
@@ -438,27 +436,22 @@
       cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
     };
   }
-
-  // Computes the stable Risk vs Reward Index (RRI) on a 0–100 scale.
   function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
     let sorted = finalPrices.slice().sort((a, b) => a - b);
     let medianPrice = sorted[Math.floor(sorted.length / 2)];
     let rawReturn = (medianPrice / currentPrice) - 1;
-    // Annualize the median return.
     let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
-    // Downside risk derived from CVaR (annualized) using cvarFraction.
     let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
     let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
     const alpha = 1;
     return 50 * (1 + Math.tanh(alpha * ratio));
   }
 
-
   /***********************************************************************
-   * Technical (MACD) functions – copy exactly from stocks tool
+   * TECHNICAL INDICATORS SECTION (from Stocks Tool)
+   * (Converted HTML comments to JavaScript comments.)
    ***********************************************************************/
-   <!-- Begin Technical Analysis Section from Stocks Tool -->
-  // Calculate Ichimoku Cloud components
+  /* Calculate Ichimoku Cloud components */
   function computeIchimoku(prices) {
     let tenkan = [];
     let kijun = [];
@@ -499,7 +492,7 @@
     return { tenkan, kijun, senkouA, senkouB, chikou };
   }
 
-  // Exponential Moving Average (EMA)
+  /* Exponential Moving Average (EMA) */
   function computeEMA(prices, period) {
     let ema = [];
     const multiplier = 2 / (period + 1);
@@ -516,7 +509,7 @@
     return ema.filter(x => x !== undefined);
   }
 
-  // Moving Average Convergence Divergence (MACD)
+  /* Moving Average Convergence Divergence (MACD) */
   function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
     let fastEMA = computeEMA(prices, fast);
     let slowEMA = computeEMA(prices, slow);
@@ -542,7 +535,7 @@
     return { macdLine, signalLine };
   }
 
-  // Relative Strength Index (RSI)
+  /* Relative Strength Index (RSI) */
   function computeRSI(prices, period = 14) {
     let rsis = [];
     for (let i = period; i < prices.length; i++) {
@@ -560,7 +553,7 @@
     return rsis;
   }
 
-  // Bollinger Bands
+  /* Bollinger Bands */
   function computeBollingerBands(prices, period = 20, k = 2) {
     let bands = [];
     for (let i = period - 1; i < prices.length; i++) {
@@ -578,7 +571,7 @@
     return bands;
   }
 
-  // Weighted Moving Average (WMA)
+  /* Weighted Moving Average (WMA) */
   function computeWMA(prices, period = 20) {
     let wmas = [];
     for (let i = period - 1; i < prices.length; i++) {
@@ -594,7 +587,7 @@
     return wmas;
   }
 
-  // Scoring functions for individual technical indicators
+  /* Scoring functions for individual technical indicators */
   function scoreRSI(latestRSI, prevRSI) {
     let rel = 50 - latestRSI;
     let base = 100 / (1 + Math.exp(-0.05 * rel));
@@ -618,7 +611,7 @@
     return baseWMA * (1 + 0.5 * dx);
   }
 
-  // Polynomial regression helper functions
+  /* Polynomial regression helper functions */
   function polynomialRegression(x, y, degree) {
     let X = [];
     for (let i = 0; i < x.length; i++) {
@@ -684,11 +677,10 @@
       histValues.push(macdLine[i].macd - signalLine[i].signal);
     }
     const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
-    const finalScore = (positionScore + gapScore + momentumScore) / 3;
-    return finalScore;
+    return (positionScore + gapScore + momentumScore) / 3;
   }
 
-  // Main function to update and render the technical chart and compute the aggregated technical bullish score
+  /* Main function to update the technical chart and compute aggregated technical score */
   function updateTechChart(prices) {
     let bands = computeBollingerBands(prices);
     let wmas = computeWMA(prices);
@@ -699,7 +691,6 @@
     const toTimeSeries = (data, valueKey) =>
       data.map(item => [item.date.getTime(), item[valueKey]]);
 
-    // Price series and indicator series for Highcharts
     const priceSeries = {
       name: 'Historical',
       data: toTimeSeries(prices, 'close'),
@@ -740,7 +731,6 @@
       zIndex: 2,
       yAxis: 0
     };
-
     const macdSeries = {
       name: 'MACD',
       data: toTimeSeries(macdData.macdLine, 'macd'),
@@ -772,7 +762,6 @@
         color: 'green'
       }]
     };
-
     const tenkanSeries = {
       name: 'Tenkan-sen',
       data: toTimeSeries(ichimokuData.tenkan, 'value'),
@@ -813,7 +802,6 @@
       zIndex: 2,
       yAxis: 2
     };
-
     const rsiSeries = {
       name: 'RSI',
       data: toTimeSeries(rsivals, 'rsi'),
@@ -822,7 +810,6 @@
       zIndex: 2
     };
 
-    // Render the Highcharts technical chart with multiple panels.
     Highcharts.chart('techChart', {
       chart: {
         zoomType: 'x',
@@ -932,7 +919,6 @@
       style: { fontFamily: 'Arial, sans-serif' }
     });
 
-    // Ensure sufficient data exists for scoring; if not, default to 50.
     if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
       document.getElementById('techDetails').innerText = "Not enough data => default 50.";
       return 50;
@@ -965,8 +951,6 @@
     
     return aggregatedScore;
   }
-
-
 
   /***********************************************************************
    * Sentiment functions
@@ -1106,7 +1090,7 @@
   }
 
   /***********************************************************************
-   * Fundamental functions – copy exactly from stocks tool
+   * Fundamental functions – from Stocks Tool
    ***********************************************************************/
   function computeFundScores(data) {
     const norm = (val, min, max) => {
@@ -1168,7 +1152,6 @@
   /***********************************************************************
    * Congress functions
    ***********************************************************************/
-  // Fetch congress data for the specified ticker and period.
   async function fetchCongressData(ticker, periodMonths) {
     try {
       const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
@@ -1186,7 +1169,6 @@
       let totalPurchase = 0, totalSale = 0;
       let uniqueBuyMembers = new Set();
       let uniqueSellMembers = new Set();
-
       j.data.forEach(item => {
         if (!item.TransactionDate || !item.Transaction) return;
         const dt = new Date(item.TransactionDate);
@@ -1201,7 +1183,6 @@
           if (item.member) uniqueSellMembers.add(item.member);
         }
       });
-
       return {
         totalPurchase,
         totalSale,
@@ -1213,8 +1194,6 @@
       return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
     }
   }
-
-  // Computes the Dollars Score: maps net dollars (totalPurchase - totalSale) onto a 0–100 scale.
   function computeDollarsScore(netDollars) {
     const cap = 10000000;  // $10M cap
     let ratio;
@@ -1223,29 +1202,21 @@
     } else {
       ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
     }
-    // Adjust sensitivity using an exponent (alpha)
     const alpha = 2.2;
     ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
     return 50 + 50 * ratio;
   }
-
-  // Computes the Unique Score: maps the net unique count (buy minus sell) to a 0–100 scale.
   function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
     let netUnique = uniqueBuyCount - uniqueSellCount;
-    // Cap netUnique to [-5, 5]
     netUnique = Math.max(-5, Math.min(5, netUnique));
     return 50 + 50 * (netUnique / 5);
   }
-
-  // Final Congress Score is the average of the Dollars Score and the Unique Score.
   function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
     let netDollars = totalPurchase - totalSale;
     let dollarsScore = computeDollarsScore(netDollars);
     let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
     return (dollarsScore + uniqueScore) / 2;
   }
-
-  // Updates the Congress chart (using Highcharts) and displays the final Congress Bullish Score.
   function updateCongressChart(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
     const categories = ["Purchase Amount", "Sale Amount"];
     const data = [totalPurchase, totalSale];
@@ -1272,14 +1243,6 @@
     document.getElementById("congressDetails").innerText = `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
     return congressBull;
   }
-
-  // Example usage: In your runSimulation() or simulateOneTicker() function, call:
-  // let congressObj = await fetchCongressData(ticker, periodMonths);
-  // Then later:
-  // let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
-
-  // (Ensure that when you call these functions your ticker and periodMonths are correct.)
-</script>
 
   /***********************************************************************
    * Market Regime detection functions
@@ -1437,7 +1400,6 @@
 
     let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
 
-    // Detailed log output:
     logStatus(
       `Ticker ${ticker} evaluation:<br>
        <strong>RRI</strong>: ${rri.toFixed(2)}<br>
@@ -1537,7 +1499,7 @@
     }
     window.runBatchAnalysis = runBatchAnalysis;
   });
-  
+
   async function runBatchAnalysis(){
     // Duplicate wrapper if needed.
   }
