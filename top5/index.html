@@ -331,11 +331,12 @@
     /***********************************************************************
      * Logging & Sleep
      ***********************************************************************/
-    function logStatus(msg){
-      const s = document.getElementById("status");
-      s.textContent += msg + "\n";
-      s.scrollTop = s.scrollHeight;
-    }
+     function logStatus(msg){
+  const s = document.getElementById("status");
+  s.innerHTML += msg + "<br>";
+  s.scrollTop = s.scrollHeight;
+}
+
     function sleep(ms){
       return new Promise(resolve=> setTimeout(resolve,ms));
     }
@@ -1048,20 +1049,19 @@
   try { rri = await computeTickerRRI(ticker, T); } catch (e) { rri = 50; }
 
   // 2. Calculate Technical Score
-  try { 
+  try {
     let hist = await fetchHistoricalData(ticker);
-    // filter hist by cutoff date...
-    techVal = await computeTechnical(hist); 
+    techVal = await computeTechnical(hist);
   } catch (e) { techVal = 50; }
 
   // 3. Calculate Sentiment Score
-  try { 
+  try {
     let sentData = await fetchSentimentData(ticker, periodMonths);
     sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
   } catch (e) { sentVal = 50; }
 
   // 4. Insider Score
-  try { 
+  try {
     let hist = await fetchHistoricalData(ticker);
     let currentPrice = hist[hist.length - 1].close;
     let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
@@ -1073,28 +1073,32 @@
   try { fundVal = await fetchFundamentalData(ticker); } catch (e) { fundVal = 50; }
 
   // 6. Congress Score
-  try { 
+  try {
     let congData = await fetchCongressData(ticker, periodMonths);
     congVal = computeCongressScore(
-      congData.totalPurchase, congData.totalSale, 
-      congData.uniqueBuyCount, congData.uniqueSellCount);
+      congData.totalPurchase,
+      congData.totalSale,
+      congData.uniqueBuyCount,
+      congData.uniqueSellCount
+    );
   } catch (e) { congVal = 50; }
 
   // 7. Final Aggregation
   let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
 
-  // *** INSERT THE LOG MESSAGE HERE ***
-  logStatus(`Ticker ${ticker} evaluation: ` +
-            `RRI: ${rri.toFixed(2)}, ` +
-            `Technical: ${techVal.toFixed(2)}, ` +
-            `Sentiment: ${sentVal.toFixed(2)}, ` +
-            `Insider: ${insVal.toFixed(2)}, ` +
-            `Fundamental: ${fundVal.toFixed(2)}, ` +
-            `Congress: ${congVal.toFixed(2)} => ` +
-            `Aggregator: ${aggregator.toFixed(2)}`);
+  // *** Insert a log message that shows each component ***
+  logStatus(`Ticker ${ticker} evaluation:<br>
+    <strong>RRI</strong>: ${rri.toFixed(2)}<br>
+    <strong>Technical</strong>: ${techVal.toFixed(2)}<br>
+    <strong>Sentiment</strong>: ${sentVal.toFixed(2)}<br>
+    <strong>Insider</strong>: ${insVal.toFixed(2)}<br>
+    <strong>Fundamental</strong>: ${fundVal.toFixed(2)}<br>
+    <strong>Congress</strong>: ${congVal.toFixed(2)}<br>
+    <strong>Aggregator</strong>: ${aggregator.toFixed(2)}`);
 
   return { ticker, aggregator };
 }
+
 
     
      // Ensure the DOM is ready
