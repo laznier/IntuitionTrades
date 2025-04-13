@@ -503,506 +503,534 @@ async function computeTickerRRI(ticker, T) {
    * TECHNICAL INDICATORS SECTION (from Stocks Tool)
    * (Converted HTML comments to JavaScript comments.)
    ***********************************************************************/
-  /* Calculate Ichimoku Cloud components */
-  function computeIchimoku(prices) {
-    let tenkan = [];
-    let kijun = [];
-    let senkouA = [];
-    let senkouB = [];
-    for (let i = 8; i < prices.length; i++) {
-      let period9 = prices.slice(i - 8, i + 1);
-      let high9 = Math.max(...period9.map(p => p.high));
-      let low9 = Math.min(...period9.map(p => p.low));
-      tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
-    }
-    for (let i = 25; i < prices.length; i++) {
-      let period26 = prices.slice(i - 25, i + 1);
-      let high26 = Math.max(...period26.map(p => p.high));
-      let low26 = Math.min(...period26.map(p => p.low));
-      kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
-    }
-    let minLen = Math.min(tenkan.length, kijun.length);
-    for (let i = 0; i < minLen; i++) {
-      let baseDate = kijun[i].date;
-      let senkouDate = new Date(baseDate);
-      senkouDate.setDate(senkouDate.getDate() + 26);
-      senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
-    }
-    for (let i = 51; i < prices.length; i++) {
-      let period52 = prices.slice(i - 51, i + 1);
-      let high52 = Math.max(...period52.map(p => p.high));
-      let low52 = Math.min(...period52.map(p => p.low));
-      let baseDate = prices[i].date;
-      let senkouDate = new Date(baseDate);
-      senkouDate.setDate(senkouDate.getDate() + 26);
-      senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
-    }
-    let chikou = [];
-    for (let i = 26; i < prices.length; i++) {
-      chikou.push({ date: prices[i - 26].date, value: prices[i].close });
-    }
-    return { tenkan, kijun, senkouA, senkouB, chikou };
+
+async function fetchHistoricalData(ticker) {
+  let url = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+  const resp = await fetch(url);
+  const j = await resp.json();
+  if (!j["Time Series (Daily)"]) {
+    throw new Error("No daily data for " + ticker);
   }
-
-  /* Exponential Moving Average (EMA) */
-  function computeEMA(prices, period) {
-    let ema = [];
-    const multiplier = 2 / (period + 1);
-    let sum = 0;
-    for (let i = 0; i < period; i++) { sum += prices[i].close; }
-    let prevEma = sum / period;
-    ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
-    for (let i = period; i < prices.length; i++) {
-      let cur = prices[i].close;
-      let nextEma = (cur - prevEma) * multiplier + prevEma;
-      ema[i] = { date: prices[i].date, ema: nextEma };
-      prevEma = nextEma;
-    }
-    return ema.filter(x => x !== undefined);
-  }
-
-  /* Moving Average Convergence Divergence (MACD) */
-  function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
-    let fastEMA = computeEMA(prices, fast);
-    let slowEMA = computeEMA(prices, slow);
-    let macdLine = [];
-    for (let i = 0; i < slowEMA.length; i++) {
-      let date = slowEMA[i].date;
-      let match = fastEMA.find(f => f.date.getTime() === date.getTime());
-      if (match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
-    }
-    if (macdLine.length < signal) return { macdLine, signalLine: [] };
-    const m = 2 / (signal + 1);
-    let sumMacd = 0;
-    for (let i = 0; i < signal; i++) { sumMacd += macdLine[i].macd; }
-    let prevSig = sumMacd / signal;
-    let signalLine = [];
-    signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
-    for (let i = signal; i < macdLine.length; i++) {
-      let s = (macdLine[i].macd - prevSig) * m + prevSig;
-      signalLine[i] = { date: macdLine[i].date, signal: s };
-      prevSig = s;
-    }
-    signalLine = signalLine.filter(x => x !== undefined);
-    return { macdLine, signalLine };
-  }
-
-  /* Relative Strength Index (RSI) */
-  function computeRSI(prices, period = 14) {
-    let rsis = [];
-    for (let i = period; i < prices.length; i++) {
-      let gains = 0, losses = 0;
-      for (let j = i - period + 1; j <= i; j++) {
-        let diff = prices[j].close - prices[j - 1].close;
-        if (diff > 0) gains += diff; else losses -= diff;
-      }
-      const avgGain = gains / period;
-      const avgLoss = losses / period;
-      const rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
-      const rsi = 100 - (100 / (1 + rs));
-      rsis.push({ date: prices[i].date, rsi });
-    }
-    return rsis;
-  }
-
-  /* Bollinger Bands */
-  function computeBollingerBands(prices, period = 20, k = 2) {
-    let bands = [];
-    for (let i = period - 1; i < prices.length; i++) {
-      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-      let sma = slice.reduce((a, b) => a + b, 0) / period;
-      let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
-      let std = Math.sqrt(variance);
-      bands.push({
-        date: prices[i].date,
-        sma: sma,
-        upper: sma + k * std,
-        lower: sma - k * std
-      });
-    }
-    return bands;
-  }
-
-  /* Weighted Moving Average (WMA) */
-  function computeWMA(prices, period = 20) {
-    let wmas = [];
-    for (let i = period - 1; i < prices.length; i++) {
-      let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
-      let numerator = 0, denominator = 0;
-      for (let j = 0; j < period; j++) {
-        let weight = j + 1;
-        numerator += slice[j] * weight;
-        denominator += weight;
-      }
-      wmas.push({ date: prices[i].date, wma: numerator / denominator });
-    }
-    return wmas;
-  }
-
-  /* Scoring functions for individual technical indicators */
-  function scoreRSI(latestRSI, prevRSI) {
-    let rel = 50 - latestRSI;
-    let base = 100 / (1 + Math.exp(-0.05 * rel));
-    let dRSI = prevRSI - latestRSI;
-    return base * (1 + 0.01 * dRSI);
-  }
-
-  function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
-    let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
-    let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
-    let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
-    let dPercentB = prevPercentB - currentPercentB;
-    return baseBB * (1 + 0.1 * dPercentB);
-  }
-
-  function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
-    let currentX = (latestPrice / latestWMA) - 1;
-    let prevX = (prevPrice / prevWMA) - 1;
-    let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
-    let dx = prevX - currentX;
-    return baseWMA * (1 + 0.5 * dx);
-  }
-
-  /* Polynomial regression helper functions */
-  function polynomialRegression(x, y, degree) {
-    let X = [];
-    for (let i = 0; i < x.length; i++) {
-      let row = [];
-      for (let j = 0; j <= degree; j++) {
-        row.push(Math.pow(x[i], j));
-      }
-      X.push(row);
-    }
-    let XT = math.transpose(X);
-    let XTX = math.multiply(XT, X);
-    let XTy = math.multiply(XT, y);
-    let coeffsMatrix = math.lusolve(XTX, XTy);
-    return coeffsMatrix.map(val => val[0]);
-  }
-
-  function predictValue(coeffs, x) {
-    return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
-  }
-
-  function computeMomentumScoreUsingRegression(histValues) {
-    if (histValues.length < 6) return 50;
-    const recent = histValues.slice(-6);
-    const x = [1, 2, 3, 4, 5, 6];
-    const coeffs = polynomialRegression(x, recent, 1);
-    const predicted = predictValue(coeffs, 7);
-    const lastValue = recent[recent.length - 1];
-    const delta = predicted - lastValue;
-    const k = 5;
-    const score = 100 / (1 + Math.exp(-k * delta));
-    return isNaN(score) ? 50 : score;
-  }
-
-  function computeGapTrendScore(macdLine, signalLine) {
-    if (macdLine.length < 6 || signalLine.length < 6) return { gapScore: 50 };
-    const recentMACD = macdLine.slice(-6).map(item => item.macd);
-    const recentSignal = signalLine.slice(-6).map(item => item.signal);
-    const x = [1, 2, 3, 4, 5, 6];
-    const macdCoeffs = polynomialRegression(x, recentMACD, 3);
-    const signalCoeffs = polynomialRegression(x, recentSignal, 3);
-    const predictedMACD = predictValue(macdCoeffs, 7);
-    const predictedSignal = predictValue(signalCoeffs, 7);
-    const predictedGap = predictedMACD - predictedSignal;
-    const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
-    const delta = predictedGap - currentGap;
-    const k = 5;
-    const gapScore = 100 / (1 + Math.exp(-k * delta));
-    return { gapScore, delta, currentGap, predictedGap };
-  }
-
-  function computeNewMACDScore(prices) {
-    const macdData = computeMACD(prices);
-    const macdLine = macdData.macdLine;
-    const signalLine = macdData.signalLine;
-    if (macdLine.length < 2 || signalLine.length < 2) return 50;
-    const len = Math.min(macdLine.length, signalLine.length);
-    const latestMACD = macdLine[len - 1].macd;
-    const positionScore = 100 / (1 + Math.exp(latestMACD));
-    const gapData = computeGapTrendScore(macdLine, signalLine);
-    const gapScore = gapData ? gapData.gapScore : 50;
-    let histValues = [];
-    for (let i = 0; i < len; i++){
-      histValues.push(macdLine[i].macd - signalLine[i].signal);
-    }
-    const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
-    return (positionScore + gapScore + momentumScore) / 3;
-  }
-
-  /* Main function to update the technical chart and compute aggregated technical score */
-  function updateTechChart(prices) {
-    let bands = computeBollingerBands(prices);
-    let wmas = computeWMA(prices);
-    let rsivals = computeRSI(prices, 14);
-    let macdData = computeMACD(prices);
-    let ichimokuData = computeIchimoku(prices);
-
-    const toTimeSeries = (data, valueKey) =>
-      data.map(item => [item.date.getTime(), item[valueKey]]);
-
-    const priceSeries = {
-      name: 'Historical',
-      data: toTimeSeries(prices, 'close'),
-      type: 'line',
-      zIndex: 3,
-      yAxis: 0
-    };
-    const smaSeries = {
-      name: 'Bollinger SMA',
-      data: toTimeSeries(bands, 'sma'),
-      type: 'line',
-      dashStyle: 'Dash',
-      color: '#555',
-      zIndex: 2,
-      yAxis: 0
-    };
-    const upperSeries = {
-      name: 'Upper Band',
-      data: toTimeSeries(bands, 'upper'),
-      type: 'line',
-      color: 'red',
-      zIndex: 1,
-      yAxis: 0
-    };
-    const lowerSeries = {
-      name: 'Lower Band',
-      data: toTimeSeries(bands, 'lower'),
-      type: 'line',
-      color: 'red',
-      zIndex: 1,
-      yAxis: 0
-    };
-    const wmaSeries = {
-      name: 'WMA',
-      data: toTimeSeries(wmas, 'wma'),
-      type: 'line',
-      color: 'orange',
-      zIndex: 2,
-      yAxis: 0
-    };
-    const macdSeries = {
-      name: 'MACD',
-      data: toTimeSeries(macdData.macdLine, 'macd'),
-      type: 'line',
-      yAxis: 1,
-      zIndex: 3
-    };
-    const signalSeries = {
-      name: 'Signal',
-      data: toTimeSeries(macdData.signalLine, 'signal'),
-      type: 'line',
-      yAxis: 1,
-      zIndex: 3
-    };
-    const macdHistogram = {
-      name: 'MACD Histogram',
-      data: macdData.macdLine.map((m, i) => {
-        let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
-        return [m.date.getTime(), m.macd - sig];
-      }),
-      type: 'column',
-      yAxis: 1,
-      zIndex: 1,
-      tooltip: { valueDecimals: 2 },
-      zones: [{
-        value: 0,
-        color: 'red'
-      }, {
-        color: 'green'
-      }]
-    };
-    const tenkanSeries = {
-      name: 'Tenkan-sen',
-      data: toTimeSeries(ichimokuData.tenkan, 'value'),
-      type: 'line',
-      color: 'blue',
-      zIndex: 4,
-      yAxis: 2
-    };
-    const kijunSeries = {
-      name: 'Kijun-sen',
-      data: toTimeSeries(ichimokuData.kijun, 'value'),
-      type: 'line',
-      color: 'red',
-      zIndex: 4,
-      yAxis: 2
-    };
-    const senkouASeries = {
-      name: 'Senkou Span A',
-      data: toTimeSeries(ichimokuData.senkouA, 'value'),
-      type: 'line',
-      color: 'green',
-      zIndex: 3,
-      yAxis: 2
-    };
-    const senkouBSeries = {
-      name: 'Senkou Span B',
-      data: toTimeSeries(ichimokuData.senkouB, 'value'),
-      type: 'line',
-      color: 'brown',
-      zIndex: 3,
-      yAxis: 2
-    };
-    const chikouSeries = {
-      name: 'Chikou Span',
-      data: toTimeSeries(ichimokuData.chikou, 'value'),
-      type: 'line',
-      color: 'purple',
-      zIndex: 2,
-      yAxis: 2
-    };
-    const rsiSeries = {
-      name: 'RSI',
-      data: toTimeSeries(rsivals, 'rsi'),
-      type: 'line',
-      yAxis: 3,
-      zIndex: 2
-    };
-
-    Highcharts.chart('techChart', {
-      chart: {
-        zoomType: 'x',
-        backgroundColor: 'transparent',
-        height: 1200
-      },
-      title: {
-        text: 'Combined Technical Indicators',
-        style: { color: '#fff' }
-      },
-      xAxis: {
-        type: 'datetime',
-        crosshair: true
-      },
-      yAxis: [
-        {
-          title: { text: 'Price', style: { color: '#fff' } },
-          height: '40%',
-          lineWidth: 2,
-          gridLineColor: '#444',
-          offset: 0,
-          labels: {
-            align: 'right',
-            x: -5,
-            style: { color: '#fff' }
-          }
-        },
-        {
-          title: { text: 'MACD', style: { color: '#fff' } },
-          top: '40%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444',
-          offset: 0,
-          labels: {
-            align: 'right',
-            x: -5,
-            style: { color: '#fff' }
-          }
-        },
-        {
-          title: { text: 'Ichimoku', style: { color: '#fff' } },
-          top: '60%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444',
-          offset: 0,
-          labels: {
-            align: 'right',
-            x: -5,
-            style: { color: '#fff' }
-          }
-        },
-        {
-          title: { text: 'RSI', style: { color: '#fff' } },
-          top: '80%',
-          height: '20%',
-          lineWidth: 2,
-          gridLineColor: '#444',
-          offset: 0,
-          labels: {
-            align: 'right',
-            x: -5,
-            style: { color: '#fff' }
-          },
-          plotLines: [
-            {
-              value: 30,
-              color: 'red',
-              dashStyle: 'Dash',
-              width: 1,
-              label: { text: '30', style: { color: 'red' } }
-            },
-            {
-              value: 70,
-              color: 'red',
-              dashStyle: 'Dash',
-              width: 1,
-              label: { text: '70', style: { color: 'red' } }
-            }
-          ]
-        }
-      ],
-      tooltip: {
-        shared: true,
-        xDateFormat: '%Y-%m-%d'
-      },
-      legend: { itemStyle: { color: '#fff' } },
-      series: [
-        priceSeries,
-        smaSeries,
-        upperSeries,
-        lowerSeries,
-        wmaSeries,
-        macdHistogram,
-        macdSeries,
-        signalSeries,
-        tenkanSeries,
-        kijunSeries,
-        senkouASeries,
-        senkouBSeries,
-        chikouSeries,
-        rsiSeries
-      ],
-      credits: { enabled: false },
-      plotOptions: { series: { marker: { enabled: false } } },
-      style: { fontFamily: 'Arial, sans-serif' }
+  const ts = j["Time Series (Daily)"];
+  let out = [];
+  // Get date, close, high and low from each entry.
+  Object.keys(ts).forEach(d => {
+    out.push({
+      date: new Date(d),
+      close: parseFloat(ts[d]["5. adjusted close"]),
+      high: parseFloat(ts[d]["2. high"]),
+      low: parseFloat(ts[d]["3. low"])
     });
+  });
+  out.sort((a, b) => a.date - b.date);
+  return out;
+}
 
-    if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
-      document.getElementById('techDetails').innerText = "Not enough data => default 50.";
-      return 50;
-    }
-    let latestPriceVal = prices[prices.length - 1].close;
-    let prevPriceVal = prices[prices.length - 2].close;
-    let latestRSI = rsivals[rsivals.length - 1].rsi;
-    let prevRSI = rsivals[rsivals.length - 2].rsi;
-    let rsiScore = scoreRSI(latestRSI, prevRSI);
-    let latestBand = bands[bands.length - 1];
-    let prevBand = bands[bands.length - 2];
-    let bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
-    let macdScore = computeNewMACDScore(prices);
-    let latestWMA = wmas[wmas.length - 1].wma;
-    let prevWMA = wmas[wmas.length - 2].wma;
-    let wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
-    let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
-    let cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
-    let latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
-    let latestKijunVal = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
-    let tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkanVal - latestKijunVal)));
-    let price26Ago = prices[prices.length - 26].close;
-    let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
-    let ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
-    let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
-    let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
-    let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
-    document.getElementById('techDetails').innerText =
-      `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
-    
-    return aggregatedScore;
+// Calculate Ichimoku Cloud components.
+function computeIchimoku(prices) {
+  let tenkan = [];
+  let kijun = [];
+  let senkouA = [];
+  let senkouB = [];
+  for (let i = 8; i < prices.length; i++) {
+    let period9 = prices.slice(i - 8, i + 1);
+    let high9 = Math.max(...period9.map(p => p.high));
+    let low9 = Math.min(...period9.map(p => p.low));
+    tenkan.push({ date: prices[i].date, value: (high9 + low9) / 2 });
   }
+  for (let i = 25; i < prices.length; i++) {
+    let period26 = prices.slice(i - 25, i + 1);
+    let high26 = Math.max(...period26.map(p => p.high));
+    let low26 = Math.min(...period26.map(p => p.low));
+    kijun.push({ date: prices[i].date, value: (high26 + low26) / 2 });
+  }
+  let minLen = Math.min(tenkan.length, kijun.length);
+  for (let i = 0; i < minLen; i++) {
+    let baseDate = kijun[i].date;
+    let senkouDate = new Date(baseDate);
+    senkouDate.setDate(senkouDate.getDate() + 26);
+    senkouA.push({ date: senkouDate, value: (tenkan[i].value + kijun[i].value) / 2 });
+  }
+  for (let i = 51; i < prices.length; i++) {
+    let period52 = prices.slice(i - 51, i + 1);
+    let high52 = Math.max(...period52.map(p => p.high));
+    let low52 = Math.min(...period52.map(p => p.low));
+    let baseDate = prices[i].date;
+    let senkouDate = new Date(baseDate);
+    senkouDate.setDate(senkouDate.getDate() + 26);
+    senkouB.push({ date: senkouDate, value: (high52 + low52) / 2 });
+  }
+  let chikou = [];
+  for (let i = 26; i < prices.length; i++) {
+    chikou.push({ date: prices[i - 26].date, value: prices[i].close });
+  }
+  return { tenkan, kijun, senkouA, senkouB, chikou };
+}
+
+// Exponential Moving Average (EMA)
+function computeEMA(prices, period) {
+  let ema = [];
+  const multiplier = 2 / (period + 1);
+  let sum = 0;
+  for (let i = 0; i < period; i++) { sum += prices[i].close; }
+  let prevEma = sum / period;
+  ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
+  for (let i = period; i < prices.length; i++) {
+    let cur = prices[i].close;
+    let nextEma = (cur - prevEma) * multiplier + prevEma;
+    ema[i] = { date: prices[i].date, ema: nextEma };
+    prevEma = nextEma;
+  }
+  return ema.filter(x => x !== undefined);
+}
+
+// Moving Average Convergence Divergence (MACD)
+function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
+  let fastEMA = computeEMA(prices, fast);
+  let slowEMA = computeEMA(prices, slow);
+  let macdLine = [];
+  for (let i = 0; i < slowEMA.length; i++) {
+    let date = slowEMA[i].date;
+    let match = fastEMA.find(f => f.date.getTime() === date.getTime());
+    if (match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
+  }
+  if (macdLine.length < signal) return { macdLine, signalLine: [] };
+  const m = 2 / (signal + 1);
+  let sumMacd = 0;
+  for (let i = 0; i < signal; i++) { sumMacd += macdLine[i].macd; }
+  let prevSig = sumMacd / signal;
+  let signalLine = [];
+  signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
+  for (let i = signal; i < macdLine.length; i++) {
+    let s = (macdLine[i].macd - prevSig) * m + prevSig;
+    signalLine[i] = { date: macdLine[i].date, signal: s };
+    prevSig = s;
+  }
+  signalLine = signalLine.filter(x => x !== undefined);
+  return { macdLine, signalLine };
+}
+
+// Relative Strength Index (RSI)
+function computeRSI(prices, period = 14) {
+  let rsis = [];
+  for (let i = period; i < prices.length; i++) {
+    let gains = 0, losses = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      let diff = prices[j].close - prices[j - 1].close;
+      if (diff > 0) gains += diff; else losses -= diff;
+    }
+    const avgGain = gains / period;
+    const avgLoss = losses / period;
+    const rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+    const rsi = 100 - (100 / (1 + rs));
+    rsis.push({ date: prices[i].date, rsi });
+  }
+  return rsis;
+}
+
+// Bollinger Bands
+function computeBollingerBands(prices, period = 20, k = 2) {
+  let bands = [];
+  for (let i = period - 1; i < prices.length; i++) {
+    let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+    let sma = slice.reduce((a, b) => a + b, 0) / period;
+    let variance = slice.reduce((sum, val) => sum + Math.pow(val - sma, 2), 0) / period;
+    let std = Math.sqrt(variance);
+    bands.push({
+      date: prices[i].date,
+      sma: sma,
+      upper: sma + k * std,
+      lower: sma - k * std
+    });
+  }
+  return bands;
+}
+
+// Weighted Moving Average (WMA)
+function computeWMA(prices, period = 20) {
+  let wmas = [];
+  for (let i = period - 1; i < prices.length; i++) {
+    let slice = prices.slice(i - period + 1, i + 1).map(p => p.close);
+    let numerator = 0, denominator = 0;
+    for (let j = 0; j < period; j++) {
+      let weight = j + 1;
+      numerator += slice[j] * weight;
+      denominator += weight;
+    }
+    wmas.push({ date: prices[i].date, wma: numerator / denominator });
+  }
+  return wmas;
+}
+
+// Scoring functions for individual technical indicators.
+function scoreRSI(latestRSI, prevRSI) {
+  const rel = 50 - latestRSI;
+  const base = 100 / (1 + Math.exp(-0.05 * rel));
+  const dRSI = prevRSI - latestRSI;
+  return base * (1 + 0.01 * dRSI);
+}
+
+function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
+  const currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+  const prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+  const baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+  const dPercentB = prevPercentB - currentPercentB;
+  return baseBB * (1 + 0.1 * dPercentB);
+}
+
+function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
+  const currentX = (latestPrice / latestWMA) - 1;
+  const prevX = (prevPrice / prevWMA) - 1;
+  const baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+  const dx = prevX - currentX;
+  return baseWMA * (1 + 0.5 * dx);
+}
+
+// Polynomial regression helper functions.
+function polynomialRegression(x, y, degree) {
+  const X = [];
+  for (let i = 0; i < x.length; i++) {
+    const row = [];
+    for (let j = 0; j <= degree; j++) {
+      row.push(Math.pow(x[i], j));
+    }
+    X.push(row);
+  }
+  const XT = mathInstance.transpose(X);
+  const XTX = mathInstance.multiply(XT, X);
+  const XTy = mathInstance.multiply(XT, y);
+  const coeffsMatrix = mathInstance.lusolve(XTX, XTy);
+  return coeffsMatrix.map(val => val[0]);
+}
+
+function predictValue(coeffs, x) {
+  return coeffs.reduce((sum, c, i) => sum + c * Math.pow(x, i), 0);
+}
+
+function computeMomentumScoreUsingRegression(histValues) {
+  if (histValues.length < 6) return 50;
+  const recent = histValues.slice(-6);
+  const x = [1, 2, 3, 4, 5, 6];
+  const coeffs = polynomialRegression(x, recent, 1);
+  const predicted = predictValue(coeffs, 7);
+  const lastValue = recent[recent.length - 1];
+  const delta = predicted - lastValue;
+  const k = 5;
+  const score = 100 / (1 + Math.exp(-k * delta));
+  return isNaN(score) ? 50 : score;
+}
+
+function computeGapTrendScore(macdLine, signalLine) {
+  if (macdLine.length < 6 || signalLine.length < 6) return { gapScore: 50 };
+  const recentMACD = macdLine.slice(-6).map(item => item.macd);
+  const recentSignal = signalLine.slice(-6).map(item => item.signal);
+  const x = [1, 2, 3, 4, 5, 6];
+  const macdCoeffs = polynomialRegression(x, recentMACD, 3);
+  const signalCoeffs = polynomialRegression(x, recentSignal, 3);
+  const predictedMACD = predictValue(macdCoeffs, 7);
+  const predictedSignal = predictValue(signalCoeffs, 7);
+  const predictedGap = predictedMACD - predictedSignal;
+  const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+  const delta = predictedGap - currentGap;
+  const k = 5;
+  const gapScore = 100 / (1 + Math.exp(-k * delta));
+  return { gapScore, delta, currentGap, predictedGap };
+}
+
+function computeNewMACDScore(prices) {
+  const macdData = computeMACD(prices);
+  const macdLine = macdData.macdLine;
+  const signalLine = macdData.signalLine;
+  if (macdLine.length < 2 || signalLine.length < 2) return 50;
+  const len = Math.min(macdLine.length, signalLine.length);
+  const latestMACD = macdLine[len - 1].macd;
+  const positionScore = 100 / (1 + Math.exp(latestMACD));
+  const gapData = computeGapTrendScore(macdLine, signalLine);
+  const gapScore = gapData ? gapData.gapScore : 50;
+  const histValues = macdLine.map((m, i) => m.macd - (signalLine[i] ? signalLine[i].signal : 0));
+  const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+  return (positionScore + gapScore + momentumScore) / 3;
+}
+
+/* Main function to update the technical chart and compute the aggregated technical bullish score */
+function updateTechChart(prices) {
+  // Ensure that your prices array contains 'high' and 'low' along with 'close' and 'date'
+  let bands = computeBollingerBands(prices);
+  let wmas = computeWMA(prices);
+  let rsivals = computeRSI(prices, 14);
+  let macdData = computeMACD(prices);
+  let ichimokuData = computeIchimoku(prices);
+
+  const toTimeSeries = (data, valueKey) => data.map(item => [item.date.getTime(), item[valueKey]]);
+
+  // Series for Highcharts chart
+  const priceSeries = {
+    name: 'Historical',
+    data: toTimeSeries(prices, 'close'),
+    type: 'line',
+    zIndex: 3,
+    yAxis: 0
+  };
+  const smaSeries = {
+    name: 'Bollinger SMA',
+    data: toTimeSeries(bands, 'sma'),
+    type: 'line',
+    dashStyle: 'Dash',
+    color: '#555',
+    zIndex: 2,
+    yAxis: 0
+  };
+  const upperSeries = {
+    name: 'Upper Band',
+    data: toTimeSeries(bands, 'upper'),
+    type: 'line',
+    color: 'red',
+    zIndex: 1,
+    yAxis: 0
+  };
+  const lowerSeries = {
+    name: 'Lower Band',
+    data: toTimeSeries(bands, 'lower'),
+    type: 'line',
+    color: 'red',
+    zIndex: 1,
+    yAxis: 0
+  };
+  const wmaSeries = {
+    name: 'WMA',
+    data: toTimeSeries(wmas, 'wma'),
+    type: 'line',
+    color: 'orange',
+    zIndex: 2,
+    yAxis: 0
+  };
+  const macdSeries = {
+    name: 'MACD',
+    data: toTimeSeries(macdData.macdLine, 'macd'),
+    type: 'line',
+    yAxis: 1,
+    zIndex: 3
+  };
+  const signalSeries = {
+    name: 'Signal',
+    data: toTimeSeries(macdData.signalLine, 'signal'),
+    type: 'line',
+    yAxis: 1,
+    zIndex: 3
+  };
+  const macdHistogram = {
+    name: 'MACD Histogram',
+    data: macdData.macdLine.map((m, i) => {
+      const sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
+      return [m.date.getTime(), m.macd - sig];
+    }),
+    type: 'column',
+    yAxis: 1,
+    zIndex: 1,
+    tooltip: { valueDecimals: 2 },
+    zones: [{
+      value: 0,      
+      color: 'red'
+    }, {
+      color: 'green'
+    }]
+  };
+  const tenkanSeries = {
+    name: 'Tenkan-sen',
+    data: toTimeSeries(ichimokuData.tenkan, 'value'),
+    type: 'line',
+    color: 'blue',
+    zIndex: 4,
+    yAxis: 2
+  };
+  const kijunSeries = {
+    name: 'Kijun-sen',
+    data: toTimeSeries(ichimokuData.kijun, 'value'),
+    type: 'line',
+    color: 'red',
+    zIndex: 4,
+    yAxis: 2
+  };
+  const senkouASeries = {
+    name: 'Senkou Span A',
+    data: toTimeSeries(ichimokuData.senkouA, 'value'),
+    type: 'line',
+    color: 'green',
+    zIndex: 3,
+    yAxis: 2
+  };
+  const senkouBSeries = {
+    name: 'Senkou Span B',
+    data: toTimeSeries(ichimokuData.senkouB, 'value'),
+    type: 'line',
+    color: 'brown',
+    zIndex: 3,
+    yAxis: 2
+  };
+  const chikouSeries = {
+    name: 'Chikou Span',
+    data: toTimeSeries(ichimokuData.chikou, 'value'),
+    type: 'line',
+    color: 'purple',
+    zIndex: 2,
+    yAxis: 2
+  };
+  const rsiSeries = {
+    name: 'RSI',
+    data: toTimeSeries(rsivals, 'rsi'),
+    type: 'line',
+    yAxis: 3,
+    zIndex: 2
+  };
+
+  // Render Highcharts technical chart
+  Highcharts.chart('techChart', {
+    chart: {
+      zoomType: 'x',
+      backgroundColor: 'transparent',
+      height: 1200
+    },
+    title: {
+      text: 'Combined Technical Indicators',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'datetime',
+      crosshair: true
+    },
+    yAxis: [
+      {
+        title: { text: 'Price', style: { color: '#fff' } },
+        height: '40%',
+        lineWidth: 2,
+        gridLineColor: '#444',
+        offset: 0,
+        labels: {
+          align: 'right',
+          x: -5,
+          style: { color: '#fff' }
+        }
+      },
+      {
+        title: { text: 'MACD', style: { color: '#fff' } },
+        top: '40%',
+        height: '20%',
+        lineWidth: 2,
+        gridLineColor: '#444',
+        offset: 0,
+        labels: {
+          align: 'right',
+          x: -5,
+          style: { color: '#fff' }
+        }
+      },
+      {
+        title: { text: 'Ichimoku', style: { color: '#fff' } },
+        top: '60%',
+        height: '20%',
+        lineWidth: 2,
+        gridLineColor: '#444',
+        offset: 0,
+        labels: {
+          align: 'right',
+          x: -5,
+          style: { color: '#fff' }
+        }
+      },
+      {
+        title: { text: 'RSI', style: { color: '#fff' } },
+        top: '80%',
+        height: '20%',
+        lineWidth: 2,
+        gridLineColor: '#444',
+        offset: 0,
+        labels: {
+          align: 'right',
+          x: -5,
+          style: { color: '#fff' }
+        },
+        plotLines: [
+          {
+            value: 30,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 1,
+            label: { text: '30', style: { color: 'red' } }
+          },
+          {
+            value: 70,
+            color: 'red',
+            dashStyle: 'Dash',
+            width: 1,
+            label: { text: '70', style: { color: 'red' } }
+          }
+        ]
+      }
+    ],
+    tooltip: {
+      shared: true,
+      xDateFormat: '%Y-%m-%d'
+    },
+    legend: { itemStyle: { color: '#fff' } },
+    series: [
+      priceSeries,
+      smaSeries,
+      upperSeries,
+      lowerSeries,
+      wmaSeries,
+      macdHistogram,
+      macdSeries,
+      signalSeries,
+      tenkanSeries,
+      kijunSeries,
+      senkouASeries,
+      senkouBSeries,
+      chikouSeries,
+      rsiSeries
+    ],
+    credits: { enabled: false },
+    plotOptions: { series: { marker: { enabled: false } } },
+    style: { fontFamily: 'Arial, sans-serif' }
+  });
+
+  // Verify that sufficient data exists; if not, default to 50.
+  if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
+    document.getElementById('techDetails').innerText = "Not enough data => default 50.";
+    return 50;
+  }
+
+  // Compute individual indicator scores:
+  const latestPriceVal = prices[prices.length - 1].close;
+  const prevPriceVal = prices[prices.length - 2].close;
+  const latestRSI = rsivals[rsivals.length - 1].rsi;
+  const prevRSI = rsivals[rsivals.length - 2].rsi;
+  const rsiScore = scoreRSI(latestRSI, prevRSI);
+  const latestBand = bands[bands.length - 1];
+  const prevBand = bands[bands.length - 2];
+  const bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
+  const macdScore = computeNewMACDScore(prices);
+  const latestWMA = wmas[wmas.length - 1].wma;
+  const prevWMA = wmas[wmas.length - 2].wma;
+  const wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
+  const ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
+  const cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
+  const latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
+  const latestKijunVal = ichimokuData.kijun[ichimokuData.kijun.length - 1].value;
+  const tenkanScore = 100 / (1 + Math.exp(-0.2 * (latestTenkanVal - latestKijunVal)));
+  const price26Ago = prices[prices.length - 26].close;
+  const chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
+  const ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
+  const senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+  const ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+
+  // Aggregated technical bullish score as the average of the 5 components.
+  const aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
+  document.getElementById('techDetails').innerText =
+    `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
+  
+  return aggregatedScore;
+}
+
 
   /***********************************************************************
    * Sentiment functions
