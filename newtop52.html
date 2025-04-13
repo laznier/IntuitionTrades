@@ -117,12 +117,11 @@
     }
     .score-positive { color: #00ff00; }
     .score-negative { color: #ff2d2d; }
-    /* Container for technical chart and RRI chart */
-    #techChart, #rriChart {
+    /* Container for technical chart and details */
+    #techChart {
       margin-top: 20px;
+      height: 600px;
     }
-    #techChart { height: 600px; }
-    #rriChart { height: 400px; }
     #techDetails {
       margin-top: 10px;
       font-weight: bold;
@@ -134,9 +133,10 @@
 <h1>Top Stocks Scanner (Premium Tool)</h1>
 
 <p>
-  This tool evaluates each ticker using Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.
+  This tool evaluates each ticker using Technical, Sentiment, Insider, Fundamental, and Congress signals.
   If “Use Manual Weights &amp; Scaling” is unchecked, it auto-detects SPY’s market regime (Bull/Bear/Neutral) and picks
-  a weighting distribution. If checked, you can override any. At the end, it highlights the top 5 and bottom 5 aggregator scores.
+  a weighting distribution. If checked, you can pick Bear/Neutral/Bull to auto-fill – or override any.
+  At the end, it highlights the top 5 and bottom 5 aggregator scores.
 </p>
 
 <!-- Manual Weights & Scaling Section -->
@@ -152,9 +152,6 @@
         <option value="Bull">Bull</option>
         <option value="Bear">Bear</option>
       </select>
-    </label>
-    <label>RiskReward Weight (0..1): 
-      <input type="number" id="wRRI" value="0.15" min="0" max="1" step="0.01">
     </label>
     <label>Technical Weight (0..1): 
       <input type="number" id="wTech" value="0.20" min="0" max="1" step="0.01">
@@ -212,31 +209,36 @@
   </div>
 </div>
 
-<!-- Containers for charts -->
+<!-- Container for technical chart and details -->
 <div id="techChart"></div>
 <div id="techDetails"></div>
-<div id="rriChart"></div>
-<div id="rriDetails" style="margin-top:10px;font-weight:bold;"></div>
 
 <script>
   /***********************************************************************
-   * Setup math.js
+   * math.js setup
    ***********************************************************************/
   const { create, all } = math;
   const mathInstance = create(all);
 
-  // ---------------- Data Loading -----------------
+  // ------------------- Data Loading -------------------
   async function loadTickers(index) {
     let filePath = `tickers/${index}-tickers.txt`;
     const response = await fetch(filePath);
     const text = await response.text();
-    return text.replace(/"/g, "").split(",").map(ticker => ticker.trim()).filter(ticker => ticker.length > 0);
+    return text
+      .replace(/"/g, "")
+      .split(",")
+      .map(ticker => ticker.trim())
+      .filter(ticker => ticker.length > 0);
   }
   const predeterminedTickers = [];
   document.getElementById("indexSelect").addEventListener("change", async function() {
     const index = this.value;
     predeterminedTickers.length = 0;
-    if (!index) { logStatus("Please select an index to load tickers."); return; }
+    if (!index) {
+      logStatus("Please select an index to load tickers.");
+      return;
+    }
     try {
       const tickers = await loadTickers(index);
       if (tickers.length === 0) {
@@ -245,18 +247,32 @@
         tickers.forEach(ticker => predeterminedTickers.push(ticker));
         logStatus(`Loaded ${predeterminedTickers.length} tickers for ${index.toUpperCase()} index.`);
       }
-    } catch (error) { logStatus(`Error loading tickers for ${index}: ${error.message}`); }
+    } catch (error) {
+      logStatus(`Error loading tickers for ${index}: ${error.message}`);
+    }
   });
   document.getElementById("indexSelect").dispatchEvent(new Event('change'));
 
-  // ---------------- Show/Hide manual inputs -----------------
+  // Helper function: compute median of an array of numbers
+  function getMedian(arr) {
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return (sorted.length % 2 !== 0)
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  /***********************************************************************
+   * Show/hide manual inputs
+   ***********************************************************************/
   const manualModeCheckbox = document.getElementById("manualModeCheckbox");
   const manualInputsDiv = document.getElementById("manualInputs");
-  manualModeCheckbox.addEventListener("change", () => { manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none"; });
+  manualModeCheckbox.addEventListener("change", () => {
+    manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none";
+  });
   document.getElementById("marketRegimeSelect").addEventListener("change", function(){
     const val = this.value;
     if(val==="Bear"){
-      document.getElementById("wRRI").value = 0.10;
       document.getElementById("wTech").value = 0.05;
       document.getElementById("wSent").value = 0.20;
       document.getElementById("wInsider").value = 0.20;
@@ -264,7 +280,6 @@
       document.getElementById("wCongress").value = 0.15;
       document.getElementById("scalingFactor").value = 1.00;
     } else if(val==="Bull"){
-      document.getElementById("wRRI").value = 0.20;
       document.getElementById("wTech").value = 0.20;
       document.getElementById("wSent").value = 0.15;
       document.getElementById("wInsider").value = 0.15;
@@ -272,7 +287,6 @@
       document.getElementById("wCongress").value = 0.15;
       document.getElementById("scalingFactor").value = 3.00;
     } else {
-      document.getElementById("wRRI").value = 0.15;
       document.getElementById("wTech").value = 0.20;
       document.getElementById("wSent").value = 0.15;
       document.getElementById("wInsider").value = 0.15;
@@ -282,15 +296,21 @@
     }
   });
 
-  // ---------------- Logging and Sleep -----------------
+  /***********************************************************************
+   * Logging & Sleep
+   ***********************************************************************/
   function logStatus(msg){
     const s = document.getElementById("status");
     s.innerHTML += msg + "<br>";
     s.scrollTop = s.scrollHeight;
   }
-  function sleep(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+  function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
-  // ---------------- Utility: parseAlphaDate -----------------
+  /***********************************************************************
+   * parseAlphaDate
+   ***********************************************************************/
   function parseAlphaDate(str){
     const year = str.substring(0,4);
     const month = str.substring(4,6);
@@ -301,12 +321,16 @@
     return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
   }
 
-  // ---------------- Fetch Historical Data (with high/low/close) -----------------
+  /***********************************************************************
+   * fetchHistoricalData – returns high, low, close
+   ***********************************************************************/
   async function fetchHistoricalData(ticker) {
     let url = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
     const resp = await fetch(url);
     const j = await resp.json();
-    if (!j["Time Series (Daily)"]) { throw new Error("No daily data for " + ticker); }
+    if (!j["Time Series (Daily)"]) {
+      throw new Error("No daily data for " + ticker);
+    }
     const ts = j["Time Series (Daily)"];
     let out = [];
     Object.keys(ts).forEach(d => {
@@ -322,183 +346,9 @@
   }
 
   /***********************************************************************
-   * RRI Section: DBHJ-based Risk vs Reward Index & Chart
+   * TECHNICAL INDICATORS SECTION
    ***********************************************************************/
-  async function computeTickerRRI(ticker, T) {
-    const prices = await fetchHistoricalData(ticker);
-    if (prices.length < 5) { logStatus("Not enough historical data for " + ticker); return 50; }
-    const st = computeHistStats(prices);
-    let iv = await fetchOptionsIV(ticker);
-    if (!iv) iv = st.sigma;
-    const v10 = iv * iv;
-    const v20 = 0.5 * v10;
-    const kappa1 = 2.0, theta1 = v10, sigma1 = 0.5, rho1 = -0.7;
-    const kappa2 = 1.5, theta2 = 0.5 * v10, sigma2 = 0.3, rho2 = -0.3;
-    const lambda = 0.2, jumpMean = -0.1, jumpStd = 0.2;
-    const dt = 1 / 252;
-    const sims = 10000;
-    const finals = runDBHJSimulation(
-      st.lastPrice, v10, v20, st.mu,
-      kappa1, theta1, sigma1, rho1,
-      kappa2, theta2, sigma2, rho2,
-      lambda, jumpMean, jumpStd,
-      T, dt, sims
-    );
-    const risk = computeRiskMetrics(finals, st.lastPrice);
-    const cvarFraction = risk.cvarPct / 100;
-    const rri = computeRiskVsRewardIndex(finals, st.lastPrice, cvarFraction, T);
-    renderRRIChart(finals, st.lastPrice);
-    document.getElementById("rriDetails").innerText = `Risk vs Reward Index: ${rri.toFixed(2)}%`;
-    return rri;
-  }
-
-  // Render the histogram of simulated final prices (RRI Chart)
-  function renderRRIChart(finalPrices, currentPrice) {
-    const minPrice = Math.min(...finalPrices);
-    const maxPrice = Math.max(...finalPrices);
-    const binCount = 20;
-    const binWidth = (maxPrice - minPrice) / binCount;
-    let bins = new Array(binCount).fill(0);
-    for (let p of finalPrices) {
-      let bin = Math.floor((p - minPrice) / binWidth);
-      if (bin >= binCount) bin = binCount - 1;
-      bins[bin]++;
-    }
-    let binCenters = [];
-    for (let i = 0; i < binCount; i++) {
-      binCenters.push(minPrice + binWidth * (i + 0.5));
-    }
-    let histogramData = binCenters.map((center, i) => [center, bins[i]]);
-    Highcharts.chart('rriChart', {
-      chart: { type: 'column', backgroundColor: 'transparent' },
-      title: { text: 'Simulated Final Prices Distribution', style: { color: '#fff' } },
-      xAxis: {
-        title: { text: 'Price', style: { color: '#fff' } },
-        min: minPrice,
-        max: maxPrice,
-        labels: { style: { color: '#fff' } },
-        plotLines: [{
-          id: 'currentPriceLine',
-          value: currentPrice,
-          color: 'red',
-          dashStyle: 'Dash',
-          width: 2,
-          zIndex: 5,
-          label: { text: 'Current Price', style: { color: 'red' } }
-        }]
-      },
-      yAxis: {
-        title: { text: 'Frequency', style: { color: '#fff' } },
-        labels: { style: { color: '#fff' } },
-        gridLineColor: '#444'
-      },
-      tooltip: {
-        formatter: function() {
-          return 'Price: ' + this.x.toFixed(2) + '<br>Frequency: ' + this.y;
-        }
-      },
-      series: [{ name: 'Frequency', data: histogramData, color: 'gray' }],
-      credits: { enabled: false }
-    });
-  }
-
-  /***********************************************************************
-   * Supporting Functions for RRI Section (exactly as in Stocks tool)
-   ***********************************************************************/
-  async function fetchOptionsIV(ticker) {
-    try {
-      const url = `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
-      const resp = await fetch(url);
-      const data = await resp.json();
-      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-        let contract = data.data[0];
-        return parseFloat(contract.impliedVolatility) || null;
-      }
-    } catch (error) {
-      console.error("Error fetching options IV:", error);
-      return null;
-    }
-    return null;
-  }
-  function computeHistStats(prices) {
-    let logs = [];
-    for (let i = 1; i < prices.length; i++) {
-      let r = Math.log(prices[i].close / prices[i - 1].close);
-      logs.push(r);
-    }
-    if (logs.length < 2) {
-      return { mu: 0, sigma: 0, lastPrice: prices[prices.length - 1].close };
-    }
-    let meanDaily = logs.reduce((a, b) => a + b, 0) / logs.length;
-    let variance = logs.reduce((acc, r) => acc + Math.pow(r - meanDaily, 2), 0) / (logs.length - 1);
-    let stdDaily = Math.sqrt(variance);
-    const tradingDays = 252;
-    return {
-      mu: meanDaily * tradingDays,
-      sigma: stdDaily * Math.sqrt(tradingDays),
-      lastPrice: prices[prices.length - 1].close
-    };
-  }
-  function randn() {
-    let u = 0, v = 0;
-    while(u === 0) u = Math.random();
-    while(v === 0) v = Math.random();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-  }
-  function runDBHJSimulation(S0, v10, v20, mu,
-                             kappa1, theta1, sigma1, rho1,
-                             kappa2, theta2, sigma2, rho2,
-                             lambda, jumpMean, jumpStd,
-                             T, dt, sims) {
-    const steps = Math.floor(T / dt);
-    let finals = [];
-    for (let i = 0; i < sims; i++) {
-      let S = S0, v1 = v10, v2 = v20;
-      for (let j = 0; j < steps; j++) {
-        let Z1 = randn(), Z2 = randn(), Z3 = randn();
-        const dW_a = Math.sqrt(dt) * Z1;
-        const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1 * rho1) * Z2);
-        const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2 * rho2) * Z3);
-        v1 = Math.max(v1 + kappa1 * (theta1 - v1) * dt + sigma1 * Math.sqrt(Math.max(v1, 0)) * dW_v1, 0);
-        v2 = Math.max(v2 + kappa2 * (theta2 - v2) * dt + sigma2 * Math.sqrt(Math.max(v2, 0)) * dW_v2, 0);
-        const totalVar = v1 + v2;
-        let jumpMultiplier = 1;
-        if (Math.random() < lambda * dt) {
-          jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
-        }
-        S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar) * dW_a);
-      }
-      finals.push(S);
-    }
-    return finals;
-  }
-  function computeRiskMetrics(finalPrices, currentPrice) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let idx = Math.floor(0.05 * sorted.length);
-    let varPrice = sorted[idx];
-    let tail = sorted.slice(0, idx + 1);
-    let cvarPrice = tail.reduce((sum, p) => sum + p, 0) / tail.length;
-    return {
-      varPrice: varPrice,
-      varPct: 100 * (currentPrice - varPrice) / currentPrice,
-      cvarPrice: cvarPrice,
-      cvarPct: 100 * (currentPrice - cvarPrice) / currentPrice
-    };
-  }
-  function computeRiskVsRewardIndex(finalPrices, currentPrice, cvarFraction, T) {
-    let sorted = finalPrices.slice().sort((a, b) => a - b);
-    let medianPrice = sorted[Math.floor(sorted.length / 2)];
-    let rawReturn = (medianPrice / currentPrice) - 1;
-    let E_ann = Math.pow(1 + rawReturn, 1 / T) - 1;
-    let D_ann = 1 - Math.pow(1 - cvarFraction, 1 / T);
-    let ratio = (D_ann > 1e-6) ? (E_ann / D_ann) : (E_ann >= 0 ? 9999 : -9999);
-    const alpha = 1;
-    return 50 * (1 + Math.tanh(alpha * ratio));
-  }
-
-  /***********************************************************************
-   * TECHNICAL INDICATORS SECTION – exactly as in Stocks tool
-   ***********************************************************************/
+  // Calculate Ichimoku Cloud components
   function computeIchimoku(prices) {
     let tenkan = [];
     let kijun = [];
@@ -538,11 +388,15 @@
     }
     return { tenkan, kijun, senkouA, senkouB, chikou };
   }
+
+  // Exponential Moving Average (EMA)
   function computeEMA(prices, period) {
     let ema = [];
     const multiplier = 2 / (period + 1);
     let sum = 0;
-    for (let i = 0; i < period; i++) { sum += prices[i].close; }
+    for (let i = 0; i < period; i++) {
+      sum += prices[i].close;
+    }
     let prevEma = sum / period;
     ema[period - 1] = { date: prices[period - 1].date, ema: prevEma };
     for (let i = period; i < prices.length; i++) {
@@ -553,6 +407,8 @@
     }
     return ema.filter(x => x !== undefined);
   }
+
+  // Moving Average Convergence Divergence (MACD)
   function computeMACD(prices, fast = 12, slow = 26, signal = 9) {
     let fastEMA = computeEMA(prices, fast);
     let slowEMA = computeEMA(prices, slow);
@@ -560,12 +416,16 @@
     for (let i = 0; i < slowEMA.length; i++) {
       let date = slowEMA[i].date;
       let match = fastEMA.find(f => f.date.getTime() === date.getTime());
-      if (match) { macdLine.push({ date, macd: match.ema - slowEMA[i].ema }); }
+      if (match) {
+        macdLine.push({ date, macd: match.ema - slowEMA[i].ema });
+      }
     }
     if (macdLine.length < signal) return { macdLine, signalLine: [] };
     const m = 2 / (signal + 1);
     let sumMacd = 0;
-    for (let i = 0; i < signal; i++) { sumMacd += macdLine[i].macd; }
+    for (let i = 0; i < signal; i++) {
+      sumMacd += macdLine[i].macd;
+    }
     let prevSig = sumMacd / signal;
     let signalLine = [];
     signalLine[signal - 1] = { date: macdLine[signal - 1].date, signal: prevSig };
@@ -577,12 +437,14 @@
     signalLine = signalLine.filter(x => x !== undefined);
     return { macdLine, signalLine };
   }
+
+  // Relative Strength Index (RSI)
   function computeRSI(prices, period = 14) {
     let rsis = [];
     for (let i = period; i < prices.length; i++) {
       let gains = 0, losses = 0;
       for (let j = i - period + 1; j <= i; j++) {
-        let diff = prices[j].close - prices[j-1].close;
+        let diff = prices[j].close - prices[j - 1].close;
         if (diff > 0) gains += diff; else losses -= diff;
       }
       const avgGain = gains / period;
@@ -593,6 +455,8 @@
     }
     return rsis;
   }
+
+  // Bollinger Bands
   function computeBollingerBands(prices, period = 20, k = 2) {
     let bands = [];
     for (let i = period - 1; i < prices.length; i++) {
@@ -609,6 +473,8 @@
     }
     return bands;
   }
+
+  // Weighted Moving Average (WMA)
   function computeWMA(prices, period = 20) {
     let wmas = [];
     for (let i = period - 1; i < prices.length; i++) {
@@ -623,26 +489,8 @@
     }
     return wmas;
   }
-  function scoreRSI(latestRSI, prevRSI) {
-    let rel = 50 - latestRSI;
-    let base = 100 / (1 + Math.exp(-0.05 * rel));
-    let dRSI = prevRSI - latestRSI;
-    return base * (1 + 0.01 * dRSI);
-  }
-  function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
-    let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
-    let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
-    let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
-    let dPercentB = prevPercentB - currentPercentB;
-    return baseBB * (1 + 0.1 * dPercentB);
-  }
-  function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
-    let currentX = (latestPrice / latestWMA) - 1;
-    let prevX = (prevPrice / prevWMA) - 1;
-    let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
-    let dx = prevX - currentX;
-    return baseWMA * (1 + 0.5 * dx);
-  }
+
+  // Scoring helpers
   function polynomialRegression(x, y, degree) {
     let X = [];
     for (let i = 0; i < x.length; i++) {
@@ -664,31 +512,33 @@
   function computeMomentumScoreUsingRegression(histValues) {
     if (histValues.length < 6) return 50;
     const recent = histValues.slice(-6);
-    const x = [1, 2, 3, 4, 5, 6];
+    const x = [1,2,3,4,5,6];
     const coeffs = polynomialRegression(x, recent, 1);
     const predicted = predictValue(coeffs, 7);
-    const lastValue = recent[recent.length - 1];
+    const lastValue = recent[recent.length-1];
     const delta = predicted - lastValue;
     const k = 5;
     const score = 100 / (1 + Math.exp(-k * delta));
     return isNaN(score) ? 50 : score;
   }
+
   function computeGapTrendScore(macdLine, signalLine) {
     if (macdLine.length < 6 || signalLine.length < 6) return { gapScore: 50 };
     const recentMACD = macdLine.slice(-6).map(item => item.macd);
     const recentSignal = signalLine.slice(-6).map(item => item.signal);
-    const x = [1, 2, 3, 4, 5, 6];
+    const x = [1,2,3,4,5,6];
     const macdCoeffs = polynomialRegression(x, recentMACD, 3);
     const signalCoeffs = polynomialRegression(x, recentSignal, 3);
     const predictedMACD = predictValue(macdCoeffs, 7);
     const predictedSignal = predictValue(signalCoeffs, 7);
     const predictedGap = predictedMACD - predictedSignal;
-    const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
+    const currentGap = macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
     const delta = predictedGap - currentGap;
     const k = 5;
     const gapScore = 100 / (1 + Math.exp(-k * delta));
     return { gapScore, delta, currentGap, predictedGap };
   }
+
   function computeNewMACDScore(prices) {
     const macdData = computeMACD(prices);
     const macdLine = macdData.macdLine;
@@ -696,7 +546,7 @@
     if (macdLine.length < 2 || signalLine.length < 2) return 50;
     const len = Math.min(macdLine.length, signalLine.length);
     const latestMACD = macdLine[len - 1].macd;
-    const positionScore = 100 / (1 + Math.exp(latestMACD));
+    const positionScore = 100 / (1 + Math.exp(latestMACD)); // Slight tweak to keep it in 0-100
     const gapData = computeGapTrendScore(macdLine, signalLine);
     const gapScore = gapData ? gapData.gapScore : 50;
     let histValues = [];
@@ -707,24 +557,69 @@
     return (positionScore + gapScore + momentumScore) / 3;
   }
 
+  function scoreRSI(latestRSI, prevRSI) {
+    let rel = 50 - latestRSI;
+    let base = 100 / (1 + Math.exp(-0.05 * rel));
+    let dRSI = prevRSI - latestRSI;
+    return base * (1 + 0.01 * dRSI);
+  }
+  function scoreBollingerDual(latestPrice, latestBand, prevPrice, prevBand) {
+    let currentPercentB = (latestPrice - latestBand.lower) / (latestBand.upper - latestBand.lower);
+    let prevPercentB = (prevPrice - prevBand.lower) / (prevBand.upper - prevBand.lower);
+    let baseBB = 100 / (1 + Math.exp(3 * (currentPercentB - 0.5)));
+    let dPercentB = prevPercentB - currentPercentB;
+    return baseBB * (1 + 0.1 * dPercentB);
+  }
+  function scoreWMADual(latestPrice, latestWMA, prevPrice, prevWMA) {
+    let currentX = (latestPrice / latestWMA) - 1;
+    let prevX = (prevPrice / prevWMA) - 1;
+    let baseWMA = 100 / (1 + Math.exp(-10 * currentX));
+    let dx = prevX - currentX;
+    return baseWMA * (1 + 0.5 * dx);
+  }
+
+  // Renders the technical chart and returns the aggregated technical score
   function updateTechChart(prices) {
     let bands = computeBollingerBands(prices);
     let wmas = computeWMA(prices);
     let rsivals = computeRSI(prices, 14);
     let macdData = computeMACD(prices);
     let ichimokuData = computeIchimoku(prices);
-  
+
     const toTimeSeries = (data, key) => data.map(item => [item.date.getTime(), item[key]]);
-  
+
     Highcharts.chart('techChart', {
-      chart: { zoomType: 'x', backgroundColor: 'transparent', height: 1200 },
+      chart: {
+        zoomType: 'x',
+        backgroundColor: 'transparent',
+        height: 1200
+      },
       title: { text: 'Combined Technical Indicators', style: { color: '#fff' } },
       xAxis: { type: 'datetime', crosshair: true },
       yAxis: [
-        { title: { text: 'Price', style: { color: '#fff' } }, height: '40%', lineWidth: 2, gridLineColor: '#444', offset: 0, labels: { align: 'right', x: -5, style: { color: '#fff' } } },
-        { title: { text: 'MACD', style: { color: '#fff' } }, top: '40%', height: '20%', lineWidth: 2, gridLineColor: '#444', offset: 0, labels: { align: 'right', x: -5, style: { color: '#fff' } } },
-        { title: { text: 'Ichimoku', style: { color: '#fff' } }, top: '60%', height: '20%', lineWidth: 2, gridLineColor: '#444', offset: 0, labels: { align: 'right', x: -5, style: { color: '#fff' } } },
-        { title: { text: 'RSI', style: { color: '#fff' } }, top: '80%', height: '20%', lineWidth: 2, gridLineColor: '#444', offset: 0, labels: { align: 'right', x: -5, style: { color: '#fff' } },
+        {
+          title: { text: 'Price', style: { color: '#fff' } },
+          height: '40%', lineWidth: 2,
+          gridLineColor: '#444', offset: 0,
+          labels: { align: 'right', x: -5, style: { color: '#fff' } }
+        },
+        {
+          title: { text: 'MACD', style: { color: '#fff' } },
+          top: '40%', height: '20%', lineWidth: 2,
+          gridLineColor: '#444', offset: 0,
+          labels: { align: 'right', x: -5, style: { color: '#fff' } }
+        },
+        {
+          title: { text: 'Ichimoku', style: { color: '#fff' } },
+          top: '60%', height: '20%', lineWidth: 2,
+          gridLineColor: '#444', offset: 0,
+          labels: { align: 'right', x: -5, style: { color: '#fff' } }
+        },
+        {
+          title: { text: 'RSI', style: { color: '#fff' } },
+          top: '80%', height: '20%', lineWidth: 2,
+          gridLineColor: '#444', offset: 0,
+          labels: { align: 'right', x: -5, style: { color: '#fff' } },
           plotLines: [
             { value: 30, color: 'red', dashStyle: 'Dash', width: 1, label: { text: '30', style: { color: 'red' } } },
             { value: 70, color: 'red', dashStyle: 'Dash', width: 1, label: { text: '70', style: { color: 'red' } } }
@@ -741,12 +636,13 @@
         { name: 'WMA', data: toTimeSeries(wmas, 'wma'), type: 'line', color: 'orange', zIndex: 2, yAxis: 0 },
         { name: 'MACD', data: toTimeSeries(macdData.macdLine, 'macd'), type: 'line', yAxis: 1, zIndex: 3 },
         { name: 'Signal', data: toTimeSeries(macdData.signalLine, 'signal'), type: 'line', yAxis: 1, zIndex: 3 },
-        { name: 'MACD Histogram', data: macdData.macdLine.map((m, i) => {
+        { name: 'MACD Histogram', 
+          data: macdData.macdLine.map((m, i) => {
             let sig = (macdData.signalLine[i] && macdData.signalLine[i].signal) || 0;
             return [m.date.getTime(), m.macd - sig];
           }),
           type: 'column', yAxis: 1, zIndex: 1, tooltip: { valueDecimals: 2 },
-          zones: [{ value: 0, color: 'red' }, { color: 'green' }]
+          zones: [ { value: 0, color: 'red' }, { color: 'green' } ]
         },
         { name: 'Tenkan-sen', data: toTimeSeries(ichimokuData.tenkan, 'value'), type: 'line', color: 'blue', zIndex: 4, yAxis: 2 },
         { name: 'Kijun-sen', data: toTimeSeries(ichimokuData.kijun, 'value'), type: 'line', color: 'red', zIndex: 4, yAxis: 2 },
@@ -759,23 +655,28 @@
       plotOptions: { series: { marker: { enabled: false } } },
       style: { fontFamily: 'Arial, sans-serif' }
     });
-  
+
     if (prices.length < 2 || rsivals.length < 2 || bands.length < 2 || wmas.length < 2) {
       document.getElementById('techDetails').innerText = "Not enough data => default 50.";
       return 50;
     }
+
     let latestPriceVal = prices[prices.length - 1].close;
     let prevPriceVal = prices[prices.length - 2].close;
     let latestRSI = rsivals[rsivals.length - 1].rsi;
     let prevRSI = rsivals[rsivals.length - 2].rsi;
     let rsiScore = scoreRSI(latestRSI, prevRSI);
+
     let latestBand = bands[bands.length - 1];
     let prevBand = bands[bands.length - 2];
     let bbScore = scoreBollingerDual(latestPriceVal, latestBand, prevPriceVal, prevBand);
+
     let macdScore = computeNewMACDScore(prices);
+
     let latestWMA = wmas[wmas.length - 1].wma;
     let prevWMA = wmas[wmas.length - 2].wma;
     let wmaScore = scoreWMADual(latestPriceVal, latestWMA, prevPriceVal, prevWMA);
+
     let ichimokuLatestSenkouA = ichimokuData.senkouA[ichimokuData.senkouA.length - 1].value;
     let cloudScore = 100 / (1 + Math.exp(-1 * (latestPriceVal - ichimokuLatestSenkouA)));
     let latestTenkanVal = ichimokuData.tenkan[ichimokuData.tenkan.length - 1].value;
@@ -784,8 +685,10 @@
     let price26Ago = prices[prices.length - 26].close;
     let chikouScore = 100 / (1 + Math.exp(-0.1 * (latestPriceVal - price26Ago)));
     let ichimokuLatestSenkouB = ichimokuData.senkouB[ichimokuData.senkouB.length - 1].value;
-    let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB) / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
+    let senkouScore = 100 / (1 + Math.exp(-3 * ((ichimokuLatestSenkouA - ichimokuLatestSenkouB)
+                        / (((ichimokuLatestSenkouA + ichimokuLatestSenkouB) / 2) || 1))));
     let ichimokuScore = (cloudScore + tenkanScore + chikouScore + senkouScore) / 4;
+
     let aggregatedScore = (rsiScore + bbScore + macdScore + wmaScore + ichimokuScore) / 5;
     document.getElementById('techDetails').innerText =
       `RSI: ${rsiScore.toFixed(1)}, Bollinger: ${bbScore.toFixed(1)}, MACD: ${macdScore.toFixed(1)}, WMA: ${wmaScore.toFixed(1)}, Ichimoku: ${ichimokuScore.toFixed(1)} ⇒ Tech: ${aggregatedScore.toFixed(1)}%`;
@@ -793,13 +696,9 @@
   }
 
   /***********************************************************************
-   * Sentiment, Insider, Congress functions remain unchanged
-   * (not reproduced here for brevity)
+   * Sentiment
    ***********************************************************************/
-/***********************************************************************
-   * Sentiment functions (unchanged)
-   ***********************************************************************/
-   async function fetchSentimentData(ticker, periodMonths) {
+  async function fetchSentimentData(ticker, periodMonths) {
     try {
       let url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       let resp = await fetch(url);
@@ -816,7 +715,7 @@
         if(!tItem) continue;
         let raw = parseFloat(tItem.ticker_sentiment_score);
         if(isNaN(raw)) continue;
-        let norm = ((raw + 1)/2) * 100;
+        let norm = ((raw + 1)/2) * 100; // transform from [-1..1] => [0..100]
         let hr = dt.toISOString().substring(0,13);
         if(!byHour[hr]) byHour[hr] = [];
         byHour[hr].push(norm);
@@ -855,7 +754,7 @@
   }
 
   /***********************************************************************
-   * Insider functions (unchanged)
+   * Insider
    ***********************************************************************/
   async function fetchInsiderData(ticker, periodMonths, currentPrice) {
     let url = `https://www.intuitiontrades.com/api/insider?symbol=${encodeURIComponent(ticker)}`;
@@ -870,7 +769,9 @@
       if(!item.share_price || parseFloat(item.share_price) === 0) continue;
       let tradePrice = parseFloat(item.share_price);
       let lb = currentPrice * 0.5, ub = currentPrice * 1.5;
+      // Filter out obviously wrong prices
       if(tradePrice < lb || tradePrice > ub) continue;
+
       let dt = new Date(item.transaction_date);
       if(isNaN(dt) || dt < cutoff) continue;
       let shares = parseFloat(item.shares);
@@ -895,6 +796,8 @@
   function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells) {
     let fromDate = new Date(insiderSentimentData.fromDateStr);
     let toDate = new Date(insiderSentimentData.toDateStr);
+
+    // Fill data array for each month in range
     let filledData = [];
     let currentDate = new Date(fromDate);
     while(currentDate <= toDate){
@@ -910,9 +813,11 @@
     }
     let finalMspr = filledData[filledData.length-1].mspr;
     let normalizedFinalMspr = (finalMspr + 100) / 2;
+
     let sumMspr = filledData.reduce((sum, pt) => sum + pt.mspr, 0);
     let avgMspr = sumMspr / filledData.length;
     let normalizedAvgMspr = (avgMspr + 100) / 2;
+
     let n = filledData.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     for(let i = 0; i < n; i++){
@@ -924,18 +829,22 @@
     let slope = (denom === 0) ? 0 : (n * sumXY - sumX * sumY) / denom;
     let normalizedSlope = (isNaN(slope)|| !isFinite(slope)) ? 50 : (slope + 100) / 2;
     let trendComponent = (normalizedAvgMspr + normalizedSlope) / 2;
+
     let transactionScore = 0;
     let totalTrans = transactionBuys + transactionSells;
     if(totalTrans > 0){
       transactionScore = ((transactionBuys - transactionSells) / totalTrans) * 100;
     }
     let normalizedTransactionScore = (transactionScore + 100) / 2;
+
+    // Weighted combination
     return 0.25 * normalizedFinalMspr + 0.50 * normalizedTransactionScore + 0.25 * trendComponent;
   }
+
   /***********************************************************************
-   * Fundamental functions – from Stocks Tool (unchanged)
+   * Fundamental
    ***********************************************************************/
-   function computeFundScores(data) {
+  function computeFundScores(data) {
     const norm = (val, min, max) => {
       if(!val || isNaN(val)) return 50;
       let ratio = (val - min) / (max - min);
@@ -946,39 +855,52 @@
     let roa = norm(parseFloat(data.ReturnOnAssetsTTM), 0, 0.15);
     let roe = norm(parseFloat(data.ReturnOnEquityTTM), 0, 0.35);
     let profitability = (margin + opMarg + roa + roe) / 4;
+
     let pe = parseFloat(data.PERatio);
     let peScore = 100 - norm(pe, 5, 40);
+
     let peg = parseFloat(data.PEGRatio);
     let pegScore = 100 - norm(peg, 0.5, 2.5);
+
     let ps = parseFloat(data.PriceToSalesRatioTTM);
     let psScore = 100 - norm(ps, 1, 10);
+
     let pb = parseFloat(data.PriceToBookRatio);
     let pbScore = 100 - norm(pb, 1, 10);
+
     let valuation = (peScore + pegScore + psScore + pbScore) / 4;
+
     let rg = norm(parseFloat(data.QuarterlyRevenueGrowthYOY), -0.2, 0.3);
     let eg = norm(parseFloat(data.QuarterlyEarningsGrowthYOY), -0.3, 0.3);
+
     let pRef = parseFloat(data['50DayMovingAverage']) || parseFloat(data['200DayMovingAverage']) || 0;
     let ratio = 0;
     if(pRef > 0 && data.AnalystTargetPrice){
       ratio = (parseFloat(data.AnalystTargetPrice) / pRef) - 1;
     }
     let tgtScore = norm(ratio, 0, 0.5);
+
     let growth = (rg + eg + tgtScore) / 3;
+
     let dy = norm(parseFloat(data.DividendYield), 0, 0.07);
     let dps = norm(parseFloat(data.DividendPerShare), 0, 10);
     let eps = norm(parseFloat(data.EPS), 0, 12);
     let dividends = (dy + dps + eps) / 3;
+
     let ebitda = parseFloat(data.EBITDA);
     let revTTM = parseFloat(data.RevenueTTM);
     let ebitdaMarg = (ebitda && revTTM) ? norm(ebitda / revTTM, 0, 0.3) : 50;
+
     let evEbitda = parseFloat(data.EVToEBITDA);
     let evEbitdaScore = 100 - norm(evEbitda, 5, 30);
+
     let beta = parseFloat(data.Beta);
     let betaScore = 50;
     if(!isNaN(beta)){
       betaScore = 100 - norm(beta, 0, 2);
     }
     let financial = (ebitdaMarg + evEbitdaScore + betaScore) / 3;
+
     return { profitability, valuation, growth, dividends, financial };
   }
   async function fetchFundamentalData(ticker){
@@ -993,7 +915,7 @@
   }
 
   /***********************************************************************
-   * Congress functions (unchanged)
+   * Congress
    ***********************************************************************/
   async function fetchCongressData(ticker, periodMonths) {
     try {
@@ -1060,54 +982,177 @@
     let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
     return (dollarsScore + uniqueScore) / 2;
   }
-  function updateCongressChart(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
-    const categories = ["Purchase Amount", "Sale Amount"];
-    const data = [totalPurchase, totalSale];
-    Highcharts.chart("congressChart", {
-      chart: { type: "column", backgroundColor: "transparent" },
-      title: { text: "(USD)", style: { color: "#fff" } },
-      xAxis: {
-        categories: categories,
-        title: { text: null },
-        gridLineColor: "#444",
-        labels: { style: { color: "#fff" } }
-      },
-      yAxis: {
-        title: { text: "Amount", style: { color: "#fff" } },
-        gridLineColor: "#444",
-        labels: { style: { color: "#fff" } }
-      },
-      tooltip: { formatter: function() { return this.x + ": $" + Highcharts.numberFormat(this.y, 0); } },
-      series: [{ name: "Amount", data: data, colorByPoint: true, colors: ["green", "red"] }],
-      credits: { enabled: false },
-      legend: { enabled: false }
-    });
-    const congressBull = computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount);
-    document.getElementById("congressDetails").innerText = `Congress Bullish Score: ${congressBull.toFixed(2)}%`;
-    return congressBull;
-  }
+
   /***********************************************************************
-   * SINGLE TICKER LOGIC
+   * Market Regime detection
    ***********************************************************************/
-  async function simulateOneTicker(ticker, periodMonths, T, regime) {
-    let rri, techVal, sentVal, insVal, fundVal, congVal;
-    try { rri = await computeTickerRRI(ticker, T); } catch (e) { rri = 50; }
+  async function determineSPYMarketRegime(periodMonths) {
+    try {
+      let url = `https://www.intuitiontrades.com/api/historical?symbol=SPY`;
+      let resp = await fetch(url);
+      let j = await resp.json();
+      if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
+
+      let shortWindow = periodMonths * 5;
+      let longWindow = periodMonths * 15;
+      let totalDays = periodMonths * 30;
+
+      let allKeys = Object.keys(j["Time Series (Daily)"]).sort((a, b) => new Date(a) - new Date(b));
+      let arr = [];
+      for(let d of allKeys){
+        let dt = new Date(d);
+        let c = parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
+        arr.push({ date: dt, close: c });
+      }
+
+      let end = arr[arr.length-1].date;
+      let start = new Date(end);
+      start.setDate(start.getDate() - totalDays);
+      let filtered = arr.filter(pt => pt.date >= start && pt.date <= end);
+
+      if(filtered.length < Math.max(shortWindow, longWindow)){
+        logStatus("Not enough SPY data => neutral");
+        return "Neutral";
+      }
+      let shortSMA = computeSMA(filtered, shortWindow);
+      let longSMA = computeSMA(filtered, longWindow);
+      let smaSig = classifyBySMA(shortSMA, longSMA);
+      let slopeVal = computePriceSlope(filtered);
+      let slopeSig = classifyBySlope(slopeVal);
+
+      let votes = 0;
+      if(smaSig === "Bull") votes++;
+      if(smaSig === "Bear") votes--;
+      if(slopeSig === "Bull") votes++;
+      if(slopeSig === "Bear") votes--;
+
+      if(votes >= 2) return "Bull";
+      if(votes <= -2) return "Bear";
+      return "Neutral";
+    } catch(e) {
+      logStatus("Error in determineSPYMarketRegime => " + e.message);
+      return "Neutral";
+    }
+  }
+  function computeSMA(priceArray, period) {
+    if(!priceArray || priceArray.length < period) return null;
+    let slice = priceArray.slice(-period);
+    let sum = 0;
+    for(let p of slice) sum += p.close;
+    return sum / period;
+  }
+  function classifyBySMA(shortSMA, longSMA) {
+    if(!shortSMA || !longSMA) return "Neutral";
+    let ratio = shortSMA / longSMA;
+    if(ratio > 1.01) return "Bull";
+    if(ratio < 0.99) return "Bear";
+    return "Neutral";
+  }
+  function computePriceSlope(prices) {
+    let n = prices.length;
+    if(n < 2) return 0;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for(let i = 0; i < n; i++){
+      sumX += i;
+      sumY += prices[i].close;
+      sumXY += i * prices[i].close;
+      sumX2 += i * i;
+    }
+    let numerator = n * sumXY - sumX * sumY;
+    let denominator = n * sumX2 - sumX * sumX;
+    if(denominator === 0) return 0;
+    return numerator / denominator;
+  }
+  function classifyBySlope(slope) {
+    let bullThr = 0.2, bearThr = -0.2;
+    if(slope > bullThr) return "Bull";
+    if(slope < bearThr) return "Bear";
+    return "Neutral";
+  }
+
+  /***********************************************************************
+   * Auto Weights & Aggregator
+   ***********************************************************************/
+  function getAutoWeightsForRegime(regime) {
+    if(regime === "Bear"){
+      return { wTech: 0.05, wSent: 0.20, wInsider: 0.20, wFund: 0.30, wCongress: 0.15, scale: 1 };
+    } else if(regime === "Bull"){
+      return { wTech: 0.20, wSent: 0.15, wInsider: 0.15, wFund: 0.15, wCongress: 0.15, scale: 3 };
+    } else {
+      return { wTech: 0.20, wSent: 0.15, wInsider: 0.15, wFund: 0.20, wCongress: 0.15, scale: 2 };
+    }
+  }
+  function aggregatorFinal(tech, sent, ins, fund, cong, regime) {
+    // Check manual or auto
+    const manual = document.getElementById("manualModeCheckbox").checked;
+    if(manual) {
+      const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+      const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+      const wInsider = parseFloat(document.getElementById("wInsider").value) || 0;
+      const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+      const wCongress = parseFloat(document.getElementById("wCongress").value) || 0;
+      let sc = parseFloat(document.getElementById("scalingFactor").value) || 1.0;
+
+      const sumW = wTech + wSent + wInsider + wFund + wCongress;
+      let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+      let invalidScale = (sc < 0);
+      if(invalidWeights || invalidScale) {
+        logStatus("WARNING: Manual weights do not sum to 1.0 or scaling is invalid. Fallback to equal weighting.");
+        let eq = (tech + sent + ins + fund + cong) / 5;
+        return eq;
+      } else {
+        let raw = wTech * tech + wSent * sent + wInsider * ins + wFund * fund + wCongress * cong;
+        return (raw - 50) * sc + 50;
+      }
+    } else {
+      let auto = getAutoWeightsForRegime(regime);
+      let raw =
+          auto.wTech * tech
+        + auto.wSent * sent
+        + auto.wInsider * ins
+        + auto.wFund * fund
+        + auto.wCongress * cong;
+      return (raw - 50) * auto.scale + 50;
+    }
+  }
+
+  /***********************************************************************
+   * SINGLE TICKER LOGIC (no RRI)
+   ***********************************************************************/
+  async function simulateOneTicker(ticker, periodMonths, regime) {
+    let techVal, sentVal, insVal, fundVal, congVal;
     try {
       let hist = await fetchHistoricalData(ticker);
       techVal = updateTechChart(hist);
-    } catch (e) { techVal = 50; }
+    } catch (e) {
+      techVal = 50;
+    }
     try {
       let sentData = await fetchSentimentData(ticker, periodMonths);
       sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
-    } catch (e) { sentVal = 50; }
+    } catch (e) {
+      sentVal = 50;
+    }
     try {
       let hist = await fetchHistoricalData(ticker);
       let currentPrice = hist[hist.length - 1].close;
       let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
-      let insiderSent = await fetchInsiderSentiment(ticker, periodMonths, hist[hist.length - 1].date);
-      insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
-    } catch (e) { insVal = 50; }
-    try { fundVal = await fetchFundamentalData(ticker); } catch (e) { fundVal = 50; }
+      let insiderSent = await fetchInsiderSentiment(
+        ticker,
+        periodMonths,
+        hist[hist.length - 1].date
+      );
+      insVal = insiderSent
+        ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells)
+        : 50;
+    } catch (e) {
+      insVal = 50;
+    }
+    try {
+      fundVal = await fetchFundamentalData(ticker);
+    } catch (e) {
+      fundVal = 50;
+    }
     try {
       let congData = await fetchCongressData(ticker, periodMonths);
       congVal = computeCongressScore(
@@ -1116,11 +1161,12 @@
         congData.uniqueBuyCount,
         congData.uniqueSellCount
       );
-    } catch (e) { congVal = 50; }
-    let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
+    } catch (e) {
+      congVal = 50;
+    }
+    let aggregator = aggregatorFinal(techVal, sentVal, insVal, fundVal, congVal, regime);
     logStatus(
       `Ticker ${ticker} evaluation:<br>
-       <strong>RRI</strong>: ${rri.toFixed(2)}<br>
        <strong>Technical</strong>: ${techVal.toFixed(2)}<br>
        <strong>Sentiment</strong>: ${sentVal.toFixed(2)}<br>
        <strong>Insider</strong>: ${insVal.toFixed(2)}<br>
@@ -1132,13 +1178,14 @@
   }
 
   /***********************************************************************
-   * BATCH ANALYSIS Logic
+   * BATCH ANALYSIS
    ***********************************************************************/
   document.addEventListener("DOMContentLoaded", () => {
     const statusEl = document.getElementById("status");
     const progressContainer = document.getElementById("progressContainer");
     const progressBarFill = document.getElementById("progressBarFill");
     const progressBarText = document.getElementById("progressBarText");
+
     async function runBatchAnalysis() {
       logStatus("Run Batch Analysis started...");
       if (predeterminedTickers.length === 0) {
@@ -1150,30 +1197,40 @@
         alert("Please select an Investment Timeframe!");
         return;
       }
-      let periodMonths, T, timeframeText;
+      let periodMonths;
+      let timeframeText;
+      // We no longer track T for RRI – just keep month window for everything else
       if (timeframe === "short") {
-        periodMonths = 4; T = 1 / 12; timeframeText = "Short Term (4 months historical, 1 month horizon)";
+        periodMonths = 4;
+        timeframeText = "Short Term (4 months historical)";
       } else if (timeframe === "medium") {
-        periodMonths = 12; T = 3 / 12; timeframeText = "Medium Term (12 months historical, 3 months horizon)";
+        periodMonths = 12;
+        timeframeText = "Medium Term (12 months historical)";
       } else {
-        periodMonths = 24; T = 6 / 12; timeframeText = "Long Term (24 months historical, 6 months horizon)";
+        periodMonths = 24;
+        timeframeText = "Long Term (24 months historical)";
       }
+
       statusEl.innerHTML = "";
       progressContainer.style.display = "block";
       progressBarFill.style.width = "0%";
       progressBarText.textContent = "0%";
+
       logStatus("Detecting SPY market regime...");
       let regime = await determineSPYMarketRegime(4);
       logStatus(`Detected Market Regime => ${regime} (Assessing: ${timeframeText})<br>`);
+
       let results = [];
       let processed = 0;
       let total = predeterminedTickers.length;
       let batchSize = 70;
+
       for (let i = 0; i < total; i += batchSize) {
         let batch = predeterminedTickers.slice(i, i + batchSize);
         logStatus(`Processing batch #${Math.floor(i / batchSize) + 1}: ${batch.join(", ")}`);
+
         for (let tk of batch) {
-          let one = await simulateOneTicker(tk, periodMonths, T, regime);
+          let one = await simulateOneTicker(tk, periodMonths, regime);
           results.push(one);
           processed++;
           let pct = Math.round((processed / total) * 100);
@@ -1187,9 +1244,11 @@
           await sleep(60000);
         }
       }
+
       results.sort((a, b) => a.aggregator - b.aggregator);
       let top5 = results.slice(-5).reverse();
       let bottom5 = results.slice(0, 5);
+
       logStatus("<br>=== Final Results ===<br>");
       logStatus("Top 5:");
       for (let item of top5) {
@@ -1203,6 +1262,7 @@
       }
       logStatus(`Done! Processed ${processed} tickers.`);
     }
+
     window.runBatchAnalysis = runBatchAnalysis;
   });
   async function runBatchAnalysis(){ /* Duplicate wrapper if needed */ }
