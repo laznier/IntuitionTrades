@@ -215,6 +215,9 @@
 <!-- Container for technical chart and details -->
 <div id="techChart"></div>
 <div id="techDetails"></div>
+<!-- Container for RRI chart and details -->
+<div id="rriChart"></div>
+<div id="rriDetails" style="margin-top:10px;font-weight:bold;"></div>
 
 <script>
   /***********************************************************************
@@ -264,10 +267,10 @@ function getMedian(arr) {
   if (sorted.length % 2 !== 0) {
     return sorted[mid];
   } else {
-    // For an even number of elements, take the average of the two middle values
     return (sorted[mid - 1] + sorted[mid]) / 2;
   }
 }
+
 
 
   /***********************************************************************
