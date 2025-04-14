@@ -397,11 +397,11 @@ async function fetchHistoricalData(ticker) {
 import { verifyUser } from '../lib/auth'; // Your custom auth function
 
 export async function getServerSideProps(context) {
-  const { req, res } = context;
-  const user = await verifyUser(req); // Check authentication
-
+  const { req } = context;
+  const user = await verifyUser(req); // Check the authentication, e.g., by validating a token
+  
   if (!user || !user.isPremium) {
-    // Redirect non-premium users to login or an error page
+    // If not authenticated or not premium, redirect to a login or access denied page.
     return {
       redirect: {
         destination: '/login?error=access_denied',
@@ -410,18 +410,19 @@ export async function getServerSideProps(context) {
     };
   }
   
-  // Optionally, pass user information to the page via props.
+  // Otherwise, pass the user as a prop or simply render the page.
   return { props: { user } };
 }
 
 export default function Top5Page({ user }) {
   return (
     <div>
-      <h1>Top Stocks Scanner</h1>
-      {/* Render premium content */}
+      <h1>Top Stocks Scanner (Premium)</h1>
+      {/* Your premium tool content goes here */}
     </div>
   );
 }
+
 
 /***********************************************************************
  * TECHNICAL INDICATORS
