@@ -310,8 +310,8 @@ function parseAlphaDate(str){
 /***********************************************************************
  * Loading Tickers for batch scanning
  ***********************************************************************/
-// Force it to fetch from your Vercel domain:
-let filePath = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
+const vercelRoot = "https://intuition-trades.vercel.app";
+let filePath = `${vercelRoot}/tickers/${index}-tickers.txt`;
 const response = await fetch(filePath);
   const text = await response.text();
   return text
