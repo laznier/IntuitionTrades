@@ -2357,19 +2357,20 @@ tickerSearchButton.addEventListener("click", async () => {
     const indicator = document.getElementById("user-type-indicator");
     if (data.isPremium) {
       indicator.textContent = "Premium User";
-      // Unlock all premium cards by adding the "unlocked" class
       document.querySelectorAll(".tool-card.premium").forEach(card => {
         card.classList.add("unlocked");
       });
     } else {
       indicator.textContent = "Basic User";
     }
-    // Optionally, update the UI further or redirect the user
+    // Refresh the page to fully reinitialize the UI after sign-in/account change
+    window.location.reload();
   })
   .catch(err => {
     console.error("Error verifying user:", err);
   });
 }
+
 
 
   document.addEventListener("DOMContentLoaded", () => {
