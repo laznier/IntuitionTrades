@@ -341,6 +341,73 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #ddd;
   color: #333;
 }
+.weekly-grid-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  max-width: 800px; /* Adjust this value as needed */
+  margin: 0 auto;   /* Centers the container on the page */
+}
+
+/* On screens narrower than 768px stack the grids vertically */
+@media (max-width: 768px) {
+  .weekly-grid-wrapper {
+    flex-direction: column;
+  }
+}
+
+/* Countdown Container Styling */
+.countdown-container {
+  display: inline-block;
+  margin: 2rem auto 0;
+  background: #000;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+}
+
+
+/* Stock Grid (used for each top and bottom section) */
+.stock-grid {
+  max-width: 300px; /* 300px width each */
+  background: #000;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+}
+
+/* Grid Header and Row styles for three-column layout */
+.grid-header, .grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #444;
+}
+
+.grid-header {
+  font-weight: bold;
+  border-bottom: 2px solid #444;
+}
+
+.grid-row:last-child {
+  border-bottom: none;
+}
+
+/* Center align content in grid cells */
+.grid-header div, .grid-row div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Optional: adjust font sizes if needed */
+.stock-grid h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+}
 
 /* Weekly Stock Picks Section */
 #weekly-stock-picks {
@@ -348,32 +415,45 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--section-bg);
   text-align: center;
   margin-bottom: var(--section-margin-bottom);
+
 }
-#weekly-stock-picks h2 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-.stock-picks-container {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.stock-pick {
+/* Weekly Stock Picks Grid Layout */
+.stock-grid {
+  max-width: 300px;
+  margin: 0 auto;
   background: #000;
   padding: 1rem;
-  border: 0.0625rem solid #444;
+  border: 1px solid #444;
   border-radius: 0.5rem;
-  width: 18.75rem; /* 300px */
   box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
 }
-.stock-pick h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
+
+.stock-grid h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
 }
-.stock-pick ol {
-  text-align: left;
-  padding-left: 1.5rem;
+
+.grid-header, .grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #444;
+}
+
+.grid-header {
+  font-weight: bold;
+  border-bottom: 2px solid #444;
+}
+
+.grid-row:last-child {
+  border-bottom: none;
+}
+
+/* Center align content in grid cells */
+.grid-header div, .grid-row div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Buy & Sell Tickers */
@@ -1051,7 +1131,7 @@ footer {
           <ul class="submenu">
             <li><a href="top5/">Top Stocks Scanner</a></li>
             <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
             <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
@@ -1084,7 +1164,7 @@ footer {
           <ul class="dropdown-menu">
             <li><a href="top5/">Top Stocks Scanner</a></li>
             <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
             <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
@@ -1122,8 +1202,161 @@ footer {
   </header>
 
   
-  <!-- Countdown Section -->
-  <section class="countdown-section">
+  
+
+<!-- Weekly Stock Picks Section -->
+<section id="weekly-stock-picks">
+  <h2>Weekly Stock Picks</h2>
+  
+  <!-- Wrapper for the two grids -->
+  <div class="weekly-grid-wrapper">
+    <!-- Top 5 Scores Grid -->
+    <div class="stock-grid top-grid">
+      <h3>Top 5 Scores</h3>
+      <!-- Column Headers -->
+      <div class="grid-header">
+        <div>Ticker</div>
+        <div>Score</div>
+        <div>Daily %</div>
+      </div>
+      <!-- Row 1 -->
+      <div class="grid-row">
+        <div>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a>
+        </div>
+        <div>
+          <span class="score-high">59.27</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-VRSN">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 2 -->
+      <div class="grid-row">
+        <div>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ATO">ATO</a>
+        </div>
+        <div>
+          <span class="score-high">58.21</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-ATO">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 3 -->
+      <div class="grid-row">
+        <div>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MOH">MOH</a>
+        </div>
+        <div>
+          <span class="score-high">57.06</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-MOH">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 4 -->
+      <div class="grid-row">
+        <div>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ERIE">ERIE</a>
+        </div>
+        <div>
+          <span class="score-high">56.76</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-ERIE">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 5 -->
+      <div class="grid-row">
+        <div>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MRK">MRK</a>
+        </div>
+        <div>
+          <span class="score-high">56.44</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-MRK">Loading...</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom 5 Scores Grid -->
+    <div class="stock-grid bottom-grid">
+      <h3>Bottom 5 Scores</h3>
+      <!-- Column Headers -->
+      <div class="grid-header">
+        <div>Ticker</div>
+        <div>Score</div>
+        <div>Daily %</div>
+      </div>
+      <!-- Row 1 -->
+      <div class="grid-row">
+        <div>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=TSLA">TSLA</a>
+        </div>
+        <div>
+          <span class="score-low">34.79</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-TSLA">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 2 -->
+      <div class="grid-row">
+        <div>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=BA">BA</a>
+        </div>
+        <div>
+          <span class="score-low">35.15</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-BA">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 3 -->
+      <div class="grid-row">
+        <div>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a>
+        </div>
+        <div>
+          <span class="score-low">35.89</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-ALB">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 4 -->
+      <div class="grid-row">
+        <div>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=PLTR">PLTR</a>
+        </div>
+        <div>
+          <span class="score-low">37.83</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-PLTR">Loading...</button>
+        </div>
+      </div>
+      <!-- Row 5 -->
+      <div class="grid-row">
+        <div>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a>
+        </div>
+        <div>
+          <span class="score-low">37.91</span>
+        </div>
+        <div>
+          <button class="performance-button" id="performance-AXON">Loading...</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="explanation.html" class="back-button">Selection Process</a>
+  </div>
+  <!-- Countdown Section (within the same container) -->
+  <div class="countdown-container">
     <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
     <div class="flip-clock" id="flipClock">
       <div class="flip-unit">
@@ -1149,69 +1382,10 @@ footer {
     <button class="newsletter-btn" id="scrollToSignup">
       Receive Top Picks Earlier
     </button>
-  </section>
+  </div>
 
-<!-- Weekly Stock Picks Section -->
-<section id="weekly-stock-picks">
-  <h2>Weekly Stock Picks</h2>
-  <div class="stock-picks-container">
-    <!-- Top 5 Scores -->
-    <div class="stock-pick">
-      <h3>Top 5 Scores</h3>
-      <ol>
-        <li>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a> – <span class="score-high">59.27</span>
-          <button class="performance-button" id="performance-VRSN">Loading...</button>
-        </li>
-        <li>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ATO">ATO</a> – <span class="score-high">58.21</span>
-          <button class="performance-button" id="performance-ATO">Loading...</button>
-        </li>
-        <li>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MOH">MOH</a> – <span class="score-high">57.06</span>
-          <button class="performance-button" id="performance-MOH">Loading...</button>
-        </li>
-        <li>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ERIE">ERIE</a> – <span class="score-high">56.76</span>
-          <button class="performance-button" id="performance-ERIE">Loading...</button>
-        </li>
-        <li>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MRK">MRK</a> – <span class="score-high">56.44</span>
-          <button class="performance-button" id="performance-MRK">Loading...</button>
-        </li>
-      </ol>
-    </div>
-    <!-- Bottom 5 Scores -->
-    <div class="stock-pick">
-      <h3>Bottom 5 Scores</h3>
-      <ol>
-        <li>
-          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=TSLA">TSLA</a> – <span class="score-low">34.79</span>
-          <button class="performance-button" id="performance-TSLA">Loading...</button>
-        </li>
-        <li>
-          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=BA">BA</a> – <span class="score-low">35.15</span>
-          <button class="performance-button" id="performance-BA">Loading...</button>
-        </li>
-        <li>
-          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a> – <span class="score-low">35.89</span>
-          <button class="performance-button" id="performance-ALB">Loading...</button>
-        </li>
-        <li>
-          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=PLTR">PLTR</a> – <span class="score-low">37.83</span>
-          <button class="performance-button" id="performance-PLTR">Loading...</button>
-        </li>
-        <li>
-          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a> – <span class="score-low">37.91</span>
-          <button class="performance-button" id="performance-AXON">Loading...</button>
-        </li>
-      </ol>
-    </div>
-  </div>
-  <div style="text-align: center; margin-top: 1rem;">
-    <a href="explanation.html" class="back-button">Selection Process</a>
-  </div>
 </section>
+
 
 
       
@@ -1330,9 +1504,12 @@ footer {
           <a href="intraday/" class="tool-button">Open Tool</a>
         </div>
         <div class="tool-card basic">
-          <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
-          <h2>Stock Trend Forecast</h2>
-          <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
+          <img src="images/stocks.PNG" alt="Comprehensive Stock Analysis" />
+          <h2>Comprehensive Stock Analysis</h2>
+          <p>
+            Evaluate each stock by integrating Risk vs. Reward, Congress and Insider activity, Market Sentiment, Fundamental, and Technical Analysis.
+          </p>
+          
           <a href="stocks/" class="tool-button">Open Tool</a>
         </div>
         <div class="tool-card basic">
