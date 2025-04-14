@@ -291,6 +291,7 @@ const mathInstance = create(all);
 /***********************************************************************
  * MASTER UTILS: Logging, Sleep, parseAlphaDate
  ***********************************************************************/
+  
 function logStatus(msg){
   const s = document.getElementById("status");
   s.innerHTML += msg + "<br>";
@@ -310,15 +311,25 @@ function parseAlphaDate(str){
 /***********************************************************************
  * Loading Tickers for batch scanning
  ***********************************************************************/
-const vercelRoot = "https://intuition-trades.vercel.app";
-let filePath = `${vercelRoot}/tickers/${index}-tickers.txt`;
-const response = await fetch(filePath);
+async function loadTickers(index) {
+  // Always fetch from your Vercel domain:
+  const vercelRoot = "https://intuition-trades.vercel.app";
+  let filePath = `${vercelRoot}/tickers/${index}-tickers.txt`;
+  
+  const response = await fetch(filePath);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tickers for ${index}: ${response.statusText}`);
+  }
+  
   const text = await response.text();
+  
+  // If your .txt is comma-separated in one line, this is fine.
+  // If it’s line-separated, use .split(/\r?\n/) etc.
   return text
     .replace(/"/g, "")
     .split(",")
     .map(t => t.trim())
-    .filter(t => t.length>0);
+    .filter(t => t.length > 0);
 }
 const predeterminedTickers = [];
 document.getElementById("indexSelect").addEventListener("change", async function() {
