@@ -1183,100 +1183,111 @@ footer {
 
   
 
-  
-  <!-- Mobile Sidebar Menu -->
-  <div class="mobile-menu" id="mobileMenu">
-    <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
-    <nav>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li>
-          <span class="submenu-toggle">Tools &#9662;</span>
-          <ul class="submenu">
-              <!-- Premium tool (locked) -->
-            <li class="premium-dropdown-item" id="premiumLink1">
+    <!-- ========== Mobile Sidebar Menu ========== -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+
+      <!-- Tools (Mobile) -->
+      <li>
+        <span class="submenu-toggle">Tools &#9662;</span>
+        <ul class="submenu">
+          <!-- Premium (locked) -->
+          <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
-            <!-- The overlay that covers the link -->
             <div class="premium-dropdown-overlay">
-            <span>Sign in for Premium</span>
+              <span>Sign in for Premium</span>
             </div>
-            </li>
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
-            <li><a href="risk/">Risk Reward Index</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-            <li><a href="congress/">Congress Trades</a></li>
-            <!-- Another premium tool -->
-            <li class="premium-dropdown-item" id="premiumLink2">
+          </li>
+          <li><a href="intraday/">Live Stock Chart</a></li>
+          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
+          <li><a href="risk/">Risk Reward Index</a></li>
+          <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+          <li><a href="congress/">Congress Trades</a></li>
+
+          <!-- Another premium (locked) -->
+          <li class="premium-dropdown-item" id="premiumLink2">
             <a href="topcongress/">Top 5 Congress Stocks</a>
             <div class="premium-dropdown-overlay">
-            <span>Sign in for Premium</span>
+              <span>Sign in for Premium</span>
             </div>
-            </li>
-            </ul>
-            </li>     
-            <li><a href="analyst/">Combined Analyst Ratings</a></li>
-            <li><a href="sentiment">Market Sentiment</a></li>
-            <li><a href="insider/">Insider Tracker</a></li>
-            <li><a href="technical/">Combined Technical Analysis</a></li>
-            <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
-          </ul>
-        </li>
-        <li>
-          <span class="submenu-toggle">Tutorials &#9662;</span>
-          <ul class="submenu">
-            <li><a href="/tutorials/">Go to Tutorials</a></li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
-  </div>
+          </li>
+        </ul>
+      </li>
 
-  <!-- Desktop Inline Menu for larger screens -->
-  <header>
-    <nav class="header__inline-menu topnav">
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li class="dropdown">
-          <a href="#tools" class="parent-link">Tools</a>
-          <ul class="dropdown-menu">
-             <!-- Premium tool (locked) -->
-             <li class="premium-dropdown-item" id="premiumLink1">
-              <a href="top5/">Top Stocks Scanner</a>
-              <!-- The overlay that covers the link -->
-              <div class="premium-dropdown-overlay">
-                <span>Sign in for Premium</span>
+      <!-- Remaining tools at top level -->
+      <li><a href="analyst/">Combined Analyst Ratings</a></li>
+      <li><a href="sentiment/">Market Sentiment</a></li>
+      <li><a href="insider/">Insider Tracker</a></li>
+      <li><a href="technical/">Combined Technical Analysis</a></li>
+      <li><a href="MACD/">MACD Analysis</a></li>
+      <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+
+      <!-- Tutorials (Mobile) -->
+      <li>
+        <span class="submenu-toggle">Tutorials &#9662;</span>
+        <ul class="submenu">
+          <li><a href="/tutorials/">Go to Tutorials</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<!-- ========== Desktop Inline Menu for larger screens ========== -->
+<header>
+  <nav class="header__inline-menu topnav">
+    <ul>
+      <li><a href="/">Home</a></li>
+
+      <!-- Tools (Desktop) -->
+      <li class="dropdown">
+        <a href="#tools" class="parent-link">Tools</a>
+        <ul class="dropdown-menu">
+          <!-- Premium (locked) -->
+          <li class="premium-dropdown-item" id="premiumLink1">
+            <a href="top5/">Top Stocks Scanner</a>
+            <div class="premium-dropdown-overlay">
+              <span>Sign in for Premium</span>
             </div>
-            </li>
-            <li><a href="intraday/">Live Stock Chart</a></li>
-            <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
-            <li><a href="risk/">Risk Reward Index</a></li>
-            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
-            <li><a href="congress/">Congress Trades</a></li>
-            <!-- Another premium tool -->
-            <li class="premium-dropdown-item" id="premiumLink2">
-              <a href="topcongress/">Top 5 Congress Stocks</a>
-              <div class="premium-dropdown-overlay">
-                <span>Sign in for Premium</span>
-              </div>
-            </li>
-            </ul>
-            </li>
-            <li><a href="analyst/">Combined Analyst Ratings</a></li>
-            <li><a href="sentiment/">Market Sentiment</a></li>
-            <li><a href="insider/">Insider Tracker</a></li>
-            <li><a href="technical/">Combined Technical Analysis</a></li>
-            <li><a href="MACD/">MACD Analysis</a></li>
-            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
-          </ul>
-        </li>
-        <li class="dropdown">
-          <a href="/tutorials/" class="parent-link">Tutorials</a>
-          <ul class="dropdown-menu"></ul>
-        </li>
-      </ul>
-    </nav>
+          </li>
+          <li><a href="intraday/">Live Stock Chart</a></li>
+          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
+          <li><a href="risk/">Risk Reward Index</a></li>
+          <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+          <li><a href="congress/">Congress Trades</a></li>
+
+          <!-- Another premium (locked) -->
+          <li class="premium-dropdown-item" id="premiumLink2">
+            <a href="topcongress/">Top 5 Congress Stocks</a>
+            <div class="premium-dropdown-overlay">
+              <span>Sign in for Premium</span>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+      <!-- Remaining tools at top level -->
+      <li><a href="analyst/">Combined Analyst Ratings</a></li>
+      <li><a href="sentiment/">Market Sentiment</a></li>
+      <li><a href="insider/">Insider Tracker</a></li>
+      <li><a href="technical/">Combined Technical Analysis</a></li>
+      <li><a href="MACD/">MACD Analysis</a></li>
+      <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+
+      <!-- Tutorials (Desktop) -->
+      <li class="dropdown">
+        <a href="/tutorials/" class="parent-link">Tutorials</a>
+        <ul class="dropdown-menu">
+          <li><a href="/tutorials/">Go to Tutorials</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+</header>
+
    
        <!-- Sign-in container aligned to the right -->
        <div class="header-right">
