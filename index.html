@@ -1158,7 +1158,7 @@ footer {
   z-index: 1; /* so it's behind the overlay, which will be z-index:2 */
 }
 
-/* The overlay: 50% dark background, full size of the <li> */
+/* For dropdown overlays, align the content (the lock icon) to the right */
 .premium-dropdown-overlay {
   position: absolute;
   top: 0; 
@@ -1168,11 +1168,19 @@ footer {
   background-color: rgba(0,0,0,0.5); /* 50% transparent black */
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
+  justify-content: flex-end;  /* Place content at the right edge */
+  padding-right: 5px; /* Optional: add some spacing from the edge */
   cursor: pointer;
-  z-index: 2; /* on top of the <a> */
+  z-index: 2;
 }
+
+/* Style for the lock icon image */
+.dropdown-lock-icon {
+  width: 16px; /* Adjust the size as needed */
+  height: auto;
+  opacity: 0.8; /* Optional: a bit of transparency */
+}
+
 
 /* When user is Premium (unlocked), hide the overlay */
 .premium-dropdown-item.unlocked .premium-dropdown-overlay {
@@ -1213,7 +1221,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
             <div class="premium-dropdown-overlay">
-              <span>Premium</span>
+              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
             </div>
           </li>
           <!-- Basic Tools -->
@@ -1226,7 +1234,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink2">
             <a href="topcongress/">Top 5 Congress Stocks</a>
             <div class="premium-dropdown-overlay">
-              <span>Premium</span>
+              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
             </div>
           </li>
           <!-- Remaining Tools -->
@@ -1266,7 +1274,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
             <div class="premium-dropdown-overlay">
-              <span>Premium</span>
+              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
             </div>
           </li>
           <!-- Basic Tools -->
@@ -1279,7 +1287,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink2">
             <a href="topcongress/">Top 5 Congress Stocks</a>
             <div class="premium-dropdown-overlay">
-              <span>Premium</span>
+              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
             </div>
           </li>
           <!-- Remaining Tools -->
