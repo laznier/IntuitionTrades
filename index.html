@@ -2363,13 +2363,16 @@ tickerSearchButton.addEventListener("click", async () => {
     } else {
       indicator.textContent = "Basic User";
     }
-    // Refresh the page to fully reinitialize the UI after sign-in/account change
-    window.location.reload();
+    // Delay the refresh to allow state to settle before reloading
+    setTimeout(() => {
+      window.location.reload();
+    }, 500); // 500 milliseconds delay; adjust if necessary
   })
   .catch(err => {
     console.error("Error verifying user:", err);
   });
 }
+
 
 
 
