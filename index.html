@@ -2284,29 +2284,32 @@ tickerSearchButton.addEventListener("click", async () => {
 <script>
   let premiumToolClicked = false;
 
-  // Function to check if there's a stored token and update user type accordingly.
   function verifyStoredToken() {
-    const storedToken = localStorage.getItem("googleToken");
-    if (storedToken) {
-      fetch('/api/verify-google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: storedToken })
-      })
-      .then(res => res.json())
-      .then(data => {
-        // Update the user type indicator accordingly.
-        const indicator = document.getElementById("user-type-indicator");
-        if (data.isPremium) {
-          indicator.textContent = "Premium User";
-          document.getElementById("premiumCard").classList.add("unlocked");
-        } else {
-          indicator.textContent = "Basic User";
-        }
-      })
-      .catch(err => console.error("Stored token verification error:", err));
-    }
+  const storedToken = localStorage.getItem("googleToken");
+  if (storedToken) {
+    fetch('/api/verify-google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: storedToken })
+    })
+    .then(res => res.json())
+    .then(data => {
+      // Update the user type indicator accordingly.
+      const indicator = document.getElementById("user-type-indicator");
+      if (data.isPremium) {
+        indicator.textContent = "Premium User";
+        // Unlock all premium cards by targeting them with a class selector.
+        document.querySelectorAll(".tool-card.premium").forEach(card => {
+          card.classList.add("unlocked");
+        });
+      } else {
+        indicator.textContent = "Basic User";
+      }
+    })
+    .catch(err => console.error("Stored token verification error:", err));
   }
+}
+
 
   // Initialize Google Sign-In on window load.
   window.onload = function() {
@@ -2324,49 +2327,50 @@ tickerSearchButton.addEventListener("click", async () => {
 
   // Attach event listener to the premium tool card to force re-authentication if clicked.
   document.addEventListener("DOMContentLoaded", () => {
-    const premiumCard = document.getElementById("premiumCard");
-    if (premiumCard) {
-      premiumCard.addEventListener("click", () => {
-        premiumToolClicked = true;
-        google.accounts.id.prompt(); // Force a prompt when premium tool is clicked
-      });
-    }
+  const premiumCards = document.querySelectorAll(".tool-card.premium");
+  premiumCards.forEach(card => {
+    card.addEventListener("click", () => {
+      premiumToolClicked = true;
+      google.accounts.id.prompt(); // Force a prompt when a premium tool is clicked
+    });
   });
+});
+
 
   // Handle the credential response from Google.
   function handleCredentialResponse(response) {
-    console.log("Received JWT token:", response.credential);
-    // Save the token locally.
-    localStorage.setItem("googleToken", response.credential);
-    // Verify the token on the backend.
-    fetch('/api/verify-google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: response.credential })
-    })
-    .then(res => res.json())
-    .then(data => {
-      const indicator = document.getElementById("user-type-indicator");
-      if (premiumToolClicked) {
-        if (data.isPremium) {
-          document.getElementById("premiumCard").classList.add("unlocked");
-        } else {
-          alert("Access denied – Premium Users only.");
-        }
-        premiumToolClicked = false;
-      } else {
-        if (data.isPremium) {
-          indicator.textContent = "Premium User";
-          document.getElementById("premiumCard").classList.add("unlocked");
-        } else {
-          indicator.textContent = "Basic User";
-        }
-      }
-    })
-    .catch(err => {
-      console.error("Error verifying user:", err);
-    });
-  }
+  console.log("Received JWT token:", response.credential);
+  localStorage.setItem("googleToken", response.credential);
+
+  const payload = {
+    token: response.credential,
+    accountType: selectedAccountType, // "basic" or "premium"
+  };
+
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+    if (data.isPremium) {
+      indicator.textContent = "Premium User";
+      // Unlock all premium cards by adding the "unlocked" class
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.add("unlocked");
+      });
+    } else {
+      indicator.textContent = "Basic User";
+    }
+    // Optionally, update the UI further or redirect the user
+  })
+  .catch(err => {
+    console.error("Error verifying user:", err);
+  });
+}
+
 
   document.addEventListener("DOMContentLoaded", () => {
   const premiumOverlays = document.querySelectorAll(".premium-overlay");
