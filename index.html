@@ -101,8 +101,8 @@ h1, h2, h3, h4, h5, h6 {
 
 
     /*************** Hide countdown, weekly top picks, and performance sections *****************/
-    .countdown-section,
-    #weekly-stock-picks,
+    /*.countdown-section,*/
+   /* #weekly-stock-picks, */
     #performance-summary {
       display: none !important;
     }
@@ -968,7 +968,13 @@ footer {
     opacity: 1;
   }
 }
-
+/* Score Styling */
+.score-high {
+      color: #16a34a; /* green for scores above 50 */
+    }
+    .score-low {
+      color: #dc3545; /* red for scores below 50 */
+    }
 /* Optional: style the container to ensure proper positioning */
 #heroPrice {
   position: absolute;
@@ -1043,6 +1049,7 @@ footer {
         <li>
           <span class="submenu-toggle">Tools &#9662;</span>
           <ul class="submenu">
+            <li><a href="top5/">Top Stocks Scanner</a></li>
             <li><a href="intraday/">Live Stock Chart</a></li>
             <li><a href="stocks/">Stock Trend Forecast</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
@@ -1075,6 +1082,7 @@ footer {
         <li class="dropdown">
           <a href="#tools" class="parent-link">Tools</a>
           <ul class="dropdown-menu">
+            <li><a href="top5/">Top Stocks Scanner</a></li>
             <li><a href="intraday/">Live Stock Chart</a></li>
             <li><a href="stocks/">Stock Trend Forecast</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
@@ -1143,52 +1151,69 @@ footer {
     </button>
   </section>
 
-  <!-- Weekly Stock Picks Section -->
-  <section id="weekly-stock-picks">
-    <h2>Weekly Stock Picks</h2>
-    <div class="stock-picks-container">
-      <!-- Top 3 Buys -->
-      <div class="stock-pick">
-        <h3>Top 3 Buys</h3>
-        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
-        <ol>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VST">VST</a>
-            <button class="performance-button" id="performance-VST">Loading...</button>
-          </li>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=WYNN">WYNN</a>
-            <button class="performance-button" id="performance-WYNN">Loading...</button>
-          </li>
-          <li>
-            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
-            <button class="performance-button" id="performance-OXY">Loading...</button>
-          </li>
-        </ol>
-      </div>
-      <!-- Top 3 Shorts -->
-      <div class="stock-pick">
-        <h3>Top 3 Shorts</h3>
-        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
-        <ol>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=INTA">INTA</a>
-            <button class="performance-button" id="performance-INTA">Loading...</button>
-          </li>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a>
-            <button class="performance-button" id="performance-AXON">Loading...</button>
-          </li>
-          <li>
-            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=LYV">LYV</a>
-            <button class="performance-button" id="performance-LYV">Loading...</button>
-          </li>
-        </ol>
-      </div>
+<!-- Weekly Stock Picks Section -->
+<section id="weekly-stock-picks">
+  <h2>Weekly Stock Picks</h2>
+  <div class="stock-picks-container">
+    <!-- Top 5 Scores -->
+    <div class="stock-pick">
+      <h3>Top 5 Scores</h3>
+      <ol>
+        <li>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a> – <span class="score-high">59.27</span>
+          <button class="performance-button" id="performance-VRSN">Loading...</button>
+        </li>
+        <li>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ATO">ATO</a> – <span class="score-high">58.21</span>
+          <button class="performance-button" id="performance-ATO">Loading...</button>
+        </li>
+        <li>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MOH">MOH</a> – <span class="score-high">57.06</span>
+          <button class="performance-button" id="performance-MOH">Loading...</button>
+        </li>
+        <li>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ERIE">ERIE</a> – <span class="score-high">56.76</span>
+          <button class="performance-button" id="performance-ERIE">Loading...</button>
+        </li>
+        <li>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MRK">MRK</a> – <span class="score-high">56.44</span>
+          <button class="performance-button" id="performance-MRK">Loading...</button>
+        </li>
+      </ol>
     </div>
-      <div style="text-align: center; margin-top: 1rem;">
-        <a href="explanation.html" class="back-button">Selection Process</a>
-      </div>
+    <!-- Bottom 5 Scores -->
+    <div class="stock-pick">
+      <h3>Bottom 5 Scores</h3>
+      <ol>
+        <li>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=TSLA">TSLA</a> – <span class="score-low">34.79</span>
+          <button class="performance-button" id="performance-TSLA">Loading...</button>
+        </li>
+        <li>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=BA">BA</a> – <span class="score-low">35.15</span>
+          <button class="performance-button" id="performance-BA">Loading...</button>
+        </li>
+        <li>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ALB">ALB</a> – <span class="score-low">35.89</span>
+          <button class="performance-button" id="performance-ALB">Loading...</button>
+        </li>
+        <li>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=PLTR">PLTR</a> – <span class="score-low">37.83</span>
+          <button class="performance-button" id="performance-PLTR">Loading...</button>
+        </li>
+        <li>
+          <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a> – <span class="score-low">37.91</span>
+          <button class="performance-button" id="performance-AXON">Loading...</button>
+        </li>
+      </ol>
+    </div>
+  </div>
+  <div style="text-align: center; margin-top: 1rem;">
+    <a href="explanation.html" class="back-button">Selection Process</a>
+  </div>
+</section>
+
+
       
     </div>
   </section>
@@ -1216,18 +1241,6 @@ footer {
     </div>
   </section>  
 
-  <!-- Newsletter Signup Section -->
-  <section id="newsletter-signup">
-    <!-- MailerLite Universal Embed Code -->
-    <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-      ml('account', '1422635');
-    </script>
-    <div class="ml-embedded" data-form="N78gvr"></div>
-  </section>
 
   <!-- ==========================
      Live News Section
@@ -1278,6 +1291,18 @@ footer {
   </div>
 </section>
 
+<!-- Newsletter Signup Section -->
+<section id="newsletter-signup">
+  <!-- MailerLite Universal Embed Code -->
+  <script>
+    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+    ml('account', '1422635');
+  </script>
+  <div class="ml-embedded" data-form="N78gvr"></div>
+</section>
 
   <main>
     <!-- Tools Section -->
@@ -1288,7 +1313,7 @@ footer {
          <div class="tool-card premium" id="premiumCard">
           <img src="images/top5.png" alt="Top Stocks Scanner" />
           <h2>Top Stocks Scanner</h2>
-          <p>Evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
+          <p>Auto evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
           <div class="premium-overlay" id="premiumOverlay">
             Premium Locked
             <br>
@@ -1328,11 +1353,17 @@ footer {
           <p>Discover if politicians are trading your favorite stocks.</p>
           <a href="congress/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card basic">
+                <!-- Premium Tool (locked by default) -->
+         <div class="tool-card premium" id="premiumCard">
           <img src="images/topcongress.PNG" alt="Top 5 Congress Stocks" />
           <h2>Top 5 Congress Stocks</h2>
           <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
-          <a href="topcongress/" class="tool-button">Open Tool</a>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
+          </div>
+          <a href="topcongress/" class="tool-button">Open Premium Tool</a>
         </div>
         <div class="tool-card basic">
           <img src="images/analyst.PNG" alt="Combined Analyst Ratings" />
@@ -1383,7 +1414,7 @@ footer {
 
   <!-- Footer -->
   <footer>
-    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
   </footer>
 
   <!-- ============================================================
@@ -1486,19 +1517,30 @@ footer {
           const timeSeries = data["Time Series (5min)"];
           const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
 
-          // Adjust this date as needed
-          const initialDate = "2025-04-04";
-          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
-          if (!initialTimestamps.length) return;
-          const initialTimestamp = initialTimestamps[0];
-          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+// Determine the initial timestamp (first available "open" time) for the current day.
+// If no data for today exists, fallback to the most recent trading day's first timestamp.
+const todayStr = new Date().toISOString().slice(0, 10);
+let initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(todayStr));
 
-          // Get the most recent timestamp (<= current time)
-          const now = new Date();
-          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
-          if (!currentTimestamps.length) return;
-          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
-          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+if (!initialTimestamps.length) {
+  // Fallback: Get the date of the latest available timestamp
+  const lastTimestamp = sortedTimestamps[sortedTimestamps.length - 1];
+  const fallbackDate = lastTimestamp.slice(0, 10);
+  initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(fallbackDate));
+}
+
+if (!initialTimestamps.length) return; // if still no timestamps, exit early
+
+const initialTimestamp = initialTimestamps[0]; // first available timestamp for the determined date
+const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+
+// Get the most recent timestamp (<= current time)
+const now = new Date();
+const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+if (!currentTimestamps.length) return;
+const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+
 
           // Calculate percentage difference
           const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
@@ -1517,25 +1559,26 @@ footer {
         .catch(error => console.error("Error fetching intraday data for", ticker, error));
     }
 
-    // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV) and the initial date
-    document.addEventListener('DOMContentLoaded', () => {
-      const initialDate = "2025-04-04";
-      document.querySelectorAll('.performance-header').forEach(header => {
-        header.textContent = "Performance Since " + initialDate;
-      });
+// Update the 10 weekly pick tickers (VRSN, ATO, MOH, ERIE, MRK, TSLA, BA, ALB, PLTR, AXON) and the initial date
+document.addEventListener('DOMContentLoaded', () => {
+  const initialDate = "2025-04-11";
+  document.querySelectorAll('.performance-header').forEach(header => {
+    header.textContent = "Performance Since " + initialDate;
+  });
 
-      const tickers = ["VST", "WYNN", "OXY", "INTA", "AXON", "LYV"];
-      tickers.forEach(ticker => {
-        const perfEl = document.getElementById(`performance-${ticker}`);
-        if (perfEl) {
-          updateTickerPerformanceIntraday(ticker, perfEl);
-          // Make each performance button clickable to see intraday chart
-          perfEl.addEventListener('click', () => {
-            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
-          });
-        }
+  const tickers = ["VRSN", "ATO", "MOH", "ERIE", "MRK", "TSLA", "BA", "ALB", "PLTR", "AXON"];
+  tickers.forEach(ticker => {
+    const perfEl = document.getElementById(`performance-${ticker}`);
+    if (perfEl) {
+      updateTickerPerformanceIntraday(ticker, perfEl);
+      // Make each performance button clickable to see intraday chart
+      perfEl.addEventListener('click', () => {
+        window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
       });
-    });
+    }
+  });
+});
+
   </script>
 
   <script>
@@ -1560,7 +1603,7 @@ footer {
       function generateExplanation() {
   return (
     "This number represents the average profit percentage if you had bought our top three recommended stocks (" +
-    topBuys.join(", ") + ") as of 2025-04-04. It updates in real time based on intraday data."
+    topBuys.join(", ") + ") as of 2025-04-11. It updates in real time based on intraday data."
   );
 }
 
@@ -1904,7 +1947,7 @@ async function fetchAllSentimentDataByTicker(ticker) {
   
     // Helper to format the time_published string from Alpha Vantage
     function formatTimePublished(timeStr) {
-      // e.g. "20250403T152533" => "2025-04-04 15:25"
+      // e.g. "20250403T152533" => "2025-04-11 15:25"
       if (!timeStr || timeStr.length < 8) return "";
       const year = timeStr.slice(0, 4);
       const month = timeStr.slice(4, 6);

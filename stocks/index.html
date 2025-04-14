@@ -2506,23 +2506,48 @@ Weighted Score = ( w_RRI × RRI
     });
   }
   document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('ticker')) {
-      const tickerInput = document.getElementById('ticker');
-      if (tickerInput) { tickerInput.value = urlParams.get('ticker'); updateLinkButtonTexts(); }
-      const simulateBtn = document.getElementById('simulateButton');
-      if (simulateBtn) { setTimeout(() => { simulateBtn.click(); }, 100); }
-    }
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Check for ticker parameter and update ticker input
+  if (urlParams.has('ticker')) {
     const tickerInput = document.getElementById('ticker');
-    tickerInput.addEventListener('input', () => {
-      const query = tickerInput.value.trim();
-      if (query.length < 2) { clearSuggestions(); return; }
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(async () => { const suggestions = await fetchTickerSuggestions(query); renderTickerSuggestions(suggestions); }, 300);
-    });
-    clearSuggestions();
-    updateLinkButtonTexts();
+    if (tickerInput) {
+      tickerInput.value = urlParams.get('ticker');
+      updateLinkButtonTexts();
+    }
+    
+    // Check for timeframe parameter; if not found, set to "short"
+    const timeframeSelect = document.getElementById('investmentTimeframe');
+    if (timeframeSelect) {
+      if (urlParams.has('timeframe')) {
+        timeframeSelect.value = urlParams.get('timeframe');
+      } else {
+        timeframeSelect.value = "short"; // Default to short timeframe if not specified
+      }
+    }
+    
+    // Trigger simulation button click after a brief delay
+    const simulateBtn = document.getElementById('simulateButton');
+    if (simulateBtn) {
+      setTimeout(() => { simulateBtn.click(); }, 100);
+    }
+  }
+  
+  // Ticker autocomplete and other initialization code
+  const tickerInput = document.getElementById('ticker');
+  tickerInput.addEventListener('input', () => {
+    const query = tickerInput.value.trim();
+    if (query.length < 2) { clearSuggestions(); return; }
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(async () => {
+      const suggestions = await fetchTickerSuggestions(query);
+      renderTickerSuggestions(suggestions);
+    }, 300);
   });
+  clearSuggestions();
+  updateLinkButtonTexts();
+});
+
 </script>
 </body>
 </html>
