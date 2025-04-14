@@ -1006,6 +1006,14 @@ footer {
   .tool-card.premium {
   position: relative;
 }
+.lock-icon {
+  width: 18px;  /* adjust to taste; 16–24px is typical for a tiny icon */
+  height: auto;
+  margin-top: 5px; /* some spacing if you like */
+  display: block;  /* ensures it sits on its own line nicely */
+  margin-left: auto;
+  margin-right: auto; /* centers the icon */
+}
 
 </style>
 <body>
@@ -1280,10 +1288,16 @@ footer {
           <img src="images/top5.png" alt="Top Stocks Scanner" />
           <h2>Top Stocks Scanner</h2>
           <p>Evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
-          <!-- This is the only premium overlay element in your document -->
-          <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
-          <a href="top5/" class="tool-button">Open Premium Tool</a>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
+          </div>
+          <a href="javascript:void(0)" class="tool-button" id="openPremiumToolLink">
+            Open Premium Tool
+          </a>
         </div>
+        
         
 
         <div class="tool-card basic">
@@ -2059,50 +2073,64 @@ tickerSearchButton.addEventListener("click", async () => {
   };
 
   // Attach event listener to the premium tool card to force re-authentication if clicked.
-  document.addEventListener("DOMContentLoaded", () => {
-    const premiumCard = document.getElementById("premiumCard");
-    if (premiumCard) {
-      premiumCard.addEventListener("click", () => {
-        premiumToolClicked = true;
-        google.accounts.id.prompt(); // Force a prompt when premium tool is clicked
-      });
-    }
-  });
+document.addEventListener("DOMContentLoaded", () => {
+  const premiumToolLink = document.getElementById("openPremiumToolLink");
 
-  // Handle the credential response from Google.
-  function handleCredentialResponse(response) {
-    console.log("Received JWT token:", response.credential);
-    // Save the token locally.
-    localStorage.setItem("googleToken", response.credential);
-    // Verify the token on the backend.
-    fetch('/api/verify-google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: response.credential })
-    })
-    .then(res => res.json())
-    .then(data => {
-      const indicator = document.getElementById("user-type-indicator");
-      if (premiumToolClicked) {
-        if (data.isPremium) {
-          document.getElementById("premiumCard").classList.add("unlocked");
-        } else {
-          alert("Access denied – Premium Users only.");
-        }
-        premiumToolClicked = false;
-      } else {
-        if (data.isPremium) {
-          indicator.textContent = "Premium User";
-          document.getElementById("premiumCard").classList.add("unlocked");
-        } else {
-          indicator.textContent = "Basic User";
-        }
-      }
-    })
-    .catch(err => {
-      console.error("Error verifying user:", err);
+  if (premiumToolLink) {
+    premiumToolLink.addEventListener("click", (evt) => {
+      evt.preventDefault(); // Stop normal navigation
+
+      // Mark that user wants the Premium tool
+      premiumToolClicked = true;
+
+      // Always show the Google Sign-In popup/prompt, even on desktop
+      google.accounts.id.prompt();
     });
   }
+  
+});
+
+
+ // Handle the credential response from Google.
+function handleCredentialResponse(response) {
+  console.log("Received JWT token:", response.credential);
+  // Save the token locally.
+  localStorage.setItem("googleToken", response.credential);
+
+  // Verify the token on the backend.
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: response.credential })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+
+    if (premiumToolClicked) {
+      if (data.isPremium) {
+        // Step 5: If the user is premium, unlock the card and redirect them to the premium page
+        document.getElementById("premiumCard").classList.add("unlocked");
+        window.location.href = "top5/";  // Redirect to your premium tool
+      } else {
+        alert("Access denied – Premium Users only.");
+      }
+      premiumToolClicked = false;
+    } else {
+      // Not in the middle of clicking a premium tool
+      if (data.isPremium) {
+        indicator.textContent = "Premium User";
+        document.getElementById("premiumCard").classList.add("unlocked");
+      } else {
+        indicator.textContent = "Basic User";
+      }
+    }
+  })
+  .catch(err => {
+    console.error("Error verifying user:", err);
+  });
+}
+
 </script>
 
 
