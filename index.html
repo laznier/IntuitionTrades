@@ -1133,6 +1133,38 @@ footer {
   .tool-card.premium {
   position: relative;
 }
+/* Position the premium list item relatively 
+   so the overlay can be absolutely positioned inside it */
+   .premium-dropdown-item {
+  position: relative;
+}
+
+/* Make sure the normal <a> is visible behind the overlay */
+.premium-dropdown-item a {
+  position: relative;
+  z-index: 1; /* so it's behind the overlay, which will be z-index:2 */
+}
+
+/* The overlay: 50% dark background, full size of the <li> */
+.premium-dropdown-overlay {
+  position: absolute;
+  top: 0; 
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5); /* 50% transparent black */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  z-index: 2; /* on top of the <a> */
+}
+
+/* When user is Premium (unlocked), hide the overlay */
+.premium-dropdown-item.unlocked .premium-dropdown-overlay {
+  display: none;
+}
 
 </style>
 <body>
@@ -1161,13 +1193,28 @@ footer {
         <li>
           <span class="submenu-toggle">Tools &#9662;</span>
           <ul class="submenu">
-            <li><a href="top5/">Top Stocks Scanner</a></li>
+              <!-- Premium tool (locked) -->
+            <li class="premium-dropdown-item" id="premiumLink1">
+              <a href="top5/">Top Stocks Scanner</a>
+              <!-- The overlay that covers the link -->
+              <div class="premium-dropdown-overlay">
+                <span>Sign in for Premium</span>
+              </div>
+            </li>
             <li><a href="intraday/">Live Stock Chart</a></li>
             <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
             <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
-            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+                  <!-- Another premium tool -->
+                  <li class="premium-dropdown-item" id="premiumLink2">
+                    <a href="topcongress/">Top 5 Congress Stocks</a>
+                    <div class="premium-dropdown-overlay">
+                      <span>Sign in for Premium</span>
+                    </div>
+                  </li>
+                </ul>
+              </li>
             <li><a href="analyst/">Combined Analyst Ratings</a></li>
             <li><a href="sentiment">Market Sentiment</a></li>
             <li><a href="insider/">Insider Tracker</a></li>
@@ -1194,13 +1241,28 @@ footer {
         <li class="dropdown">
           <a href="#tools" class="parent-link">Tools</a>
           <ul class="dropdown-menu">
-            <li><a href="top5/">Top Stocks Scanner</a></li>
+             <!-- Premium tool (locked) -->
+             <li class="premium-dropdown-item" id="premiumLink1">
+              <a href="top5/">Top Stocks Scanner</a>
+              <!-- The overlay that covers the link -->
+              <div class="premium-dropdown-overlay">
+                <span>Sign in for Premium</span>
+              </div>
+            </li>
             <li><a href="intraday/">Live Stock Chart</a></li>
             <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
             <li><a href="risk/">Risk Reward Index</a></li>
             <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
             <li><a href="congress/">Congress Trades</a></li>
-            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+                  <!-- Another premium tool -->
+                  <li class="premium-dropdown-item" id="premiumLink2">
+                    <a href="topcongress/">Top 5 Congress Stocks</a>
+                    <div class="premium-dropdown-overlay">
+                      <span>Sign in for Premium</span>
+                    </div>
+                  </li>
+                </ul>
+              </li>
             <li><a href="analyst/">Combined Analyst Ratings</a></li>
             <li><a href="sentiment/">Market Sentiment</a></li>
             <li><a href="insider/">Insider Tracker</a></li>
@@ -1527,7 +1589,7 @@ footer {
           </div>
           <a href="top5/" class="tool-button">Open Premium Tool</a>
         </div>
-        
+                       
 
         <div class="tool-card basic">
           <img src="images/intraday.PNG" alt="Live Stock Chart" />
@@ -2278,7 +2340,53 @@ tickerSearchButton.addEventListener("click", async () => {
       // (Additional mobile menu code here if necessary)
     });
   </script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  // For each overlay in the dropdown
+  document.querySelectorAll('.premium-dropdown-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
 
+      // Instead of opening the link, scroll down to #tools
+      const toolsSection = document.getElementById('tools');
+      if (toolsSection) {
+        toolsSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+});
+function handleCredentialResponse(response) {
+  // ...
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: response.credential })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.isPremium) {
+      // Remove overlay on main tool cards
+      document.querySelectorAll('.tool-card.premium').forEach(card => {
+        card.classList.add('unlocked');
+      });
+      // Also remove overlay in dropdown
+      document.querySelectorAll('.premium-dropdown-item').forEach(li => {
+        li.classList.add('unlocked');
+      });
+    } else {
+      // revert to locked if needed
+      document.querySelectorAll('.tool-card.premium').forEach(card => {
+        card.classList.remove('unlocked');
+      });
+      document.querySelectorAll('.premium-dropdown-item').forEach(li => {
+        li.classList.remove('unlocked');
+      });
+    }
+  })
+  .catch(err => console.error(err));
+}
+</script>
   <!-- Google Identity Services Setup -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
