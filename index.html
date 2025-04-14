@@ -197,6 +197,19 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #ddd;
   color: #333;
 }
+/* HIDE all desktop submenus by default */
+.dropdown-menu {
+  display: none;
+  position: absolute; /* or however you position them */
+  background-color: #333; /* example */
+  z-index: 9999;
+}
+
+/* HIDE all mobile sub-submenus by default */
+.submenu {
+  display: none;
+  background-color: #333;
+}
 
 /* Mobile Menu: Sliding Sidebar */
 .mobile-menu-toggle {
@@ -1771,19 +1784,22 @@ footer {
     const mobileMenu = document.getElementById("mobileMenu");
     openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
     closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
-    const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
-    submenuToggles.forEach(toggle => {
-      toggle.addEventListener("click", () => {
-        const submenu = toggle.nextElementSibling;
-        if (submenu.style.display === "block") {
-          submenu.style.display = "none";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
-        } else {
-          submenu.style.display = "block";
-          toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
-        }
-      });
-    });
+// This code runs when the user taps a "submenu-toggle" span on mobile
+const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
+submenuToggles.forEach(toggle => {
+  toggle.addEventListener("click", () => {
+    const submenu = toggle.nextElementSibling;
+    // Toggle between display block/none
+    if (submenu.style.display === "block") {
+      submenu.style.display = "none";
+      toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
+    } else {
+      submenu.style.display = "block";
+      toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
+    }
+  });
+});
+
   </script>
 
   <script>
