@@ -17,6 +17,7 @@
 <meta property="og:title" content="Intuition Trades" />
 <meta property="og:description" content="Smarter stock decisions powered by market intuition." />
 <meta property="og:image" content="/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes">
 
 <!-- different sizes icons -->
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -2394,8 +2395,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
-function handleCredentialResponse(response) {
-  // ...
+
+</script>
+  <!-- Google Identity Services Setup -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  let premiumToolClicked = false;
+
+  window.onload = function() {
+  google.accounts.id.initialize({
+    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+    callback: handleCredentialResponse
+  });
+  const signInContainer = document.getElementById("google-signin-button");
+  if (signInContainer) {
+    google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
+  }
+  verifyStoredToken();
+};
+
+
+  function handleCredentialResponse(response) {
+  console.log("Received JWT token:", response.credential);
+  localStorage.setItem("googleToken", response.credential);
+
   fetch('/api/verify-google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2403,75 +2426,26 @@ function handleCredentialResponse(response) {
   })
   .then(res => res.json())
   .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
     if (data.isPremium) {
-      // Remove overlay on main tool cards
-      document.querySelectorAll('.tool-card.premium').forEach(card => {
-        card.classList.add('unlocked');
+      indicator.textContent = "Premium User";
+      // Unlock both tool cards and dropdown premium items
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.add("unlocked");
       });
-      // Also remove overlay in dropdown
-      document.querySelectorAll('.premium-dropdown-item').forEach(li => {
-        li.classList.add('unlocked');
+      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
+        item.classList.add("unlocked");
       });
     } else {
-      // revert to locked if needed
-      document.querySelectorAll('.tool-card.premium').forEach(card => {
-        card.classList.remove('unlocked');
-      });
-      document.querySelectorAll('.premium-dropdown-item').forEach(li => {
-        li.classList.remove('unlocked');
+      indicator.textContent = "Basic User";
+      // Remove unlocked classes
+      document.querySelectorAll(".tool-card.premium, .premium-dropdown-item").forEach(item => {
+        item.classList.remove("unlocked");
       });
     }
   })
-  .catch(err => console.error(err));
+  .catch(err => console.error("Error verifying user:", err));
 }
-</script>
-  <!-- Google Identity Services Setup -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>
-  let premiumToolClicked = false;
-
-  function verifyStoredToken() {
-  const storedToken = localStorage.getItem("googleToken");
-  if (storedToken) {
-    fetch('/api/verify-google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: storedToken })
-    })
-    .then(res => res.json())
-    .then(data => {
-      const indicator = document.getElementById("user-type-indicator");
-      if (data.isPremium) {
-        indicator.textContent = "Premium User";
-        document.querySelectorAll(".tool-card.premium").forEach(card => {
-          card.classList.add("unlocked");
-        });
-        document.querySelectorAll(".premium-dropdown-item").forEach(item => {
-          item.classList.add("unlocked");
-        });
-      } else {
-        indicator.textContent = "Basic User";
-      }
-    })
-    .catch(err => console.error("Stored token verification error:", err));
-  }
-}
-
-
-
-  // Initialize Google Sign-In on window load.
-  window.onload = function() {
-    google.accounts.id.initialize({
-      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-      callback: handleCredentialResponse
-    });
-    const signInContainer = document.getElementById("google-signin-button");
-    if (signInContainer) {
-      google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
-    }
-    // Instead of forcing a prompt, simply check for an existing token.
-    verifyStoredToken();
-  };
 
   // Attach event listener to the premium tool card to force re-authentication if clicked.
   document.addEventListener("DOMContentLoaded", () => {
@@ -2486,15 +2460,15 @@ function handleCredentialResponse(response) {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  // If you keep them as two separate classes:
   document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay").forEach(overlay => {
     overlay.addEventListener("click", (event) => {
-      event.stopPropagation(); 
-      // Trigger the Google sign-in prompt
-      google.accounts.id.prompt(); 
+      event.stopPropagation();
+      // Trigger Google sign-in prompt
+      google.accounts.id.prompt();
     });
   });
 });
+
 
 
 </script>
