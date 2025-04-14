@@ -1139,7 +1139,7 @@ footer {
 
   /* When the premium tool is unlocked, add a class that hides the overlay */
   .unlocked .premium-overlay {
-    display: none;
+    display: none !important;
   }
 
   /* Add or update this rule */
@@ -1176,7 +1176,7 @@ footer {
 
 /* When user is Premium (unlocked), hide the overlay */
 .premium-dropdown-item.unlocked .premium-dropdown-overlay {
-  display: none;
+  display: none !important;
 }
 
 </style>
@@ -2432,13 +2432,14 @@ function handleCredentialResponse(response) {
     })
     .then(res => res.json())
     .then(data => {
-      // Update the user type indicator accordingly.
       const indicator = document.getElementById("user-type-indicator");
       if (data.isPremium) {
         indicator.textContent = "Premium User";
-        // Unlock all premium cards by targeting them with a class selector.
         document.querySelectorAll(".tool-card.premium").forEach(card => {
           card.classList.add("unlocked");
+        });
+        document.querySelectorAll(".premium-dropdown-item").forEach(item => {
+          item.classList.add("unlocked");
         });
       } else {
         indicator.textContent = "Basic User";
@@ -2447,6 +2448,7 @@ function handleCredentialResponse(response) {
     .catch(err => console.error("Stored token verification error:", err));
   }
 }
+
 
 
   // Initialize Google Sign-In on window load.
@@ -2473,46 +2475,6 @@ function handleCredentialResponse(response) {
     });
   });
 });
-
-
-  // Handle the credential response from Google.
-  function handleCredentialResponse(response) {
-  console.log("Received JWT token:", response.credential);
-  // Save the new token (if needed)
-  localStorage.setItem("googleToken", response.credential);
-
-  const payload = {
-    token: response.credential,
-  };
-
-  fetch('/api/verify-google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
-  .then(res => res.json())
-  .then(data => {
-    const indicator = document.getElementById("user-type-indicator");
-    if (data.isPremium) {
-      indicator.textContent = "Premium User";
-      document.querySelectorAll(".tool-card.premium").forEach(card => {
-        card.classList.add("unlocked"); // This should remove the premium overlay via CSS
-      });
-    } else {
-      indicator.textContent = "Basic User";
-      // Optionally, you might want to ensure premium overlays are visible if upgrading back
-      document.querySelectorAll(".tool-card.premium").forEach(card => {
-        card.classList.remove("unlocked");
-      });
-    }
-    // Instead of reloading the page, the UI now directly reflects the updated state.
-  })
-  .catch(err => {
-    console.error("Error verifying user:", err);
-  });
-}
-
-
 
 
 document.addEventListener("DOMContentLoaded", () => {
