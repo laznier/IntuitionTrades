@@ -982,20 +982,22 @@ footer {
 
   /* Premium Tool: the overlay is visible by default */
   .premium-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #fff;
-    font-size: 1.1rem;
-    border-radius: var(--border-radius);
-    transition: opacity 0.3s ease;
-  }
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border-radius: var(--border-radius);
+  transition: opacity 0.3s ease;
+
+  /* <-- Add or ensure the following line is present: */
+  pointer-events: none; 
+}
+
 
   /* When the premium tool is unlocked, add a class that hides the overlay */
   .unlocked .premium-overlay {
@@ -1012,7 +1014,6 @@ footer {
   height: auto;
   margin: 4px auto 0; /* slight spacing from “Premium Locked” text */
 }
-
 
 </style>
 <body>
@@ -1287,16 +1288,18 @@ footer {
           <img src="images/top5.png" alt="Top Stocks Scanner" />
           <h2>Top Stocks Scanner</h2>
           <p>Evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
-          <div class="premium-overlay" id="premiumOverlay">
-            Premium Locked
-            <br>
-            <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
-          </div>          
-          <a href="javascript:void(0)" class="tool-button" id="openPremiumToolLink">
-            Open Premium Tool
-          </a>
-        </div>
-        
+<!-- Instead of href="top5/", do: -->
+<a href="javascript:void(0)" class="tool-button" id="openPremiumToolLink">
+  Open Premium Tool
+</a>
+
+          <!-- This is the only premium overlay element in your document -->
+<div class="premium-overlay" id="premiumOverlay">
+  Premium Locked
+  <br>
+  <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
+</div>
+
         
 
         <div class="tool-card basic">
@@ -1772,7 +1775,20 @@ heroPriceEl.appendChild(newPriceEl);
       });
     });
   </script>
-
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumLink = document.getElementById("openPremiumToolLink");
+    if (premiumLink) {
+      premiumLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        premiumToolClicked = true;
+        // Force Google sign-in popup:
+        google.accounts.id.prompt();
+      });
+    }
+  });
+  </script>
+  
   <!-- ==========================
        Live News JavaScript
   =========================== -->
@@ -2072,25 +2088,17 @@ tickerSearchButton.addEventListener("click", async () => {
   };
 
   // Attach event listener to the premium tool card to force re-authentication if clicked.
-document.addEventListener("DOMContentLoaded", () => {
-  const premiumToolLink = document.getElementById("openPremiumToolLink");
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumCard = document.getElementById("premiumCard");
+    if (premiumCard) {
+      premiumCard.addEventListener("click", () => {
+        premiumToolClicked = true;
+        google.accounts.id.prompt(); // Force a prompt when premium tool is clicked
+      });
+    }
+  });
 
-  if (premiumToolLink) {
-    premiumToolLink.addEventListener("click", (evt) => {
-      evt.preventDefault(); // Stop normal navigation
-
-      // Mark that user wants the Premium tool
-      premiumToolClicked = true;
-
-      // Always show the Google Sign-In popup/prompt, even on desktop
-      google.accounts.id.prompt();
-    });
-  }
-  
-});
-
-
- // Handle the credential response from Google.
+// Handle the credential response from Google.
 function handleCredentialResponse(response) {
   console.log("Received JWT token:", response.credential);
   // Save the token locally.
@@ -2108,9 +2116,9 @@ function handleCredentialResponse(response) {
 
     if (premiumToolClicked) {
       if (data.isPremium) {
-        // Step 5: If the user is premium, unlock the card and redirect them to the premium page
+        // Step 5: If the user is premium, unlock and redirect:
         document.getElementById("premiumCard").classList.add("unlocked");
-        window.location.href = "top5/";  // Redirect to your premium tool
+        window.location.href = "top5/"; // auto-redirect to your premium tool
       } else {
         alert("Access denied – Premium Users only.");
       }
