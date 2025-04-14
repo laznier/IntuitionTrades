@@ -2414,6 +2414,33 @@ document.addEventListener("DOMContentLoaded", () => {
   verifyStoredToken();
 };
 
+function verifyStoredToken() {
+  const storedToken = localStorage.getItem("googleToken");
+  if (!storedToken) return;
+
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: storedToken })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+    if (data.isPremium) {
+      indicator.textContent = "Premium User";
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.add("unlocked");
+      });
+      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
+        item.classList.add("unlocked");
+      });
+    } else {
+      indicator.textContent = "Basic User";
+    }
+  })
+  .catch(err => console.error("Error verifying stored token:", err));
+}
+
 
   function handleCredentialResponse(response) {
   console.log("Received JWT token:", response.credential);
