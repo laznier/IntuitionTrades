@@ -1211,7 +1211,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
             <div class="premium-dropdown-overlay">
-              <span>Sign in for Premium</span>
+              <span>Premium</span>
             </div>
           </li>
           <li><a href="intraday/">Live Stock Chart</a></li>
@@ -1224,7 +1224,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink2">
             <a href="topcongress/">Top 5 Congress Stocks</a>
             <div class="premium-dropdown-overlay">
-              <span>Sign in for Premium</span>
+              <span>Premium</span>
             </div>
           </li>
         </ul>
@@ -1263,7 +1263,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
             <div class="premium-dropdown-overlay">
-              <span>Sign in for Premium</span>
+              <span>Premium</span>
             </div>
           </li>
           <li><a href="intraday/">Live Stock Chart</a></li>
@@ -1276,7 +1276,7 @@ footer {
           <li class="premium-dropdown-item" id="premiumLink2">
             <a href="topcongress/">Top 5 Congress Stocks</a>
             <div class="premium-dropdown-overlay">
-              <span>Sign in for Premium</span>
+              <span>Premium</span>
             </div>
           </li>
         </ul>
@@ -2512,13 +2512,13 @@ function handleCredentialResponse(response) {
 
 
 
-  document.addEventListener("DOMContentLoaded", () => {
-  const premiumOverlays = document.querySelectorAll(".premium-overlay");
-  premiumOverlays.forEach(overlay => {
+document.addEventListener("DOMContentLoaded", () => {
+  // If you keep them as two separate classes:
+  document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay").forEach(overlay => {
     overlay.addEventListener("click", (event) => {
-      event.stopPropagation(); // Prevent the click from affecting elements behind the overlay
-      premiumToolClicked = true;
-      google.accounts.id.prompt(); // Trigger the Google sign-in prompt
+      event.stopPropagation(); 
+      // Trigger the Google sign-in prompt
+      google.accounts.id.prompt(); 
     });
   });
 });
