@@ -979,23 +979,31 @@ footer {
   font-weight: bold;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
 }
+.premium-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column; /* so icon and text stack vertically */
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-size: 1.1rem;
+  border-radius: var(--border-radius);
+  transition: opacity 0.3s ease;
+}
 
-  /* Premium Tool: the overlay is visible by default */
-  .premium-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #fff;
-    font-size: 1.1rem;
-    border-radius: var(--border-radius);
-    transition: opacity 0.3s ease;
-  }
+.lock-icon {
+  width: 18px;
+  height: auto;
+  margin-bottom: 0.5rem; /* spacing below the icon */
+  opacity: 0.5; /* 50% transparency */
+  transition: opacity 0.3s ease;
+}
+
 
   /* When the premium tool is unlocked, add a class that hides the overlay */
   .unlocked .premium-overlay {
@@ -1280,8 +1288,11 @@ footer {
           <img src="images/top5.png" alt="Top Stocks Scanner" />
           <h2>Top Stocks Scanner</h2>
           <p>Evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
-          <!-- This is the only premium overlay element in your document -->
-          <div class="premium-overlay" id="premiumOverlay">Premium Locked</div>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
+          </div>
           <a href="top5/" class="tool-button">Open Premium Tool</a>
         </div>
         
