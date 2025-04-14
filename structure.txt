@@ -1,0 +1,165 @@
+Folder PATH listing for volume Windows
+Volume serial number is CA5B-5BBB
+C:.
+³   .gitignore
+³   404.html
+³   android-chrome-192x192.png
+³   android-chrome-512x512.png
+³   apple-touch-icon.png
+³   CNAME
+³   explanation.html
+³   favicon-16x16.png
+³   favicon-32x32.png
+³   favicon.ico
+³   feedback.html
+³   google-login.html
+³   index.html
+³   lastweek.html
+³   LICENSE.md
+³   manifest.json
+³   premium.txt
+³   privacy.html
+³   README.md
+³   rooster.jpeg
+³   site.webmanifest
+³   structure.txt
+³   style.css
+³   testing2.html
+³   testing3.html
+³   testing4.html
+³   vercel.json
+³   
+ÃÄÄÄ.vscode
+³       launch.json
+³       
+ÃÄÄÄanalyst
+³       index.html
+³       
+ÃÄÄÄapi
+³       congress.js
+³       fundamental.js
+³       getPremiumData.js
+³       historical.js
+³       insider.js
+³       insiderscore.js
+³       intraday.js
+³       liveoptions.js
+³       sentiment.js
+³       ticker.js
+³       topcongress.js
+³       verify-google.js
+³       
+ÃÄÄÄauth
+³   ÀÄÄÄcallback
+³           index.html
+³           
+ÃÄÄÄcongress
+³       index.html
+³       
+ÃÄÄÄfundamental
+³       index.html
+³       
+ÃÄÄÄichimoku
+³       index.html
+³       
+ÃÄÄÄicons
+³       icon-192x192.png
+³       icon-512x512.png
+³       
+ÃÄÄÄimages
+³       advanced-network-diagram.PNG
+³       advanced-scheduling.PNG
+³       agile.PNG
+³       analyst.PNG
+³       calculator.png
+³       calculator2.png
+³       calculator3.png
+³       cfd.PNG
+³       congress.PNG
+³       evc.png
+³       evm.PNG
+³       fundamental.PNG
+³       hero-background.png
+³       ichimoku.PNG
+³       insider.PNG
+³       intraday.PNG
+³       learning_curve.PNG
+³       lock.png
+³       MACD.PNG
+³       mobile-background.png
+³       monte_carlo.png
+³       multi-regression.PNG
+³       network.png
+³       network2.png
+³       regression.PNG
+³       resources.png
+³       risk.PNG
+³       risk_assessment.png
+³       sentiment.png
+³       statistics.PNG
+³       stocks.PNG
+³       technical.PNG
+³       top5.png
+³       topcongress.PNG
+³       WSB Generator.png
+³       WSB.png
+³       
+ÃÄÄÄinsider
+³       index.html
+³       
+ÃÄÄÄintraday
+³       index.html
+³       
+ÃÄÄÄIntuitionTrades
+ÃÄÄÄMACD
+³       index.html
+³       
+ÃÄÄÄoldtop5
+³       index.html
+³       
+ÃÄÄÄpages
+³       top5.js
+³       
+ÃÄÄÄpm2 start server.js
+³       module_conf.json
+³       pm2.log
+³       pm2.pid
+³       touch
+³       
+ÃÄÄÄrisk
+³       index.html
+³       
+ÃÄÄÄsentiment
+³       index.html
+³       
+ÃÄÄÄsocial
+³       index.html
+³       
+ÃÄÄÄstocks
+³       index.html
+³       oldindex.html
+³       
+ÃÄÄÄtechnical
+³       index.html
+³       
+ÃÄÄÄtest
+³   ÃÄÄÄfull_test
+³   ³       index.html
+³   ³       
+³   ÀÄÄÄhigh_volume_test
+³           index.html
+³           
+ÃÄÄÄtickers
+³       russell3000-tickers.txt
+³       sp500-tickers.txt
+³       vti-tickers.txt
+³       
+ÃÄÄÄtop5
+³       index.html
+³       
+ÃÄÄÄtopcongress
+³       index.html
+³       
+ÀÄÄÄtutorials
+        index.html
+        
