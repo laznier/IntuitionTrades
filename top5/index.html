@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <!-- Important: mobile-friendly viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Top Stocks Scanner + RRI</title>
+  <title>Top Stocks Scanner</title>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
 
@@ -181,19 +181,15 @@
 </head>
 <body>
 
-<h1>Top Stocks Scanner (Premium Tool) + RRI</h1>
+<h1>Top Stocks Scanner (Premium)</h1>
 
 <p>
   This tool evaluates each ticker using 6 total signals: 
-  <strong>Risk vs Reward (RRI)</strong>, Technical, Sentiment, Insider, Fundamental, and Congress. 
+  Risk vs Reward, Technical, Sentiment, Insider, Fundamental, and Congress. 
   If “Use Manual Weights &amp; Scaling” is unchecked, it auto-detects SPY’s market regime 
   (Bull/Bear/Neutral) and picks a weighting distribution. If checked, you can pick Bear/Neutral/Bull 
   to auto-fill – or override any. At the end, it highlights the top 5 and bottom 5 aggregator scores.
   <br>
-  <strong>Important:</strong> The RRI portion fetches the last X months of historical data (4,12,24) 
-  and tries to fetch real options implied volatility. If not found, it reverts to the annualized 
-  statistical volatility from the same last X months data.
-</p>
 
 <!-- Manual Weights & Scaling Section -->
 <div class="param-section">
