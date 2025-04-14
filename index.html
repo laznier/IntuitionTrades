@@ -990,6 +990,7 @@ footer {
   flex-direction: column; /* so icon and text stack vertically */
   justify-content: center;
   align-items: center;
+  cursor: pointer;
   color: #fff;
   font-size: 1.1rem;
   border-radius: var(--border-radius);
@@ -2114,6 +2115,19 @@ tickerSearchButton.addEventListener("click", async () => {
       console.error("Error verifying user:", err);
     });
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+  const premiumOverlay = document.getElementById("premiumOverlay");
+
+  if (premiumOverlay) {
+    premiumOverlay.addEventListener("click", (event) => {
+      event.stopPropagation(); // Stop it from triggering the card link underneath
+      premiumToolClicked = true;
+      google.accounts.id.prompt(); // Launch Google sign-in
+    });
+  }
+});
+
 </script>
 
 
