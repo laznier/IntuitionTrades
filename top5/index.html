@@ -1,13 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Top Stocks Scanner (Premium Tool) + RRI</title>
-  
-  <!-- Include Plotly or Highcharts as needed -->
-  <!-- We already use Highcharts -->
+  <meta charset="UTF-8">
+  <!-- Important: mobile-friendly viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Top Stocks Scanner</title>
   <script src="https://code.highcharts.com/highcharts.js"></script>
-  <!-- Include Math.js so that 'math' is defined -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
 
   <style>
@@ -21,6 +19,7 @@
       --progress-bar-bg: #222;
       --progress-fill-color: #06b6d4;
     }
+
     body {
       font-family: var(--font-family);
       background-color: var(--primary-bg);
@@ -30,6 +29,28 @@
       max-width: 900px;
       padding: 2rem;
     }
+
+    /* Let’s ensure our chart containers can adapt to small screens */
+    #techChart, #rriChart {
+      margin-top: 20px;
+      width: 100%;
+      height: 600px; /* Default desktop height */
+      box-sizing: border-box;
+    }
+    /* On smaller screens, reduce the height */
+    @media screen and (max-width: 768px) {
+      #techChart, #rriChart {
+        height: 350px;
+      }
+    }
+
+    /* Possibly allow horizontal scroll for the log area. */
+    #status {
+      max-height: 300px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
     h1 {
       margin-bottom: 1rem;
       text-align: center;
@@ -160,19 +181,15 @@
 </head>
 <body>
 
-<h1>Top Stocks Scanner (Premium Tool) + RRI</h1>
+<h1>Top Stocks Scanner (Premium)</h1>
 
 <p>
   This tool evaluates each ticker using 6 total signals: 
-  <strong>Risk vs Reward (RRI)</strong>, Technical, Sentiment, Insider, Fundamental, and Congress. 
+  Risk vs Reward, Technical, Sentiment, Insider, Fundamental, and Congress. 
   If “Use Manual Weights &amp; Scaling” is unchecked, it auto-detects SPY’s market regime 
   (Bull/Bear/Neutral) and picks a weighting distribution. If checked, you can pick Bear/Neutral/Bull 
   to auto-fill – or override any. At the end, it highlights the top 5 and bottom 5 aggregator scores.
   <br>
-  <strong>Important:</strong> The RRI portion fetches the last X months of historical data (4,12,24) 
-  and tries to fetch real options implied volatility. If not found, it reverts to the annualized 
-  statistical volatility from the same last X months data.
-</p>
 
 <!-- Manual Weights & Scaling Section -->
 <div class="param-section">
@@ -270,6 +287,7 @@ const mathInstance = create(all);
 /***********************************************************************
  * MASTER UTILS: Logging, Sleep, parseAlphaDate
  ***********************************************************************/
+  
 function logStatus(msg){
   const s = document.getElementById("status");
   s.innerHTML += msg + "<br>";
@@ -290,14 +308,24 @@ function parseAlphaDate(str){
  * Loading Tickers for batch scanning
  ***********************************************************************/
 async function loadTickers(index) {
-  let filePath = `tickers/${index}-tickers.txt`;
+  // Always fetch from your Vercel domain:
+  const vercelRoot = "https://intuition-trades.vercel.app";
+  let filePath = `${vercelRoot}/tickers/${index}-tickers.txt`;
+  
   const response = await fetch(filePath);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch tickers for ${index}: ${response.statusText}`);
+  }
+  
   const text = await response.text();
+  
+  // If your .txt is comma-separated in one line, this is fine.
+  // If it’s line-separated, use .split(/\r?\n/) etc.
   return text
     .replace(/"/g, "")
     .split(",")
     .map(t => t.trim())
-    .filter(t => t.length>0);
+    .filter(t => t.length > 0);
 }
 const predeterminedTickers = [];
 document.getElementById("indexSelect").addEventListener("change", async function() {
