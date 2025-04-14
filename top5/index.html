@@ -391,6 +391,39 @@ async function fetchHistoricalData(ticker) {
 }
 
 /***********************************************************************
+  Premium Check
+ ***********************************************************************/
+// pages/top5.js
+import { verifyUser } from '../lib/auth'; // Your custom auth function
+
+export async function getServerSideProps(context) {
+  const { req, res } = context;
+  const user = await verifyUser(req); // Check authentication
+
+  if (!user || !user.isPremium) {
+    // Redirect non-premium users to login or an error page
+    return {
+      redirect: {
+        destination: '/login?error=access_denied',
+        permanent: false,
+      },
+    };
+  }
+  
+  // Optionally, pass user information to the page via props.
+  return { props: { user } };
+}
+
+export default function Top5Page({ user }) {
+  return (
+    <div>
+      <h1>Top Stocks Scanner</h1>
+      {/* Render premium content */}
+    </div>
+  );
+}
+
+/***********************************************************************
  * TECHNICAL INDICATORS
  ***********************************************************************/
 function computeIchimoku(prices) {
