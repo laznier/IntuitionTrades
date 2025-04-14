@@ -2369,16 +2369,16 @@ tickerSearchButton.addEventListener("click", async () => {
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-  const premiumOverlay = document.getElementById("premiumOverlay");
-
-  if (premiumOverlay) {
-    premiumOverlay.addEventListener("click", (event) => {
-      event.stopPropagation(); // Stop it from triggering the card link underneath
+  const premiumOverlays = document.querySelectorAll(".premium-overlay");
+  premiumOverlays.forEach(overlay => {
+    overlay.addEventListener("click", (event) => {
+      event.stopPropagation(); // Prevent the click from affecting elements behind the overlay
       premiumToolClicked = true;
-      google.accounts.id.prompt(); // Launch Google sign-in
+      google.accounts.id.prompt(); // Trigger the Google sign-in prompt
     });
-  }
+  });
 });
+
 
 </script>
 
