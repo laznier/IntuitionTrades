@@ -313,7 +313,6 @@ function parseAlphaDate(str){
 // Force it to fetch from your Vercel domain:
 let filePath = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
 const response = await fetch(filePath);
-  const response = await fetch(filePath);
   const text = await response.text();
   return text
     .replace(/"/g, "")
