@@ -303,6 +303,31 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--border-radius);
   margin-bottom: 1rem;
 }
+.flip-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1 0.5rem;
+}
+.flip-number {
+  font-size: 2rem;
+  background: var(--primary-bg);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.25rem;
+  min-width: 2ch;
+  text-align: center;
+  box-shadow: inset 0 -0.25rem 0 rgba(0,0,0,0.3);
+}
+.flip-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.flip-separator {
+  font-size: 2rem;
+  margin: 0 0.5rem;
+  user-select: none;
+}
 /* Responsive Adjustments for Mobile */
 @media (max-width: 600px) {
   .countdown-container {
