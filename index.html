@@ -2340,6 +2340,7 @@ tickerSearchButton.addEventListener("click", async () => {
   // Handle the credential response from Google.
   function handleCredentialResponse(response) {
   console.log("Received JWT token:", response.credential);
+  // Save the new token (if needed)
   localStorage.setItem("googleToken", response.credential);
 
   const payload = {
@@ -2358,15 +2359,16 @@ tickerSearchButton.addEventListener("click", async () => {
     if (data.isPremium) {
       indicator.textContent = "Premium User";
       document.querySelectorAll(".tool-card.premium").forEach(card => {
-        card.classList.add("unlocked");
+        card.classList.add("unlocked"); // This should remove the premium overlay via CSS
       });
     } else {
       indicator.textContent = "Basic User";
+      // Optionally, you might want to ensure premium overlays are visible if upgrading back
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.remove("unlocked");
+      });
     }
-    // Delay the refresh to allow state to settle before reloading
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000); // 1000 milliseconds delay; adjust if necessary
+    // Instead of reloading the page, the UI now directly reflects the updated state.
   })
   .catch(err => {
     console.error("Error verifying user:", err);
