@@ -1,1332 +1,2149 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Top Stocks Scanner (Premium Tool)</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  <link rel="manifest" href="/manifest.json">
 
-  <!-- Dark Theme Styling -->
-  <style>
-    /* Use CSS variables for consistent theming */
-    :root {
-      --primary-bg: #111;         /* Very dark background */
-      --secondary-bg: #333;       /* Slightly lighter dark background */
-      --accent-color: #16a34a;    /* Green accent color */
-      --text-color: #fff;         /* Primary text color */
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
-      --progress-bar-bg: #222;    /* Background of the custom progress bar */
-      --progress-fill-color: #06b6d4; /* Teal color for the fill portion of the bar */
-    }
+  <!-- Favicon and Apple Touch Icon -->
+<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
-      margin: 0 auto;
-      line-height: 1.6;
-      max-width: 900px;    /* Sets a maximum width */
-      padding: 2rem;       /* Adds padding on all sides */
-    }
-    h1 {
-      margin-bottom: 1rem;
-      text-align: center;
-      font-weight: 600;
-    }
-    p {
-      margin-bottom: 1rem;
-    }
+<!-- Apple Web App Settings -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Intuition Trades" />
 
-    label,
-    input,
-    select {
-      display: block;
-      margin: 0.3rem 0;
-      font-size: 1rem;
-    }
+<!-- Meta for iOS Spotlight, Siri Suggestions, and SEO -->
+<meta name="description" content="Stock research and trading insights from Intuition Trades." />
+<meta property="og:title" content="Intuition Trades" />
+<meta property="og:description" content="Smarter stock decisions powered by market intuition." />
+<meta property="og:image" content="/apple-touch-icon.png" />
 
-    .param-section {
-      border: 1px solid #444;
-      background-color: var(--secondary-bg);
-      padding: 1rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
+<!-- different sizes icons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
 
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      margin-bottom: 1rem;
-      border: none;
-      border-radius: 4px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      transition: background var(--transition-speed), transform 0.2s ease;
-    }
-    button:hover {
-      background: #1e3a8a; /* Example of a hover color (dark blue) */
-      transform: scale(1.05);
-    }
+  <meta name="google-site-verification" content="..." />
+  <meta charset="UTF-8">
+  <title>Intuition Trades | Free Stock Analysis & Forecast Tools</title>
+  <meta name="description" content="Intuition Trades offers free, easy-to-use stock analysis and forecast tools..." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="api/ticker.js"></script>
 
-    /* Status area */
-    #status {
-      margin-top: 1rem;
-      white-space: pre-wrap;
-      font-family: monospace;
-      background: var(--secondary-bg);
-      padding: 1rem;
-      border: 1px solid #444;
-      border-radius: 4px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    /* Custom Progress Container to mimic the 'Scanning Companies...' style */
-    #progressContainer {
-      margin-top: 1rem;
-      display: none; /* Hidden until loading starts */
-      background-color: var(--secondary-bg);
-      padding: 1rem;
-      border-radius: 8px;
-      text-align: center;
-      position: relative;
-    }
-    #progressLabel {
-      font-size: 1.2rem;
-      margin-bottom: 10px;
-      color: #bbb;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    /* Custom progress bar base */
-    .progress-bar-base {
-      width: 100%;
-      background-color: var(--progress-bar-bg);
-      border-radius: 10px;
-      height: 24px;
-      overflow: hidden;
-      position: relative;
-      margin-bottom: 0.5rem;
-    }
-    /* The colored fill for the progress bar */
-    .progress-bar-fill {
-      height: 100%;
-      width: 0;
-      background-color: var(--progress-fill-color);
-      transition: width var(--transition-speed) ease-in-out;
-    }
-    /* Percentage text inside the bar (optional) */
-    .progress-bar-text {
-      position: absolute;
-      width: 100%;
-      top: 0;
-      height: 100%;
-      text-align: center;
-      line-height: 24px;
-      font-weight: bold;
-      color: #fff;
-    }
-
-    /* If aggregator > 50 => green, < 50 => red. We'll apply this via inline style or small utility classes */
-    .score-positive {
-      color: #00ff00; /* Bright green */
-    }
-    .score-negative {
-      color: #ff2d2d; /* Bright red */
-    }
-  </style>
-</head>
-<body>
-
-<h1>Top 5 Analysis</h1>
-
-<p>
-  This tool evaluates each ticker using Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.
-  If “Use Manual Weights &amp; Scaling” is unchecked, it auto-detects SPY’s market regime (Bull/Bear/Neutral) and picks
-  a weighting distribution. If checked, you can pick Bear/Neutral/Bull to auto-fill – or override any.
-  At the end, it highlights the top 5 and bottom 5 aggregator scores.
-</p>
-
-<!-- Manual Weights & Scaling Section -->
-<div class="param-section">
-  <label>
-    <input type="checkbox" id="manualModeCheckbox">
-    Use Manual Weights &amp; Scaling
-  </label>
-  <div id="manualInputs" style="display:none;">
-    <label>Select Market Regime (for quick auto-fill):
-      <select id="marketRegimeSelect">
-        <option value="Neutral">Neutral</option>
-        <option value="Bull">Bull</option>
-        <option value="Bear">Bear</option>
-      </select>
-    </label>
-
-    <label>RiskReward Weight (0..1): 
-      <input type="number" id="wRRI" value="0.10" min="0" max="1" step="0.01">
-    </label>
-    <label>Technical Weight (0..1): 
-      <input type="number" id="wTech" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Sentiment Weight (0..1): 
-      <input type="number" id="wSent" value="0.20" min="0" max="1" step="0.01">
-    </label>
-    <label>Insider Weight (0..1): 
-      <input type="number" id="wInsider" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Fundamental Weight (0..1): 
-      <input type="number" id="wFund" value="0.25" min="0" max="1" step="0.01">
-    </label>
-    <label>Congress Weight (0..1): 
-      <input type="number" id="wCongress" value="0.15" min="0" max="1" step="0.01">
-    </label>
-    <label>Overall Scaling Factor:
-      <input type="number" id="scalingFactor" value="1.00" step="0.01">
-    </label>
-  </div>
-</div>
-
-<!-- Index Selection -->
-<div class="param-section">
-  <label>Select Index:
-    <select id="indexSelect">
-      <option value="">-- Select an Index --</option>
-      <option value="sp500">SP500</option>
-      <option value="russell3000">Russell 3000</option>
-      <option value="vti">VTI</option>
-    </select>
-  </label>
-</div>
-
-<!-- Investment Timeframe -->
-<div class="param-section">
-  <label>Investment Timeframe:
-    <select id="investmentTimeframe">
-      <option value="">-- Select Timeframe --</option>
-      <option value="short">Short Term</option>
-      <option value="medium">Medium Term</option>
-      <option value="long">Long Term</option>
-    </select>
-  </label>
-</div>
-
-
-
-<div id="status"></div>
-<button onclick="runBatchAnalysis()">Run Batch Analysis</button>
-
-<!-- Progress Container mimicking 'SCANNING COMPANIES...' -->
-<div id="progressContainer">
-  <div id="progressLabel">Scanning Companies...</div>
-
-  <!-- Custom progress bar -->
-  <div class="progress-bar-base">
-    <div id="progressBarFill" class="progress-bar-fill"></div>
-    <div id="progressBarText" class="progress-bar-text">0%</div>
-  </div>
-</div>
-
-
-
-<script>
-    /***********************************************************************
-     * math.js setup
-     ***********************************************************************/
-    const { create, all } = math;
-    const mathInstance = create(all);
-    
-    // Function to load tickers from the corresponding text file.
-    async function loadTickers(index) {
-      let filePath = `tickers/${index}-tickers.txt`;
-      const response = await fetch(filePath);
-      const text = await response.text();
-      return text
-        .replace(/"/g, "")            // Remove all double quotes
-        .split(",")                   // Split on commas
-        .map(ticker => ticker.trim()) // Trim whitespace from each ticker
-        .filter(ticker => ticker.length > 0); // Remove any empty entries
-    }
-    
-        /***********************************************************************
-    TICKER LIST
-     ***********************************************************************/
-    // Replace the hard-coded ticker list with an empty array to be populated later.
-    const predeterminedTickers = [];
-    
-    
-    // Listen for changes on the index dropdown.
-    document.getElementById("indexSelect").addEventListener("change", async function() {
-      const index = this.value;
-      // Clear any previously loaded tickers.
-      predeterminedTickers.length = 0;
-      
-      if (!index) {
-        logStatus("Please select an index to load tickers.");
-        return;
-      }
-      
-      try {
-        const tickers = await loadTickers(index);
-        if (tickers.length === 0) {
-          logStatus("Error: No tickers loaded. Please check the ticker file for " + index + ".");
-        } else {
-          tickers.forEach(ticker => predeterminedTickers.push(ticker));
-          logStatus(`Loaded ${predeterminedTickers.length} tickers for ${index.toUpperCase()} index.`);
-        }
-      } catch (error) {
-        logStatus(`Error loading tickers for ${index}: ${error.message}`);
-      }
-    });
-    
-    
-    // Optionally, trigger a change event on page load to load a default index.
-    document.getElementById("indexSelect").dispatchEvent(new Event('change'));
-    
-
-    
-    /***********************************************************************
-     * Show/hide manual inputs
-     ***********************************************************************/
-    const manualModeCheckbox = document.getElementById("manualModeCheckbox");
-    const manualInputsDiv    = document.getElementById("manualInputs");
-    manualModeCheckbox.addEventListener("change", () => {
-      manualInputsDiv.style.display = manualModeCheckbox.checked ? "block" : "none";
-    });
-    
-    /***********************************************************************
-     * If user changes the <select> Market Regime in manual mode,
-     * auto-fill the user fields
-     ***********************************************************************/
-    document.getElementById("marketRegimeSelect").addEventListener("change", function(){
-      const val = this.value;
-      if(val==="Bear"){
-        document.getElementById("wRRI").value      = 0.10;
-        document.getElementById("wTech").value     = 0.05;
-        document.getElementById("wSent").value     = 0.20;
-        document.getElementById("wInsider").value  = 0.20;
-        document.getElementById("wFund").value     = 0.30;
-        document.getElementById("wCongress").value = 0.15;
-        document.getElementById("scalingFactor").value = 1.00;
-      } else if(val==="Bull"){
-        document.getElementById("wRRI").value      = 0.20;
-        document.getElementById("wTech").value     = 0.20;
-        document.getElementById("wSent").value     = 0.15;
-        document.getElementById("wInsider").value  = 0.15;
-        document.getElementById("wFund").value     = 0.15;
-        document.getElementById("wCongress").value = 0.15;
-        document.getElementById("scalingFactor").value = 3.00;
-      } else {
-        document.getElementById("wRRI").value      = 0.15;
-        document.getElementById("wTech").value     = 0.20;
-        document.getElementById("wSent").value     = 0.15;
-        document.getElementById("wInsider").value  = 0.15;
-        document.getElementById("wFund").value     = 0.20;
-        document.getElementById("wCongress").value = 0.15;
-        document.getElementById("scalingFactor").value = 2.00;
-      }
-    });
-    
-    /***********************************************************************
-     * Logging & Sleep
-     ***********************************************************************/
-    function logStatus(msg){
-      const s = document.getElementById("status");
-      s.textContent += msg + "\n";
-      s.scrollTop = s.scrollHeight;
-    }
-    function sleep(ms){
-      return new Promise(resolve=> setTimeout(resolve,ms));
-    }
-    
-    /***********************************************************************
-     * parseAlphaDate (Used for sentiment date parsing)
-     ***********************************************************************/
-    function parseAlphaDate(str){
-      const year  = str.substring(0,4);
-      const month = str.substring(4,6);
-      const day   = str.substring(6,8);
-      const hour  = str.substring(9,11) || "00";
-      const min   = str.substring(11,13) || "00";
-      const sec   = str.substring(13,15) || "00";
-      return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
-    }
-    
-    /***********************************************************************
-     * fetchHistoricalData
-     ***********************************************************************/
-    async function fetchHistoricalData(ticker){
-      let url= `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
-      const resp = await fetch(url);
-      const j = await resp.json();
-      if(!j["Time Series (Daily)"]){
-        throw new Error("No daily data for " + ticker);
-      }
-      const ts = j["Time Series (Daily)"];
-      let out = [];
-      Object.keys(ts).forEach(d=>{
-        out.push({
-          date: new Date(d),
-          close: parseFloat(ts[d]["5. adjusted close"])
-        });
-      });
-      out.sort((a,b)=> a.date - b.date);
-      return out;
-    }
-    
-    /***********************************************************************
-     * DBHJ-based RRI logic
-     ***********************************************************************/
-    // Standard Normal via Box-Muller
-    function randn() {
-      let u = 0, v = 0;
-      while(u === 0) u = Math.random();
-      while(v === 0) v = Math.random();
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    }
-    // Basic stats
-    function computeHistStats(prices){
-      let logs = [];
-      for(let i=1; i< prices.length; i++){
-        let r= Math.log(prices[i].close / prices[i-1].close);
-        logs.push(r);
-      }
-      if(logs.length<2){
-        return { mu: 0, sigma: 0, lastPrice: prices[prices.length-1].close };
-      }
-      let meanDaily= logs.reduce((a,b)=> a+b, 0)/ logs.length;
-      let variance= logs.reduce((acc,r)=> acc+ (r- meanDaily)**2, 0)/(logs.length -1);
-      let stdDaily= Math.sqrt(variance);
-      let tradingDays= 252;
-      return {
-        mu: meanDaily * tradingDays,
-        sigma: stdDaily * Math.sqrt(tradingDays),
-        lastPrice: prices[prices.length-1].close
-      };
-    }
-    // Attempt to fetch live IV:
-    async function fetchOptionsIV(ticker){
-      try {
-        let url= `https://www.intuitiontrades.com/api/liveoptions?symbol=${ticker}&require_greeks=true`;
-        let resp= await fetch(url);
-        let j= await resp.json();
-        if(j.data && Array.isArray(j.data) && j.data.length>0){
-          let contract= j.data[0];
-          return parseFloat(contract.impliedVolatility) || null;
-        }
-      }catch(e){
-        return null;
-      }
-      return null;
-    }
-    // Double Heston + Jump
-    function runDBHJSimulation(S0, v10, v20, mu,
-                               kappa1, theta1, sigma1, rho1,
-                               kappa2, theta2, sigma2, rho2,
-                               lambda, jumpMean, jumpStd,
-                               T, dt, sims) {
-      const steps = Math.floor(T / dt);
-      let finals = [];
-      for(let i = 0; i < sims; i++){
-        let S = S0, v1 = v10, v2 = v20;
-        for(let j = 0; j < steps; j++){
-          let Z1 = randn();
-          let Z2 = randn();
-          let Z3 = randn();
-          const dW_a = Math.sqrt(dt) * Z1;
-          const dW_v1 = Math.sqrt(dt) * (rho1 * Z1 + Math.sqrt(1 - rho1*rho1) * Z2);
-          const dW_v2 = Math.sqrt(dt) * (rho2 * Z1 + Math.sqrt(1 - rho2*rho2) * Z3);
-          
-          v1 = Math.max(v1 + kappa1*(theta1 - v1)* dt + sigma1* Math.sqrt(Math.max(v1,0))* dW_v1, 0);
-          v2 = Math.max(v2 + kappa2*(theta2 - v2)* dt + sigma2* Math.sqrt(Math.max(v2,0))* dW_v2, 0);
-          
-          const totalVar = v1 + v2;
-          let jumpMultiplier = 1;
-          if (Math.random() < lambda * dt) {
-            jumpMultiplier = Math.exp(jumpMean + jumpStd * randn());
-          }
-          S *= jumpMultiplier * Math.exp((mu - 0.5 * totalVar) * dt + Math.sqrt(totalVar)* dW_a);
-        }
-        finals.push(S);
-      }
-      return finals;
-    }
-    // Basic 5% VaR and CVaR
-    function computeRiskMetrics(finals, currentPrice){
-      let sorted= finals.slice().sort((a,b)=> a-b);
-      let idx= Math.floor(0.05* sorted.length);
-      let varPrice= sorted[idx];
-      let tail= sorted.slice(0, idx+1);
-      let cvarPrice= tail.reduce((sum,p)=> sum+p, 0)/ tail.length;
-      return {
-        varPrice,
-        varPct: 100*(currentPrice - varPrice)/ currentPrice,
-        cvarPrice,
-        cvarPct: 100*(currentPrice - cvarPrice)/ currentPrice
-      };
-    }
-    function computeRiskVsRewardIndex(finals, currentPrice, cvarFraction, T){
-      let sorted= finals.slice().sort((a,b)=> a-b);
-      let medianPrice= sorted[Math.floor(sorted.length/2)];
-      let rawReturn= (medianPrice/ currentPrice)-1;
-      // annualize
-      let E_ann= Math.pow(1+ rawReturn, 1/T)-1;
-      let D_ann= 1- Math.pow(1- cvarFraction, 1/T);
-      let ratio = (D_ann> 1e-6)? (E_ann/ D_ann) : ((E_ann>=0)? 9999: -9999);
-      let alpha=1;
-      let rri= 50*(1+ Math.tanh(alpha* ratio));
-      return rri;
-    }
-    async function computeTickerRRI(ticker, T){
-      let prices= await fetchHistoricalData(ticker);
-      if(prices.length<5){
-        logStatus("Not enough historical data for "+ ticker);
-        return 50;
-      }
-      let st= computeHistStats(prices);
-      let iv= await fetchOptionsIV(ticker);
-      if(!iv) iv= st.sigma;
-      
-      let v10= iv* iv;
-      let v20= 0.5* v10;
-      let kappa1=2.0, theta1=v10, sigma1=0.5, rho1=-0.7;
-      let kappa2=1.5, theta2=0.5* v10, sigma2=0.3, rho2=-0.3;
-      let lambda=0.2, jumpMean=-0.1, jumpStd=0.2;
-      
-      let dt=1/252, sims=5000;
-      let finals= runDBHJSimulation(st.lastPrice, v10, v20, st.mu,
-                                    kappa1, theta1, sigma1, rho1,
-                                    kappa2, theta2, sigma2, rho2,
-                                    lambda, jumpMean, jumpStd,
-                                    T, dt, sims);
-      let risk= computeRiskMetrics(finals, st.lastPrice);
-      let cvarFrac= risk.cvarPct/100;
-      return computeRiskVsRewardIndex(finals, st.lastPrice, cvarFrac, T);
-    }
-    
-    /***********************************************************************
-     * Technical (MACD) functions
-     ***********************************************************************/
-    function computeEMA(series, period){
-      if(series.length< period) return [];
-      let alpha= 2/(period+1);
-      let sum=0;
-      for(let i=0;i< period;i++){
-        sum+= series[i].close;
-      }
-      let prevEma= sum/ period;
-      let out=[];
-      out[period-1]= { date: series[period-1].date, ema: prevEma };
-      for(let i= period; i< series.length; i++){
-        let cur= series[i].close;
-        let nxt= (cur- prevEma)* alpha + prevEma;
-        out[i]= { date: series[i].date, ema: nxt };
-        prevEma= nxt;
-      }
-      return out.filter(Boolean);
-    }
-    function computeMACD(series, fast=12, slow=26, signal=9){
-      let fEMA= computeEMA(series, fast);
-      let sEMA= computeEMA(series, slow);
-      let macdLine=[];
-      for(let i=0; i< sEMA.length; i++){
-        let dt= sEMA[i].date;
-        let match= fEMA.find(x=> x.date.getTime()=== dt.getTime());
-        if(match){
-          macdLine.push({ date: dt, macd: match.ema - sEMA[i].ema });
-        }
-      }
-      if(macdLine.length< signal) return { macdLine, signalLine:[] };
-      let m= 2/(signal+1);
-      let sum=0;
-      for(let i=0;i< signal;i++){
-        sum+= macdLine[i].macd;
-      }
-      let prevSig= sum/ signal;
-      let signalLine=[];
-      signalLine[signal-1]= { date: macdLine[signal-1].date, signal: prevSig };
-      for(let i= signal;i< macdLine.length;i++){
-        let s= (macdLine[i].macd- prevSig)* m + prevSig;
-        signalLine[i]= { date: macdLine[i].date, signal: s };
-        prevSig= s;
-      }
-      return { macdLine, signalLine: signalLine.filter(Boolean) };
-    }
-    function polynomialRegression(x, y, deg){
-      let X=[];
-      for(let i=0;i<x.length;i++){
-        let row=[];
-        for(let j=0; j<= deg; j++){
-          row.push(Math.pow(x[i], j));
-        }
-        X.push(row);
-      }
-      let XT= mathInstance.transpose(X);
-      let XTX= mathInstance.multiply(XT, X);
-      let XTy= mathInstance.multiply(XT, y);
-      let sol= mathInstance.lusolve(XTX, XTy);
-      return sol.map(v=> v[0]);
-    }
-    function predictValue(coefs,xx){
-      return coefs.reduce((acc,c,i)=> acc+ c*Math.pow(xx,i), 0);
-    }
-    function computeMomentumScoreUsingRegression(hist){
-      if(hist.length<6) return 50;
-      let recent= hist.slice(-6);
-      let x=[1,2,3,4,5,6];
-      let coefs= polynomialRegression(x, recent,1);
-      let pred= predictValue(coefs,7);
-      let last= recent[recent.length-1];
-      let delta= pred - last;
-      let k=5;
-      let sc= 100/(1+ Math.exp(-k* delta));
-      return isNaN(sc)? 50: sc;
-    }
-    function computeGapTrendScore(macdLine, signalLine){
-      if(macdLine.length<6 || signalLine.length<6) return { gapScore:50 };
-      let rMacd= macdLine.slice(-6).map(x=> x.macd);
-      let rSig=  signalLine.slice(-6).map(x=> x.signal);
-      let x=[1,2,3,4,5,6];
-      let macdCoefs= polynomialRegression(x, rMacd,3);
-      let sigCoefs = polynomialRegression(x, rSig,3);
-      let predMACD= predictValue(macdCoefs,7);
-      let predSig=  predictValue(sigCoefs,7);
-      let predGap=  predMACD- predSig;
-      let curGap= macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal;
-      let delta= predGap - curGap;
-      let k=5;
-      let gapScore= 100/(1+ Math.exp(-k* delta));
-      return { gapScore };
-    }
-    async function computeTechnical(prices){
-      if(prices.length<2) return 50;
-      let { macdLine, signalLine }= computeMACD(prices,12,26,9);
-      if(macdLine.length<2 || signalLine.length<2) return 50;
-      let len= Math.min(macdLine.length, signalLine.length);
-      let latestMACD= macdLine[len-1].macd;
-      let positionScore= 100/(1+ Math.exp(latestMACD));
-      let gapObj= computeGapTrendScore(macdLine, signalLine);
-      let gapScore= gapObj.gapScore||50;
-      let hist=[];
-      for(let i=0;i<len;i++){
-        hist.push(macdLine[i].macd - signalLine[i].signal);
-      }
-      let momentum= computeMomentumScoreUsingRegression(hist);
-      if(!momentum) momentum=50;
-      return (positionScore+ gapScore+ momentum)/3;
-    }
-    
-    /***********************************************************************
-     * Sentiment
-     ***********************************************************************/
-    async function fetchSentimentData(ticker, periodMonths){
-      try {
-        let url= `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
-        let resp= await fetch(url);
-        let j= await resp.json();
-        if(!j.feed) return [];
-        let cutoff= new Date();
-        cutoff.setMonth(cutoff.getMonth()- periodMonths);
-        let byHour= {};
-        for(let art of j.feed){
-          let dt= parseAlphaDate(art.time_published);
-          if(isNaN(dt)|| dt< cutoff) continue;
-          if(!art.ticker_sentiment) continue;
-          let tItem= art.ticker_sentiment.find(ts=> ts.ticker.toUpperCase()=== ticker.toUpperCase());
-          if(!tItem) continue;
-          let raw= parseFloat(tItem.ticker_sentiment_score);
-          if(isNaN(raw)) continue;
-          let norm= ((raw+1)/2)*100;
-          let hr= dt.toISOString().substring(0,13);
-          if(!byHour[hr]) byHour[hr]= [];
-          byHour[hr].push(norm);
-        }
-        let sentiments=[];
-        for(let hStr in byHour){
-          let arr= byHour[hStr];
-          let avg= arr.reduce((a,b)=> a+b, 0)/ arr.length;
-          let dt= new Date(`${hStr}:00:00Z`);
-          sentiments.push({ date: dt, sentiment: avg });
-        }
-        sentiments.sort((a,b)=> a.date- b.date);
-        return sentiments;
-      } catch(e){
-        return [];
-      }
-    }
-    function computeSentBull(arr){
-      if(arr.length<2) return 50;
-      let first= arr[0].date;
-      let xs= arr.map(d=> (d.date- first)/(1000*60*60*24));
-      let ys= arr.map(d=> d.sentiment);
-      let n= xs.length;
-      let sumX= xs.reduce((a,b)=> a+b,0);
-      let sumY= ys.reduce((a,b)=> a+b,0);
-      let sumXY=0, sumX2=0;
-      for(let i=0;i<n;i++){
-        sumXY+= xs[i]* ys[i];
-        sumX2+= xs[i]* xs[i];
-      }
-      let slope= (n*sumXY - sumX* sumY)/(n* sumX2 - sumX* sumX);
-      let avg= sumY/n;
-      let k=0.3;
-      let slopeScore= 100/(1+ Math.exp(-k* slope));
-      return 0.5*slopeScore + 0.5* avg;
-    }
-    
-    /***********************************************************************
-     * Insider
-     ***********************************************************************/
-    async function fetchInsiderData(ticker, periodMonths, currentPrice){
-      let url= `https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
-      let r= await fetch(url);
-      let j= await r.json();
-      if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
-      let cutoff= new Date();
-      cutoff.setMonth(cutoff.getMonth()- periodMonths);
-      let totalBuy=0, totalSell=0;
-      for(let item of j.data){
-        if(!item.transaction_date|| !item.acquisition_or_disposal|| !item.shares) continue;
-        if(!item.share_price|| parseFloat(item.share_price)===0) continue;
-        let tradePrice= parseFloat(item.share_price);
-        let lb= currentPrice*0.5, ub= currentPrice*1.5;
-        if(tradePrice< lb|| tradePrice> ub) continue;
-        let dt= new Date(item.transaction_date);
-        if(isNaN(dt)|| dt< cutoff) continue;
-        let shares= parseFloat(item.shares);
-        if(item.acquisition_or_disposal==="A") totalBuy+= shares;
-        else if(item.acquisition_or_disposal==="D") totalSell+= shares;
-      }
-      return { totalBuys: totalBuy, totalSells: totalSell };
-    }
-    async function fetchInsiderSentiment(ticker, periodMonths, simDate){
-      let fromDate= new Date(simDate);
-      fromDate.setMonth(fromDate.getMonth()- periodMonths);
-      let fromDateStr= fromDate.toISOString().slice(0,10);
-      let toDateStr= simDate.toISOString().slice(0,10);
-      let url= `https://www.intuitiontrades.com/api/insiderscore?symbol=${ticker}&from=${fromDateStr}&to=${toDateStr}`;
-      let r= await fetch(url);
-      let j= await r.json();
-      if(!j.data|| !Array.isArray(j.data)|| j.data.length===0){
-        throw new Error("No insider sentiment data available.");
-      }
-      return { data: j.data, trend: j.trend, fromDateStr, toDateStr };
-    }
-    function computeNewInsiderScore(insiderSentimentData, transactionBuys, transactionSells){
-      let fromDate= new Date(insiderSentimentData.fromDateStr);
-      let toDate=   new Date(insiderSentimentData.toDateStr);
-      let filledData= [];
-      let currentDate= new Date(fromDate);
-      while(currentDate<= toDate){
-        let year= currentDate.getFullYear();
-        let month= currentDate.getMonth()+1;
-        let found= insiderSentimentData.data.find(pt=> pt.year===year && pt.month===month);
-        if(found){
-          filledData.push({ year, month, mspr: parseFloat(found.mspr) });
-        } else {
-          filledData.push({ year, month, mspr: 0 });
-        }
-        currentDate.setMonth(currentDate.getMonth()+1);
-      }
-      let finalMspr= filledData[filledData.length-1].mspr;
-      let normalizedFinalMspr= (finalMspr+100)/2;
-      let sumMspr= filledData.reduce((sum,pt)=> sum+ pt.mspr, 0);
-      let avgMspr= sumMspr/ filledData.length;
-      let normalizedAvgMspr= (avgMspr+100)/2;
-      let n= filledData.length;
-      let sumX=0, sumY=0, sumXY=0, sumX2=0;
-      for(let i=0;i<n;i++){
-        let x= i+1;
-        let y= filledData[i].mspr;
-        sumX+= x; sumY+= y; sumXY+= x*y; sumX2+= x*x;
-      }
-      let denom= n* sumX2 - sumX* sumX;
-      let slope= (denom===0)? 0 : (n* sumXY - sumX* sumY)/ denom;
-      let normalizedSlope= (isNaN(slope)|| !isFinite(slope))? 50: (slope+100)/2;
-      let trendComponent= (normalizedAvgMspr+ normalizedSlope)/2;
-      let transactionScore=0;
-      let totalTrans= transactionBuys+ transactionSells;
-      if(totalTrans>0){
-        transactionScore= ((transactionBuys- transactionSells)/ totalTrans)* 100;
-      }
-      let normalizedTransactionScore= (transactionScore+ 100)/2;
-      return 0.25* normalizedFinalMspr + 0.50* normalizedTransactionScore + 0.25* trendComponent;
-    }
-    
-    /***********************************************************************
-     * Fundamental
-     ***********************************************************************/
-    function computeFundScores(data){
-      const norm=(val,min,max)=>{
-        if(!val|| isNaN(val)) return 50;
-        let ratio= (val- min)/(max- min);
-        return Math.max(0, Math.min(100, ratio*100));
-      };
-      let margin= norm(parseFloat(data.ProfitMargin),0,0.25);
-      let opMarg= norm(parseFloat(data.OperatingMarginTTM),0,0.3);
-      let roa= norm(parseFloat(data.ReturnOnAssetsTTM),0,0.15);
-      let roe= norm(parseFloat(data.ReturnOnEquityTTM),0,0.35);
-      let profitability= (margin+ opMarg+ roa+ roe)/4;
-      
-      let pe= parseFloat(data.PERatio);
-      let peScore= 100- norm(pe,5,40);
-      let peg= parseFloat(data.PEGRatio);
-      let pegScore= 100- norm(peg,0.5,2.5);
-      let ps= parseFloat(data.PriceToSalesRatioTTM);
-      let psScore= 100- norm(ps,1,10);
-      let pb= parseFloat(data.PriceToBookRatio);
-      let pbScore= 100- norm(pb,1,10);
-      let valuation= (peScore+ pegScore+ psScore+ pbScore)/4;
-      
-      let rg= norm(parseFloat(data.QuarterlyRevenueGrowthYOY),-0.2,0.3);
-      let eg= norm(parseFloat(data.QuarterlyEarningsGrowthYOY),-0.3,0.3);
-      let pRef= parseFloat(data['50DayMovingAverage'])|| parseFloat(data['200DayMovingAverage'])||0;
-      let ratio= 0;
-      if(pRef>0 && data.AnalystTargetPrice){
-        ratio= (parseFloat(data.AnalystTargetPrice)/ pRef)-1;
-      }
-      let tgtScore= norm(ratio,0,0.5);
-      let growth= (rg+ eg+ tgtScore)/3;
-      
-      let dy= norm(parseFloat(data.DividendYield),0,0.07);
-      let dps= norm(parseFloat(data.DividendPerShare),0,10);
-      let eps= norm(parseFloat(data.EPS),0,12);
-      let dividends= (dy+ dps+ eps)/3;
-      
-      let ebitda= parseFloat(data.EBITDA);
-      let revTTM= parseFloat(data.RevenueTTM);
-      let ebitdaMarg= (ebitda && revTTM)? norm(ebitda/revTTM,0,0.3): 50;
-      let evEbitda= parseFloat(data.EVToEBITDA);
-      let evEbitdaScore= 100- norm(evEbitda,5,30);
-      let beta= parseFloat(data.Beta);
-      let betaScore= 50;
-      if(!isNaN(beta)){
-        betaScore= 100- norm(beta,0,2);
-      }
-      let financial= (ebitdaMarg+ evEbitdaScore+ betaScore)/3;
-      
-      return { profitability, valuation, growth, dividends, financial };
-    }
-    async function fetchFundamentalData(ticker){
-      let url= `https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
-      let r= await fetch(url);
-      let j= await r.json();
-      if(!j.Symbol) return 50;
-      let cat= computeFundScores(j);
-      let s=0,c=0;
-      for(let k in cat){ s+= cat[k]; c++; }
-      return s/c;
-    }
-    
-    /***********************************************************************
-     * Congress
-     ***********************************************************************/
-    async function fetchCongressData(ticker, periodMonths) {
-      try {
-        const url = `/api/congress?ticker=${encodeURIComponent(ticker)}`;
-        const resp = await fetch(url);
-        const j = await resp.json();
-        if (!j.data || !Array.isArray(j.data)) {
-          throw new Error("Invalid congress data format.");
-        }
-        const cutoff = new Date();
-        cutoff.setMonth(cutoff.getMonth() - periodMonths);
-        let totalPurchase = 0, totalSale = 0;
-        let uniqueBuyMembers = new Set();
-        let uniqueSellMembers = new Set();
-        
-        for (let item of j.data) {
-          if (!item.TransactionDate || !item.Transaction) continue;
-          let dt = new Date(item.TransactionDate);
-          if (isNaN(dt) || dt < cutoff) continue;
-          let amt = parseFloat(item.Amount) || 0;
-          if (/purchase/i.test(item.Transaction)) {
-            totalPurchase += amt;
-            if (item.member) uniqueBuyMembers.add(item.member);
-          }
-          if (/sale/i.test(item.Transaction)) {
-            totalSale += amt;
-            if (item.member) uniqueSellMembers.add(item.member);
-          }
-        }
-        return {
-          totalPurchase,
-          totalSale,
-          uniqueBuyCount: uniqueBuyMembers.size,
-          uniqueSellCount: uniqueSellMembers.size
-        };
-      } catch (error) {
-        console.error("Error in fetchCongressData:", error.message);
-        return { totalPurchase: 0, totalSale: 0, uniqueBuyCount: 0, uniqueSellCount: 0 };
-      }
-    }
-    function computeDollarsScore(netDollars) {
-      const cap = 10000000;  // $10M cap
-      let ratio;
-      if (netDollars >= 0) {
-        ratio = Math.log10(netDollars + 1) / Math.log10(cap + 1);
-      } else {
-        ratio = -Math.log10(Math.abs(netDollars) + 1) / Math.log10(cap + 1);
-      }
-      const alpha = 2.2;
-      ratio = Math.pow(Math.abs(ratio), alpha) * (ratio >= 0 ? 1 : -1);
-      return 50 + 50 * ratio;
-    }
-    function computeUniqueScore(uniqueBuyCount, uniqueSellCount) {
-      let netUnique = uniqueBuyCount - uniqueSellCount;
-      netUnique = Math.max(-5, Math.min(5, netUnique));
-      return 50 + 50 * (netUnique / 5);
-    }
-    function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSellCount) {
-      let netDollars = totalPurchase - totalSale;
-      let dollarsScore = computeDollarsScore(netDollars);
-      let uniqueScore = computeUniqueScore(uniqueBuyCount, uniqueSellCount);
-      return (dollarsScore + uniqueScore) / 2;
-    }
-    
-    /***********************************************************************
-     * Market Regime detection
-     ***********************************************************************/
-    async function determineSPYMarketRegime(periodMonths){
-      try {
-        let url=`https://www.intuitiontrades.com/api/historical?symbol=SPY`;
-        let resp= await fetch(url);
-        let j= await resp.json();
-        if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily for SPY.");
-        
-        let shortWindow= periodMonths*5;
-        let longWindow=  periodMonths*15;
-        let totalDays= periodMonths*30;
-        let allKeys= Object.keys(j["Time Series (Daily)"]).sort((a,b)=> new Date(a)- new Date(b));
-        let arr=[];
-        for(let d of allKeys){
-          let dt= new Date(d);
-          let c= parseFloat(j["Time Series (Daily)"][d]["5. adjusted close"]);
-          arr.push({ date:dt, close:c });
-        }
-        let end= arr[arr.length-1].date;
-        let start= new Date(end);
-        start.setDate(start.getDate()- totalDays);
-        let filtered= arr.filter(pt=> pt.date>= start && pt.date<= end);
-        if(filtered.length< Math.max(shortWindow, longWindow)){
-          logStatus("Not enough SPY data => neutral");
-          return "Neutral";
-        }
-        let shortSMA= computeSMA(filtered, shortWindow);
-        let longSMA= computeSMA(filtered, longWindow);
-        let smaSig= classifyBySMA(shortSMA, longSMA);
-        let slopeVal= computePriceSlope(filtered);
-        let slopeSig= classifyBySlope(slopeVal);
-        let votes=0;
-        if(smaSig==="Bull") votes++;
-        if(smaSig==="Bear") votes--;
-        if(slopeSig==="Bull") votes++;
-        if(slopeSig==="Bear") votes--;
-        if(votes>=2) return "Bull";
-        if(votes<=-2) return "Bear";
-        return "Neutral";
-      } catch(e){
-        logStatus("Error in determineSPYMarketRegime => "+ e.message);
-        return "Neutral";
-      }
-    }
-    function computeSMA(priceArray, period){
-      if(!priceArray|| priceArray.length< period) return null;
-      let slice= priceArray.slice(-period);
-      let sum=0;
-      for(let p of slice) sum+= p.close;
-      return sum/ period;
-    }
-    function classifyBySMA(shortSMA, longSMA){
-      if(!shortSMA|| !longSMA) return "Neutral";
-      let ratio= shortSMA/ longSMA;
-      if(ratio>1.01) return "Bull";
-      if(ratio<0.99) return "Bear";
-      return "Neutral";
-    }
-    function computePriceSlope(prices){
-      let n= prices.length;
-      if(n<2) return 0;
-      let sumX=0, sumY=0, sumXY=0, sumX2=0;
-      for(let i=0;i<n;i++){
-        sumX+= i;
-        sumY+= prices[i].close;
-        sumXY+= i* prices[i].close;
-        sumX2+= i*i;
-      }
-      let numerator= n* sumXY - sumX* sumY;
-      let denominator= n* sumX2 - sumX* sumX;
-      if(denominator===0) return 0;
-      return numerator/ denominator;
-    }
-    function classifyBySlope(slope){
-      let bullThr=0.2, bearThr=-0.2;
-      if(slope> bullThr) return "Bull";
-      if(slope< bearThr) return "Bear";
-      return "Neutral";
-    }
-    
-    /***********************************************************************
-     * getAutoWeightsForRegime => returns { wRRI, wTech, wSent, wIns, wFund, wCong, scale }
-     ***********************************************************************/
-    function getAutoWeightsForRegime(regime){
-      if(regime==="Bear"){
-        return {
-          wRRI: 0.10,
-          wTech: 0.05,
-          wSent: 0.20,
-          wIns: 0.20,
-          wFund: 0.30,
-          wCong: 0.15,
-          scale: 1
-        };
-      } else if(regime==="Bull"){
-        return {
-          wRRI: 0.20,
-          wTech: 0.20,
-          wSent: 0.15,
-          wIns: 0.15,
-          wFund: 0.15,
-          wCong: 0.15,
-          scale: 3
-        };
-      } else {
-        // Neutral
-        return {
-          wRRI: 0.15,
-          wTech: 0.20,
-          wSent: 0.15,
-          wIns: 0.15,
-          wFund: 0.20,
-          wCong: 0.15,
-          scale: 2
-        };
-      }
-    }
-    
-    /***********************************************************************
-     * aggregatorFinal => picks auto or manual
-     ***********************************************************************/
-    function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
-      const manual = document.getElementById("manualModeCheckbox").checked;
-      if(manual){
-        const wRRI   = parseFloat(document.getElementById("wRRI").value) || 0;
-        const wTech  = parseFloat(document.getElementById("wTech").value) || 0;
-        const wSent  = parseFloat(document.getElementById("wSent").value) || 0;
-        const wIns   = parseFloat(document.getElementById("wInsider").value) || 0;
-        const wFund  = parseFloat(document.getElementById("wFund").value) || 0;
-        const wCong  = parseFloat(document.getElementById("wCongress").value) || 0;
-        let sc = parseFloat(document.getElementById("scalingFactor").value) || 1.0;
-    
-        const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
-        let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-        let invalidScale = (sc < 0);
-        if(invalidWeights || invalidScale){
-          logStatus("WARNING: Manual weights do not sum to 1.0 or scaling out of [0..2]. Fallback => Equal weighting.");
-          let eq = (rri + tech + sent + ins + fund + cong) / 6;
-          return eq;
-        } else {
-          let raw = wRRI * rri + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
-          return (raw - 50) * sc + 50;
-        }
-      } else {
-        let auto = getAutoWeightsForRegime(regime);
-        let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent
-                + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-        return (raw - 50) * auto.scale + 50;
-      }
-    }
-    
-    /***********************************************************************
-     * SINGLE TICKER LOGIC
-     ***********************************************************************/
-     async function simulateOneTicker(ticker, periodMonths, T, regime) {
-      let rri, techVal, sentVal, insVal, fundVal, congVal;
-    
-      // Step 1: RRI
-      try {
-        rri = await computeTickerRRI(ticker, T);
-      } catch (e) {
-        logStatus(`Error computing RRI for ${ticker}: ${e.message}`);
-        rri = 50;
-      }
-    
-      // Step 2: Technical
-      try {
-        let hist = await fetchHistoricalData(ticker);
-        let cutoffDate = new Date();
-        cutoffDate.setMonth(cutoffDate.getMonth() - periodMonths);
-        hist = hist.filter(pt => pt.date >= cutoffDate);
-        if (hist.length < 5) {
-          logStatus("Not enough filtered historical data for " + ticker);
-          techVal = 50;
-        } else {
-          techVal = await computeTechnical(hist);
-        }
-      } catch (e) {
-        logStatus(`Error computing Technical for ${ticker}: ${e.message}`);
-        techVal = 50;
-      }
-    
-      // Step 3: Sentiment
-      try {
-        let sentData = await fetchSentimentData(ticker, periodMonths);
-        sentVal = (sentData.length < 2) ? 50 : computeSentBull(sentData);
-      } catch (e) {
-        logStatus(`Error computing Sentiment for ${ticker}: ${e.message}`);
-        sentVal = 50;
-      }
-    
-      // Step 4: Insider
-      try {
-        let hist = await fetchHistoricalData(ticker);
-        let currentPrice = (hist.length > 0) ? hist[hist.length - 1].close : 1;
-        let insiderTx = await fetchInsiderData(ticker, periodMonths, currentPrice);
-        let insiderSent = null;
-        let simDate = (hist.length > 0) ? hist[hist.length - 1].date : new Date();
-        try {
-          insiderSent = await fetchInsiderSentiment(ticker, periodMonths, simDate);
-        } catch (e) {
-          insiderSent = null;
-        }
-        insVal = insiderSent ? computeNewInsiderScore(insiderSent, insiderTx.totalBuys, insiderTx.totalSells) : 50;
-      } catch (e) {
-        logStatus(`Error computing Insider for ${ticker}: ${e.message}`);
-        insVal = 50;
-      }
-    
-      // Step 5: Fundamental
-      try {
-        fundVal = await fetchFundamentalData(ticker);
-      } catch (e) {
-        logStatus(`Error computing Fundamental for ${ticker}: ${e.message}`);
-        fundVal = 50;
-      }
-    
-      // Step 6: Congress
-      try {
-        let congData = await fetchCongressData(ticker, periodMonths);
-        congVal = computeCongressScore(
-          congData.totalPurchase,
-          congData.totalSale,
-          congData.uniqueBuyCount,
-          congData.uniqueSellCount
-        );
-      } catch (e) {
-        logStatus(`Error computing Congress for ${ticker}: ${e.message}`);
-        congVal = 50;
-      }
-    
-      // Step 7: Aggregator
-      let aggregator = aggregatorFinal(rri, techVal, sentVal, insVal, fundVal, congVal, regime);
-      return { ticker, aggregator };
-    }
-    
-     // Ensure the DOM is ready
-     document.addEventListener("DOMContentLoaded", () => {
-    // Grab all elements once the DOM is ready.
-    const statusEl = document.getElementById("status");
-    const progressContainer = document.getElementById("progressContainer");
-    const progressBarFill = document.getElementById("progressBarFill");
-    const progressBarText = document.getElementById("progressBarText");
-
-    function logStatus(msg) {
-        // If you want to support HTML (for colored spans), use innerHTML.
-        statusEl.innerHTML += msg + "<br>";
-        statusEl.scrollTop = statusEl.scrollHeight;
-    }
-
-    async function runBatchAnalysis() {
-        logStatus("Run Batch Analysis started...");
-
-        // 0) Check if tickers loaded (make sure predeterminedTickers is defined globally or here)
-        if (predeterminedTickers.length === 0) {
-            alert("No tickers loaded. Please select an index from the dropdown to load tickers first.");
-            return;
-        }
-
-        // 1) Get and validate investment timeframe…
-        let timeframe = document.getElementById("investmentTimeframe").value;
-        if (timeframe === "") {
-            alert("Please select an Investment Timeframe!");
-            return;
-        }
-
-        let periodMonths, T, timeframeText;
-        if (timeframe === "short") {
-            periodMonths = 4;
-            T = 1 / 12;
-            timeframeText = "Short Term (4 months historical, 1 month horizon)";
-        } else if (timeframe === "medium") {
-            periodMonths = 12;
-            T = 3 / 12;
-            timeframeText = "Medium Term (12 months historical, 3 months horizon)";
-        } else {
-            periodMonths = 24;
-            T = 6 / 12;
-            timeframeText = "Long Term (24 months historical, 6 months horizon)";
-        }
-
-        // Clear and show progress bar
-        statusEl.innerHTML = "";
-        progressContainer.style.display = "block";
-        progressBarFill.style.width = "0%";
-        progressBarText.textContent = "0%";
-
-        // 2) Detect SPY regime
-        logStatus("Detecting SPY market regime...");
-        let regime = await determineSPYMarketRegime(4);
-        logStatus(`Detected Market Regime => ${regime} (Assessing: ${timeframeText})<br>`);
-
-        // 3) Process tickers in batches
-        let results = [];
-        let processed = 0;
-        let total = predeterminedTickers.length;
-        let batchSize = 70;
-
-        for (let i = 0; i < total; i += batchSize) {
-            let batch = predeterminedTickers.slice(i, i + batchSize);
-            logStatus(`Processing batch #${Math.floor(i / batchSize) + 1}: ${batch.join(", ")}`);
-
-            for (let tk of batch) {
-                let one = await simulateOneTicker(tk, periodMonths, T, regime);
-                results.push(one);
-                processed++;
-                let pct = Math.round((processed / total) * 100);
-                progressBarFill.style.width = pct + "%";
-                progressBarText.textContent = pct + "%";
-
-                // Use HTML spans for coloring since console styling (%c) doesn't work in an innerHTML update.
-                let colorClass = (one.aggregator > 50) ? "score-positive" : "score-negative";
-                logStatus(`→ ${tk} => aggregator: <span class="${colorClass}">${one.aggregator.toFixed(2)}</span>`);
-            }
-
-            // Sleep between batches if needed.
-            if (i + batchSize < total) {
-                logStatus("Waiting 60s before next batch...");
-                await sleep(60000);
-            }
-        }
-
-        // 4) Display final results
-        results.sort((a, b) => a.aggregator - b.aggregator);
-        let top5 = results.slice(-5).reverse();
-        let bottom5 = results.slice(0, 5);
-
-        logStatus("<br>=== Final Results ===<br>");
-        logStatus("Top 5:");
-        for (let item of top5) {
-            let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
-            logStatus(`${item.ticker}: <span class="${colorClass}">${item.aggregator.toFixed(2)}</span>`);
-        }
-        logStatus("Bottom 5:");
-        for (let item of bottom5) {
-            let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
-            logStatus(`${item.ticker}: <span class="${colorClass}">${item.aggregator.toFixed(2)}</span>`);
-        }
-        logStatus(`Done! Processed ${processed} tickers.`);
-    }
-
-    // Expose the function globally so the inline onclick works.
-    window.runBatchAnalysis = runBatchAnalysis;
-});
-
-    /***********************************************************************
-     * BATCH ANALYSIS
-     ***********************************************************************/
-     async function runBatchAnalysis(){
-  // 0) Check if tickers loaded
-  if (predeterminedTickers.length === 0) {
-    alert("No tickers loaded. Please select an index from the dropdown to load tickers first.");
-    return;
-  }
-  // 1) Get the user timeframe
-  let timeframe = document.getElementById("investmentTimeframe").value;
-  if(timeframe === ""){
-    alert("Please select an Investment Timeframe!");
-    return;
-  }
-
-  // Map timeframe to periodMonths, T, etc. (same logic)
-  let periodMonths, T, timeframeText;
-  if(timeframe === "short"){
-    periodMonths = 4;
-    T = 1/12;  // 1 month horizon
-    timeframeText = "Short Term (4 months historical, 1 month horizon)";
-  } else if(timeframe === "medium"){
-    periodMonths = 12;
-    T = 3/12;  // 3 months
-    timeframeText = "Medium Term (12 months historical, 3 months horizon)";
-  } else {
-    periodMonths = 24;
-    T = 6/12;  // 6 months
-    timeframeText = "Long Term (24 months historical, 6 months horizon)";
-  }
-
-  // Clear & show progress
-  statusEl.textContent = "";
-  progressContainer.style.display = "block";
-  progressBarFill.style.width = "0%";
-  progressBarText.textContent = "0%";
-
-  // 3) Detect SPY regime
-  logStatus("Detecting SPY market regime...");
-  let regime= await determineSPYMarketRegime(4);
-  logStatus(`Detected Market Regime => ${regime} (Assessing: ${timeframeText})\n`);
-
-  // 4) For each batch of tickers, do the simulation
-  let results= [];
-  let processed= 0;
-  let total= predeterminedTickers.length;
-  let batchSize= 70;
-
-  for(let i=0; i< total; i+= batchSize){
-    let batch= predeterminedTickers.slice(i, i+ batchSize);
-    logStatus(`Processing batch #${Math.floor(i/batchSize)+1}: ${batch.join(", ")}`);
-    for(let tk of batch){
-      let one= await simulateOneTicker(tk, periodMonths, T, regime);
-      results.push(one);
-      
-      processed++;
-      let pct= Math.round((processed / total)*100);
-      // Update progress bar fill
-      progressBarFill.style.width = pct + "%";
-      progressBarText.textContent = pct + "%";
-      
-      // Color aggregator > 50 => green, < 50 => red
-      let colorClass = (one.aggregator > 50) ? "score-positive" : "score-negative";
-      logStatus(`→ ${tk} => aggregator: %c${one.aggregator.toFixed(2)}`, colorClass);
-    }
-
-    // Optional: sleep between batches
-    if(i+ batchSize< total){
-      logStatus("Waiting 60s before next batch...");
-      await sleep(60000);
-    }
-  }
-
-  // 5) Sort final results & show top/bottom
-  results.sort((a,b)=> a.aggregator - b.aggregator);
-  let top5= results.slice(-5).reverse();
-  let bottom5= results.slice(0,5);
-
-  logStatus("\n=== Final Results ===");
-  logStatus("Top 5:");
-  for(let item of top5){
-    let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
-    logStatus(`${item.ticker}: %c${item.aggregator.toFixed(2)}`, colorClass);
-  }
-  logStatus("Bottom 5:");
-  for(let item of bottom5){
-    let colorClass = (item.aggregator > 50) ? "score-positive" : "score-negative";
-    logStatus(`${item.ticker}: %c${item.aggregator.toFixed(2)}`, colorClass);
-  }
-  logStatus(`Done! Processed ${processed} tickers.`);
+<style>
+:root {
+  /* Base typography and color variables */
+  --font-family: 'Arial', sans-serif;
+  --text-color: #fff;
+  --primary-bg: #333;
+  --secondary-bg: #444;
+  --section-bg: rgba(0, 0, 0, 0.33);
+  --accent-color: #16a34a; /* Example accent (you can change as needed) */
+  
+  /* Spacing and sizing */
+  --base-font-size: 16px;
+  --line-height: 1.5;
+  --heading-margin-bottom: 1rem;
+  --section-padding: 3rem 1rem;
+  --section-margin-bottom: 2rem;
+  --button-padding: 0.5rem 1rem;
+  --border-radius: 4px;
+  --transition-speed: 0.3s;
 }
 
-</script
+/* Global Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  font-size: var(--base-font-size);
+}
+body {
+  font-family: var(--font-family);
+  color: var(--text-color);
+  background-color: #111; /* Dark background */
+  line-height: var(--line-height);
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Normalize headings */
+h1, h2, h3, h4, h5, h6 {
+  margin-bottom: var(--heading-margin-bottom);
+  font-weight: normal;
+}
+
+/* Fixed Background Element */
+.background-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/images/hero-background.png') no-repeat center center;
+  background-size: cover;
+  z-index: -9999;
+  transform: translateZ(0);
+}
+@media (max-width: 768px) {
+  .background-fixed {
+    background: url('/images/hero-background.png') no-repeat center center;
+    background-size: cover;
+  }
+}
+
+
+    /*************** Hide countdown, weekly top picks, and performance sections *****************/
+    .countdown-section,
+    #weekly-stock-picks,
+    #performance-summary {
+      display: none !important;
+    }
+
+
+/* Hero Section */
+.hero {
+  position: relative;
+  padding: var(--section-padding);
+  text-align: center;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 0;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+#heroChart {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+#heroPrice {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  /* Change from 2rem to 2vw for responsive scaling */
+  font-size: 2vw;
+  font-weight: bold;
+  color: var(--text-color);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+@media (max-width: 600px) {
+  #heroPrice {
+    font-size: 3vw;
+  }
+}
+
+/* Top Navigation (Horizontal Scrolling) */
+.topnav {
+  background-color: var(--primary-bg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+}
+.topnav ul {
+  display: flex;
+  list-style: none;
+}
+.topnav ul li {
+  position: relative;
+  flex: none;
+}
+.topnav ul li a {
+  display: block;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-color);
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+.topnav ul li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.dropdown-menu {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: none;
+  background-color: var(--primary-bg);
+  min-width: 9.375rem; /* 150px */
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.dropdown-menu li a {
+  display: block;
+  padding: 0.875rem 1.25rem;
+  color: var(--text-color);
+  background-color: var(--primary-bg);
+  transition: background-color var(--transition-speed), color var(--transition-speed);
+}
+.dropdown-menu li a:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Mobile Menu: Sliding Sidebar */
+.mobile-menu-toggle {
+  background: none;
+  border: none;
+  padding: 0.875rem 1.25rem;
+  cursor: pointer;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  display: block;
+}
+.mobile-menu-toggle svg {
+  vertical-align: middle;
+}
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 80%;
+  max-width: 18.75rem; /* 300px */
+  height: 100%;
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  overflow-y: auto;
+  transition: left var(--transition-speed) ease;
+  z-index: 1500;
+  padding-top: 1rem;
+}
+.mobile-menu.open {
+  left: 0;
+}
+.mobile-menu nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mobile-menu nav ul li {
+  border-bottom: 0.0625rem solid #444;
+}
+.mobile-menu nav ul li a,
+.mobile-menu nav ul li .submenu-toggle {
+  display: block;
+  padding: 0.625rem 1.25rem;
+  color: var(--text-color);
+  cursor: pointer;
+}
+.mobile-menu nav ul li a:hover,
+.mobile-menu nav ul li .submenu-toggle:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.mobile-menu nav ul li ul.submenu {
+  display: none;
+  background-color: var(--secondary-bg);
+}
+.mobile-menu nav ul li ul.submenu li a {
+  padding-left: 2.5rem; /* 40px */
+}
+.mobile-menu .close-menu {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 1.5rem;
+  position: absolute;
+  top: 0.625rem;
+  right: 0.625rem;
+  cursor: pointer;
+}
+
+/* Countdown Section */
+@media (max-width: 600px) {
+  .countdown-section .flip-clock {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1.2rem; /* Adjust overall scaling */
+    box-sizing: border-box;
+  }
+  .countdown-section .flip-number {
+    padding: 0.3rem 0.5rem;
+    font-size: 1rem;
+  }
+}
+
+.countdown-section {
+  text-align: center;
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+.countdown-title {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+.flip-clock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #222;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+.flip-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 0.5rem;
+}
+.flip-number {
+  font-size: 2rem;
+  background: var(--primary-bg);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.25rem;
+  min-width: 2ch;
+  text-align: center;
+  box-shadow: inset 0 -0.25rem 0 rgba(0,0,0,0.3);
+}
+.flip-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.flip-separator {
+  font-size: 2rem;
+  margin: 0 0.5rem;
+  user-select: none;
+}
+.newsletter-btn {
+  font-size: 0.9rem;
+  padding: var(--button-padding);
+  background-color: var(--secondary-bg);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  color: var(--text-color);
+}
+.newsletter-btn:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Weekly Stock Picks Section */
+#weekly-stock-picks {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+#weekly-stock-picks h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.stock-picks-container {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.stock-pick {
+  background: #000;
+  padding: 1rem;
+  border: 0.0625rem solid #444;
+  border-radius: 0.5rem;
+  width: 18.75rem; /* 300px */
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+}
+.stock-pick h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+.stock-pick ol {
+  text-align: left;
+  padding-left: 1.5rem;
+}
+
+/* Buy & Sell Tickers */
+.buy-ticker,
+.sell-ticker {
+  display: inline-block;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  transition: background-color var(--transition-speed), transform 0.2s;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.2);
+}
+.buy-ticker {
+  background-color: #28a745;
+  border: none;
+}
+.buy-ticker:hover {
+  background-color: #218838;
+  transform: translateY(-0.125rem);
+}
+.sell-ticker {
+  background-color: #dc3545;
+  border: none;
+}
+.sell-ticker:hover {
+  background-color: #c82333;
+  transform: translateY(-0.125rem);
+}
+
+/* Tools Section */
+#tools {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  margin-bottom: var(--section-margin-bottom);
+}
+#tools h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+}
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15.625rem, 1fr));
+  gap: 1.5rem;
+  padding: 0 2rem;
+}
+.tool-card {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.5);
+  text-align: center;
+  padding-bottom: 1rem;
+  transition: transform 0.2s;
+}
+.tool-card:hover {
+  transform: translateY(-0.125rem);
+}
+.tool-card img {
+  width: 100%;
+  height: 9.375rem; /* 150px */
+  object-fit: cover;
+}
+.tool-card h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+.tool-card p {
+  margin: 0 1rem 1rem;
+}
+.tool-button {
+  display: inline-block;
+  padding: var(--button-padding);
+  background: #000;
+  border-radius: var(--border-radius);
+  transition: background var(--transition-speed);
+  color: #fff; /* ← Add this */
+}
+
+.tool-button:hover {
+  background: #005fa3;
+}
+.non-clickable {
+  /* Disable any pointer events so the button won’t respond */
+  pointer-events: none;
+  /* Set the cursor to default so it doesn't change on hover */
+  cursor: default;
+}
+
+/* Optional: Override hover styling in case any global hover rules are applied */
+.non-clickable:hover {
+  background-color: inherit;
+  color: inherit;
+}
+
+/* Newsletter Signup Section */
+#newsletter-signup {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+  margin-bottom: var(--section-margin-bottom);
+}
+#newsletter-signup h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+#newsletter-signup form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  max-width: 25rem;
+  margin: 0 auto;
+}
+#newsletter-signup input {
+  padding: 0.75rem;
+  width: 100%;
+  border: 0.0625rem solid #ccc;
+  border-radius: var(--border-radius);
+  color: #000;
+}
+#newsletter-signup button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-speed);
+}
+#newsletter-signup button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.news-thumbnail {
+  width: 50px;           /* Adjust as needed */
+  height: 50px;          /* Adjust as needed */
+  object-fit: cover;     /* Ensures the image fills the dimensions */
+  border-radius: 4px;    /* Optional: adds rounded corners */
+  margin-right: 10px;    /* Spacing between image and text */
+  display: block;        /* Or inline-block if you want it on the same line */
+}
+
+/* Feedback Section */
+#feedback-section {
+  text-align: center;
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  margin-top: var(--section-margin-bottom);
+}
+#feedback-section h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+#feedback-section p {
+  margin-bottom: 1.5rem;
+}
+#feedback-section a {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: 0.3125rem;
+  transition: background-color var(--transition-speed);
+}
+#feedback-section a:hover {
+  background-color: #555;
+}
+
+/* Back Button */
+.back-button {
+  display: inline-block;
+  margin: 1rem 0;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-bg);
+  border-radius: var(--border-radius);
+  transition: background-color var(--transition-speed);
+  cursor: pointer;
+}
+.back-button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+.header-right {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: var(--section-bg);
+  margin-top: 2rem;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .mobile-menu-toggle { display: none; }
+  .mobile-menu { display: none; }
+  nav.header__inline-menu { display: block; }
+}
+@media (max-width: 767px) {
+  nav.header__inline-menu { display: none; }
+}
+@media (max-width: 768px) {
+  .tool-card { width: 90%; }
+}
+
+/* Performance Button & Summary Styles */
+.performance-button {
+  margin-left: 1.25rem;
+  padding: 0.3125rem 0.625rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  cursor: pointer;
+}
+.performance-green {
+  background-color: #28a745 !important;
+}
+.performance-red {
+  background-color: #dc3545 !important;
+}
+#performance-summary {
+  padding: var(--section-padding);
+  background-color: var(--section-bg);
+  text-align: center;
+}
+#performance-summary .performance-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+#performance-summary button {
+  padding: 0.625rem 1.25rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  color: var(--text-color);
+}
+#performance-summary button:hover {
+  opacity: 0.9;
+}
+.positive-performance {
+  background-color: #28a745;
+}
+.negative-performance {
+  background-color: #dc3545;
+}
+.explanation-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: var(--border-radius);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  max-width: 37.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+@media (max-width: 600px) {
+  #performance-summary button {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .explanation-box {
+    font-size: 0.9rem;
+    padding: 0.8rem;
+  }
+}
+.performance-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  max-width: 37.5rem;
+  margin: 0 auto;
+}
+.performance-summary-grid button {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+.performance-summary-grid .non-clickable {
+  cursor: default;
+}
+.performance-summary-grid button:nth-child(odd) {
+  background-color: var(--primary-bg);
+}
+
+/* Live News Section Styles */
+@media (max-width: 600px) {
+  .ticker-search-container {
+    box-sizing: border-box;
+    gap: 0.5rem;
+  }
+  .ticker-search-container input,
+  .ticker-search-container button {
+    width: 70%;
+    font-size: 0.9rem;
+  }
+  .live-news-menu button {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.25rem 0;
+  }
+}
+
+.live-news {
+  position: relative;
+  padding: 1rem;
+  /* Normal background: 33% transparent */
+  background-color: rgba(0, 0, 0, 0.33);
+  margin-bottom: 2rem;
+  transition: all 0.3s;
+}
+
+/* When minimized, just one line high. Hide feed & menu. */
+.live-news.minimized {
+  height: 5.5rem; /* Enough for the header line */
+  overflow: hidden;
+  padding: 0.5rem 1rem;
+}
+.live-news.minimized .live-news-menu,
+.live-news.minimized .live-news-feed {
+  display: none;
+}
+
+/* When maximized, full screen overlay-like look */
+.live-news.maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  z-index: 9999;
+  /* Darker overlay background */
+  background-color: rgba(0, 0, 0, 0.95);
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Title + Controls on same line */
+.live-news-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+
+}
+.live-news-header .live-news-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+.ticker-search-container {
+  margin-bottom: 0.60rem;
+
+  padding: 0.2;
+  padding-right: 3rem;
+  margin-right: .75rem;
+  margin-left: .75rem;
+}
+.dark-input {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.ticker-search-container input {
+  padding: 0.33rem;
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+  font-size: 0.85rem;
+}
+
+.ticker-search-container button {
+  padding: 0.33rem 1rem;
+  display: flex;
+  border-radius: var(--border-radius);
+  background-color: var(--primary-bg);
+  color: var(--text-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  width: 70%;
+}
+
+.ticker-search-container button:hover {
+  background-color: #ddd;
+  color: #333;
+}
+
+/* Buttons for topics menu */
+.live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.live-news-menu button {
+  background-color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #fff;
+  transition: background-color 0.3s;
+}
+.live-news-menu button:hover {
+  background-color: #555;
+}
+
+/* Controls (Minimize, Maximize, Close) */
+.live-news-controls span {
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.3rem 0.6rem;
+  background-color: #333;
+  border-radius: 4px;
+  color: #fff;
+  transition: background-color 0.3s;
+  user-select: none;
+}
+.live-news-controls span:hover {
+  background-color: #555;
+}
+/* Autocomplete Suggestions Container */
+#ticker-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  background-color: #222; /* dark background */
+  border: 1px solid #444; /* subtle border */
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* modern shadow */
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Each suggestion item */
+#ticker-suggestions li {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #ccc;
+}
+
+/* Hover state for suggestions */
+#ticker-suggestions li:hover {
+  background-color: #16a34a; /* accent color */
+  color: #fff;
+}
+
+/* Optional: Style the ticker symbol and company name differently */
+#ticker-suggestions li .ticker-symbol {
+  font-weight: bold;
+}
+#ticker-suggestions li .company-name {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* News Feed container */
+.live-news-feed {
+  max-height: 400px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column; /* We'll prepend new items */
+}
+
+/* Custom scrollbar styling for a darker "wheel" look */
+.live-news-feed::-webkit-scrollbar {
+  width: 10px;
+}
+.live-news-feed::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 1px;
+}
+.live-news-feed::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 5px;
+}
+.live-news-feed::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Individual news item */
+.live-news-item {
+  background-color: rgba(0, 0, 0, 0.7);
+  margin-bottom: 0;
+  padding: 0.75rem;
+  border-radius: 1px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: background-color 0.3s;
+}
+
+/* Hover effect for item (optional) */
+.live-news-item:hover {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Title + timestamp row */
+.live-news-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+/* Timestamp on the left */
+.live-news-timestamp {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  min-width: 8rem; /* so it lines up nicely */
+}
+.live-news-title {
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: underline;
+  flex: 1; /* so it expands to fill leftover space */
+}
+
+/* Hidden summary that expands on click */
+.live-news-summary {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  display: none;
+}
+.live-news-summary a {
+  color: #16a34a;
+  text-decoration: underline;
+}
+
+/* Expanded item reveals the summary */
+.live-news-item.expanded .live-news-summary {
+  display: block;
+}
+/* Desktop styles: show the topics menu and hide the hamburger */
+.live-news-topics .news-hamburger {
+  display: none;
+}
+.live-news-topics .live-news-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Mobile styles: show hamburger, hide topics menu by default */
+@media (max-width: 768px) {
+  .live-news-topics .news-hamburger {
+    display: block;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .live-news-topics .live-news-menu {
+    display: none;
+    flex-direction: column;
+  }
+  /* Optional: when active, display as a vertical list */
+  .live-news-topics .live-news-menu.active {
+    display: flex;
+  }
+}
+@keyframes rollUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Optional: style the container to ensure proper positioning */
+#heroPrice {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 3;
+  font-size: 2vw;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+}
+
+  /* Premium Tool: the overlay is visible by default */
+  .premium-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  border-radius: var(--border-radius);
+  transition: opacity 0.3s ease;
+
+  /* <-- Add or ensure the following line is present: */
+  pointer-events: none; 
+}
+
+
+  /* When the premium tool is unlocked, add a class that hides the overlay */
+  .unlocked .premium-overlay {
+    display: none;
+  }
+
+  /* Add or update this rule */
+  .tool-card.premium {
+  position: relative;
+}
+.lock-icon {
+  display: block;
+  width: 6px;        /* super small lock */
+  height: auto;
+  margin: 4px auto 0; /* slight spacing from “Premium Locked” text */
+}
+
+</style>
+<body>
+  <!-- Fixed Background Element -->
+  <div class="background-fixed"></div>
+
+  <!-- Mobile Header: Hamburger Toggle -->
+  <header>
+    <button class="mobile-menu-toggle" id="openMenu" aria-label="Open Menu">
+      <svg viewBox="0 0 18 16" width="24" height="24">
+        <rect y="2" width="18" height="2" fill="white"></rect>
+        <rect y="7" width="18" height="2" fill="white"></rect>
+        <rect y="12" width="18" height="2" fill="white"></rect>
+      </svg>
+    </button>
+
+  
+
+  
+  <!-- Mobile Sidebar Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="close-menu" id="closeMenu" aria-label="Close Menu">&times;</button>
+    <nav>
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li>
+          <span class="submenu-toggle">Tools &#9662;</span>
+          <ul class="submenu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="risk/">Risk Reward Index</a></li>
+            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+            <li><a href="congress/">Congress Trades</a></li>
+            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+            <li><a href="analyst/">Combined Analyst Ratings</a></li>
+            <li><a href="sentiment">Market Sentiment</a></li>
+            <li><a href="insider/">Insider Tracker</a></li>
+            <li><a href="technical/">Combined Technical Analysis</a></li>
+            <li><a href="MACD/">MACD Analysis</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+          </ul>
+        </li>
+        <li>
+          <span class="submenu-toggle">Tutorials &#9662;</span>
+          <ul class="submenu">
+            <li><a href="/tutorials/">Go to Tutorials</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
+  <!-- Desktop Inline Menu for larger screens -->
+  <header>
+    <nav class="header__inline-menu topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li class="dropdown">
+          <a href="#tools" class="parent-link">Tools</a>
+          <ul class="dropdown-menu">
+            <li><a href="intraday/">Live Stock Chart</a></li>
+            <li><a href="stocks/">Stock Trend Forecast</a></li>
+            <li><a href="risk/">Risk Reward Index</a></li>
+            <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
+            <li><a href="congress/">Congress Trades</a></li>
+            <li><a href="topcongress/">Top 5 Congress Stocks</a></li>
+            <li><a href="analyst/">Combined Analyst Ratings</a></li>
+            <li><a href="sentiment/">Market Sentiment</a></li>
+            <li><a href="insider/">Insider Tracker</a></li>
+            <li><a href="technical/">Combined Technical Analysis</a></li>
+            <li><a href="MACD/">MACD Analysis</a></li>
+            <li><a href="ichimoku/">Ichimoku Cloud Analysis</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="/tutorials/" class="parent-link">Tutorials</a>
+          <ul class="dropdown-menu"></ul>
+        </li>
+      </ul>
+    </nav>
+   
+       <!-- Sign-in container aligned to the right -->
+       <div class="header-right">
+        <div id="user-type-indicator">Not signed in</div>
+        <div id="google-signin-button"></div>
+      </div>
+    </header>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div id="heroChart"></div>
+    <div id="heroPrice"></div>
+    <div class="hero-content">
+      <h1>Intuition Trades</h1>
+      <p>Empowering your stock decisions with free analysis & forecast tools.</p>
+    </div>
+  </header>
+
+  
+  <!-- Countdown Section -->
+  <section class="countdown-section">
+    <h2 class="countdown-title">Countdown Until Next Week's Top Picks</h2>
+    <div class="flip-clock" id="flipClock">
+      <div class="flip-unit">
+        <span class="flip-number" id="days">00</span>
+        <span class="flip-label">Days</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="hours">00</span>
+        <span class="flip-label">Hours</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="minutes">00</span>
+        <span class="flip-label">Minutes</span>
+      </div>
+      <span class="flip-separator">:</span>
+      <div class="flip-unit">
+        <span class="flip-number" id="seconds">00</span>
+        <span class="flip-label">Seconds</span>
+      </div>
+    </div>
+    <button class="newsletter-btn" id="scrollToSignup">
+      Receive Top Picks Earlier
+    </button>
+  </section>
+
+  <!-- Weekly Stock Picks Section -->
+  <section id="weekly-stock-picks">
+    <h2>Weekly Stock Picks</h2>
+    <div class="stock-picks-container">
+      <!-- Top 3 Buys -->
+      <div class="stock-pick">
+        <h3>Top 3 Buys</h3>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
+        <ol>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VST">VST</a>
+            <button class="performance-button" id="performance-VST">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=WYNN">WYNN</a>
+            <button class="performance-button" id="performance-WYNN">Loading...</button>
+          </li>
+          <li>
+            <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=OXY">OXY</a>
+            <button class="performance-button" id="performance-OXY">Loading...</button>
+          </li>
+        </ol>
+      </div>
+      <!-- Top 3 Shorts -->
+      <div class="stock-pick">
+        <h3>Top 3 Shorts</h3>
+        <div class="performance-header" style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.8rem;"></div>
+        <ol>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=INTA">INTA</a>
+            <button class="performance-button" id="performance-INTA">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=AXON">AXON</a>
+            <button class="performance-button" id="performance-AXON">Loading...</button>
+          </li>
+          <li>
+            <a class="sell-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=LYV">LYV</a>
+            <button class="performance-button" id="performance-LYV">Loading...</button>
+          </li>
+        </ol>
+      </div>
+    </div>
+      <div style="text-align: center; margin-top: 1rem;">
+        <a href="explanation.html" class="back-button">Selection Process</a>
+      </div>
+      
+    </div>
+  </section>
+
+  <!-- Performance Summary Section (Updated) -->
+  <section id="performance-summary">
+    <h2>Weekly Performance</h2>
+    <div class="performance-summary-grid">
+      <!-- Row 1: Our Top Picks -->
+      <button id="weeklyPicksButton">Our Top Picks</button>
+      <button id="weeklyPicksChange" class="non-clickable">Loading...</button>
+      
+      <!-- Row 2: S&P 500 -->
+      <button id="sp500Button">SP500</button>
+      <button id="sp500Change" class="non-clickable">Loading...</button>
+      
+      <!-- Row 3: Nasdaq -->
+      <button id="nasdaqButton">NASDAQ</button>
+      <button id="nasdaqChange" class="non-clickable">Loading...</button>
+    </div>
+    <!-- Explanation Box (hidden by default) -->
+    <div id="weeklyExplanationBox" class="explanation-box" style="display: none;"></div>
+    <div style="text-align: center; margin-top: 1rem;">
+      <a href="https://www.intuitiontrades.com/lastweek.html" class="back-button">See Previous Week</a>
+    </div>
+  </section>  
+
+  <!-- Newsletter Signup Section -->
+  <section id="newsletter-signup">
+    <!-- MailerLite Universal Embed Code -->
+    <script>
+      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+      .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+      ml('account', '1422635');
+    </script>
+    <div class="ml-embedded" data-form="N78gvr"></div>
+  </section>
+
+  <!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
+
+    <!-- NEW: Ticker Search Box -->
+    <div class="ticker-search-container">
+        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
+        <ul id="ticker-suggestions" style="display:none;"></ul>
+        <button id="tickerSearchButton" class="dark-input">Search</button>
+      </div>
+      
+  
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
+    </div>
+  </h2>
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button>
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
+
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
+
+
+  <main>
+    <!-- Tools Section -->
+    <section id="tools">
+      <h2>Tools</h2>
+      <div class="tool-grid">
+         <!-- Premium Tool (locked by default) -->
+         <div class="tool-card premium" id="premiumCard">
+          <img src="images/top5.png" alt="Top Stocks Scanner" />
+          <h2>Top Stocks Scanner</h2>
+          <p>
+            Evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, 
+            Insider, Fundamental, and Congress signals.
+          </p>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon" />
+          </div>
+        
+          <!-- Instead of href="top5/", do this: -->
+          <a href="javascript:void(0)" class="tool-button" id="openPremiumToolLink">
+            Open Premium Tool
+          </a>
+        </div>
+        
+
+        
+
+        <div class="tool-card basic">
+          <img src="images/intraday.PNG" alt="Live Stock Chart" />
+          <h2>Live Stock Chart</h2>
+          <p>View current stock price and historical charts.</p>
+          <a href="intraday/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/stocks.PNG" alt="Stock Trend Forecast" />
+          <h2>Stock Trend Forecast</h2>
+          <p>Identify trends using Market Sentiment, Insider trading, Technical Analysis, Regression, and Monte Carlo Simulations.</p>
+          <a href="stocks/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/risk.PNG" alt="Risk Reward Index" />
+          <h2>Risk Reward Index</h2>
+          <p>Assess risk vs reward using a double Heston stochastic volatility jump‐diffusion (dbHJ) model with realtime calibration.</p>
+          <a href="risk/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/fundamental.PNG" alt="Combined Fundamental Analysis" />
+          <h2>Combined Fundamental Analysis</h2>
+          <p>Combine the top 5 fundamental categories to assess overall financial strength.</p>
+          <a href="fundamental/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/congress.PNG" alt="Congress Trades" />
+          <h2>Congress Trades</h2>
+          <p>Discover if politicians are trading your favorite stocks.</p>
+          <a href="congress/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/topcongress.PNG" alt="Top 5 Congress Stocks" />
+          <h2>Top 5 Congress Stocks</h2>
+          <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
+          <a href="topcongress/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/analyst.PNG" alt="Combined Analyst Ratings" />
+          <h2>Combined Analyst Ratings</h2>
+          <p>View current analyst ratings and target price.</p>
+          <a href="analyst/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/insider.PNG" alt="Insider Tracker" />
+          <h2>Insider Tracker</h2>
+          <p>Uncover insider activity on your favorite stocks.</p>
+          <a href="insider/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/sentiment.png" alt="Market Sentiment Viewer" />
+          <h2>Market Sentiment Viewer</h2>
+          <p>Analyze the latest news articles on your favorite stocks.</p>
+          <a href="sentiment/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/technical.PNG" alt="Combined Technical Analysis" />
+          <h2>Combined Technical Analysis</h2>
+          <p>Analyze the top 5 technicals to generate a combined bullish or bearish signal.</p>
+          <a href="technical/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/MACD.PNG" alt="MACD Analysis" />
+          <h2>MACD Analysis</h2>
+          <p>Identify trends in your favorite stocks using the automated MACD score analyser.</p>
+          <a href="MACD/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/ichimoku.PNG" alt="Ichimoku Cloud Analysis" />
+          <h2>Ichimoku Cloud Analysis</h2>
+          <p>Calculate buy or sell signals using Ichimoku Cloud Analysis.</p>
+          <a href="ichimoku/" class="tool-button">Open Tool</a>
+        </div>
+      </div>
+    </section>
+  
+    <!-- Feedback Section -->
+    <section id="feedback-section">
+      <h2>Your Feedback</h2>
+      <p>Help us improve our site. Share your requests or ideas.</p>
+      <a href="feedback.html">Leave Feedback</a>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
+  </footer>
+
+  <!-- ============================================================
+       JavaScript Section
+  ============================================================ -->
+  <script>
+    // Desktop Dropdown & Mobile Menu Toggle
+    document.addEventListener("DOMContentLoaded", () => {
+      const canHover = window.matchMedia('(hover: hover)').matches;
+      const desktopDropdowns = document.querySelectorAll('nav.header__inline-menu .dropdown');
+      if (canHover) {
+        desktopDropdowns.forEach(drop => {
+          const dropdownMenu = drop.querySelector('.dropdown-menu');
+          drop.addEventListener('mouseenter', () => {
+            const rect = drop.getBoundingClientRect();
+            document.body.appendChild(dropdownMenu);
+            dropdownMenu.style.position = 'fixed';
+            dropdownMenu.style.top = rect.bottom + 'px';
+            dropdownMenu.style.left = rect.left + 'px';
+            dropdownMenu.style.display = 'block';
+            dropdownMenu.style.zIndex = '10000';
+          });
+          drop.addEventListener('mouseleave', () => {
+            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+          dropdownMenu.addEventListener('mouseleave', () => {
+            if (!drop.matches(':hover') && !dropdownMenu.matches(':hover')) {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+        });
+        window.addEventListener('scroll', () => {
+          desktopDropdowns.forEach(drop => {
+            const dropdownMenu = drop.querySelector('.dropdown-menu');
+            if (dropdownMenu.style.position === 'fixed') {
+              drop.appendChild(dropdownMenu);
+              dropdownMenu.style.position = '';
+              dropdownMenu.style.top = '';
+              dropdownMenu.style.left = '';
+              dropdownMenu.style.width = '';
+              dropdownMenu.style.display = 'none';
+            }
+          });
+        });
+      } else {
+        desktopDropdowns.forEach(drop => {
+          const parentLink = drop.querySelector('.parent-link');
+          const dropdownMenu = drop.querySelector('.dropdown-menu');
+          dropdownMenu.style.display = 'none';
+          parentLink.addEventListener('click', e => {
+            e.preventDefault();
+            dropdownMenu.style.display = dropdownMenu.style.display === 'block' ? 'none' : 'block';
+          });
+        });
+      }
+    });
     
-    </body>
-    </html>
+    const openMenuBtn = document.getElementById("openMenu");
+    const closeMenuBtn = document.getElementById("closeMenu");
+    const mobileMenu = document.getElementById("mobileMenu");
+    openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
+    closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
+    const submenuToggles = document.querySelectorAll(".mobile-menu .submenu-toggle");
+    submenuToggles.forEach(toggle => {
+      toggle.addEventListener("click", () => {
+        const submenu = toggle.nextElementSibling;
+        if (submenu.style.display === "block") {
+          submenu.style.display = "none";
+          toggle.innerHTML = toggle.innerHTML.replace("&#9652;", "&#9662;");
+        } else {
+          submenu.style.display = "block";
+          toggle.innerHTML = toggle.innerHTML.replace("&#9662;", "&#9652;");
+        }
+      });
+    });
+  </script>
+
+  <script>
+    // This function fetches intraday data for a given ticker using 5min interval,
+    // finds the first available price on the initial date and the most recent price,
+    // then calculates and displays the percentage difference in the given buttonElement.
+    function updateTickerPerformanceIntraday(ticker, buttonElement) {
+      const intradayUrl = `https://www.intuitiontrades.com/api/intraday?symbol=${ticker}&interval=5min&outputsize=full`;
+      fetch(intradayUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (!data || !data["Time Series (5min)"]) return;
+          const timeSeries = data["Time Series (5min)"];
+          const sortedTimestamps = Object.keys(timeSeries).sort(); // ascending order
+
+          // Adjust this date as needed
+          const initialDate = "2025-04-04";
+          const initialTimestamps = sortedTimestamps.filter(ts => ts.startsWith(initialDate));
+          if (!initialTimestamps.length) return;
+          const initialTimestamp = initialTimestamps[0];
+          const initialPrice = parseFloat(timeSeries[initialTimestamp]["4. close"]);
+
+          // Get the most recent timestamp (<= current time)
+          const now = new Date();
+          const currentTimestamps = sortedTimestamps.filter(ts => new Date(ts) <= now);
+          if (!currentTimestamps.length) return;
+          const currentTimestamp = currentTimestamps[currentTimestamps.length - 1];
+          const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
+
+          // Calculate percentage difference
+          const diff = ((currentPrice - initialPrice) / initialPrice) * 100;
+          const diffFormatted = diff.toFixed(2) + '%';
+
+          // Update button text and styling
+          buttonElement.textContent = diffFormatted;
+          if (diff >= 0) {
+            buttonElement.classList.add('positive-performance');
+            buttonElement.classList.remove('negative-performance');
+          } else {
+            buttonElement.classList.add('negative-performance');
+            buttonElement.classList.remove('positive-performance');
+          }
+        })
+        .catch(error => console.error("Error fetching intraday data for", ticker, error));
+    }
+
+    // Update the 6 weekly pick tickers (VST, WYNN, OXY, INTA, AXON, LYV) and the initial date
+    document.addEventListener('DOMContentLoaded', () => {
+      const initialDate = "2025-04-04";
+      document.querySelectorAll('.performance-header').forEach(header => {
+        header.textContent = "Performance Since " + initialDate;
+      });
+
+      const tickers = ["VST", "WYNN", "OXY", "INTA", "AXON", "LYV"];
+      tickers.forEach(ticker => {
+        const perfEl = document.getElementById(`performance-${ticker}`);
+        if (perfEl) {
+          updateTickerPerformanceIntraday(ticker, perfEl);
+          // Make each performance button clickable to see intraday chart
+          perfEl.addEventListener('click', () => {
+            window.location.href = `https://www.intuitiontrades.com/intraday/?ticker=${ticker}`;
+          });
+        }
+      });
+    });
+  </script>
+
+  <script>
+    // Calculate and display the average performance of top picks and short picks in the Performance Summary
+    document.addEventListener("DOMContentLoaded", function() {
+      // We'll use QQQ for NASDAQ, SPY for S&P 500
+      updateTickerPerformanceIntraday("SPY", document.getElementById("sp500Change"));
+      updateTickerPerformanceIntraday("QQQ", document.getElementById("nasdaqChange"));
+
+      // Make the left buttons clickable to intraday pages
+      document.getElementById("sp500Button").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=SPY";
+      });
+      document.getElementById("nasdaqButton").addEventListener("click", () => {
+        window.location.href = "https://www.intuitiontrades.com/intraday/?ticker=QQQ";
+      });
+
+      // Top 3 Buys & Top 3 Shorts
+      const topBuys = ["VST", "WYNN", "OXY"];
+      const bottomShorts = ["INTA", "AXON", "LYV"];
+
+      function generateExplanation() {
+  return (
+    "This number represents the average profit percentage if you had bought our top three recommended stocks (" +
+    topBuys.join(", ") + ") as of 2025-04-04. It updates in real time based on intraday data."
+  );
+}
+
+
+      function calculateWeeklyPicksPerformance() {
+  let total = 0;
+  let count = 0;
+  // Only consider top buys
+  topBuys.forEach(ticker => {
+    const el = document.getElementById("performance-" + ticker);
+    if (el && el.textContent && el.textContent.trim() !== "Loading...") {
+      const val = parseFloat(el.textContent.replace('%', ''));
+      if (!isNaN(val)) {
+        total += val;
+        count++;
+      }
+    }
+  });
+  return count ? total / count : 0;
+}
+
+
+      function updateWeeklyPicksButton() {
+        const performance = calculateWeeklyPicksPerformance();
+        const performanceText = performance.toFixed(2) + '%';
+
+        // Left button: "Our Top Picks"
+        const picksBtn = document.getElementById("weeklyPicksButton");
+        picksBtn.textContent = "Our Top Picks";
+
+        // Right button: actual performance
+        const picksChangeBtn = document.getElementById("weeklyPicksChange");
+        picksChangeBtn.textContent = performanceText;
+
+        if (performance >= 0) {
+          picksChangeBtn.classList.add("positive-performance");
+          picksChangeBtn.classList.remove("negative-performance");
+        } else {
+          picksChangeBtn.classList.add("negative-performance");
+          picksChangeBtn.classList.remove("positive-performance");
+        }
+      }
+
+      // Update weekly picks performance after a short delay, then periodically
+      setTimeout(updateWeeklyPicksButton, 3000);
+      setInterval(updateWeeklyPicksButton, 60000);
+
+      // Toggle explanation box on "Our Top Picks" button click
+      const weeklyPicksButton = document.getElementById("weeklyPicksButton");
+      const explanationBox = document.getElementById("weeklyExplanationBox");
+      weeklyPicksButton.addEventListener("click", function() {
+        explanationBox.textContent = generateExplanation();
+        explanationBox.style.display =
+          (explanationBox.style.display === "none" || explanationBox.style.display === "")
+            ? "block"
+            : "none";
+      });
+    });
+  </script>
+
+  <!-- SPY Chart (Hero Section) -->
+  <script>
+    async function fetchSPYData() {
+      try {
+        const response = await fetch('/api/intraday?symbol=SPY&interval=1min&outputsize=full');
+        const data = await response.json();
+        return data;
+      } catch (err) {
+        console.error("Error fetching SPY data:", err);
+        return null;
+      }
+    }
     
+    function parseSPYData(data) {
+      const seriesKey = "Time Series (1min)";
+      const raw = data[seriesKey];
+      if (!raw) return [];
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
+          x: date.getTime(),
+          y: parseFloat(rec["4. close"])
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
+    }
+    
+    async function plotHeroChart() {
+      const rawData = await fetchSPYData();
+      if (!rawData) return;
+      const points = parseSPYData(rawData);
+      
+      // Filter today's data
+      const now = new Date();
+const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+const recentPoints = points.filter(p => p.x >= twentyFourHoursAgo.getTime());
+if (recentPoints.length === 0) return;
+      
+      // Determine line color based on performance
+      const firstPrice = recentPoints[0].y;
+      const lastPrice = recentPoints[recentPoints.length - 1].y;
+      const lineColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+      
+  // After determining firstPrice and lastPrice:
+const heroPriceEl = document.getElementById('heroPrice');
+const newPriceText = `SPY ${lastPrice.toFixed(2)}`;
+// Set the color: green if up, red if down
+const newColor = (lastPrice >= firstPrice) ? '#16a34a' : '#dc3545';
+
+// Create a new element for the animated price update
+const newPriceEl = document.createElement('span');
+newPriceEl.textContent = newPriceText;
+newPriceEl.style.color = newColor;
+newPriceEl.style.display = 'block';
+newPriceEl.style.animation = 'rollUp 0.5s forwards';
+
+// Replace the old price by clearing out the container and appending the new element
+heroPriceEl.innerHTML = '';
+heroPriceEl.appendChild(newPriceEl);
+
+
+      Highcharts.stockChart('heroChart', {
+        chart: {
+          backgroundColor: 'transparent',
+          margin: [20, 20, 40, 20],
+          spacing: [0, 0, 0, 0],
+          events: {
+            contextmenu: function (e) {
+              e.preventDefault();
+            }
+          }
+        },
+        exporting: {
+          enabled: false,
+          buttons: {
+            contextButton: { enabled: false }
+          }
+        },
+        time: { useUTC: false },
+        rangeSelector: { enabled: false },
+        title: { text: null },
+        xAxis: { visible: false },
+        yAxis: { visible: false },
+        tooltip: { enabled: false },
+        credits: { enabled: false },
+        navigator: { enabled: false },
+        scrollbar: { enabled: false },
+        series: [{
+          name: 'SPY',
+          data: recentPoints.map(p => [p.x, p.y]),
+          type: 'line',
+          color: lineColor,
+          lineWidth: 2,
+          marker: { enabled: false },
+          enableMouseTracking: false
+        }]
+      });
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      plotHeroChart();
+      setInterval(plotHeroChart, 60000);
+    });
+
+    // Countdown
+    document.addEventListener('DOMContentLoaded', () => {
+      function getNextMondayTarget() {
+        const now = new Date();
+        const currentUTCDay = now.getUTCDay();
+        let target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 21, 0, 0));
+        if (currentUTCDay === 1 && now < target) { 
+          return target; 
+        } else {
+          let daysUntilMonday = (8 - currentUTCDay) % 7;
+          if (daysUntilMonday === 0) { daysUntilMonday = 7; }
+          target.setUTCDate(target.getUTCDate() + daysUntilMonday);
+          return target;
+        }
+      }
+      function updateCountdown() {
+  const now = new Date();
+  let target = getNextMondayTarget();
+  let diff = target - now;
+
+  // If the countdown has reached (or passed) zero, add 7 days to the target
+  if (diff <= 0) {
+    target = new Date(target.getTime() + 7 * 24 * 60 * 60 * 1000);
+    diff = target - now;
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  document.getElementById('days').textContent = days.toString().padStart(2, '0');
+  document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+  document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+  document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+}
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+      document.getElementById('scrollToSignup').addEventListener('click', () => {
+        document.getElementById('newsletter-signup').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  </script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumLink = document.getElementById("openPremiumToolLink");
+    if (premiumLink) {
+      premiumLink.addEventListener("click", (event) => {
+        event.preventDefault();
+        premiumToolClicked = true;
+        // Force Google sign-in popup:
+        google.accounts.id.prompt();
+      });
+    }
+  });
+  </script>
+  
+  <!-- ==========================
+       Live News JavaScript
+  =========================== -->
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const newsHamburger = document.getElementById("newsHamburger");
+  const liveNewsMenu = document.getElementById("liveNewsMenu");
+  const menuButtons = document.querySelectorAll("#liveNewsMenu button");
+
+  newsHamburger.addEventListener("click", () => {
+    liveNewsMenu.classList.toggle("active");
+  });
+
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedTopic = btn.getAttribute("data-topic") || "";
+      refreshNews();
+      // Auto-close the hamburger menu if it is open
+      if (liveNewsMenu.classList.contains("active")) {
+        liveNewsMenu.classList.remove("active");
+      }
+    });
+  });
+});
+
+
+async function fetchAllSentimentData(topic) {
+  // If topic is "economy", we request each subtopic separately.
+  if (topic === "economy") {
+    const subTopics = ["economy_macro", "economy_monetary", "economy_fiscal"];
+    
+    // Create an array of fetch promises for each subtopic.
+    const fetchPromises = subTopics.map(async (subTopic) => {
+      const url = `https://www.intuitiontrades.com/api/sentiment?limit=20&topic=${subTopic}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      // Return feed array; if none, return an empty array.
+      return data.feed || [];
+    });
+
+    // Wait for all fetches to complete.
+    const feeds = await Promise.all(fetchPromises);
+    // Combine the feeds from each subtopic.
+    let combinedFeed = feeds.flat();
+
+    // Sort the combined feed from newest to oldest.
+    // This example assumes each news item has a 'time_published' property.
+    // Adjust the comparison if you need to parse dates.
+    combinedFeed.sort((a, b) => b.time_published.localeCompare(a.time_published));
+    
+    return combinedFeed;
+  } else {
+    // For non-economy topics (or when topic is empty), use a single fetch.
+    let url = "https://www.intuitiontrades.com/api/sentiment?limit=20";
+    if (topic) {
+      url += `&topic=${topic}`;
+    }
+    
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (!data.feed) {
+      throw new Error("No sentiment data from server.");
+    }
+    return data.feed;
+  }
+}
+async function fetchAllSentimentDataByTicker(ticker) {
+  const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}`;
+  const resp = await fetch(url);
+  const data = await resp.json();
+  if (!data.feed) {
+    throw new Error("No sentiment data returned for this ticker.");
+  }
+  return data.feed;
+}
+
+
+  
+    // Render a single news item in the feed
+    function renderNewsItem(item) {
+  const rawTime = item.time_published || "";
+  const displayTime = formatTimePublished(rawTime);
+
+  // Create container for the news item
+  const container = document.createElement("div");
+  container.classList.add("live-news-item");
+
+  // Add image thumbnail if available
+  if (item.banner_image) {
+    const imgEl = document.createElement("img");
+    imgEl.src = item.banner_image;
+    imgEl.alt = item.title || "News Thumbnail";
+    imgEl.classList.add("news-thumbnail");
+    container.appendChild(imgEl);
+  }
+
+  // Create a row for the timestamp and title
+  const row = document.createElement("div");
+  row.classList.add("live-news-row");
+
+  const timeEl = document.createElement("div");
+  timeEl.classList.add("live-news-timestamp");
+  timeEl.textContent = displayTime;
+
+  const titleEl = document.createElement("div");
+  titleEl.classList.add("live-news-title");
+  titleEl.textContent = item.title || "Untitled";
+
+  row.appendChild(timeEl);
+  row.appendChild(titleEl);
+  container.appendChild(row);
+
+  // Create the summary element
+  const summaryEl = document.createElement("div");
+  summaryEl.classList.add("live-news-summary");
+  summaryEl.innerHTML = `
+    <p>${item.summary || "No summary available."}</p>
+    <p><a href="${item.url || "#"}" target="_blank">See full article</a></p>
+  `;
+  container.appendChild(summaryEl);
+
+  // Toggle summary visibility on title click
+  titleEl.addEventListener("click", () => {
+    container.classList.toggle("expanded");
+  });
+
+  return container;
+}
+
+  
+    // Helper to format the time_published string from Alpha Vantage
+    function formatTimePublished(timeStr) {
+      // e.g. "20250403T152533" => "2025-04-04 15:25"
+      if (!timeStr || timeStr.length < 8) return "";
+      const year = timeStr.slice(0, 4);
+      const month = timeStr.slice(4, 6);
+      const day = timeStr.slice(6, 8);
+      let hour = "00";
+      let minute = "00";
+      if (timeStr.length >= 13) {
+        hour = timeStr.slice(9, 11);
+        minute = timeStr.slice(11, 13);
+      }
+      return `${year}-${month}-${day} ${hour}:${minute}`;
+    }
+  
+    function updateNewsFeed(articles) {
+  const feedContainer = document.getElementById("liveNewsFeed");
+  feedContainer.innerHTML = ""; // Clear out old items
+  
+  // Sort articles so that newer items come first:
+  articles.sort((a, b) => {
+    // Compare time strings in descending order
+    return b.time_published.localeCompare(a.time_published);
+  });
+  
+  // Append items in the sorted order (newest first)
+  articles.forEach(article => {
+    const itemEl = renderNewsItem(article);
+    feedContainer.appendChild(itemEl);
+  });
+}
+
+  
+    let selectedTopic = ""; // default all news
+    let refreshInterval = null;
+  
+    async function refreshNews() {
+      try {
+        const articles = await fetchAllSentimentData(selectedTopic);
+        updateNewsFeed(articles);
+      } catch (err) {
+        console.error("Error refreshing news:", err);
+      }
+    }
+    // Ticker search
+const tickerSearchButton = document.getElementById("tickerSearchButton");
+const tickerSearchInput = document.getElementById("tickerSearchInput");
+
+tickerSearchButton.addEventListener("click", async () => {
+  const ticker = tickerSearchInput.value.trim().toUpperCase();
+  if (!ticker) {
+    alert("Please enter a ticker symbol.");
+    return;
+  }
+
+  try {
+    const articles = await fetchAllSentimentDataByTicker(ticker);
+    updateNewsFeed(articles);
+  } catch (err) {
+    console.error("Error fetching ticker news:", err);
+    alert("Could not load news for ticker: " + ticker);
+  }
+});
+
+      // Initial fetch
+      refreshNews();
+      // Refresh every 30 seconds
+      refreshInterval = setInterval(refreshNews, 120000);
+  
+      // Minimize / Maximize / Close
+      const liveNewsSection = document.getElementById("live-news");
+      const minimizeBtn = document.getElementById("liveNewsMinimize");
+      const maximizeBtn = document.getElementById("liveNewsMaximize");
+      const closeBtn = document.getElementById("liveNewsClose");
+  
+      // Track if minimized or not
+      let isMinimized = false;
+  
+      minimizeBtn.addEventListener("click", () => {
+        if (!isMinimized) {
+          // Minimizing
+          liveNewsSection.classList.add("minimized");
+          minimizeBtn.textContent = "+"; // switch icon to plus
+          isMinimized = true;
+        } else {
+          // Restoring from minimized
+          liveNewsSection.classList.remove("minimized");
+          minimizeBtn.textContent = "-"; // switch icon back
+          isMinimized = false;
+        }
+      });
+  
+      maximizeBtn.addEventListener("click", () => {
+        const isMaximized = liveNewsSection.classList.contains("maximized");
+        if (isMaximized) {
+          // Exit full-screen
+          liveNewsSection.classList.remove("maximized");
+          document.body.style.overflow = ""; // restore body scroll if needed
+        } else {
+          // Go full-screen
+          liveNewsSection.classList.add("maximized");
+          document.body.style.overflow = "hidden"; // disable body scroll behind overlay
+        }
+      });
+  
+      closeBtn.addEventListener("click", () => {
+        liveNewsSection.style.display = "none";
+        clearInterval(refreshInterval);
+      });
+
+</script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Example mobile menu toggle logic
+      const openMenuBtn = document.getElementById("openMenu");
+      const closeMenuBtn = document.getElementById("closeMenu");
+      const mobileMenu = document.getElementById("mobileMenu");
+      openMenuBtn.addEventListener("click", () => { mobileMenu.classList.add("open"); });
+      closeMenuBtn.addEventListener("click", () => { mobileMenu.classList.remove("open"); });
+      // (Additional mobile menu code here if necessary)
+    });
+  </script>
+
+  <!-- Google Identity Services Setup -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  let premiumToolClicked = false;
+
+  // Function to check if there's a stored token and update user type accordingly.
+  function verifyStoredToken() {
+    const storedToken = localStorage.getItem("googleToken");
+    if (storedToken) {
+      fetch('/api/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: storedToken })
+      })
+      .then(res => res.json())
+      .then(data => {
+        // Update the user type indicator accordingly.
+        const indicator = document.getElementById("user-type-indicator");
+        if (data.isPremium) {
+          indicator.textContent = "Premium User";
+          document.getElementById("premiumCard").classList.add("unlocked");
+        } else {
+          indicator.textContent = "Basic User";
+        }
+      })
+      .catch(err => console.error("Stored token verification error:", err));
+    }
+  }
+
+  // Initialize Google Sign-In on window load.
+  window.onload = function() {
+    google.accounts.id.initialize({
+      client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+      callback: handleCredentialResponse
+    });
+    const signInContainer = document.getElementById("google-signin-button");
+    if (signInContainer) {
+      google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
+    }
+    // Instead of forcing a prompt, simply check for an existing token.
+    verifyStoredToken();
+  };
+
+  // Attach event listener to the premium tool card to force re-authentication if clicked.
+  document.addEventListener("DOMContentLoaded", () => {
+    const premiumCard = document.getElementById("premiumCard");
+    if (premiumCard) {
+      premiumCard.addEventListener("click", () => {
+        premiumToolClicked = true;
+        google.accounts.id.prompt(); // Force a prompt when premium tool is clicked
+      });
+    }
+  });
+
+// Handle the credential response from Google.
+function handleCredentialResponse(response) {
+  console.log("Received JWT token:", response.credential);
+  // Save the token locally.
+  localStorage.setItem("googleToken", response.credential);
+
+  // Verify the token on the backend.
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: response.credential })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+
+    if (premiumToolClicked) {
+      if (data.isPremium) {
+        // Step 5: If the user is premium, unlock and redirect:
+        document.getElementById("premiumCard").classList.add("unlocked");
+        window.location.href = "top5/"; // auto-redirect to your premium tool
+      } else {
+        alert("Access denied – Premium Users only.");
+      }
+      premiumToolClicked = false;
+    } else {
+      // Not in the middle of clicking a premium tool
+      if (data.isPremium) {
+        indicator.textContent = "Premium User";
+        document.getElementById("premiumCard").classList.add("unlocked");
+      } else {
+        indicator.textContent = "Basic User";
+      }
+    }
+  })
+  .catch(err => {
+    console.error("Error verifying user:", err);
+  });
+}
+
+</script>
+
+
+</body>
+</html>
