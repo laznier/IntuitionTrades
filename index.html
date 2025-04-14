@@ -328,7 +328,28 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 0.5rem;
   user-select: none;
 }
-
+/* Responsive Adjustments for Mobile */
+@media (max-width: 300px) {
+  .countdown-container {
+    max-width: 300px;
+    padding: 0.5rem;
+  }
+  .flip-clock {
+    padding: 0.5rem;
+    font-size: 1.2rem; /* Adjust overall scale if needed */
+  }
+  .flip-number {
+    font-size: 1rem;
+    padding: 0.3rem 0.5rem;
+  }
+  .flip-label {
+    font-size: 0.8rem;
+  }
+  .flip-separator {
+    font-size: 1.2rem;
+    margin: 0 0.3rem;
+  }
+}
 .newsletter-btn {
   font-size: 0.9rem;
   padding: var(--button-padding);
