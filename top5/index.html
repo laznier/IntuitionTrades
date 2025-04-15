@@ -390,38 +390,6 @@ async function fetchHistoricalData(ticker) {
   return out;
 }
 
-/***********************************************************************
-  Premium Check
- ***********************************************************************/
-// pages/top5.js
-import { verifyUser } from '../lib/auth'; // Your custom auth function
-
-export async function getServerSideProps(context) {
-  const { req } = context;
-  const user = await verifyUser(req); // Check the authentication, e.g., by validating a token
-  
-  if (!user || !user.isPremium) {
-    // If not authenticated or not premium, redirect to a login or access denied page.
-    return {
-      redirect: {
-        destination: '/login?error=access_denied',
-        permanent: false,
-      },
-    };
-  }
-  
-  // Otherwise, pass the user as a prop or simply render the page.
-  return { props: { user } };
-}
-
-export default function Top5Page({ user }) {
-  return (
-    <div>
-      <h1>Top Stocks Scanner (Premium)</h1>
-      {/* Your premium tool content goes here */}
-    </div>
-  );
-}
 
 
 /***********************************************************************
