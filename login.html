@@ -1,163 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Login | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-    }
-    button {
-      margin: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: #16a34a;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #22c55e;
-    }
-    #user-info {
-      margin-top: 1.5rem;
-      text-align: center;
-    }
-  </style>
-  <script type="module">
-    // Import the Firebase modules needed for the app.
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut,
-      onAuthStateChanged,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // Your full Firebase configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
-      authDomain: "intuition-trades.firebaseapp.com",
-      projectId: "intuition-trades",
-      storageBucket: "intuition-trades.firebasestorage.app",
-      messagingSenderId: "662507444685",
-      appId: "1:662507444685:web:81c8ce875bd522cb748c84"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const userInfo = document.getElementById("user-info");
-
-    // Handle user sign-in and ensure a Firestore document exists for them.
-    async function handleUser(user) {
-      try {
-        const userRef = doc(db, "users", user.uid);
-        let userSnap = await getDoc(userRef);
-        // If the user document doesn't exist, create it with a default role.
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
-            email: user.email,
-            role: "basic", // Default role; update to "premium" manually in Firestore if needed.
-            createdAt: serverTimestamp()
-          });
-          userSnap = await getDoc(userRef);
-        }
-        const data = userSnap.data();
-        userInfo.innerHTML = `
-          <p>👤 Logged in as: <strong>${user.email}</strong></p>
-          <p>🎖️ Role: <strong>${data.role}</strong></p>
-        `;
-        if (data.role === "premium") {
-          console.log("✅ Premium access unlocked");
-        }
-      } catch (error) {
-        console.error("Error in handleUser:", error);
-        alert("Error connecting to Firestore. Please check your connection and try again.");
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login | Intuition Trades</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        background: #000;
+        color: #fff;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
       }
-    }
-
-    // Listen for auth state changes
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await handleUser(user);
+      button {
+        margin: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
       }
-    });
+      button:hover {
+        background: #22c55e;
+      }
+      #user-info {
+        margin-top: 1.5rem;
+        text-align: center;
+      }
+    </style>
+    <script type="module">
+      // Import functions from Firebase SDK
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import { getFirestore, doc, setDoc, getDoc, serverTimestamp, enableNetwork } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Set up button click handlers after the DOM is fully loaded.
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("google-login").onclick = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-          const result = await signInWithPopup(auth, provider);
-          await handleUser(result.user);
-        } catch (error) {
-          console.error("Google sign-in error:", error);
-          alert("Error during Google sign-in: " + error.message);
-        }
+      // Your Firebase configuration object
+      const firebaseConfig = {
+        apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
+        authDomain: "intuition-trades.firebaseapp.com",
+        projectId: "intuition-trades",
+        storageBucket: "intuition-trades.firebasestorage.app",
+        messagingSenderId: "662507444685",
+        appId: "1:662507444685:web:81c8ce875bd522cb748c84"
       };
 
-      document.getElementById("email-login").onclick = async () => {
-        const email = prompt("Enter your email:");
-        const password = prompt("Enter your password:");
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // (Optional) Force Firestore to check for connectivity.
+      enableNetwork(db).catch(err => console.error("Error enabling network:", err));
+
+      // Reference to a DOM element to display user info
+      const userInfo = document.getElementById("user-info");
+
+      // Handles user sign in and registers the user in Firestore if needed.
+      async function handleUser(user) {
         try {
-          const result = await signInWithEmailAndPassword(auth, email, password);
-          await handleUser(result.user);
-        } catch (error) {
-          if (error.code === "auth/user-not-found") {
-            if (confirm("User not found. Create account?")) {
-              try {
-                const result = await createUserWithEmailAndPassword(auth, email, password);
-                await handleUser(result.user);
-              } catch (creationError) {
-                console.error("Error creating account:", creationError);
-                alert("Error creating account: " + creationError.message);
-              }
-            }
-          } else {
-            console.error("Email sign-in error:", error);
-            alert("Error during email sign-in: " + error.message);
+          const userRef = doc(db, "users", user.uid);
+          let userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              email: user.email,
+              role: "basic", // Default role. Upgrade manually in Firestore if needed.
+              createdAt: serverTimestamp()
+            });
+            userSnap = await getDoc(userRef);
           }
-        }
-      };
-
-      document.getElementById("logout").onclick = async () => {
-        try {
-          await signOut(auth);
-          userInfo.innerHTML = "Signed out.";
+          const data = userSnap.data();
+          userInfo.innerHTML = `
+            <p>👤 Logged in as: <strong>${user.email}</strong></p>
+            <p>🎖️ Role: <strong>${data.role}</strong></p>
+          `;
+          // Here you can redirect users or unlock premium content if needed.
+          console.log(`User ${user.email} signed in with role: ${data.role}`);
         } catch (error) {
-          console.error("Error signing out:", error);
-          alert("Error signing out: " + error.message);
+          console.error("Error in handleUser:", error);
+          alert("Error connecting to Firestore. Please check your connection and try again.");
         }
-      };
-    });
-  </script>
-</head>
-<body>
-  <h1>Intuition Trades</h1>
-  <p>Log in to access your tools and account</p>
-  <button id="google-login">Sign in with Google</button>
-  <button id="email-login">Sign in with Email</button>
-  <button id="logout">Log out</button>
-  <div id="user-info"></div>
-</body>
+      }
+
+      // Set up authentication state observer.
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          await handleUser(user);
+        } else {
+          userInfo.innerHTML = "Not signed in.";
+        }
+      });
+
+      // Wait until the DOM is fully loaded before adding event handlers.
+      document.addEventListener("DOMContentLoaded", () => {
+        // Google sign in
+        document.getElementById("google-login").onclick = async () => {
+          const provider = new GoogleAuthProvider();
+          try {
+            const result = await signInWithPopup(auth, provider);
+            await handleUser(result.user);
+          } catch (error) {
+            console.error("Google sign-in error:", error);
+            alert("Error during Google sign-in: " + error.message);
+          }
+        };
+
+        // Email sign in (or sign up if not found)
+        document.getElementById("email-login").onclick = async () => {
+          const email = prompt("Enter your email:");
+          const password = prompt("Enter your password:");
+          try {
+            const result = await signInWithEmailAndPassword(auth, email, password);
+            await handleUser(result.user);
+          } catch (error) {
+            if (error.code === "auth/user-not-found") {
+              if (confirm("User not found. Create account?")) {
+                try {
+                  const result = await createUserWithEmailAndPassword(auth, email, password);
+                  await handleUser(result.user);
+                } catch (creationError) {
+                  console.error("Error creating account:", creationError);
+                  alert("Error creating account: " + creationError.message);
+                }
+              }
+            } else {
+              console.error("Email sign-in error:", error);
+              alert("Error during email sign-in: " + error.message);
+            }
+          }
+        };
+
+        // Sign out button
+        document.getElementById("logout").onclick = async () => {
+          try {
+            await signOut(auth);
+            userInfo.innerHTML = "Signed out.";
+          } catch (error) {
+            console.error("Error signing out:", error);
+            alert("Error signing out: " + error.message);
+          }
+        };
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Intuition Trades</h1>
+    <p>Log in to access your tools and account</p>
+    <button id="google-login">Sign in with Google</button>
+    <button id="email-login">Sign in with Email</button>
+    <button id="logout">Log out</button>
+    <div id="user-info">Not signed in.</div>
+  </body>
 </html>
