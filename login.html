@@ -33,90 +33,104 @@
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut,
-      onAuthStateChanged,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      setDoc,
-      getDoc,
-      serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+    // Replace these values with your actual Firebase config from the Firebase Console:
     const firebaseConfig = {
-  apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
-  authDomain: "intuition-trades.firebaseapp.com",
-  projectId: "intuition-trades",
-};
+      apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
+      authDomain: "intuition-trades.firebaseapp.com",
+      projectId: "intuition-trades",
+    };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
     const userInfo = document.getElementById("user-info");
 
+    // This function handles registering a new user in Firestore if they don't already exist.
     async function handleUser(user) {
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: user.email,
-          role: "basic",
-          createdAt: serverTimestamp()
-        });
-      }
-
-      const data = (await getDoc(userRef)).data();
-      userInfo.innerHTML = `
-        <p>👤 Logged in as: <strong>${user.email}</strong></p>
-        <p>🎖️ Role: <strong>${data.role}</strong></p>
-      `;
-
-      if (data.role === "premium") {
-        // redirect to premium dashboard, unlock tools, etc.
-        console.log("✅ Premium access unlocked");
+      try {
+        const userRef = doc(db, "users", user.uid);
+        let userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: user.email,
+            role: "basic",   // Default role is "basic"
+            createdAt: serverTimestamp()
+          });
+          userSnap = await getDoc(userRef);
+        }
+        const data = userSnap.data();
+        userInfo.innerHTML = `
+          <p>👤 Logged in as: <strong>${user.email}</strong></p>
+          <p>🎖️ Role: <strong>${data.role}</strong></p>
+        `;
+        if (data.role === "premium") {
+          console.log("✅ Premium access unlocked");
+        }
+      } catch (error) {
+        console.error("Error in handleUser:", error);
+        alert("Error connecting to Firestore. Please check your connection and try again.");
       }
     }
 
-    document.getElementById("google-login").onclick = async () => {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      await handleUser(result.user);
-    };
-
-    document.getElementById("email-login").onclick = async () => {
-      const email = prompt("Enter your email:");
-      const password = prompt("Enter your password:");
-      try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await handleUser(result.user);
-      } catch (e) {
-        if (e.code === "auth/user-not-found") {
-          if (confirm("User not found. Create account?")) {
-            const result = await createUserWithEmailAndPassword(auth, email, password);
-            await handleUser(result.user);
-          }
-        } else {
-          alert(e.message);
+    // Set up authentication event listeners once the DOM is loaded.
+    document.addEventListener("DOMContentLoaded", () => {
+      // Listen for changes in authentication state.
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          await handleUser(user);
         }
-      }
-    };
+      });
 
-    document.getElementById("logout").onclick = async () => {
-      await signOut(auth);
-      userInfo.innerHTML = "Signed out.";
-    };
+      // Google sign-in button click handler.
+      document.getElementById("google-login").onclick = async () => {
+        const provider = new GoogleAuthProvider();
+        try {
+          const result = await signInWithPopup(auth, provider);
+          await handleUser(result.user);
+        } catch (error) {
+          console.error("Google sign-in error:", error);
+          alert("Error during Google sign-in: " + error.message);
+        }
+      };
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) await handleUser(user);
+      // Email sign-in button click handler.
+      document.getElementById("email-login").onclick = async () => {
+        const email = prompt("Enter your email:");
+        const password = prompt("Enter your password:");
+        try {
+          const result = await signInWithEmailAndPassword(auth, email, password);
+          await handleUser(result.user);
+        } catch (error) {
+          if (error.code === "auth/user-not-found") {
+            if (confirm("User not found. Create account?")) {
+              try {
+                const result = await createUserWithEmailAndPassword(auth, email, password);
+                await handleUser(result.user);
+              } catch (creationError) {
+                console.error("Error creating account:", creationError);
+                alert("Error creating account: " + creationError.message);
+              }
+            }
+          } else {
+            console.error("Email sign-in error:", error);
+            alert("Error during email sign-in: " + error.message);
+          }
+        }
+      };
+
+      // Log out button click handler.
+      document.getElementById("logout").onclick = async () => {
+        try {
+          await signOut(auth);
+          userInfo.innerHTML = "Signed out.";
+        } catch (error) {
+          console.error("Error signing out:", error);
+          alert("Error signing out: " + error.message);
+        }
+      };
     });
   </script>
 </head>
