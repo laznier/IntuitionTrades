@@ -1,0 +1,21 @@
+[debug] [2025-04-15T17:00:42.585Z] ----------------------------------------------------------------------
+[debug] [2025-04-15T17:00:42.591Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\User\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2025-04-15T17:00:42.592Z] CLI Version:   14.1.0
+[debug] [2025-04-15T17:00:42.592Z] Platform:      win32
+[debug] [2025-04-15T17:00:42.592Z] Node Version:  v22.14.0
+[debug] [2025-04-15T17:00:42.593Z] Time:          Tue Apr 15 2025 11:00:42 GMT-0600 (Central Standard Time)
+[debug] [2025-04-15T17:00:42.593Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-04-15T17:00:42.615Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-04-15T17:00:42.616Z] > authorizing via signed-in user (intuitiontrades@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\Users\User\OneDrive\Desktop\IntuitionTrades
+
