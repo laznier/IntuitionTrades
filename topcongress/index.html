@@ -217,6 +217,34 @@ button:hover {
   </div>
 
   <script>
+    /***********************************************************************
+* Premium Check
+ ***********************************************************************/
+
+  async function checkPremiumAccess() {
+    const token = localStorage.getItem("googleToken");
+    if (!token) {
+      alert("Please sign in to access this tool.");
+      window.location.href = "/"; // redirect to main page
+      return;
+    }
+
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+
+    if (!data.isPremium) {
+      alert("Premium access required.");
+      window.location.href = "/"; // or a pricing/signup page
+    }
+
+    // Otherwise user is premium — continue loading tool
+  }
+
+  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
     let allData = [];
