@@ -217,17 +217,46 @@ button:hover {
   </div>
 
   <script type="module">
-          /***********************************************************************
-* User type check 
- ***********************************************************************/
-  const token = localStorage.getItem("googleToken");
-const res = await fetch("/api/congress?ticker=AAPL", {
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "x-tool-name": "top5"
-  }
-});
-</script>
+    /***********************************************************************
+    * User type check BEFORE tool loads
+    ***********************************************************************/
+    async function verifyUserAccessBeforeLoading() {
+      const token = localStorage.getItem("googleToken");
+  
+      if (!token) {
+        alert("Please sign in to access this tool.");
+        window.location.href = "/";
+        return;
+      }
+  
+      try {
+        const res = await fetch("/api/check-access", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            "x-tool-name": "topcongress"
+          },
+          body: JSON.stringify({})
+        });
+  
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Access check failed:", errorText);
+          alert("Access denied or session expired.");
+          window.location.href = "/";
+        }
+      } catch (err) {
+        console.error("Error during access check:", err);
+        alert("Unable to verify your access at this time.");
+        window.location.href = "/";
+      }
+    }
+  
+    // Run immediately before anything else
+    verifyUserAccessBeforeLoading();
+  </script>
+  
 <script>
     /***********************************************************************
 * Premium Check
