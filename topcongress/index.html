@@ -656,17 +656,60 @@ document.getElementById('applyFilter').addEventListener('click', () => {
       clearSuggestions();
     });
   </script>
+
+  /***********************************************************************
+  * Wait for user account check before fetching any tool data
+  ***********************************************************************/
   <script type="module">
-    /***********************************************************************
-* User type check 
-***********************************************************************/
-const token = localStorage.getItem("googleToken");
-const res = await fetch("/api/congress?ticker=AAPL", {
-headers: {
-"Authorization": `Bearer ${token}`,
-"x-tool-name": "top5"
-}
-});
+  async function waitForUserTypeThenFetch() {
+    const token = localStorage.getItem("googleToken");
+
+    if (!token) {
+      alert("Please sign in to use this tool.");
+      window.location.href = "/";
+      return;
+    }
+
+    try {
+      const resCheck = await fetch("/api/check-access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "x-tool-name": "top5"  // or "topcongress", etc.
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!resCheck.ok) {
+        alert("Access denied. Please upgrade or log in again.");
+        window.location.href = "/";
+        return;
+      }
+
+      // ✅ Access granted — now it's safe to call your real data endpoint
+      const res = await fetch("/api/congress?ticker=AAPL", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "x-tool-name": "top5"
+        }
+      });
+
+      const data = await res.json();
+      console.log("Congress data:", data);
+
+      // 🔁 continue rendering logic here...
+
+    } catch (err) {
+      console.error("Access check failed:", err);
+      alert("Unexpected error. Try again later.");
+    }
+  }
+
+  // Run it
+  waitForUserTypeThenFetch();
+</script>
+
 </script>
 </body>
 </html>
