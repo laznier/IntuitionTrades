@@ -65,72 +65,67 @@
       signInWithEmailAndPassword
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import {
-      getFirestore,
-      initializeFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      serverTimestamp,
-      enableNetwork
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+      getDatabase,
+      ref,
+      set,
+      get
+    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     // Your web app's Firebase configuration
+    // NOTE: Replace "YOUR_DATABASE_NAME" with your actual database name from Firebase.
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
       projectId: "persuasive-net-456607-g8",
       storageBucket: "persuasive-net-456607-g8.appspot.com",
       messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+      // Update this to match your database URL from Firebase console:
+      databaseURL: "https://intuitiontradesdata.firebaseio.com"
     };
 
-    // Initialize Firebase
+    // Initialize Firebase App
     const app = initializeApp(firebaseConfig);
-    const db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-      useFetchStreams: false,
-    });
     const auth = getAuth(app);
-
-    // Enable Firestore network
-    enableNetwork(db).catch(err => console.error("Error enabling network:", err));
+    const db = getDatabase(app);
 
     // DOM elements
     const userInfo = document.getElementById("user-info");
     const premiumTools = document.getElementById("premium-tools");
 
-    // Handles user sign-in and registers the user in Firestore if needed.
+    // Handle authenticated users:
+    // This function checks if the user already exists in the database.
+    // If not, it creates a new record with default role ("basic") and a timestamp.
     async function handleUser(user) {
       try {
-        const userRef = doc(db, "users", user.uid);
-        let userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          await setDoc(userRef, {
+        const userRef = ref(db, "users/" + user.uid);
+        // Check if the user already exists in the database.
+        const snapshot = await get(userRef);
+        if (!snapshot.exists()) {
+          // Create a new user record if one does not exist.
+          await set(userRef, {
             email: user.email,
-            role: "basic", // Default role. Upgrade manually in Firestore if needed.
-            createdAt: serverTimestamp()
+            role: "basic", // Default role. Upgrade manually in the database if needed.
+            createdAt: Date.now()
           });
-          userSnap = await getDoc(userRef);
         }
-        const data = userSnap.data();
+        // Retrieve the updated user data.
+        const updatedSnapshot = await get(userRef);
+        const data = updatedSnapshot.val();
         userInfo.innerHTML = `
           <p>👤 Logged in as: <strong>${user.email}</strong></p>
           <p>🎖️ Role: <strong>${data.role}</strong></p>
         `;
-        // Show premium tools if user has 'premium' role
-        if (data.role === "premium") {
-          premiumTools.style.display = "block";
-        } else {
-          premiumTools.style.display = "none";
-        }
+        // Show premium tools if the user has a "premium" role.
+        premiumTools.style.display = data.role === "premium" ? "block" : "none";
         console.log(`User ${user.email} signed in with role: ${data.role}`);
       } catch (error) {
         console.error("Error in handleUser:", error);
-        alert("Error connecting to Firestore. Please check your connection and try again.");
+        alert("Error connecting to the database. Please check your connection and try again.");
       }
     }
 
-    // Set up authentication state observer.
+    // Listen to authentication state changes.
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         await handleUser(user);
@@ -140,60 +135,53 @@
       }
     });
 
-    // Wait until the DOM is fully loaded before adding event handlers.
-    document.addEventListener("DOMContentLoaded", () => {
-      // Google sign-in
-      document.getElementById("google-login").onclick = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-          const result = await signInWithPopup(auth, provider);
-          await handleUser(result.user);
-        } catch (error) {
-          console.error("Google sign-in error:", error);
-          alert("Error during Google sign-in: " + error.message);
-        }
-      };
+    // Google sign-in button handler
+    document.getElementById("google-login").onclick = async () => {
+      const provider = new GoogleAuthProvider();
+      try {
+        const result = await signInWithPopup(auth, provider);
+        await handleUser(result.user);
+      } catch (error) {
+        console.error("Google sign-in error:", error);
+        alert("Error during Google sign-in: " + error.message);
+      }
+    };
 
-            // Email sign in (or sign up if not found)
-            document.getElementById("email-login").onclick = async () => {
-          const email = prompt("Enter your email:");
-          const password = prompt("Enter your password:");
-          try {
-            const result = await signInWithEmailAndPassword(auth, email, password);
-            await handleUser(result.user);
-          } catch (error) {
-            if (error.code === "auth/user-not-found") {
-              if (confirm("User not found. Create account?")) {
-                try {
-                  const result = await createUserWithEmailAndPassword(auth, email, password);
-                  await handleUser(result.user);
-                } catch (creationError) {
-                  console.error("Error creating account:", creationError);
-                  alert("Error creating account: " + creationError.message);
-                }
-              }
-            } else {
-              console.error("Email sign-in error:", error);
-              alert("Error during email sign-in: " + error.message);
+    // Email sign-in (or sign up if user does not exist)
+    document.getElementById("email-login").onclick = async () => {
+      const email = prompt("Enter your email:");
+      const password = prompt("Enter your password:");
+      try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        await handleUser(result.user);
+      } catch (error) {
+        if (error.code === "auth/user-not-found") {
+          if (confirm("User not found. Create account?")) {
+            try {
+              const result = await createUserWithEmailAndPassword(auth, email, password);
+              await handleUser(result.user);
+            } catch (creationError) {
+              console.error("Error creating account:", creationError);
+              alert("Error creating account: " + creationError.message);
             }
           }
-        };
+        } else {
+          console.error("Email sign-in error:", error);
+          alert("Error during email sign-in: " + error.message);
+        }
+      }
+    };
 
-        // Sign out button
-        document.getElementById("logout").onclick = async () => {
-          try {
-            await signOut(auth);
-            userInfo.innerHTML = "Signed out.";
-          } catch (error) {
-            console.error("Error signing out:", error);
-            alert("Error signing out: " + error.message);
-          }
-        };
-      });
-      initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-});
-
-    </script>
+    // Logout button handler
+    document.getElementById("logout").onclick = async () => {
+      try {
+        await signOut(auth);
+        userInfo.innerHTML = "Signed out.";
+      } catch (error) {
+        console.error("Error signing out:", error);
+        alert("Error signing out: " + error.message);
+      }
+    };
+  </script>
+</body>
 </html>
