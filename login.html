@@ -32,21 +32,21 @@
       }
     </style>
     <script type="module">
-      // Import functions from Firebase SDK
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, serverTimestamp, enableNetwork } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-      // Your Firebase configuration object
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      // TODO: Add SDKs for Firebase products that you want to use
+      // https://firebase.google.com/docs/web/setup#available-libraries
+    
+      // Your web app's Firebase configuration
       const firebaseConfig = {
-        apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
-        authDomain: "intuition-trades.firebaseapp.com",
-        projectId: "intuition-trades",
-        storageBucket: "intuition-trades.firebasestorage.app",
-        messagingSenderId: "662507444685",
-        appId: "1:662507444685:web:81c8ce875bd522cb748c84"
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.firebasestorage.app",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
       };
-
+    
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
