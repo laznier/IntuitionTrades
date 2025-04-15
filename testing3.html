@@ -1287,7 +1287,30 @@ footer {
       <!-- When not signed in, this button will say "Not signed in" -->
       <button id="userMenuButton">Not signed in</button>
     </div>
+     <!-- The account dropdown (only visible when user is signed in) -->
+  <div id="accountDropdown">
+    <p id="userStatusText">User: Basic</p>
+    <button id="upgradeButton">Upgrade to Premium</button>
+    <button id="feedbackButton">Send Feedback</button>
+    <button id="logoutButton">Sign Out</button>
+  </div>
 
+  <!-- Login Modal (appears when user clicks to sign in) -->
+  <div id="loginModal">
+    <div class="modal-content">
+      <h3>Sign In / Sign Up</h3>
+      <!-- Input fields for email and password -->
+      <input type="email" id="modalEmail" placeholder="Email" required>
+      <input type="password" id="modalPassword" placeholder="Password" required>
+      <button id="modalLoginButton">Log In</button>
+      <button id="modalSignUpButton" style="display:none;">Sign Up</button>
+      <p style="font-size:0.8rem; margin-top:10px;">
+        <span id="toggleAuthText" style="cursor:pointer; color:#16a34a;">Switch to Sign Up</span>
+      </p>
+      <p id="loginError" style="color:#dc3545; display:none;"></p>
+      <button id="closeLoginModal" style="background:none; border:none; color:#ccc; margin-top:10px;">Cancel</button>
+    </div>
+  </div>
  <!-- =======================
      Mobile Sidebar Menu
 ======================= -->
@@ -1395,33 +1418,6 @@ footer {
   </nav>
 </header>
 
-
-   <!-- The account dropdown (only visible when user is signed in) -->
-  <div id="accountDropdown">
-    <p id="userStatusText">User: Basic</p>
-    <button id="upgradeButton">Upgrade to Premium</button>
-    <button id="feedbackButton">Send Feedback</button>
-    <button id="logoutButton">Sign Out</button>
-  </div>
-
-  <!-- Login Modal (appears when user clicks to sign in) -->
-  <div id="loginModal">
-    <div class="modal-content">
-      <h3>Sign In / Sign Up</h3>
-      <!-- Input fields for email and password -->
-      <input type="email" id="modalEmail" placeholder="Email" required>
-      <input type="password" id="modalPassword" placeholder="Password" required>
-      <button id="modalLoginButton">Log In</button>
-      <button id="modalSignUpButton" style="display:none;">Sign Up</button>
-      <p style="font-size:0.8rem; margin-top:10px;">
-        <span id="toggleAuthText" style="cursor:pointer; color:#16a34a;">Switch to Sign Up</span>
-      </p>
-      <p id="loginError" style="color:#dc3545; display:none;"></p>
-      <button id="closeLoginModal" style="background:none; border:none; color:#ccc; margin-top:10px;">Cancel</button>
-    </div>
-  </div>
- 
-    </header>
 
   <!-- Hero Section -->
   <header class="hero">
