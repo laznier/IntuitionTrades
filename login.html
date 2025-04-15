@@ -1,187 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Login | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-    }
-    button {
-      margin: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      background: #16a34a;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #22c55e;
-    }
-    #user-info {
-      margin-top: 1.5rem;
-      text-align: center;
-    }
-    #premium-tools {
-      margin-top: 1rem;
-      padding: 1rem;
-      background: #1f2937;
-      border-radius: 8px;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h1>Intuition Trades</h1>
-  <p>Log in to access your tools and account</p>
-  <button id="google-login">Sign in with Google</button>
-  <button id="email-login">Sign in with Email</button>
-  <button id="logout">Log out</button>
-  <div id="user-info">Not signed in.</div>
-  <div id="premium-tools">
-    <h2>Premium Tools</h2>
-    <p>Welcome to the premium section!</p>
-    <!-- Add your premium tools here -->
-  </div>
-
-  <script type="module">
-    // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut,
-      onAuthStateChanged,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import {
-      getDatabase,
-      ref,
-      set,
-      get
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-    // Your web app's Firebase configuration
-    // NOTE: Replace "YOUR_DATABASE_NAME" with your actual database name from Firebase.
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      // Update this to match your database URL from Firebase console:
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-
-    // Initialize Firebase App
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-
-    // DOM elements
-    const userInfo = document.getElementById("user-info");
-    const premiumTools = document.getElementById("premium-tools");
-
-    // Handle authenticated users:
-    // This function checks if the user already exists in the database.
-    // If not, it creates a new record with default role ("basic") and a timestamp.
-    async function handleUser(user) {
-      try {
-        const userRef = ref(db, "users/" + user.uid);
-        // Check if the user already exists in the database.
-        const snapshot = await get(userRef);
-        if (!snapshot.exists()) {
-          // Create a new user record if one does not exist.
-          await set(userRef, {
-            email: user.email,
-            role: "basic", // Default role. Upgrade manually in the database if needed.
-            createdAt: Date.now()
-          });
-        }
-        // Retrieve the updated user data.
-        const updatedSnapshot = await get(userRef);
-        const data = updatedSnapshot.val();
-        userInfo.innerHTML = `
-          <p>👤 Logged in as: <strong>${user.email}</strong></p>
-          <p>🎖️ Role: <strong>${data.role}</strong></p>
-        `;
-        // Show premium tools if the user has a "premium" role.
-        premiumTools.style.display = data.role === "premium" ? "block" : "none";
-        console.log(`User ${user.email} signed in with role: ${data.role}`);
-      } catch (error) {
-        console.error("Error in handleUser:", error);
-        alert("Error connecting to the database. Please check your connection and try again.");
+  <head>
+    <meta charset="UTF-8">
+    <title>Account Management | Intuition Trades</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body {
+        background: #000;
+        color: #fff;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
       }
-    }
-
-    // Listen to authentication state changes.
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await handleUser(user);
-      } else {
-        userInfo.innerHTML = "Not signed in.";
-        premiumTools.style.display = "none";
+      button {
+        margin: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: #16a34a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
       }
-    });
-
-    // Google sign-in button handler
-    document.getElementById("google-login").onclick = async () => {
-      const provider = new GoogleAuthProvider();
-      try {
-        const result = await signInWithPopup(auth, provider);
-        await handleUser(result.user);
-      } catch (error) {
-        console.error("Google sign-in error:", error);
-        alert("Error during Google sign-in: " + error.message);
+      button:hover {
+        background: #22c55e;
       }
-    };
+      input {
+        padding: 0.5rem;
+        margin: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      .hidden {
+        display: none;
+      }
+      #user-info {
+        margin-top: 1.5rem;
+        text-align: center;
+      }
+      #premium-tools {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #1f2937;
+        border-radius: 8px;
+        display: none;
+      }
+      .auth-container, .account-actions {
+        margin: 1rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Intuition Trades</h1>
+    <p>Manage your account below</p>
 
-    // Email sign-in (or sign up if user does not exist)
-    document.getElementById("email-login").onclick = async () => {
-      const email = prompt("Enter your email:");
-      const password = prompt("Enter your password:");
-      try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await handleUser(result.user);
-      } catch (error) {
-        if (error.code === "auth/user-not-found") {
-          if (confirm("User not found. Create account?")) {
-            try {
-              const result = await createUserWithEmailAndPassword(auth, email, password);
-              await handleUser(result.user);
-            } catch (creationError) {
-              console.error("Error creating account:", creationError);
-              alert("Error creating account: " + creationError.message);
-            }
-          }
+    <!-- Authentication Section -->
+    <div class="auth-container">
+      <h2>Authentication</h2>
+      
+      <!-- Login Form -->
+      <div id="login-form">
+        <h3>Log In</h3>
+        <input type="email" id="login-email" placeholder="Email">
+        <input type="password" id="login-password" placeholder="Password">
+        <button id="login-btn">Log In</button>
+      </div>
+      
+      <!-- Signup Form -->
+      <div id="signup-form" class="hidden">
+        <h3>Sign Up</h3>
+        <input type="email" id="signup-email" placeholder="Email">
+        <input type="password" id="signup-password" placeholder="Password (min 6 chars)">
+        <button id="signup-btn">Sign Up</button>
+      </div>
+      
+      <button id="toggle-auth-btn">Switch to Sign Up</button>
+      <br>
+      <button id="forgot-password-btn">Forgot Password?</button>
+    </div>
+
+    <!-- Account Actions Section -->
+    <div class="account-actions hidden">
+      <h2>Account Actions</h2>
+      <button id="upgrade-premium">Upgrade to Premium</button>
+      <button id="cancel-membership">Cancel Membership</button>
+      <button id="sign-out">Log Out</button>
+    </div>
+
+    <div id="user-info">Not signed in.</div>
+    <div id="premium-tools">
+      <h2>Premium Tools</h2>
+      <p>Welcome to the premium section!</p>
+      <!-- Add your premium tools here -->
+    </div>
+
+    <script type="module">
+      // Import Firebase SDK modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        sendPasswordResetEmail,
+        onAuthStateChanged
+      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+      import {
+        getDatabase,
+        ref,
+        set,
+        update,
+        get
+      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+      // Your Firebase configuration (update as needed)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.appspot.com",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getDatabase(app);
+
+      // DOM Element References
+      const loginForm = document.getElementById("login-form");
+      const signupForm = document.getElementById("signup-form");
+      const toggleAuthBtn = document.getElementById("toggle-auth-btn");
+      const forgotPasswordBtn = document.getElementById("forgot-password-btn");
+      const loginBtn = document.getElementById("login-btn");
+      const signupBtn = document.getElementById("signup-btn");
+      const upgradePremiumBtn = document.getElementById("upgrade-premium");
+      const cancelMembershipBtn = document.getElementById("cancel-membership");
+      const signOutBtn = document.getElementById("sign-out");
+      const userInfo = document.getElementById("user-info");
+      const accountActions = document.querySelector(".account-actions");
+      const premiumTools = document.getElementById("premium-tools");
+
+      // Toggle between Login and Signup forms
+      toggleAuthBtn.onclick = () => {
+        if (loginForm.classList.contains("hidden")) {
+          loginForm.classList.remove("hidden");
+          signupForm.classList.add("hidden");
+          toggleAuthBtn.textContent = "Switch to Sign Up";
         } else {
-          console.error("Email sign-in error:", error);
-          alert("Error during email sign-in: " + error.message);
+          loginForm.classList.add("hidden");
+          signupForm.classList.remove("hidden");
+          toggleAuthBtn.textContent = "Switch to Log In";
+        }
+      };
+
+      // Login function
+      loginBtn.onclick = async () => {
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+        try {
+          const result = await signInWithEmailAndPassword(auth, email, password);
+          await handleUser(result.user);
+        } catch (error) {
+          console.error("Login error:", error);
+          alert("Error logging in: " + error.message);
+        }
+      };
+
+      // Signup function
+      signupBtn.onclick = async () => {
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+        if (!email || !password || password.length < 6) {
+          alert("Please enter a valid email and a password with at least 6 characters.");
+          return;
+        }
+        try {
+          const result = await createUserWithEmailAndPassword(auth, email, password);
+          await handleUser(result.user);
+        } catch (error) {
+          console.error("Signup error:", error);
+          alert("Error signing up: " + error.message);
+        }
+      };
+
+      // Password Reset function
+      forgotPasswordBtn.onclick = async () => {
+        const email = prompt("Enter your email to reset password:");
+        if (!email) return;
+        try {
+          await sendPasswordResetEmail(auth, email);
+          alert("Password reset email sent.");
+        } catch (error) {
+          console.error("Password reset error:", error);
+          alert("Error sending password reset email: " + error.message);
+        }
+      };
+
+      // Upgrade to Premium function
+      upgradePremiumBtn.onclick = async () => {
+        const user = auth.currentUser;
+        if (!user) {
+          alert("Please sign in first.");
+          return;
+        }
+        const userRef = ref(db, "users/" + user.uid);
+        try {
+          await update(userRef, { role: "premium" });
+          alert("Your account has been upgraded to premium!");
+          await handleUser(user);
+        } catch (error) {
+          console.error("Upgrade error:", error);
+          alert("Error upgrading your account: " + error.message);
+        }
+      };
+
+      // Cancel Membership function
+      // This example downgrades the user from "premium" to "basic."
+      // Alternatively, you might delete the user's account entirely or trigger a more complex cancellation process.
+      cancelMembershipBtn.onclick = async () => {
+        const user = auth.currentUser;
+        if (!user) {
+          alert("Please sign in first.");
+          return;
+        }
+        if (!confirm("Are you sure you want to cancel your membership? This will downgrade your account.")) {
+          return;
+        }
+        const userRef = ref(db, "users/" + user.uid);
+        try {
+          await update(userRef, { role: "basic" });
+          alert("Your membership has been cancelled.");
+          await handleUser(user);
+        } catch (error) {
+          console.error("Cancellation error:", error);
+          alert("Error cancelling membership: " + error.message);
+        }
+      };
+
+      // Sign Out function
+      signOutBtn.onclick = async () => {
+        try {
+          await signOut(auth);
+          userInfo.innerHTML = "Not signed in.";
+          accountActions.classList.add("hidden");
+          premiumTools.style.display = "none";
+        } catch (error) {
+          console.error("Sign out error:", error);
+          alert("Error signing out: " + error.message);
+        }
+      };
+
+      // Handle User Post-Authentication
+      async function handleUser(user) {
+        const userRef = ref(db, "users/" + user.uid);
+        try {
+          const snapshot = await get(userRef);
+          if (!snapshot.exists()) {
+            // Create new user record if it doesn't exist
+            await set(userRef, {
+              email: user.email,
+              role: "basic",
+              createdAt: Date.now()
+            });
+          }
+          // Retrieve user data and update interface
+          const updatedSnapshot = await get(userRef);
+          const data = updatedSnapshot.val();
+          userInfo.innerHTML = `<p>👤 Logged in as: <strong>${user.email}</strong></p>
+                                <p>🎖️ Role: <strong>${data.role}</strong></p>`;
+          // Show actions area when logged in
+          accountActions.classList.remove("hidden");
+          premiumTools.style.display = (data.role === "premium") ? "block" : "none";
+        } catch (error) {
+          console.error("Error handling user data:", error);
+          alert("Error retrieving account information.");
         }
       }
-    };
 
-    // Logout button handler
-    document.getElementById("logout").onclick = async () => {
-      try {
-        await signOut(auth);
-        userInfo.innerHTML = "Signed out.";
-      } catch (error) {
-        console.error("Error signing out:", error);
-        alert("Error signing out: " + error.message);
-      }
-    };
-  </script>
-</body>
+      // Track authentication state changes
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          handleUser(user);
+        } else {
+          userInfo.innerHTML = "Not signed in.";
+          accountActions.classList.add("hidden");
+          premiumTools.style.display = "none";
+        }
+      });
+    </script>
+  </body>
 </html>
