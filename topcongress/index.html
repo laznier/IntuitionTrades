@@ -218,38 +218,7 @@ button:hover {
 
   
 <script>
-    /***********************************************************************
-* Premium Check
- ***********************************************************************/
-
-  async function checkPremiumAccess() {
-    const token = localStorage.getItem("googleToken");
-    if (!token) {
-      alert("Please sign in to access this tool.");
-      window.location.href = "/"; // redirect to main page
-      return;
-    }
-
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
-    });
-    const data = await res.json();
-
-    if (!data.isPremium) {
-      alert("Premium access required.");
-      window.location.href = "/"; // or a pricing/signup page
-    }
-
-    // Otherwise user is premium — continue loading tool
-  }
-
-
-  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
-    // Global variables for debounce, timers, and fetched data
-    let debounceTimeout, countdownInterval, searchingInterval;
-    let allData = [];
+    
 
     // Full list of congress and senate members from your provided list
     const politicianNames = [
@@ -657,11 +626,8 @@ document.getElementById('applyFilter').addEventListener('click', () => {
     });
   </script>
 
-  /***********************************************************************
-  * Wait for user account check before fetching any tool data
-  ***********************************************************************/
-  <script type="module">
-  async function waitForUserTypeThenFetch() {
+<script type="module">
+  document.addEventListener("DOMContentLoaded", async () => {
     const token = localStorage.getItem("googleToken");
 
     if (!token) {
@@ -671,12 +637,13 @@ document.getElementById('applyFilter').addEventListener('click', () => {
     }
 
     try {
+      // Check user access level (premium check)
       const resCheck = await fetch("/api/check-access", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
-          "x-tool-name": "top5"  // or "topcongress", etc.
+          "x-tool-name": "topcongress"
         },
         body: JSON.stringify({})
       });
@@ -687,28 +654,16 @@ document.getElementById('applyFilter').addEventListener('click', () => {
         return;
       }
 
-      // ✅ Access granted — now it's safe to call your real data endpoint
-      const res = await fetch("/api/congress?ticker=AAPL", {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "x-tool-name": "top5"
-        }
-      });
-
-      const data = await res.json();
-      console.log("Congress data:", data);
-
-      // 🔁 continue rendering logic here...
+      // After successful check, tool is allowed to run normally.
+      console.log("✅ User verified. Tool ready.");
 
     } catch (err) {
       console.error("Access check failed:", err);
       alert("Unexpected error. Try again later.");
+      window.location.href = "/";
     }
-  }
-
-  // Run it
-  waitForUserTypeThenFetch();
-
+  });
 </script>
+
 </body>
 </html>
