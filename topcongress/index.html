@@ -656,16 +656,6 @@ document.getElementById('applyFilter').addEventListener('click', () => {
       clearSuggestions();
     });
 
-    /***********************************************************************
-* User type check 
-***********************************************************************/
-const token = localStorage.getItem("googleToken");
-const res = await fetch("/api/congress?ticker=AAPL", {
-headers: {
-"Authorization": `Bearer ${token}`,
-"x-tool-name": "top5"
-}
-});
 </script>
 </body>
 </html>
