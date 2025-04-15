@@ -244,6 +244,18 @@ button:hover {
     // Otherwise user is premium — continue loading tool
   }
 
+      /***********************************************************************
+* User type check 
+ ***********************************************************************/
+  const token = localStorage.getItem("googleToken");
+const res = await fetch("/api/congress?ticker=AAPL", {
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "x-tool-name": "top5"
+  }
+});
+
+
   document.addEventListener("DOMContentLoaded", checkPremiumAccess);
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;

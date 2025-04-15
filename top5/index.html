@@ -312,8 +312,17 @@
 
   document.addEventListener("DOMContentLoaded", checkPremiumAccess);
 
+/***********************************************************************
+* API call checks user type
+ ***********************************************************************/
+ const token = localStorage.getItem("googleToken");
+const res = await fetch("/api/congress?ticker=AAPL", {
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "x-tool-name": "top5"
+  }
+});
 
- 
 /***********************************************************************
  * Merged top-stocks + advanced RRI code
  ***********************************************************************/
