@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <title>Firestore Minimal Test</title>
+    <meta charset="UTF-8">
+    <title>Firestore Connection Test with Long Polling</title>
   </head>
   <body>
-    <h1>Firestore Minimal Test</h1>
-    <div id="output">Connecting to Firestore...</div>
+    <h1>Firestore Connection Test</h1>
+    <div id="output">Testing Firestore Connection...</div>
     <script type="module">
-      // Import necessary functions from the Firebase SDK
+      // Import necessary functions from Firebase SDK version 10.8.0
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import {
-        getFirestore,
-        doc,
-        setDoc,
-        getDoc,
-        enableNetwork
+      // Use initializeFirestore to allow extra options
+      import { 
+        initializeFirestore, 
+        doc, 
+        setDoc, 
+        getDoc, 
+        enableNetwork 
       } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+      
       // Your full Firebase configuration
       const firebaseConfig = {
         apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
@@ -30,25 +31,30 @@
 
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-
-      // Optionally force network connection (sometimes helpful if Firestore gets stuck in offline mode)
+      
+      // Initialize Firestore with options to force long polling
+      const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,  // Forces long polling instead of WebChannel transport
+        useFetchStreams: false               // Disable streaming if needed
+      });
+      
+      // Optionally force the network to ensure Firestore isn't stuck offline
       enableNetwork(db).catch(err => console.error("Error enabling network:", err));
-
-      // Reference to the output div
+      
+      // Minimal test: Write and then read a test document
       const outputDiv = document.getElementById("output");
-
+      
       async function testFirestore() {
         try {
-          // Create a reference to a test document (in collection "test" with doc id "testDoc")
+          // Create or reference a document in the "test" collection with ID "testDoc"
           const testDocRef = doc(db, "test", "testDoc");
-
-          // Write a test document
-          await setDoc(testDocRef, { message: "Hello Firestore!" });
-
-          // Read the document back
+          
+          // Write a simple document
+          await setDoc(testDocRef, { message: "Hello Firestore with long polling!" });
+          
+          // Attempt to read the document back
           const docSnap = await getDoc(testDocRef);
-
+          
           if (docSnap.exists()) {
             outputDiv.innerText = "Document data: " + JSON.stringify(docSnap.data());
             console.log("Document data:", docSnap.data());
@@ -57,10 +63,10 @@
           }
         } catch (error) {
           outputDiv.innerText = "Error: " + error.message;
-          console.error("Test Firestore Error:", error);
+          console.error("Error testing Firestore:", error);
         }
       }
-
+      
       // Run the test
       testFirestore();
     </script>
