@@ -143,6 +143,11 @@
           }
         };
       });
+      initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  useFetchStreams: false,
+});
+
     </script>
   </head>
   <body>
