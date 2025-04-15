@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    button {
+      margin: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #22c55e;
+    }
+    #user-info {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      getDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+  apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
+  authDomain: "intuition-trades.firebaseapp.com",
+  projectId: "intuition-trades",
+};
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const userInfo = document.getElementById("user-info");
+
+    async function handleUser(user) {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          email: user.email,
+          role: "basic",
+          createdAt: serverTimestamp()
+        });
+      }
+
+      const data = (await getDoc(userRef)).data();
+      userInfo.innerHTML = `
+        <p>👤 Logged in as: <strong>${user.email}</strong></p>
+        <p>🎖️ Role: <strong>${data.role}</strong></p>
+      `;
+
+      if (data.role === "premium") {
+        // redirect to premium dashboard, unlock tools, etc.
+        console.log("✅ Premium access unlocked");
+      }
+    }
+
+    document.getElementById("google-login").onclick = async () => {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      await handleUser(result.user);
+    };
+
+    document.getElementById("email-login").onclick = async () => {
+      const email = prompt("Enter your email:");
+      const password = prompt("Enter your password:");
+      try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        await handleUser(result.user);
+      } catch (e) {
+        if (e.code === "auth/user-not-found") {
+          if (confirm("User not found. Create account?")) {
+            const result = await createUserWithEmailAndPassword(auth, email, password);
+            await handleUser(result.user);
+          }
+        } else {
+          alert(e.message);
+        }
+      }
+    };
+
+    document.getElementById("logout").onclick = async () => {
+      await signOut(auth);
+      userInfo.innerHTML = "Signed out.";
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) await handleUser(user);
+    });
+  </script>
+</head>
+<body>
+  <h1>Intuition Trades</h1>
+  <p>Log in to access your tools and account</p>
+  <button id="google-login">Sign in with Google</button>
+  <button id="email-login">Sign in with Email</button>
+  <button id="logout">Log out</button>
+  <div id="user-info"></div>
+</body>
+</html>
