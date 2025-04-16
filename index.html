@@ -190,7 +190,18 @@
           <li class="dropdown">
             <a href="#">Tools</a>
             <ul class="dropdown-menu">
-              <li><a href="/top5">Top Stocks Scanner</a></li>
+         <!-- Premium Tool (locked by default) -->
+         <div class="tool-card premium" id="premiumCard">
+          <img src="images/top5.png" alt="Top Stocks Scanner" />
+          <h2>Top Stocks Scanner</h2>
+          <p>Auto evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
+          </div>
+          <a href="top5/" class="tool-button">Open Premium Tool</a>
+        </div>
               <li><a href="/stocks">Comprehensive Stock Analysis</a></li>
             </ul>
           </li>
@@ -216,7 +227,18 @@
       
       <!-- Account Dropdown (for signed-in users) -->
       <div id="accountDropdown">
-        <a href="/top5">Premium Tool</a>
+         <!-- Premium Tool (locked by default) -->
+         <div class="tool-card premium" id="premiumCard">
+          <img src="images/top5.png" alt="Top Stocks Scanner" />
+          <h2>Top Stocks Scanner</h2>
+          <p>Auto evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
+          <div class="premium-overlay" id="premiumOverlay">
+            Premium Locked
+            <br>
+            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
+          </div>
+          <a href="top5/" class="tool-button">Open Premium Tool</a>
+        </div>
         <a href="/stocks">Basic Tool</a>
         <button id="signOutBtn">Sign Out</button>
       </div>
