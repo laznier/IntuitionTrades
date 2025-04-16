@@ -1,77 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Firestore Connection Test with Long Polling</title>
-  </head>
-  <body>
-    <h1>Firestore Connection Test</h1>
-    <div id="output">Testing Firestore Connection...</div>
-    <script type="module">
-      // Import necessary functions from Firebase SDK version 10.8.0
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      // Use initializeFirestore to allow extra options
-      import { 
-        initializeFirestore, 
-        doc, 
-        setDoc, 
-        getDoc, 
-        enableNetwork 
-      } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-      
-      // Your full Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyBKmeS_j2rYrTo2xd3IZNksdnpOf4ndXmk",
-        authDomain: "intuition-trades.firebaseapp.com",
-        projectId: "intuition-trades",
-        storageBucket: "intuition-trades.firebasestorage.app",
-        messagingSenderId: "662507444685",
-        appId: "1:662507444685:web:81c8ce875bd522cb748c84"
-      };
-
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      
-      // Initialize Firestore with options to force long polling
-      const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,  // Forces long polling instead of WebChannel transport
-        useFetchStreams: false               // Disable streaming if needed
-      });
-      
-      // Optionally force the network to ensure Firestore isn't stuck offline
-      enableNetwork(db).catch(err => console.error("Error enabling network:", err));
-      
-      // Minimal test: Write and then read a test document
-      const outputDiv = document.getElementById("output");
-      
-      async function testFirestore() {
-        try {
-          // Create or reference a document in the "test" collection with ID "testDoc"
-          const testDocRef = doc(db, "test", "testDoc");
-          
-          // Write a simple document
-          await setDoc(testDocRef, { message: "Hello Firestore with long polling!" });
-          
-          // Attempt to read the document back
-          const docSnap = await getDoc(testDocRef);
-          
-          if (docSnap.exists()) {
-            outputDiv.innerText = "Document data: " + JSON.stringify(docSnap.data());
-            console.log("Document data:", docSnap.data());
-          } else {
-            outputDiv.innerText = "No such document!";
-          }
-        } catch (error) {
-          outputDiv.innerText = "Error: " + error.message;
-          console.error("Error testing Firestore:", error);
-        }
-      }
-      
-      // Run the test
-      testFirestore();
-    </script>
-  </body>
-</html>
 <!DOCTYPE html> 
 <html lang="en">
 <head>
@@ -1283,34 +1209,18 @@ footer {
       </svg>
     </button>
 
-    <div class="header-right">
-      <!-- When not signed in, this button will say "Not signed in" -->
-      <button id="userMenuButton">Not signed in</button>
-    </div>
-     <!-- The account dropdown (only visible when user is signed in) -->
-  <div id="accountDropdown">
-    <p id="userStatusText">User: Basic</p>
-    <button id="upgradeButton">Upgrade to Premium</button>
-    <button id="feedbackButton">Send Feedback</button>
-    <button id="logoutButton">Sign Out</button>
-  </div>
+<!-- Updated Header Sign-In Section -->
+<div class="header-right">
+  <!-- Minimal Sign-In Button with a "G" icon -->
+  <button id="minimalSignInButton" title="Sign in with Google">
+    <!-- Replace with your own icon source if desired -->
+    <img src="/images/google-icon.svg" alt="G" style="width:20px;height:20px;">
+  </button>
+  <!-- User status indicator (optional, can be updated after login) -->
+  <div id="userStatusIndicator">Not signed in</div>
+</div>
 
-  <!-- Login Modal (appears when user clicks to sign in) -->
-  <div id="loginModal">
-    <div class="modal-content">
-      <h3>Sign In / Sign Up</h3>
-      <!-- Input fields for email and password -->
-      <input type="email" id="modalEmail" placeholder="Email" required>
-      <input type="password" id="modalPassword" placeholder="Password" required>
-      <button id="modalLoginButton">Log In</button>
-      <button id="modalSignUpButton" style="display:none;">Sign Up</button>
-      <p style="font-size:0.8rem; margin-top:10px;">
-        <span id="toggleAuthText" style="cursor:pointer; color:#16a34a;">Switch to Sign Up</span>
-      </p>
-      <p id="loginError" style="color:#dc3545; display:none;"></p>
-      <button id="closeLoginModal" style="background:none; border:none; color:#ccc; margin-top:10px;">Cancel</button>
-    </div>
-  </div>
+    </header>
  <!-- =======================
      Mobile Sidebar Menu
 ======================= -->
@@ -1418,6 +1328,14 @@ footer {
   </nav>
 </header>
 
+
+   
+       <!-- Sign-in container aligned to the right -->
+       <div class="header-right">
+        <div id="user-type-indicator">Not signed in</div>
+        <div id="google-signin-button"></div>
+      </div>
+    </header>
 
   <!-- Hero Section -->
   <header class="hero">
@@ -2494,319 +2412,19 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-</script>
-  <!-- Google Identity Services Setup -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>
-  let premiumToolClicked = false;
 
-  window.onload = function() {
-  google.accounts.id.initialize({
-    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-    callback: handleCredentialResponse
+  // When the minimal sign-in button is clicked, redirect to the login page.
+  document.getElementById("minimalSignInButton").addEventListener("click", function() {
+    window.location.href = "login.html";
   });
-  const signInContainer = document.getElementById("google-signin-button");
-  if (signInContainer) {
-    google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
-  }
-  verifyStoredToken();
-};
-
-function verifyStoredToken() {
-  const storedToken = localStorage.getItem("googleToken");
-  if (!storedToken) return;
-
-  fetch('/api/verify-google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: storedToken })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const indicator = document.getElementById("user-type-indicator");
-    if (data.isPremium) {
-      indicator.textContent = "Premium User";
-      document.querySelectorAll(".tool-card.premium").forEach(card => {
-        card.classList.add("unlocked");
-      });
-      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
-        item.classList.add("unlocked");
-      });
-    } else {
-      indicator.textContent = "Basic User";
-    }
-  })
-  .catch(err => console.error("Error verifying stored token:", err));
+// (This example code would be part of your Firebase sign-in flow.)
+function updateUserStatus(statusText) {
+  document.getElementById("userStatusIndicator").textContent = statusText;
 }
+// Then after a successful login:
+updateUserStatus("Basic User"); // or "Premium User"
 
 
-  function handleCredentialResponse(response) {
-  console.log("Received JWT token:", response.credential);
-  localStorage.setItem("googleToken", response.credential);
-
-  fetch('/api/verify-google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: response.credential })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const indicator = document.getElementById("user-type-indicator");
-    if (data.isPremium) {
-      indicator.textContent = "Premium User";
-      // Unlock both tool cards and dropdown premium items
-      document.querySelectorAll(".tool-card.premium").forEach(card => {
-        card.classList.add("unlocked");
-      });
-      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
-        item.classList.add("unlocked");
-      });
-    } else {
-      indicator.textContent = "Basic User";
-      // Remove unlocked classes
-      document.querySelectorAll(".tool-card.premium, .premium-dropdown-item").forEach(item => {
-        item.classList.remove("unlocked");
-      });
-    }
-  })
-  .catch(err => console.error("Error verifying user:", err));
-}
-
-  // Attach event listener to the premium tool card to force re-authentication if clicked.
-  document.addEventListener("DOMContentLoaded", () => {
-  const premiumCards = document.querySelectorAll(".tool-card.premium");
-  premiumCards.forEach(card => {
-    card.addEventListener("click", () => {
-      premiumToolClicked = true;
-      google.accounts.id.prompt(); // Force a prompt when a premium tool is clicked
-    });
-  });
-});
-
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay").forEach(overlay => {
-    overlay.addEventListener("click", (event) => {
-      event.stopPropagation();
-      // Trigger Google sign-in prompt
-      google.accounts.id.prompt();
-    });
-  });
-});
-
-
-
-</script>
-<!-- Firebase and Your App JavaScript -->
-<script type="module">
-  // Import Firebase modules (using modular v9+ SDK)
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import {
-    getAuth,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  import {
-    getDatabase,
-    ref,
-    set,
-    update,
-    get
-  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-// Your Firebase configuration (update as needed)
-const firebaseConfig = {
-  apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-  authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-  projectId: "persuasive-net-456607-g8",
-  storageBucket: "persuasive-net-456607-g8.appspot.com",
-  messagingSenderId: "1019332250475",
-  appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-  databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-};
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
-
-  // DOM Elements
-  const userMenuButton = document.getElementById("userMenuButton");
-  const accountDropdown = document.getElementById("accountDropdown");
-  const userStatusText = document.getElementById("userStatusText");
-  const upgradeButton = document.getElementById("upgradeButton");
-  const feedbackButton = document.getElementById("feedbackButton");
-  const logoutButton = document.getElementById("logoutButton");
-
-  const loginModal = document.getElementById("loginModal");
-  const modalEmail = document.getElementById("modalEmail");
-  const modalPassword = document.getElementById("modalPassword");
-  const modalLoginButton = document.getElementById("modalLoginButton");
-  const modalSignUpButton = document.getElementById("modalSignUpButton");
-  const toggleAuthText = document.getElementById("toggleAuthText");
-  const closeLoginModal = document.getElementById("closeLoginModal");
-  const loginError = document.getElementById("loginError");
-
-  // State: are we in login or signup mode?
-  let isInSignUpMode = false;
-
-  // --- Authentication Functions ---
-  async function handleUser(user) {
-    // Check in your Realtime Database if this user exists,
-    // and if not, add a default role ("basic").
-    const userRef = ref(db, "users/" + user.uid);
-    const snapshot = await get(userRef);
-    if (!snapshot.exists()) {
-      await set(userRef, {
-        email: user.email,
-        role: "basic",
-        createdAt: Date.now()
-      });
-    }
-    // Read updated user data
-    const updatedSnapshot = await get(userRef);
-    const data = updatedSnapshot.val();
-    // Update the header indicator
-    userMenuButton.textContent = data.role === "premium" ? "Premium User" : "Basic User";
-    // Hide the login modal if it was open
-    hideLoginModal();
-  }
-
-  async function loginUser(email, password) {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      await handleUser(result.user);
-    } catch (error) {
-      loginError.style.display = "block";
-      loginError.textContent = error.message;
-    }
-  }
-
-  async function signUpUser(email, password) {
-    try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await handleUser(result.user);
-    } catch (error) {
-      loginError.style.display = "block";
-      loginError.textContent = error.message;
-    }
-  }
-
-  async function signOutUser() {
-    try {
-      await signOut(auth);
-      userMenuButton.textContent = "Not signed in";
-      accountDropdown.style.display = "none";
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  }
-
-  // --- Modal and Dropdown UI Functions ---
-  function showLoginModal() {
-    loginModal.style.display = "flex";
-  }
-  function hideLoginModal() {
-    loginModal.style.display = "none";
-    loginError.style.display = "none";
-    modalEmail.value = "";
-    modalPassword.value = "";
-  }
-  function toggleDropdown() {
-    if (accountDropdown.style.display === "block") {
-      accountDropdown.style.display = "none";
-    } else {
-      accountDropdown.style.display = "block";
-    }
-  }
-
-  // Toggle between login and sign-up modes in the modal
-  toggleAuthText.onclick = () => {
-    isInSignUpMode = !isInSignUpMode;
-    if (isInSignUpMode) {
-      modalLoginButton.style.display = "none";
-      modalSignUpButton.style.display = "block";
-      toggleAuthText.textContent = "Switch to Log In";
-    } else {
-      modalLoginButton.style.display = "block";
-      modalSignUpButton.style.display = "none";
-      toggleAuthText.textContent = "Switch to Sign Up";
-    }
-  };
-
-  // Event handlers
-  userMenuButton.addEventListener("click", () => {
-    // If the user is not signed in, show the login modal.
-    // Otherwise, toggle the account dropdown (with upgrade, feedback, sign out).
-    if (userMenuButton.textContent === "Not signed in") {
-      showLoginModal();
-    } else {
-      toggleDropdown();
-    }
-  });
-
-  closeLoginModal.addEventListener("click", hideLoginModal);
-
-  modalLoginButton.addEventListener("click", () => {
-    const email = modalEmail.value.trim();
-    const password = modalPassword.value.trim();
-    if (email && password) {
-      loginUser(email, password);
-    }
-  });
-
-  modalSignUpButton.addEventListener("click", () => {
-    const email = modalEmail.value.trim();
-    const password = modalPassword.value.trim();
-    if (email && password) {
-      signUpUser(email, password);
-    }
-  });
-
-  // Account dropdown options
-  logoutButton.addEventListener("click", () => {
-    signOutUser();
-    accountDropdown.style.display = "none";
-  });
-
-  upgradeButton.addEventListener("click", async () => {
-    // For example, update user's role to premium.
-    const user = auth.currentUser;
-    if (!user) return;
-    const userRef = ref(db, "users/" + user.uid);
-    try {
-      await update(userRef, { role: "premium" });
-      await handleUser(user);
-      alert("Upgraded to Premium!");
-    } catch (error) {
-      console.error("Upgrade error:", error);
-    }
-    accountDropdown.style.display = "none";
-  });
-
-  feedbackButton.addEventListener("click", () => {
-    // Open a feedback form or direct the user to a feedback page/modal.
-    window.location.href = "/feedback.html";
-  });
-
-  // --- Listen for Authentication State Changes ---
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      handleUser(user);
-    } else {
-      userMenuButton.textContent = "Not signed in";
-      accountDropdown.style.display = "none";
-    }
-  });
-
-  // Optionally, you can close the dropdown if the user clicks outside.
-  window.addEventListener("click", (e) => {
-    if (!accountDropdown.contains(e.target) && e.target !== userMenuButton) {
-      accountDropdown.style.display = "none";
-    }
-  });
 </script>
 
 </body>
