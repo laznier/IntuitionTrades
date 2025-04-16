@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <title>Login | Intuition Trades</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Include Google Identity Services script -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
   <!-- Minimal CSS for a Modern, User-Friendly Login Page -->
   <style>
     body {
@@ -50,23 +54,6 @@
       cursor: pointer;
       margin-bottom: 10px;
     }
-    .google-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #fff;
-      color: #000;
-      border: none;
-      border-radius: 4px;
-      padding: 10px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    .google-button img {
-      width: 20px;
-      height: 20px;
-      margin-right: 10px;
-    }
     .toggle-link {
       text-align: center;
       color: #16a34a;
@@ -94,51 +81,48 @@
     <h1>Welcome to Intuition Trades</h1>
     <!-- Error message container -->
     <div class="error-message" id="errorMessage"></div>
+    
     <!-- Login Form (default shown) -->
     <div class="login-form active" id="loginForm">
       <input type="email" id="loginEmail" placeholder="Email" required>
       <input type="password" id="loginPassword" placeholder="Password" required>
       <button id="loginBtn">Log In</button>
-      <!-- Google Sign-In Button as an alternative -->
-      <button class="google-button" id="googleLoginBtn">
-        <img src="/images/google-icon.svg" alt="Google">
-        Sign in with Google
-      </button>
+      <!-- Container where Google’s official dark button will be rendered -->
+      <div id="googleButtonContainer" style="margin-bottom:10px;"></div>
       <div class="toggle-link" id="toggleToSignUp">Don't have an account? Sign Up</div>
     </div>
+    
     <!-- Signup Form -->
     <div class="signup-form" id="signupForm">
       <input type="email" id="signupEmail" placeholder="Email" required>
       <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
       <button id="signupBtn">Sign Up</button>
-      <!-- Google Sign-In Button on signup screen too -->
-      <button class="google-button" id="googleSignupBtn">
-        <img src="/images/google-icon.svg" alt="Google">
-        Sign Up with Google
-      </button>
+      <!-- Container for Google official button on signup as well -->
+      <div id="googleButtonContainerSignup" style="margin-bottom:10px;"></div>
       <div class="toggle-link" id="toggleToLogin">Already have an account? Log In</div>
     </div>
-    <!-- Optional Back Link to Main Page (if user wants to browse without signing in) -->
+    
+    <!-- Optional Back Link to Main Page -->
     <div class="back-link" id="backToMain">Back to Home</div>
   </div>
 
   <!-- Firebase and Custom JS -->
   <script type="module">
-    // Import Firebase modules (using modular SDK v9+)
+    // Import Firebase modules (v9+ modular SDK)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    // Firebase configuration - replace with your project's config
+    // Firebase configuration (update with your project's values)
     const firebaseConfig = {
-  apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-  authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-  projectId: "persuasive-net-456607-g8",
-  storageBucket: "persuasive-net-456607-g8.appspot.com",
-  messagingSenderId: "1019332250475",
-  appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-  databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-};
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      projectId: "persuasive-net-456607-g8",
+      storageBucket: "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId: "1019332250475",
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+    };
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
@@ -146,7 +130,7 @@
     const db = getDatabase(app);
     const googleProvider = new GoogleAuthProvider();
 
-    // DOM Element references
+    // DOM Element references for login/signup
     const errorMessage = document.getElementById("errorMessage");
     const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
@@ -158,15 +142,13 @@
     const loginBtn = document.getElementById("loginBtn");
     const loginEmail = document.getElementById("loginEmail");
     const loginPassword = document.getElementById("loginPassword");
-    const googleLoginBtn = document.getElementById("googleLoginBtn");
 
     // Signup elements
     const signupBtn = document.getElementById("signupBtn");
     const signupEmail = document.getElementById("signupEmail");
     const signupPassword = document.getElementById("signupPassword");
-    const googleSignupBtn = document.getElementById("googleSignupBtn");
 
-    // Toggle login/signup view
+    // Toggle between login and signup views
     toggleToSignUp.addEventListener("click", () => {
       loginForm.classList.remove("active");
       signupForm.classList.add("active");
@@ -197,18 +179,18 @@
       if (!snapshot.exists()) {
         await set(userRef, {
           email: user.email,
-          role: "basic", // default role is "basic". If upgraded later, it can be changed.
+          role: "basic", // default role is "basic"
           createdAt: Date.now()
         });
       }
     }
 
-    // Redirect function after successful login/signup
+    // Redirect to main page after successful login/signup.
     function redirectToMain() {
       window.location.href = "index.html";
     }
 
-    // Login handler using email/password
+    // Email/Password Login
     loginBtn.addEventListener("click", async () => {
       clearError();
       const email = loginEmail.value.trim();
@@ -227,13 +209,13 @@
       }
     });
 
-    // Signup handler using email/password
+    // Email/Password Signup
     signupBtn.addEventListener("click", async () => {
       clearError();
       const email = signupEmail.value.trim();
       const password = signupPassword.value.trim();
       if (!email || password.length < 6) {
-        showError("Please enter a valid email and a password (minimum 6 characters).");
+        showError("Please enter a valid email and a password (min 6 characters).");
         return;
       }
       try {
@@ -246,20 +228,39 @@
       }
     });
 
-    // Google sign in handler (for both login and signup)
-    async function googleSignIn() {
-      clearError();
+    // Google Sign-In via Firebase (if using popup) – but here we are going to render the official Google button!
+    async function googleSignInCallback(tokenResponse) {
+      console.log("Received token: ", tokenResponse.credential);
+      // Here you would typically send the token to your backend, then sign in to Firebase.
+      // For simplicity, we'll use Firebase's signInWithPopup fallback:
       try {
         const result = await signInWithPopup(auth, googleProvider);
         await handleUserData(result.user);
         redirectToMain();
       } catch (error) {
-        console.error("Google SignIn Error:", error);
+        console.error("Google SignIn Error (popup fallback):", error);
         showError(error.message);
       }
     }
-    googleLoginBtn.addEventListener("click", googleSignIn);
-    googleSignupBtn.addEventListener("click", googleSignIn);
+
+    // Render Google’s official dark button provided by Google Identity Services.
+    window.onload = () => {
+      // Initialize the Google Identity Services
+      google.accounts.id.initialize({
+        client_id: "YOUR_GOOGLE_CLIENT_ID",  // <-- Replace with your real client ID
+        callback: googleSignInCallback
+      });
+      // Render Google's dark button (filled_dark)
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainer"),
+        { theme: "filled_dark", size: "large" }
+      );
+      // Also render on the signup form if needed:
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainerSignup"),
+        { theme: "filled_dark", size: "large" }
+      );
+    };
 
     // Automatically redirect if already signed in.
     onAuthStateChanged(auth, (user) => {
@@ -270,5 +271,3 @@
   </script>
 </body>
 </html>
-
-
