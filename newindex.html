@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Intuition Trades | Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Minimal CSS for a YouTube-inspired UI -->
+    <style>
+      /* Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #fff;
+      }
+      /* Header Styles */
+      header {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #222;
+        padding: 10px 20px;
+      }
+      .site-title {
+        font-size: 20px;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      /* Default sign-in area */
+      #userDisplay {
+        cursor: pointer;
+        font-size: 16px;
+      }
+      /* Google sign in button using your official dark logo.
+         (Replace the src with your downloaded dark logo if desired.)
+      */
+      #signInBtn {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      #signInBtn img {
+        width: 24px;
+        height: 24px;
+      }
+      /* Account Dropdown (shown when signed in) */
+      #accountDropdown {
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        background: #222;
+        border: 1px solid #444;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+        z-index: 1000;
+      }
+      #accountDropdown a,
+      #accountDropdown button {
+        display: block;
+        margin-bottom: 5px;
+        background: none;
+        border: none;
+        color: #fff;
+        text-align: left;
+        cursor: pointer;
+      }
+      #accountDropdown a:hover,
+      #accountDropdown button:hover {
+        text-decoration: underline;
+      }
+      
+      /* Main Content */
+      main {
+        padding: 20px;
+      }
+      .tool-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+      }
+      .tool-card {
+        background: #222;
+        border: 1px solid #444;
+        border-radius: 8px;
+        width: 300px;
+        padding: 15px;
+        position: relative;
+      }
+      .tool-card h2 {
+        margin-bottom: 10px;
+      }
+      .tool-card p {
+        margin-bottom: 15px;
+      }
+      .tool-button {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      /* Premium overlay for premium tool card */
+      .premium-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.75);
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        z-index: 2;
+      }
+      /* When premium tool is unlocked, hide the overlay */
+      .unlocked .premium-overlay {
+        display: none;
+      }
+      /* Footer */
+      footer {
+        text-align: center;
+        padding: 10px;
+        background: #222;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header Section -->
+    <header>
+      <div class="site-title">Intuition Trades</div>
+      <div class="header-right">
+        <!-- If user is not signed in, display "Sign in" text and Google button -->
+        <div id="userDisplay" onclick="location.href='login.html'">Sign in</div>
+        <button id="signInBtn" onclick="location.href='login.html'">
+          <!-- Official dark Google logo – replace with your local file if desired -->
+          <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Sign-In">
+        </button>
+      </div>
+      <!-- Account Dropdown (visible when signed in) -->
+      <div id="accountDropdown">
+        <a href="premium-tool.html">Premium Tool</a>
+        <a href="regular-tool.html">Basic Tool</a>
+        <button id="signOutBtn">Sign Out</button>
+      </div>
+    </header>
+    
+    <!-- Main Content: Two Tool Cards -->
+    <main>
+      <div class="tool-grid">
+        <!-- Premium Tool Card -->
+        <div class="tool-card premium" id="premiumToolCard">
+          <h2>Premium Tool</h2>
+          <p>This tool is exclusive for premium users.</p>
+          <!-- The overlay is visible for basic users. For basic users, clicking it will redirect to upgrade (premium.html). -->
+          <div class="premium-overlay" id="premiumOverlay" onclick="location.href='premium.html'">
+            Premium Locked
+          </div>
+          <button class="tool-button" onclick="location.href='premium-tool.html'">Open Premium Tool</button>
+        </div>
+        <!-- Basic Tool Card -->
+        <div class="tool-card basic">
+          <h2>Basic Tool</h2>
+          <p>This tool is available to all users.</p>
+          <button class="tool-button" onclick="location.href='regular-tool.html'">Open Basic Tool</button>
+        </div>
+      </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+    </footer>
+    
+    <!-- Firebase & Authentication Script (using Firebase exclusively) -->
+    <script type="module">
+      // Import Firebase modules (v9+ modular SDK)
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+      import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+      
+      // Firebase configuration (update with your own project settings)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.appspot.com",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+      };
+      
+      // Initialize Firebase
+      const appFirebase = initializeApp(firebaseConfig);
+      const auth = getAuth(appFirebase);
+      const db = getDatabase(appFirebase);
+      
+      // Helper: Fetch user role from Firebase database (assumes role is stored at "users/{uid}/role")
+      async function getUserRole(uid) {
+        try {
+          const roleRef = ref(db, "users/" + uid + "/role");
+          const snapshot = await get(roleRef);
+          return snapshot.exists() ? snapshot.val() : "basic";
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          return "basic";
+        }
+      }
+      
+      // Update header UI based on auth state and role; also update the premium tool card overlay.
+      function updateHeader(user, role) {
+        const userDisplay = document.getElementById("userDisplay");
+        const accountDropdown = document.getElementById("accountDropdown");
+        const premiumToolCard = document.getElementById("premiumToolCard");
+        if (user) {
+          let displayName = user.displayName ? "Hello, " + user.displayName : (role === "premium" ? "Premium User" : "Basic User");
+          if (role === "premium") {
+            // For premium users, style in dark blue and bold; also unlock premium tool
+            userDisplay.textContent = displayName;
+            userDisplay.style.color = "#00008B";
+            userDisplay.style.fontWeight = "bold";
+            premiumToolCard.classList.add("unlocked");
+          } else {
+            // For basic users, use light green
+            userDisplay.textContent = displayName;
+            userDisplay.style.color = "#90EE90";
+            userDisplay.style.fontWeight = "normal";
+            // Leave the premium overlay visible so clicking it will prompt upgrade.
+            premiumToolCard.classList.remove("unlocked");
+          }
+          // Make user display toggle account dropdown on click.
+          userDisplay.onclick = () => {
+            accountDropdown.style.display = (accountDropdown.style.display === "block") ? "none" : "block";
+          };
+          // Remove redirect behavior on the sign in button.
+          document.getElementById("signInBtn").onclick = () => {};
+        } else {
+          // If not signed in, show default text and ensure redirection to login page.
+          userDisplay.textContent = "Sign in";
+          userDisplay.style.color = "";
+          userDisplay.style.fontWeight = "";
+          userDisplay.onclick = () => { window.location.href = "login.html"; };
+          premiumToolCard.classList.remove("unlocked");
+          accountDropdown.style.display = "none";
+        }
+      }
+      
+      // Listen for authentication state changes.
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          const role = await getUserRole(user.uid);
+          updateHeader(user, role);
+        } else {
+          updateHeader(null);
+        }
+      });
+      
+      // Sign-out functionality.
+      document.getElementById("signOutBtn").addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+          window.location.reload();
+        } catch (error) {
+          console.error("Sign out error:", error);
+        }
+      });
+    </script>
+  </body>
+</html>
