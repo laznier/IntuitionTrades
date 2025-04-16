@@ -1209,18 +1209,8 @@ footer {
       </svg>
     </button>
 
-<!-- Updated Header Sign-In Section -->
-<div class="header-right">
-  <!-- Minimal Sign-In Button with a "G" icon -->
-  <button id="minimalSignInButton" title="Sign in with Google">
-    <!-- Replace with your own icon source if desired -->
-    <img src="/images/google-icon.svg" alt="G" style="width:20px;height:20px;">
-  </button>
-  <!-- User status indicator (optional, can be updated after login) -->
-  <div id="userStatusIndicator">Not signed in</div>
-</div>
+  
 
-    </header>
  <!-- =======================
      Mobile Sidebar Menu
 ======================= -->
@@ -2412,20 +2402,110 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+</script>
+  <!-- Google Identity Services Setup -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+  let premiumToolClicked = false;
 
-  // When the minimal sign-in button is clicked, redirect to the login page.
-  document.getElementById("minimalSignInButton").addEventListener("click", function() {
-    window.location.href = "login.html";
+  window.onload = function() {
+  google.accounts.id.initialize({
+    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+    callback: handleCredentialResponse
   });
-// (This example code would be part of your Firebase sign-in flow.)
-function updateUserStatus(statusText) {
-  document.getElementById("userStatusIndicator").textContent = statusText;
+  const signInContainer = document.getElementById("google-signin-button");
+  if (signInContainer) {
+    google.accounts.id.renderButton(signInContainer, { theme: "filled_black", size: "large" });
+  }
+  verifyStoredToken();
+};
+
+function verifyStoredToken() {
+  const storedToken = localStorage.getItem("googleToken");
+  if (!storedToken) return;
+
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: storedToken })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+    if (data.isPremium) {
+      indicator.textContent = "Premium User";
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.add("unlocked");
+      });
+      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
+        item.classList.add("unlocked");
+      });
+    } else {
+      indicator.textContent = "Basic User";
+    }
+  })
+  .catch(err => console.error("Error verifying stored token:", err));
 }
-// Then after a successful login:
-updateUserStatus("Basic User"); // or "Premium User"
+
+
+  function handleCredentialResponse(response) {
+  console.log("Received JWT token:", response.credential);
+  localStorage.setItem("googleToken", response.credential);
+
+  fetch('/api/verify-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: response.credential })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const indicator = document.getElementById("user-type-indicator");
+    if (data.isPremium) {
+      indicator.textContent = "Premium User";
+      // Unlock both tool cards and dropdown premium items
+      document.querySelectorAll(".tool-card.premium").forEach(card => {
+        card.classList.add("unlocked");
+      });
+      document.querySelectorAll(".premium-dropdown-item").forEach(item => {
+        item.classList.add("unlocked");
+      });
+    } else {
+      indicator.textContent = "Basic User";
+      // Remove unlocked classes
+      document.querySelectorAll(".tool-card.premium, .premium-dropdown-item").forEach(item => {
+        item.classList.remove("unlocked");
+      });
+    }
+  })
+  .catch(err => console.error("Error verifying user:", err));
+}
+
+  // Attach event listener to the premium tool card to force re-authentication if clicked.
+  document.addEventListener("DOMContentLoaded", () => {
+  const premiumCards = document.querySelectorAll(".tool-card.premium");
+  premiumCards.forEach(card => {
+    card.addEventListener("click", () => {
+      premiumToolClicked = true;
+      google.accounts.id.prompt(); // Force a prompt when a premium tool is clicked
+    });
+  });
+});
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay").forEach(overlay => {
+    overlay.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // Trigger Google sign-in prompt
+      google.accounts.id.prompt();
+    });
+  });
+});
+
 
 
 </script>
+
 
 </body>
 </html>

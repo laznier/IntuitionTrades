@@ -1,296 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <title>Account Management | Intuition Trades</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-      body {
-        background: #000;
-        color: #fff;
-        font-family: sans-serif;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem;
-      }
-      button {
-        margin: 0.5rem;
-        padding: 0.75rem 1.5rem;
-        background: #16a34a;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #22c55e;
-      }
-      input {
-        padding: 0.5rem;
-        margin: 0.5rem;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-      }
-      .hidden {
-        display: none;
-      }
-      #user-info {
-        margin-top: 1.5rem;
-        text-align: center;
-      }
-      #premium-tools {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: #1f2937;
-        border-radius: 8px;
-        display: none;
-      }
-      .auth-container, .account-actions {
-        margin: 1rem 0;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Intuition Trades</h1>
-    <p>Manage your account below</p>
-
-    <!-- Authentication Section -->
-    <div class="auth-container">
-      <h2>Authentication</h2>
-      
-      <!-- Login Form -->
-      <div id="login-form">
-        <h3>Log In</h3>
-        <input type="email" id="login-email" placeholder="Email">
-        <input type="password" id="login-password" placeholder="Password">
-        <button id="login-btn">Log In</button>
-      </div>
-      
-      <!-- Signup Form -->
-      <div id="signup-form" class="hidden">
-        <h3>Sign Up</h3>
-        <input type="email" id="signup-email" placeholder="Email">
-        <input type="password" id="signup-password" placeholder="Password (min 6 chars)">
-        <button id="signup-btn">Sign Up</button>
-      </div>
-      
-      <button id="toggle-auth-btn">Switch to Sign Up</button>
-      <br>
-      <button id="forgot-password-btn">Forgot Password?</button>
+<head>
+  <meta charset="UTF-8">
+  <title>Login | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Minimal CSS for a Modern, User-Friendly Login Page -->
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .login-container {
+      background: #222;
+      padding: 20px;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .login-container h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .login-form, .signup-form {
+      display: none;
+      flex-direction: column;
+    }
+    .login-form.active, .signup-form.active {
+      display: flex;
+    }
+    .login-container input {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+    }
+    .login-container button {
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      background: #16a34a;
+      color: #fff;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .google-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 4px;
+      padding: 10px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .google-button img {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+    }
+    .toggle-link {
+      text-align: center;
+      color: #16a34a;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-bottom: 10px;
+    }
+    .error-message {
+      color: #dc3545;
+      text-align: center;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .back-link {
+      text-align: center;
+      color: #16a34a;
+      text-decoration: underline;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1>Welcome to Intuition Trades</h1>
+    <!-- Error message container -->
+    <div class="error-message" id="errorMessage"></div>
+    <!-- Login Form (default shown) -->
+    <div class="login-form active" id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Email" required>
+      <input type="password" id="loginPassword" placeholder="Password" required>
+      <button id="loginBtn">Log In</button>
+      <!-- Google Sign-In Button as an alternative -->
+      <button class="google-button" id="googleLoginBtn">
+        <img src="/images/google-icon.svg" alt="Google">
+        Sign in with Google
+      </button>
+      <div class="toggle-link" id="toggleToSignUp">Don't have an account? Sign Up</div>
     </div>
-
-    <!-- Account Actions Section -->
-    <div class="account-actions hidden">
-      <h2>Account Actions</h2>
-      <button id="upgrade-premium">Upgrade to Premium</button>
-      <button id="cancel-membership">Cancel Membership</button>
-      <button id="sign-out">Log Out</button>
+    <!-- Signup Form -->
+    <div class="signup-form" id="signupForm">
+      <input type="email" id="signupEmail" placeholder="Email" required>
+      <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
+      <button id="signupBtn">Sign Up</button>
+      <!-- Google Sign-In Button on signup screen too -->
+      <button class="google-button" id="googleSignupBtn">
+        <img src="/images/google-icon.svg" alt="Google">
+        Sign Up with Google
+      </button>
+      <div class="toggle-link" id="toggleToLogin">Already have an account? Log In</div>
     </div>
+    <!-- Optional Back Link to Main Page (if user wants to browse without signing in) -->
+    <div class="back-link" id="backToMain">Back to Home</div>
+  </div>
 
-    <div id="user-info">Not signed in.</div>
-    <div id="premium-tools">
-      <h2>Premium Tools</h2>
-      <p>Welcome to the premium section!</p>
-      <!-- Add your premium tools here -->
-    </div>
+  <!-- Firebase and Custom JS -->
+  <script type="module">
+    // Import Firebase modules (using modular SDK v9+)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    <script type="module">
-      // Import Firebase SDK modules
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-      import {
-        getAuth,
-        signInWithEmailAndPassword,
-        createUserWithEmailAndPassword,
-        signOut,
-        sendPasswordResetEmail,
-        onAuthStateChanged
-      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-      import {
-        getDatabase,
-        ref,
-        set,
-        update,
-        get
-      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    // Firebase configuration - replace with your project's config
+    const firebaseConfig = {
+  apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+  authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+  projectId: "persuasive-net-456607-g8",
+  storageBucket: "persuasive-net-456607-g8.appspot.com",
+  messagingSenderId: "1019332250475",
+  appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+  databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+};
 
-      // Your Firebase configuration (update as needed)
-      const firebaseConfig = {
-        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-        projectId: "persuasive-net-456607-g8",
-        storageBucket: "persuasive-net-456607-g8.appspot.com",
-        messagingSenderId: "1019332250475",
-        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-      };
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const googleProvider = new GoogleAuthProvider();
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getDatabase(app);
+    // DOM Element references
+    const errorMessage = document.getElementById("errorMessage");
+    const loginForm = document.getElementById("loginForm");
+    const signupForm = document.getElementById("signupForm");
+    const toggleToSignUp = document.getElementById("toggleToSignUp");
+    const toggleToLogin = document.getElementById("toggleToLogin");
+    const backToMain = document.getElementById("backToMain");
 
-      // DOM Element References
-      const loginForm = document.getElementById("login-form");
-      const signupForm = document.getElementById("signup-form");
-      const toggleAuthBtn = document.getElementById("toggle-auth-btn");
-      const forgotPasswordBtn = document.getElementById("forgot-password-btn");
-      const loginBtn = document.getElementById("login-btn");
-      const signupBtn = document.getElementById("signup-btn");
-      const upgradePremiumBtn = document.getElementById("upgrade-premium");
-      const cancelMembershipBtn = document.getElementById("cancel-membership");
-      const signOutBtn = document.getElementById("sign-out");
-      const userInfo = document.getElementById("user-info");
-      const accountActions = document.querySelector(".account-actions");
-      const premiumTools = document.getElementById("premium-tools");
+    // Login elements
+    const loginBtn = document.getElementById("loginBtn");
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+    const googleLoginBtn = document.getElementById("googleLoginBtn");
 
-      // Toggle between Login and Signup forms
-      toggleAuthBtn.onclick = () => {
-        if (loginForm.classList.contains("hidden")) {
-          loginForm.classList.remove("hidden");
-          signupForm.classList.add("hidden");
-          toggleAuthBtn.textContent = "Switch to Sign Up";
-        } else {
-          loginForm.classList.add("hidden");
-          signupForm.classList.remove("hidden");
-          toggleAuthBtn.textContent = "Switch to Log In";
-        }
-      };
+    // Signup elements
+    const signupBtn = document.getElementById("signupBtn");
+    const signupEmail = document.getElementById("signupEmail");
+    const signupPassword = document.getElementById("signupPassword");
+    const googleSignupBtn = document.getElementById("googleSignupBtn");
 
-      // Login function
-      loginBtn.onclick = async () => {
-        const email = document.getElementById("login-email").value;
-        const password = document.getElementById("login-password").value;
-        try {
-          const result = await signInWithEmailAndPassword(auth, email, password);
-          await handleUser(result.user);
-        } catch (error) {
-          console.error("Login error:", error);
-          alert("Error logging in: " + error.message);
-        }
-      };
+    // Toggle login/signup view
+    toggleToSignUp.addEventListener("click", () => {
+      loginForm.classList.remove("active");
+      signupForm.classList.add("active");
+      clearError();
+    });
+    toggleToLogin.addEventListener("click", () => {
+      signupForm.classList.remove("active");
+      loginForm.classList.add("active");
+      clearError();
+    });
+    backToMain.addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
 
-      // Signup function
-      signupBtn.onclick = async () => {
-        const email = document.getElementById("signup-email").value;
-        const password = document.getElementById("signup-password").value;
-        if (!email || !password || password.length < 6) {
-          alert("Please enter a valid email and a password with at least 6 characters.");
-          return;
-        }
-        try {
-          const result = await createUserWithEmailAndPassword(auth, email, password);
-          await handleUser(result.user);
-        } catch (error) {
-          console.error("Signup error:", error);
-          alert("Error signing up: " + error.message);
-        }
-      };
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.style.display = "block";
+    }
+    function clearError() {
+      errorMessage.textContent = "";
+      errorMessage.style.display = "none";
+    }
 
-      // Password Reset function
-      forgotPasswordBtn.onclick = async () => {
-        const email = prompt("Enter your email to reset password:");
-        if (!email) return;
-        try {
-          await sendPasswordResetEmail(auth, email);
-          alert("Password reset email sent.");
-        } catch (error) {
-          console.error("Password reset error:", error);
-          alert("Error sending password reset email: " + error.message);
-        }
-      };
-
-      // Upgrade to Premium function
-      upgradePremiumBtn.onclick = async () => {
-        const user = auth.currentUser;
-        if (!user) {
-          alert("Please sign in first.");
-          return;
-        }
-        const userRef = ref(db, "users/" + user.uid);
-        try {
-          await update(userRef, { role: "premium" });
-          alert("Your account has been upgraded to premium!");
-          await handleUser(user);
-        } catch (error) {
-          console.error("Upgrade error:", error);
-          alert("Error upgrading your account: " + error.message);
-        }
-      };
-
-      // Cancel Membership function
-      // This example downgrades the user from "premium" to "basic."
-      // Alternatively, you might delete the user's account entirely or trigger a more complex cancellation process.
-      cancelMembershipBtn.onclick = async () => {
-        const user = auth.currentUser;
-        if (!user) {
-          alert("Please sign in first.");
-          return;
-        }
-        if (!confirm("Are you sure you want to cancel your membership? This will downgrade your account.")) {
-          return;
-        }
-        const userRef = ref(db, "users/" + user.uid);
-        try {
-          await update(userRef, { role: "basic" });
-          alert("Your membership has been cancelled.");
-          await handleUser(user);
-        } catch (error) {
-          console.error("Cancellation error:", error);
-          alert("Error cancelling membership: " + error.message);
-        }
-      };
-
-      // Sign Out function
-      signOutBtn.onclick = async () => {
-        try {
-          await signOut(auth);
-          userInfo.innerHTML = "Not signed in.";
-          accountActions.classList.add("hidden");
-          premiumTools.style.display = "none";
-        } catch (error) {
-          console.error("Sign out error:", error);
-          alert("Error signing out: " + error.message);
-        }
-      };
-
-      // Handle User Post-Authentication
-      async function handleUser(user) {
-        const userRef = ref(db, "users/" + user.uid);
-        try {
-          const snapshot = await get(userRef);
-          if (!snapshot.exists()) {
-            // Create new user record if it doesn't exist
-            await set(userRef, {
-              email: user.email,
-              role: "basic",
-              createdAt: Date.now()
-            });
-          }
-          // Retrieve user data and update interface
-          const updatedSnapshot = await get(userRef);
-          const data = updatedSnapshot.val();
-          userInfo.innerHTML = `<p>👤 Logged in as: <strong>${user.email}</strong></p>
-                                <p>🎖️ Role: <strong>${data.role}</strong></p>`;
-          // Show actions area when logged in
-          accountActions.classList.remove("hidden");
-          premiumTools.style.display = (data.role === "premium") ? "block" : "none";
-        } catch (error) {
-          console.error("Error handling user data:", error);
-          alert("Error retrieving account information.");
-        }
+    // Handle user data: create record if it does not exist.
+    async function handleUserData(user) {
+      const userRef = ref(db, "users/" + user.uid);
+      const snapshot = await get(userRef);
+      if (!snapshot.exists()) {
+        await set(userRef, {
+          email: user.email,
+          role: "basic", // default role is "basic". If upgraded later, it can be changed.
+          createdAt: Date.now()
+        });
       }
+    }
 
-      // Track authentication state changes
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          handleUser(user);
-        } else {
-          userInfo.innerHTML = "Not signed in.";
-          accountActions.classList.add("hidden");
-          premiumTools.style.display = "none";
-        }
-      });
-    </script>
-  </body>
+    // Redirect function after successful login/signup
+    function redirectToMain() {
+      window.location.href = "index.html";
+    }
+
+    // Login handler using email/password
+    loginBtn.addEventListener("click", async () => {
+      clearError();
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value.trim();
+      if (!email || !password) {
+        showError("Please enter your email and password.");
+        return;
+      }
+      try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        await handleUserData(result.user);
+        redirectToMain();
+      } catch (error) {
+        console.error("Login Error:", error);
+        showError(error.message);
+      }
+    });
+
+    // Signup handler using email/password
+    signupBtn.addEventListener("click", async () => {
+      clearError();
+      const email = signupEmail.value.trim();
+      const password = signupPassword.value.trim();
+      if (!email || password.length < 6) {
+        showError("Please enter a valid email and a password (minimum 6 characters).");
+        return;
+      }
+      try {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        await handleUserData(result.user);
+        redirectToMain();
+      } catch (error) {
+        console.error("Signup Error:", error);
+        showError(error.message);
+      }
+    });
+
+    // Google sign in handler (for both login and signup)
+    async function googleSignIn() {
+      clearError();
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        await handleUserData(result.user);
+        redirectToMain();
+      } catch (error) {
+        console.error("Google SignIn Error:", error);
+        showError(error.message);
+      }
+    }
+    googleLoginBtn.addEventListener("click", googleSignIn);
+    googleSignupBtn.addEventListener("click", googleSignIn);
+
+    // Automatically redirect if already signed in.
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        redirectToMain();
+      }
+    });
+  </script>
+</body>
 </html>
+
+
