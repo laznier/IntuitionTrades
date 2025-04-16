@@ -4,20 +4,13 @@
     <meta charset="UTF-8">
     <title>Intuition Trades | Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Minimal CSS for a YouTube-inspired UI -->
+    <!-- Minimal CSS for a YouTube-like UI -->
     <style>
-      /* Reset */
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: Arial, sans-serif;
-        background: #111;
-        color: #fff;
-      }
-      /* Header Styles */
+      /* Basic Reset */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; background: #111; color: #fff; }
+      
+      /* HEADER */
       header {
         position: relative;
         display: flex;
@@ -26,32 +19,90 @@
         background: #222;
         padding: 10px 20px;
       }
-      .site-title {
-        font-size: 20px;
+      .site-title { font-size: 20px; }
+      
+      /* Desktop Tools Dropdown */
+      nav.desktop-menu {
+        display: inline-block;
+        position: relative;
       }
+      nav.desktop-menu ul { list-style: none; }
+      nav.desktop-menu li.dropdown { position: relative; }
+      nav.desktop-menu a { color: #fff; padding: 8px 12px; text-decoration: none; display: inline-block; }
+      nav.desktop-menu .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: #333;
+        border: 1px solid #444;
+        border-radius: 4px;
+        min-width: 150px;
+        z-index: 1000;
+      }
+      nav.desktop-menu li.dropdown:hover .dropdown-menu {
+        display: block;
+      }
+      nav.desktop-menu .dropdown-menu li a {
+        display: block;
+        padding: 8px 12px;
+      }
+      
+      /* Mobile Hamburger Menu */
+      nav.mobile-menu {
+        display: none;
+      }
+      #mobileMenuToggle {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 24px;
+        cursor: pointer;
+      }
+      #mobileMenuList {
+        display: none;
+        list-style: none;
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        background: #333;
+        border: 1px solid #444;
+        border-radius: 4px;
+        z-index: 1000;
+      }
+      #mobileMenuList li a {
+        display: block;
+        padding: 8px 12px;
+        color: #fff;
+        text-decoration: none;
+      }
+      #mobileMenuList li a:hover {
+        background: #444;
+      }
+      /* Show mobile menu on small screens */
+      @media (max-width: 768px) {
+        nav.desktop-menu { display: none; }
+        nav.mobile-menu { display: block; }
+      }
+      
+      /* Header Right: User Display */
       .header-right {
         display: flex;
         align-items: center;
         gap: 10px;
       }
-      /* Default sign-in area */
       #userDisplay {
         cursor: pointer;
         font-size: 16px;
       }
-      /* Google sign in button using your official dark logo.
-         (Replace the src with your downloaded dark logo if desired.)
-      */
       #signInBtn {
         background: none;
         border: none;
         cursor: pointer;
       }
-      #signInBtn img {
-        width: 24px;
-        height: 24px;
-      }
-      /* Account Dropdown (shown when signed in) */
+      #signInBtn img { width: 24px; height: 24px; }
+      
+      /* Account Dropdown (after sign in) */
       #accountDropdown {
         position: absolute;
         top: 50px;
@@ -70,24 +121,15 @@
         background: none;
         border: none;
         color: #fff;
-        text-align: left;
+        text-decoration: none;
         cursor: pointer;
       }
       #accountDropdown a:hover,
-      #accountDropdown button:hover {
-        text-decoration: underline;
-      }
+      #accountDropdown button:hover { text-decoration: underline; }
       
-      /* Main Content */
-      main {
-        padding: 20px;
-      }
-      .tool-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        justify-content: center;
-      }
+      /* MAIN CONTENT */
+      main { padding: 20px; }
+      .tool-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
       .tool-card {
         background: #222;
         border: 1px solid #444;
@@ -96,12 +138,8 @@
         padding: 15px;
         position: relative;
       }
-      .tool-card h2 {
-        margin-bottom: 10px;
-      }
-      .tool-card p {
-        margin-bottom: 15px;
-      }
+      .tool-card h2 { margin-bottom: 10px; }
+      .tool-card p { margin-bottom: 15px; }
       .tool-button {
         background: #16a34a;
         color: #fff;
@@ -118,21 +156,21 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.75);
-        border-radius: 8px;
+        background: rgba(0,0,0,0.75);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         font-size: 18px;
         color: #fff;
+        border-radius: 8px;
         z-index: 2;
+        cursor: pointer;
       }
-      /* When premium tool is unlocked, hide the overlay */
-      .unlocked .premium-overlay {
-        display: none;
-      }
-      /* Footer */
+      /* Hide overlay when unlocked */
+      .unlocked .premium-overlay { display: none; }
+      
+      /* FOOTER */
       footer {
         text-align: center;
         padding: 10px;
@@ -142,60 +180,83 @@
     </style>
   </head>
   <body>
-    <!-- Header Section -->
+    <!-- HEADER -->
     <header>
       <div class="site-title">Intuition Trades</div>
+      
+      <!-- Desktop Menu: Tools Dropdown -->
+      <nav class="desktop-menu">
+        <ul>
+          <li class="dropdown">
+            <a href="#">Tools</a>
+            <ul class="dropdown-menu">
+              <li><a href="/top5">Top Stocks Scanner</a></li>
+              <li><a href="/stocks">Comprehensive Stock Analysis</a></li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      
+      <!-- Mobile Hamburger Menu -->
+      <nav class="mobile-menu">
+        <button id="mobileMenuToggle">&#9776;</button>
+        <ul id="mobileMenuList">
+          <li><a href="/top5">Top Stocks Scanner</a></li>
+          <li><a href="/stocks">Comprehensive Stock Analysis</a></li>
+        </ul>
+      </nav>
+      
+      <!-- Header Right: Sign In / User Area -->
       <div class="header-right">
-        <!-- If user is not signed in, display "Sign in" text and Google button -->
         <div id="userDisplay" onclick="location.href='login.html'">Sign in</div>
         <button id="signInBtn" onclick="location.href='login.html'">
-          <!-- Official dark Google logo – replace with your local file if desired -->
           <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Sign-In">
         </button>
       </div>
-      <!-- Account Dropdown (visible when signed in) -->
+      
+      <!-- Account Dropdown (for signed-in users) -->
       <div id="accountDropdown">
-        <a href="premium-tool.html">Premium Tool</a>
-        <a href="regular-tool.html">Basic Tool</a>
+        <a href="/top5">Premium Tool</a>
+        <a href="/stocks">Basic Tool</a>
         <button id="signOutBtn">Sign Out</button>
       </div>
     </header>
     
-    <!-- Main Content: Two Tool Cards -->
+    <!-- MAIN CONTENT: Tool Cards -->
     <main>
       <div class="tool-grid">
-        <!-- Premium Tool Card -->
+        <!-- Premium Tool Card (/top5) -->
         <div class="tool-card premium" id="premiumToolCard">
-          <h2>Premium Tool</h2>
-          <p>This tool is exclusive for premium users.</p>
-          <!-- The overlay is visible for basic users. For basic users, clicking it will redirect to upgrade (premium.html). -->
+          <h2>Top Stocks Scanner</h2>
+          <p>Auto evaluate thousands of tickers. (Premium)</p>
+          <!-- Premium overlay (clicking it for basic users redirects to upgrade) -->
           <div class="premium-overlay" id="premiumOverlay" onclick="location.href='premium.html'">
             Premium Locked
           </div>
-          <button class="tool-button" onclick="location.href='premium-tool.html'">Open Premium Tool</button>
+          <button class="tool-button" onclick="location.href='/top5'">Open Premium Tool</button>
         </div>
-        <!-- Basic Tool Card -->
+        <!-- Basic Tool Card (/stocks) -->
         <div class="tool-card basic">
-          <h2>Basic Tool</h2>
-          <p>This tool is available to all users.</p>
-          <button class="tool-button" onclick="location.href='regular-tool.html'">Open Basic Tool</button>
+          <h2>Comprehensive Stock Analysis</h2>
+          <p>Detailed analysis available for all users.</p>
+          <button class="tool-button" onclick="location.href='/stocks'">Open Basic Tool</button>
         </div>
       </div>
     </main>
     
-    <!-- Footer -->
+    <!-- FOOTER -->
     <footer>
       <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
     </footer>
     
-    <!-- Firebase & Authentication Script (using Firebase exclusively) -->
+    <!-- JAVASCRIPT SECTION -->
     <script type="module">
-      // Import Firebase modules (v9+ modular SDK)
+      // Import Firebase modules (modular SDK v9+)
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
       import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
       import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
       
-      // Firebase configuration (update with your own project settings)
+      // Firebase configuration (update with your actual project settings)
       const firebaseConfig = {
         apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
         authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -211,7 +272,7 @@
       const auth = getAuth(appFirebase);
       const db = getDatabase(appFirebase);
       
-      // Helper: Fetch user role from Firebase database (assumes role is stored at "users/{uid}/role")
+      // Function to get the user's role from Realtime Database (assumed to be stored at users/{uid}/role)
       async function getUserRole(uid) {
         try {
           const roleRef = ref(db, "users/" + uid + "/role");
@@ -223,35 +284,34 @@
         }
       }
       
-      // Update header UI based on auth state and role; also update the premium tool card overlay.
+      // Update header UI and tool cards based on auth state and role
       function updateHeader(user, role) {
         const userDisplay = document.getElementById("userDisplay");
         const accountDropdown = document.getElementById("accountDropdown");
         const premiumToolCard = document.getElementById("premiumToolCard");
         if (user) {
-          let displayName = user.displayName ? "Hello, " + user.displayName : (role === "premium" ? "Premium User" : "Basic User");
+          // Use display name if available; otherwise default text by role
+          let displayText = user.displayName ? "Hello, " + user.displayName 
+                                            : (role === "premium" ? "Premium User" : "Basic User");
           if (role === "premium") {
-            // For premium users, style in dark blue and bold; also unlock premium tool
-            userDisplay.textContent = displayName;
-            userDisplay.style.color = "#00008B";
+            userDisplay.textContent = displayText;
+            userDisplay.style.color = "#00008B";  // Dark blue for premium
             userDisplay.style.fontWeight = "bold";
-            premiumToolCard.classList.add("unlocked");
+            premiumToolCard.classList.add("unlocked"); // Remove premium overlay
           } else {
-            // For basic users, use light green
-            userDisplay.textContent = displayName;
-            userDisplay.style.color = "#90EE90";
+            userDisplay.textContent = displayText;
+            userDisplay.style.color = "#90EE90";  // Light green for basic
             userDisplay.style.fontWeight = "normal";
-            // Leave the premium overlay visible so clicking it will prompt upgrade.
-            premiumToolCard.classList.remove("unlocked");
+            premiumToolCard.classList.remove("unlocked"); // Keep premium overlay
           }
-          // Make user display toggle account dropdown on click.
+          // Make user display clickable to toggle the account dropdown
           userDisplay.onclick = () => {
             accountDropdown.style.display = (accountDropdown.style.display === "block") ? "none" : "block";
           };
-          // Remove redirect behavior on the sign in button.
+          // Disable the default redirect on sign-in button
           document.getElementById("signInBtn").onclick = () => {};
         } else {
-          // If not signed in, show default text and ensure redirection to login page.
+          // Not signed in: reset text and ensure redirection to login page
           userDisplay.textContent = "Sign in";
           userDisplay.style.color = "";
           userDisplay.style.fontWeight = "";
@@ -261,7 +321,7 @@
         }
       }
       
-      // Listen for authentication state changes.
+      // Listen for auth state changes
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           const role = await getUserRole(user.uid);
@@ -271,14 +331,27 @@
         }
       });
       
-      // Sign-out functionality.
+      // Sign out button event
       document.getElementById("signOutBtn").addEventListener("click", async () => {
         try {
           await signOut(auth);
           window.location.reload();
         } catch (error) {
-          console.error("Sign out error:", error);
+          console.error("Error signing out:", error);
         }
+      });
+      
+      // Mobile Hamburger Menu Toggle
+      document.getElementById("mobileMenuToggle").addEventListener("click", () => {
+        const mobileMenuList = document.getElementById("mobileMenuList");
+        mobileMenuList.style.display = (mobileMenuList.style.display === "block") ? "none" : "block";
+      });
+      
+      // Optional: Close mobile menu if a link is clicked
+      document.querySelectorAll("#mobileMenuList a").forEach(link => {
+        link.addEventListener("click", () => {
+          document.getElementById("mobileMenuList").style.display = "none";
+        });
       });
     </script>
   </body>
