@@ -34,6 +34,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="api/ticker.js"></script>
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <style>
 :root {
   /* Base typography and color variables */
@@ -1209,16 +1211,6 @@ footer {
       </svg>
     </button>
 
-<!-- Updated Header Sign-In Section -->
-<div class="header-right">
-  <!-- Minimal Sign-In Button with a "G" icon -->
-  <button id="minimalSignInButton" title="Sign in with Google">
-    <!-- Replace with your own icon source if desired -->
-    <img src="/images/google-icon.svg" alt="G" style="width:20px;height:20px;">
-  </button>
-  <!-- User status indicator (optional, can be updated after login) -->
-  <div id="userStatusIndicator">Not signed in</div>
-</div>
 
     </header>
  <!-- =======================
@@ -1329,13 +1321,20 @@ footer {
 </header>
 
 
-   
-       <!-- Sign-in container aligned to the right -->
-       <div class="header-right">
-        <div id="user-type-indicator">Not signed in</div>
-        <div id="google-signin-button"></div>
-      </div>
-    </header>
+   <!-- Replace your old sign-in container with the following: -->
+<div class="header-right">
+  <!-- This div will contain the Google dark button rendered by Google -->
+  <div id="googleSignInButton"></div>
+  <!-- (Keep your user status indicator if you want to show status later) -->
+  <div id="userStatusIndicator">Not signed in</div>
+  <!-- Account dropdown (if signed in) -->
+  <div id="accountDropdown">
+    <a href="premium.html">Upgrade Membership</a>
+    <a href="feedback.html">Send Feedback</a>
+    <button id="signOutBtn">Sign Out</button>
+  </div>
+</div>
+</header>
 
   <!-- Hero Section -->
   <header class="hero">
@@ -2425,6 +2424,37 @@ function updateUserStatus(statusText) {
 updateUserStatus("Basic User"); // or "Premium User"
 
 
+</script>
+<script>
+  // Run when the window loads
+  window.onload = () => {
+    // Initialize Google Identity Services with your client ID and a callback function.
+    google.accounts.id.initialize({
+      client_id: "YOUR_GOOGLE_CLIENT_ID",
+      callback: handleCredentialResponse
+    });
+
+    // Render Google’s dark, "filled_dark" button into the container.
+    google.accounts.id.renderButton(
+      document.getElementById("googleSignInButton"),
+      { theme: "filled_dark", size: "large" } // This renders the dark button provided by Google
+    );
+    
+    // Optionally, you could call google.accounts.id.prompt() here to show the One Tap prompt.
+  };
+
+  // Callback function to handle the credential response from Google.
+  function handleCredentialResponse(response) {
+    console.log("Encoded JWT ID token: " + response.credential);
+    // Here you can process the token:
+    // - Send the token to your backend
+    // - Use it to sign in to Firebase (if you integrate with Firebase)
+    // For now, update the user status indicator and, if on the login page, redirect to index.html.
+    document.getElementById("userStatusIndicator").textContent = "Signed in via Google";
+    
+    // Redirect to the main page (if desired):
+    window.location.href = "index.html";
+  }
 </script>
 
 </body>
