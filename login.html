@@ -1,273 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Login | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Include Google Identity Services script -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
-  <!-- Minimal CSS for a Modern, User-Friendly Login Page -->
-  <style>
-    body {
-      background: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .login-container {
-      background: #222;
-      padding: 20px;
-      border-radius: 8px;
-      width: 100%;
-      max-width: 360px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    }
-    .login-container h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .login-form, .signup-form {
-      display: none;
-      flex-direction: column;
-    }
-    .login-form.active, .signup-form.active {
-      display: flex;
-    }
-    .login-container input {
-      margin-bottom: 10px;
-      padding: 10px;
-      border: none;
-      border-radius: 4px;
-    }
-    .login-container button {
-      padding: 10px;
-      border: none;
-      border-radius: 4px;
-      background: #16a34a;
-      color: #fff;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    .toggle-link {
-      text-align: center;
-      color: #16a34a;
-      cursor: pointer;
-      text-decoration: underline;
-      margin-bottom: 10px;
-    }
-    .error-message {
-      color: #dc3545;
-      text-align: center;
-      margin-bottom: 10px;
-      display: none;
-    }
-    .back-link {
-      text-align: center;
-      color: #16a34a;
-      text-decoration: underline;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div class="login-container">
-    <h1>Welcome to Intuition Trades</h1>
-    <!-- Error message container -->
-    <div class="error-message" id="errorMessage"></div>
-    
-    <!-- Login Form (default shown) -->
-    <div class="login-form active" id="loginForm">
-      <input type="email" id="loginEmail" placeholder="Email" required>
-      <input type="password" id="loginPassword" placeholder="Password" required>
-      <button id="loginBtn">Log In</button>
-      <!-- Container where Google’s official dark button will be rendered -->
-      <div id="googleButtonContainer" style="margin-bottom:10px;"></div>
-      <div class="toggle-link" id="toggleToSignUp">Don't have an account? Sign Up</div>
-    </div>
-    
-    <!-- Signup Form -->
-    <div class="signup-form" id="signupForm">
-      <input type="email" id="signupEmail" placeholder="Email" required>
-      <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
-      <button id="signupBtn">Sign Up</button>
-      <!-- Container for Google official button on signup as well -->
-      <div id="googleButtonContainerSignup" style="margin-bottom:10px;"></div>
-      <div class="toggle-link" id="toggleToLogin">Already have an account? Log In</div>
-    </div>
-    
-    <!-- Optional Back Link to Main Page -->
-    <div class="back-link" id="backToMain">Back to Home</div>
-  </div>
-
-  <!-- Firebase and Custom JS -->
-  <script type="module">
-    // Import Firebase modules (v9+ modular SDK)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-    // Firebase configuration (update with your project's values)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const googleProvider = new GoogleAuthProvider();
-
-    // DOM Element references for login/signup
-    const errorMessage = document.getElementById("errorMessage");
-    const loginForm = document.getElementById("loginForm");
-    const signupForm = document.getElementById("signupForm");
-    const toggleToSignUp = document.getElementById("toggleToSignUp");
-    const toggleToLogin = document.getElementById("toggleToLogin");
-    const backToMain = document.getElementById("backToMain");
-
-    // Login elements
-    const loginBtn = document.getElementById("loginBtn");
-    const loginEmail = document.getElementById("loginEmail");
-    const loginPassword = document.getElementById("loginPassword");
-
-    // Signup elements
-    const signupBtn = document.getElementById("signupBtn");
-    const signupEmail = document.getElementById("signupEmail");
-    const signupPassword = document.getElementById("signupPassword");
-
-    // Toggle between login and signup views
-    toggleToSignUp.addEventListener("click", () => {
-      loginForm.classList.remove("active");
-      signupForm.classList.add("active");
-      clearError();
-    });
-    toggleToLogin.addEventListener("click", () => {
-      signupForm.classList.remove("active");
-      loginForm.classList.add("active");
-      clearError();
-    });
-    backToMain.addEventListener("click", () => {
-      window.location.href = "index.html";
-    });
-
-    function showError(msg) {
-      errorMessage.textContent = msg;
-      errorMessage.style.display = "block";
-    }
-    function clearError() {
-      errorMessage.textContent = "";
-      errorMessage.style.display = "none";
-    }
-
-    // Handle user data: create record if it does not exist.
-    async function handleUserData(user) {
-      const userRef = ref(db, "users/" + user.uid);
-      const snapshot = await get(userRef);
-      if (!snapshot.exists()) {
-        await set(userRef, {
-          email: user.email,
-          role: "basic", // default role is "basic"
-          createdAt: Date.now()
-        });
+  <head>
+    <meta charset="UTF-8">
+    <title>Intuition Trades | Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Minimal CSS to mimic a YouTube-like interface -->
+    <style>
+      /* Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
-
-    // Redirect to main page after successful login/signup.
-    function redirectToMain() {
-      window.location.href = "index.html";
-    }
-
-    // Email/Password Login
-    loginBtn.addEventListener("click", async () => {
-      clearError();
-      const email = loginEmail.value.trim();
-      const password = loginPassword.value.trim();
-      if (!email || !password) {
-        showError("Please enter your email and password.");
-        return;
+      body {
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #fff;
       }
-      try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await handleUserData(result.user);
-        redirectToMain();
-      } catch (error) {
-        console.error("Login Error:", error);
-        showError(error.message);
+      /* Header styling */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #222;
+        padding: 10px 20px;
+        position: relative;
       }
-    });
+      .site-title {
+        font-size: 20px;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      /* Sign in area defaults (when not signed in) */
+      #userDisplay {
+        cursor: pointer;
+        font-size: 16px;
+      }
+      /* Google sign-in button using the official dark logo */
+      #signInBtn {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
+      #signInBtn img {
+        width: 24px;
+        height: 24px;
+      }
+      /* Account dropdown (appears when user is signed in) */
+      #accountDropdown {
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        background: #222;
+        border: 1px solid #444;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+        z-index: 1000;
+      }
+      #accountDropdown a,
+      #accountDropdown button {
+        display: block;
+        margin-bottom: 5px;
+        background: none;
+        border: none;
+        color: #fff;
+        text-align: left;
+        cursor: pointer;
+      }
+      #accountDropdown a:hover,
+      #accountDropdown button:hover {
+        text-decoration: underline;
+      }
+      /* Main Content */
+      main {
+        padding: 20px;
+      }
+      .tool-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+      }
+      .tool-card {
+        background: #222;
+        border: 1px solid #444;
+        border-radius: 8px;
+        width: 300px;
+        padding: 15px;
+        position: relative;
+      }
+      .tool-card h2 {
+        margin-bottom: 10px;
+      }
+      .tool-card p {
+        margin-bottom: 15px;
+      }
+      .tool-button {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      /* Premium overlay styling */
+      .premium-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.75);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #fff;
+        z-index: 2;
+      }
+      /* When the premium tool is unlocked, hide its overlay */
+      .unlocked .premium-overlay {
+        display: none;
+      }
+      /* Footer styling */
+      footer {
+        text-align: center;
+        padding: 10px;
+        background: #222;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header Section -->
+    <header>
+      <div class="site-title">Intuition Trades</div>
+      <div class="header-right">
+        <!-- Sign in display (when not signed in, shows "Sign in") -->
+        <div id="userDisplay" onclick="location.href='login.html'">Sign in</div>
+        <!-- Google button provided here (clicking it goes to login) -->
+        <button id="signInBtn" onclick="location.href='login.html'">
+          <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google Sign-In">
+        </button>
+      </div>
+      <!-- Account Dropdown (displayed when user is signed in) -->
+      <div id="accountDropdown">
+        <a href="premium-tool.html">Premium Tool</a>
+        <a href="regular-tool.html">Regular Tool</a>
+        <button id="signOutBtn">Sign Out</button>
+      </div>
+    </header>
 
-    // Email/Password Signup
-    signupBtn.addEventListener("click", async () => {
-      clearError();
-      const email = signupEmail.value.trim();
-      const password = signupPassword.value.trim();
-      if (!email || password.length < 6) {
-        showError("Please enter a valid email and a password (min 6 characters).");
-        return;
-      }
-      try {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await handleUserData(result.user);
-        redirectToMain();
-      } catch (error) {
-        console.error("Signup Error:", error);
-        showError(error.message);
-      }
-    });
+    <!-- Main Content -->
+    <main>
+      <div class="tool-grid">
+        <!-- Premium Tool Card -->
+        <div class="tool-card premium" id="premiumTool">
+          <h2>Premium Tool</h2>
+          <p>This premium tool is exclusive for premium users.</p>
+          <!-- The overlay is visible if the user is not premium. -->
+          <div class="premium-overlay">Premium Locked</div>
+          <button class="tool-button" onclick="location.href='premium-tool.html'">Open Premium Tool</button>
+        </div>
+        <!-- Regular Tool Card -->
+        <div class="tool-card basic">
+          <h2>Regular Tool</h2>
+          <p>This tool is available for all users.</p>
+          <button class="tool-button" onclick="location.href='regular-tool.html'">Open Regular Tool</button>
+        </div>
+      </div>
+    </main>
 
-    // Google Sign-In via Firebase (if using popup) – but here we are going to render the official Google button!
-    async function googleSignInCallback(tokenResponse) {
-      console.log("Received token: ", tokenResponse.credential);
-      // Here you would typically send the token to your backend, then sign in to Firebase.
-      // For simplicity, we'll use Firebase's signInWithPopup fallback:
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        await handleUserData(result.user);
-        redirectToMain();
-      } catch (error) {
-        console.error("Google SignIn Error (popup fallback):", error);
-        showError(error.message);
-      }
-    }
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+    </footer>
 
-    // Render Google’s official dark button provided by Google Identity Services.
-    window.onload = () => {
-      // Initialize the Google Identity Services
-      google.accounts.id.initialize({
-        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",  // <-- Replace with your real client ID
-        callback: googleSignInCallback
+    <!-- Firebase and Authentication Script Section -->
+    <script type="module">
+      // Import Firebase modules using the modular SDK
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+      import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+      // Firebase configuration (update these values with your own project config)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.appspot.com",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+      };
+
+      // Initialize Firebase
+      const appFirebase = initializeApp(firebaseConfig);
+      const auth = getAuth(appFirebase);
+      const db = getDatabase(appFirebase);
+
+      // Helper function: Get the user's role from Firebase Database (assumes "users/{uid}/role")
+      async function getUserRole(uid) {
+        try {
+          const roleRef = ref(db, "users/" + uid + "/role");
+          const snapshot = await get(roleRef);
+          return snapshot.exists() ? snapshot.val() : "basic";
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          return "basic";
+        }
+      }
+
+      // Update header UI based on authentication state and user role.
+      function updateHeader(user, role) {
+        const userDisplay = document.getElementById("userDisplay");
+        const accountDropdown = document.getElementById("accountDropdown");
+        const premiumTool = document.getElementById("premiumTool");
+        if (user) {
+          // If user has a display name, greet them; otherwise show role info.
+          let displayText = user.displayName ? "Hello, " + user.displayName : (role === "premium" ? "Premium User" : "Basic User");
+          if (role === "premium") {
+            userDisplay.textContent = displayText;
+            userDisplay.style.color = "#00008B"; // dark blue for premium
+            userDisplay.style.fontWeight = "bold";
+            // Unlock premium tool by removing the overlay
+            premiumTool.classList.add("unlocked");
+          } else {
+            userDisplay.textContent = displayText;
+            userDisplay.style.color = "#90EE90"; // light green for basic user
+            userDisplay.style.fontWeight = "normal";
+            premiumTool.classList.remove("unlocked");
+          }
+          // Make the header user display clickable to toggle account dropdown.
+          userDisplay.onclick = () => {
+            accountDropdown.style.display = (accountDropdown.style.display === "block") ? "none" : "block";
+          };
+          // Also, remove the redirect behavior for sign-in buttons (since user is signed in)
+          document.getElementById("signInBtn").onclick = () => {};
+        } else {
+          // Not signed in: display default text and style; clicking redirects to login.
+          userDisplay.textContent = "Sign in";
+          userDisplay.style.color = "";
+          userDisplay.style.fontWeight = "";
+          userDisplay.onclick = () => { window.location.href = "login.html"; };
+          premiumTool.classList.remove("unlocked");
+          accountDropdown.style.display = "none";
+        }
+      }
+
+      // Listen for Firebase Authentication state changes.
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          const role = await getUserRole(user.uid);
+          updateHeader(user, role);
+        } else {
+          updateHeader(null);
+        }
       });
-      // Render Google's dark button (filled_dark)
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainer"),
-        { theme: "filled_dark", size: "large" }
-      );
-      // Also render on the signup form if needed:
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainerSignup"),
-        { theme: "filled_dark", size: "large" }
-      );
-    };
 
-    // Automatically redirect if already signed in.
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        redirectToMain();
-      }
-    });
-  </script>
-</body>
+      // Sign-out functionality.
+      document.getElementById("signOutBtn").addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+          window.location.reload();
+        } catch (error) {
+          console.error("Sign out error:", error);
+        }
+      });
+    </script>
+  </body>
 </html>
