@@ -1768,7 +1768,36 @@ footer {
   <footer>
     <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
   </footer>
-
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+  
+    // 1) Initialize
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getDatabase(app);
+  
+    // 2) Watch auth state
+    onAuthStateChanged(auth, async user => {
+      const indicator = document.getElementById("user-type-indicator");
+      if (!user) {
+        indicator.textContent = "Not signed in";
+        return;
+      }
+      // 3) Fetch their record
+      const snap = await get(ref(db, "users/" + user.uid));
+      if (!snap.exists()) {
+        indicator.textContent = "Unknown user";
+        return;
+      }
+      const { role, name } = snap.val();
+      indicator.textContent = 
+        role === "premium" ? "Premium User" :
+        role === "basic"   ? `Basic User (${name})` :
+                             `User (${name})`;
+    });
+  </script>
   <!-- ============================================================
        JavaScript Section
   ============================================================ -->
