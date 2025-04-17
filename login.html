@@ -110,6 +110,45 @@
       font-size: 1rem;
       cursor: pointer;
     }
+    /* Generic full‑page overlay */
+.overlay {
+  display: none;
+  position: fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background: rgba(0,0,0,0.8);
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;  /* above other UI */
+}
+.overlay.visible { display: flex; }
+
+.overlay-card {
+  background: #222;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+}
+.overlay-card h2 {
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+.overlay-card p {
+  margin-bottom: 1.5rem;
+}
+.overlay-actions button {
+  margin: 0 .5rem;
+  padding: .75rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#trialYesBtn { background: #16a34a; color: #fff; }
+#trialNoBtn  { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
+
   </style>
 </head>
 <body>
@@ -147,6 +186,18 @@
     </div>
   </div>
 
+    <!-- 24‑Hour Trial Offer Overlay (hidden by default) -->
+    <div id="trialOverlay" class="overlay">
+      <div class="overlay-card">
+        <h2>Start Your 24‑Hour Premium Trial?</h2>
+        <p>Get full access to premium tools for the next 24 hours.</p>
+        <div class="overlay-actions">
+          <button id="trialYesBtn">Yes, Start Trial</button>
+          <button id="trialNoBtn">No, Thanks</button>
+        </div>
+      </div>
+    </div>
+</body>  
   <!-- Firebase & App Logic -->
   <script type="module">
 import { getDatabase, ref, get, set, query, orderByChild, equalTo }
@@ -190,20 +241,22 @@ import {
       el.textContent = "";
       el.style.display = "none";
     }
-    async function handleUserData(user) {
-      const userRef = ref(db, "users/" + user.uid);
-      const snap = await get(userRef);
-      if (!snap.exists()) {
-        await set(userRef, {
-          email: user.email,
-          role: "basic",
-          createdAt: Date.now()
-        });
-      }
-    }
-    function redirectToMain() {
-      window.location.href = "index.html";
-    }
+    async function handleUserData(user, profile={}) {
+  const userRef = ref(db, "users/" + user.uid);
+  const snap = await get(userRef);
+  if (!snap.exists()) {
+    await set(userRef, {
+      email: user.email,
+      name: profile.name || user.displayName || "",
+      role:  "basic",
+      createdAt: Date.now()
+    });
+  }
+}
+
+// after successful signInWithCredential or signInWithEmailAndPassword:
+showTrialOverlay();
+
 
     // Toggle forms
     document.getElementById("toggleToSignUp").addEventListener("click", () => {
@@ -270,34 +323,33 @@ function decodeJwt(token) {
   return JSON.parse(atob(b64));
 }
 
-function googleSignInCallback(resp) {
-  // immediately hand off to an async function
-  (async () => {
-    pendingGoogleToken = resp.credential;
-    const payload = decodeJwt(resp.credential);
-    const email   = payload.email;
-    const name    = payload.name;
+async function googleSignInCallback(response) {
+  try {
+    // 1) Turn the GSI JWT into a Firebase credential
+    const cred = GoogleAuthProvider.credential(response.credential);
 
-    // query users where email == payload.email
-    const dbRef = ref(db, 'users');
-    const q     = query(dbRef, orderByChild('email'), equalTo(email));
-    const snap  = await get(q);
+    // 2) Sign in (or create) the Firebase user
+    const result = await signInWithCredential(auth, cred);
+    const user   = result.user;
 
-    if (snap.exists()) {
-      // existing user → sign them in and redirect
-      const cred   = GoogleAuthProvider.credential(pendingGoogleToken);
-      const result = await signInWithCredential(auth, cred);
-      await handleUserData(result.user);  // no‑op if already exists
-      redirectToMain();
-    } else {
-      // new user → show your signup card, prefilled
-      document.getElementById('cardName').textContent  = name;
-      document.getElementById('cardEmail').textContent = email;
-      document.getElementById('googleCardOverlay')
-              .classList.add('visible');
-    }
-  })().catch(err => showError(err.message));
+    // 3) Decode the JWT to grab their name/email
+    const payload = (() => {
+      let b64 = response.credential.split('.')[1]
+        .replace(/-/g,'+').replace(/_/g,'/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    })();
+
+    // 4) Write their record if new (with name/email/role)
+    await handleUserData(user, { name: payload.name, email: payload.email });
+
+    // 5) Redirect immediately
+    redirectToMain();
+  } catch (err) {
+    showError(err.message);
+  }
 }
+
 
 document.getElementById('confirmGoogleBtn')
   .addEventListener('click', async () => {
@@ -333,6 +385,24 @@ document.getElementById('confirmGoogleBtn')
         if (user) redirectToMain();
       });
     };
+    function showTrialOverlay() {
+  document.getElementById('trialOverlay')
+          .classList.add('visible');
+}
+
+// when they click “Yes”
+document.getElementById('trialYesBtn')
+  .addEventListener('click', () => {
+    // Optionally: write a 24h‐trial flag to your DB here
+    window.location.href = 'premium.html';
+  });
+
+// when they click “No”
+document.getElementById('trialNoBtn')
+  .addEventListener('click', () => {
+    window.location.href = 'index.html';
+  });
+
   </script>
 </body>
 </html>
