@@ -29,7 +29,6 @@
       width: 100%;
       max-width: 360px;
       box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      position: relative;
     }
     .login-container h1 {
       text-align: center;
@@ -161,10 +160,9 @@
 
   <!-- FIREBASE & APP LOGIC -->
   <script type="module">
+    // 1) IMPORTS
     import { initializeApp }
       from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getDatabase, ref, get, set }
-      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     import {
       getAuth,
       signInWithEmailAndPassword,
@@ -173,18 +171,13 @@
       GoogleAuthProvider,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    onAuthStateChanged(auth, user => {
-  if (!user) return;       // nobody signed in yet—do nothing
-  if (justSignedIn) {
-    // they *just* logged in via one of our flows → show trial
-    showTrialOverlay();
-    justSignedIn = false;  // reset for future auth events
-  } else {
-    // they were already signed in *before* page load → send them home
-    redirectToMain();
-  }
-});
-    // — 1) YOUR FIREBASE CONFIG —
+    import { getDatabase, ref, get, set }
+      from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    // 2) FLAG FOR NEW SIGN‑INS
+    let justSignedIn = false;
+
+    // 3) FIREBASE CONFIG & INITIALIZATION
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -199,23 +192,20 @@
     const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // — 2) HELPERS —
+    // 4) HELPERS
     function showError(msg) {
       const el = document.getElementById("errorMessage");
-      el.textContent = msg;
-      el.style.display = "block";
+      el.textContent = msg; el.style.display = "block";
     }
     function clearError() {
       const el = document.getElementById("errorMessage");
-      el.textContent = "";
-      el.style.display = "none";
+      el.textContent = ""; el.style.display = "none";
     }
     function redirectToMain() {
       window.location.href = "index.html";
     }
     function showTrialOverlay() {
-      document.getElementById("trialOverlay")
-              .classList.add("visible");
+      document.getElementById("trialOverlay").classList.add("visible");
     }
     function decodeJwt(token) {
       let b64 = token.split('.')[1]
@@ -229,20 +219,27 @@
       if (!snap.exists()) {
         await set(userRef, {
           email: user.email,
-          name:  profile.name  || user.displayName || "",
+          name:  profile.name || user.displayName || "",
           role:  "basic",
           createdAt: Date.now()
         });
       }
     }
-// 1) At the top of your module, before DOMContentLoaded:
-let justSignedIn = false;
 
-    // — 3) MAIN LOGIC ON DOM READY —
+    // 5) ON DOM READY
     window.addEventListener("DOMContentLoaded", () => {
+      // a) Redirect existing sessions
+      onAuthStateChanged(auth, user => {
+        if (!user) return;
+        if (justSignedIn) {
+          showTrialOverlay();
+          justSignedIn = false;
+        } else {
+          redirectToMain();
+        }
+      });
 
-
-      // Toggle between login & signup
+      // b) Toggle login/signup UI
       document.getElementById("toggleToSignUp")
         .addEventListener("click", () => {
           clearError();
@@ -256,9 +253,9 @@ let justSignedIn = false;
           document.getElementById("loginForm").classList.add("active");
         });
       document.getElementById("backToMain")
-        .addEventListener("click", () => redirectToMain());
+        .addEventListener("click", redirectToMain);
 
-      // Email/Password Sign In
+      // c) Email/password sign‑in
       document.getElementById("loginBtn")
         .addEventListener("click", async () => {
           clearError();
@@ -266,15 +263,15 @@ let justSignedIn = false;
           const pass  = document.getElementById("loginPassword").value.trim();
           if (!email || !pass) return showError("Enter email and password.");
           try {
+            justSignedIn = true;
             const res = await signInWithEmailAndPassword(auth, email, pass);
             await handleUserData(res.user);
-            showTrialOverlay();
           } catch (err) {
             showError(err.message);
           }
         });
 
-      // Email/Password Sign Up
+      // d) Email/password sign‑up
       document.getElementById("signupBtn")
         .addEventListener("click", async () => {
           clearError();
@@ -283,32 +280,33 @@ let justSignedIn = false;
           if (!email || pass.length < 6)
             return showError("Valid email + min 6‑char password.");
           try {
+            justSignedIn = true;
             const res = await createUserWithEmailAndPassword(auth, email, pass);
             await handleUserData(res.user);
-            showTrialOverlay();
           } catch (err) {
             showError(err.message);
           }
         });
 
-      // Trial buttons
+      // e) Trial overlay buttons
       document.getElementById("trialYesBtn")
         .addEventListener("click", () => window.location.href = "premium.html");
       document.getElementById("trialNoBtn")
         .addEventListener("click", () => window.location.href = "index.html");
 
-      // Google Sign‑In (no pop‑ups)
+      // f) Google Sign‑In (inline)
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
         callback: async resp => {
           try {
+            justSignedIn = true;
             const payload = decodeJwt(resp.credential);
             const cred    = GoogleAuthProvider.credential(resp.credential);
             const result  = await signInWithCredential(auth, cred);
             await handleUserData(result.user, {
-              name: payload.name, email: payload.email
+              name:  payload.name,
+              email: payload.email
             });
-            showTrialOverlay();
           } catch (err) {
             showError(err.message);
           }
