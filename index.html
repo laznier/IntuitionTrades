@@ -1352,7 +1352,8 @@ footer {
    
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
-  <div id="user-type-indicator">Not signed in</div>
+  <div id="user-type-indicator">Not signed in</div> 
+
 
   <!-- circular Google icon linking to login.html -->
   <a href="/login.html"
@@ -2486,5 +2487,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 </script>
+
+<script>
+  // this does two things:
+  // 1) on page load it wires up the overlays
+  // 2) if somewhere else you update #user-type-indicator later (e.g. in onAuthStateChanged),
+  //    just call `adjustPremiumUI()` again
+  function adjustPremiumUI() {
+    const indicator = document.getElementById("user-type-indicator");
+    const isPremium = indicator && indicator.textContent.includes("Premium");
+    document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+      .forEach(el => {
+        if (isPremium) {
+          // remove them entirely (tool cards become clickable)
+          el.remove();
+        } else {
+          // if not premium, clicking the overlay sends you to login
+          el.style.cursor = "pointer";
+          el.addEventListener("click", e => {
+            e.preventDefault();
+            window.location.href = "/login.html";
+          });
+        }
+      });
+  }
+  
+  // fire on first load
+  document.addEventListener("DOMContentLoaded", adjustPremiumUI);
+  </script>
+  
 </body>
 </html>
