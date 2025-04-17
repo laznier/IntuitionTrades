@@ -199,9 +199,18 @@
     </div>
 </body>  
   <!-- Firebase & App Logic -->
+  window.addEventListener("DOMContentLoaded", () => {
+    // initialize GSI and Firebase listener here…
+    // attach click‐handlers for trialYesBtn / trialNoBtn here…
+    // attach click‐handlers for loginBtn / signupBtn here…
+  });
+</script>  
   <script type="module">
-import { getDatabase, ref, get, set, query, orderByChild, equalTo }
-  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+import { initializeApp } 
+  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { 
+  getDatabase, ref, get, set, query, orderByChild, equalTo 
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -211,7 +220,15 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+function redirectToMain() {
+  window.location.href = "index.html";
+}
+
+function showTrialOverlay() {
+  document.getElementById("trialOverlay")
+          .classList.add("visible");
+}
 
     // Your Firebase config
     const firebaseConfig = {
@@ -303,16 +320,7 @@ showTrialOverlay();
       }
     });
 
-    // Google “card” flow
-    function decodeJwt(token) {
-  let base64Url = token.split('.')[1];
-  // convert URL‑safe to normal Base64
-  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-  // pad with '=' to multiple of 4
-  while (base64.length % 4) base64 += '=';
-  let json = atob(base64);
-  return JSON.parse(json);
-}
+
 // hold onto the raw GSI token
 let pendingGoogleToken = null;
 
@@ -343,8 +351,9 @@ async function googleSignInCallback(response) {
     // 4) Write their record if new (with name/email/role)
     await handleUserData(user, { name: payload.name, email: payload.email });
 
-    // 5) Redirect immediately
-    redirectToMain();
+    // AFTER handleUserData()…
+showTrialOverlay();
+
   } catch (err) {
     showError(err.message);
   }
