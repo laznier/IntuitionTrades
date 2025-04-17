@@ -1352,18 +1352,16 @@ footer {
    
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
-  <div id="user-type-indicator">Not signed in</div> 
+  <div id="user-type-indicator">Not signed in</div>
 
+  <!-- Sign‑In buttons -->
+  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
+  <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
 
-  <!-- circular Google icon linking to login.html -->
-  <a href="/login.html"
-     class="google-circle-btn"
-     aria-label="Sign in with Google"></a>
-
-  <!-- plain login button -->
-  <a href="/login.html"
-     class="login-btn">Sign in</a>
+  <!-- Sign‑Out button (hidden by default) -->
+  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
 </div>
+
 
     </header>
 
@@ -1794,22 +1792,41 @@ footer {
     
     // 3) Watch auth & update UI
     onAuthStateChanged(auth, async user => {
-      const indicator = document.getElementById("user-type-indicator");
-      if (!user) {
-        indicator.textContent = "Not signed in";
-        return;
-      }
-      const snap = await get(ref(db, "users/" + user.uid));
-      if (!snap.exists()) {
-        indicator.textContent = "Unknown user";
-        return;
-      }
-      const { role, name } = snap.val();
-      indicator.textContent =
-        role === "premium"
-          ? `Welcome ${name} (Premium)`
-          : `Welcome ${name} (Basic)`;
-    });
+  const indicator   = document.getElementById("user-type-indicator");
+  const googleBtn   = document.getElementById("googleSignInBtn");
+  const emailBtn    = document.getElementById("emailSignInBtn");
+  const signOutBtn  = document.getElementById("signOutBtn");
+
+  if (!user) {
+    // not signed in
+    indicator.textContent  = "Not signed in";
+    googleBtn.style.display   = "";      // show
+    emailBtn.style.display    = "";
+    signOutBtn.style.display  = "none";  // hide
+  } else {
+    // signed in → fetch name & role
+    const snap = await get(ref(db, "users/" + user.uid));
+    let role = "basic", name = "";
+    if (snap.exists()) ({ role, name } = snap.val());
+    indicator.textContent = role === "premium"
+      ? `Welcome ${name} (Premium)`
+      : `Welcome ${name} (Basic)`;
+
+    // toggle buttons
+    googleBtn.style.display   = "none";
+    emailBtn.style.display    = "none";
+    signOutBtn.style.display  = "";      // show
+  }
+  document.getElementById("signOutBtn")
+  .addEventListener("click", e => {
+    e.preventDefault();
+    auth.signOut().catch(err => console.error("Error signing out:", err));
+  });
+
+  // re–apply your premium/unlock logic now that indicator is updated
+  adjustPremiumUI();
+});
+
     </script>
     
 
