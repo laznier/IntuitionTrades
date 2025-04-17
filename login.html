@@ -17,6 +17,7 @@
       justify-content: center;
       min-height: 100vh;
     }
+
     /* CONTAINER */
     .login-container {
       background: #222;
@@ -36,6 +37,7 @@
       text-align: center;
       margin-bottom: 1rem;
     }
+
     /* FORMS */
     .login-form, .signup-form {
       display: none;
@@ -61,6 +63,7 @@
       cursor: pointer;
       margin-bottom: 1rem;
     }
+
     /* LINKS */
     .toggle-link, .back-link {
       text-align: center;
@@ -70,6 +73,7 @@
       font-size: 0.9rem;
     }
     .back-link { margin-top: 0.5rem; }
+
     /* TRIAL OVERLAY */
     .overlay {
       display: none;
@@ -128,7 +132,7 @@
     <!-- SIGNUP FORM -->
     <div class="signup-form" id="signupForm">
       <input type="text" id="signupName" placeholder="Full Name" required />
-      <input type="email"    id="signupEmail"    placeholder="Email" required />
+      <input type="email"    id="signupEmail"    placeholder="Email"                 required />
       <input type="password" id="signupPassword" placeholder="Password (min 6 chars)" required />
       <button id="signupBtn">Sign Up</button>
       <div id="googleButtonContainerSignup" style="margin-bottom:1rem;"></div>
@@ -152,189 +156,253 @@
     </div>
   </div>
 
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script type="module">
-    // Firebase imports
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      signInWithCredential,
-      GoogleAuthProvider,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import {
-      getDatabase,
-      ref,
-      get,
-      update
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-    // --- FIREBASE SETUP ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-    const app  = initializeApp(firebaseConfig);
-    const db   = getDatabase(app);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-
-    let justSignedIn = false;
-
-    // UI helpers
-    function showError(msg) {
-      const el = document.getElementById("errorMessage");
-      el.textContent = msg;
-      el.style.display = "block";
-    }
-    function clearError() {
-      document.getElementById("errorMessage").style.display = "none";
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signInWithCredential,
+        GoogleAuthProvider
+      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+      import {
+        getDatabase,
+        ref,
+        get,
+        set
+      } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     
-    }
-    function showTrialOverlay() {
-      document.getElementById("trialOverlay").classList.add("visible");
-    }
-    function decodeJwt(token) {
-      let b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-      while (b64.length % 4) b64 += '=';
-      return JSON.parse(atob(b64));
-    }
-
-    // CENTRALIZED auth listener + DB write
-    onAuthStateChanged(auth, async user => {
-      if (!user) return;
-      if (justSignedIn) {
-        try {
-          // ensure DB calls carry the new JWT
-          await user.getIdToken(true);
-
-          const userRef = ref(db, `users/${user.uid}`);
-          const snap    = await get(userRef);
-
-          if (!snap.exists()) {
-            // merge only these fields; never touches trialStart/trialUsed
-            await update(userRef, {
-              email:     user.email,
-              name:      user.displayName || "",
-              password:  "",              // or stored profile.password
-              role:      "basic",
-              createdAt: Date.now()
-            });
+      const firebaseConfig = {
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.appspot.com",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+      };
+    
+      const app  = initializeApp(firebaseConfig);
+      const db   = getDatabase(app);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+    
+      let justSignedIn = false;
+    
+      function showError(msg) {
+        const el = document.getElementById("errorMessage");
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+    
+      function clearError() {
+        document.getElementById("errorMessage").style.display = "none";
+      }
+    
+      function redirectToMain() {
+        window.location.href = "index.html";
+      }
+    
+      function showTrialOverlay() {
+        document.getElementById("trialOverlay").classList.add("visible");
+      }
+    
+      function decodeJwt(token) {
+        let b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+        while (b64.length % 4) b64 += '=';
+        return JSON.parse(atob(b64));
+      }
+    
+      async function handleUserData(user, profile = {}) {
+        const userRef = ref(db, "users/" + user.uid);
+        const snap    = await get(userRef);
+        if (!snap.exists()) {
+          await set(userRef, {
+            email: user.email,
+            name: profile.name || user.displayName || "",
+            password: profile.password || "", // only for manual signups
+            role: "basic",
+            createdAt: Date.now()
+          });
+        }
+      }
+    
+      // UI logic
+      window.addEventListener("DOMContentLoaded", () => {
+        // Manual login
+        document.getElementById("loginBtn").addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("loginEmail").value.trim();
+          const pass  = document.getElementById("loginPassword").value.trim();
+          if (!email || !pass) return showError("Enter email and password.");
+          try {
+            justSignedIn = true;
+            const res = await signInWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user);
+            redirectToMain();
+          } catch (err) {
+            showError(err.message);
           }
-
-          showTrialOverlay();
-        } catch (err) {
-          showError("Database error: " + err.message);
-        } finally {
-          justSignedIn = false;
-        }
-      } else {
-        // returning user (e.g. page reload)
-        redirectToMain();
-      }
-    });
-
-    // WHEN DOM READY
-    window.addEventListener("DOMContentLoaded", () => {
-      // — Manual Email Sign‑In —
-      document.getElementById("loginBtn").addEventListener("click", async () => {
-        clearError();
-        const email = document.getElementById("loginEmail").value.trim();
-        const pass  = document.getElementById("loginPassword").value.trim();
-        if (!email || !pass) return showError("Enter email and password.");
-        try {
-          justSignedIn = true;
-          await signInWithEmailAndPassword(auth, email, pass);
-        } catch (err) {
-          showError(err.message);
-        }
-      });
-
-      // — Manual Email Sign‑Up —
-      document.getElementById("signupBtn").addEventListener("click", async () => {
-        clearError();
-        const name  = document.getElementById("signupName").value.trim();
-        const email = document.getElementById("signupEmail").value.trim();
-        const pass  = document.getElementById("signupPassword").value.trim();
-        if (!name || !email || pass.length < 6)
-          return showError("Please fill all fields correctly.");
-        try {
-          justSignedIn = true;
-          await createUserWithEmailAndPassword(auth, email, pass);
-        } catch (err) {
-          showError(err.message);
-        }
-      });
-
-      // — Trial Overlay Controls —
-      document.getElementById("trialYesBtn").addEventListener("click", () => {
-        window.location.href = "premium.html";
-      });
-      document.getElementById("trialNoBtn").addEventListener("click", () => {
-        redirectToMain();
-      });
-
-      // — Toggle Login/Signup Forms —
-      document.getElementById("toggleToSignUp").addEventListener("click", () => {
-        clearError();
-        document.getElementById("loginForm").classList.remove("active");
-        document.getElementById("signupForm").classList.add("active");
-      });
-      document.getElementById("toggleToLogin").addEventListener("click", () => {
-        clearError();
-        document.getElementById("signupForm").classList.remove("active");
-        document.getElementById("loginForm").classList.add("active");
-      });
-
-      // — Back to Main —
-      document.getElementById("backToMain").addEventListener("click", redirectToMain);
-
-      // — Manual Google Sign‑In —
-      const initializeGoogle = () => {
-        google.accounts.id.initialize({
-          client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-          callback: handleGoogleCredential,
-          auto_select: false
         });
-        google.accounts.id.renderButton(
-          document.getElementById("googleButtonContainer"),
-          { theme: "filled_dark", size: "large" }
-        );
-        google.accounts.id.renderButton(
-          document.getElementById("googleButtonContainerSignup"),
-          { theme: "filled_dark", size: "large" }
-        );
-      };
-      const waitForGoogle = () => {
+    
+        // Manual signup
+        document.getElementById("signupBtn").addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("signupEmail").value.trim();
+          const pass  = document.getElementById("signupPassword").value.trim();
+          const name  = document.getElementById("signupName").value.trim();
+          if (!email || pass.length < 6 || name.length < 1)
+            return showError("Please fill all fields correctly.");
+          try {
+            justSignedIn = true;
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user, { name, password: pass });
+            redirectToMain();
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+    
+        // Trial overlay logic
+        document.getElementById("trialYesBtn").addEventListener("click", () => {
+          window.location.href = "premium.html";
+        });
+    
+        document.getElementById("trialNoBtn").addEventListener("click", () => {
+          window.location.href = "index.html";
+        });
+    
+        document.getElementById("toggleToSignUp").addEventListener("click", () => {
+          clearError();
+          document.getElementById("loginForm").classList.remove("active");
+          document.getElementById("signupForm").classList.add("active");
+        });
+    
+        document.getElementById("toggleToLogin").addEventListener("click", () => {
+          clearError();
+          document.getElementById("signupForm").classList.remove("active");
+          document.getElementById("loginForm").classList.add("active");
+        });
+    
+        document.getElementById("backToMain").addEventListener("click", redirectToMain);
+    
+        // Google sign-in (manual only, no auto-pull)
+        waitForGoogleSignIn(() => {
+          google.accounts.id.initialize({
+            client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+            callback: async resp => {
+              try {
+                justSignedIn = true;
+                const payload = decodeJwt(resp.credential);
+                const cred    = GoogleAuthProvider.credential(resp.credential);
+                const result  = await signInWithCredential(auth, cred);
+                await handleUserData(result.user, {
+                  name: payload.name,
+                  email: payload.email
+                });
+                redirectToMain();
+              } catch (err) {
+                showError(err.message);
+              }
+            }
+          });
+    
+          google.accounts.id.renderButton(
+            document.getElementById("googleButtonContainer"),
+            { theme: "filled_dark", size: "large" }
+          );
+          google.accounts.id.renderButton(
+            document.getElementById("googleButtonContainerSignup"),
+            { theme: "filled_dark", size: "large" }
+          );
+        });
+      });
+    
+      function waitForGoogleSignIn(callback) {
         if (window.google && google.accounts && google.accounts.id) {
-          initializeGoogle();
+          callback();
         } else {
-          setTimeout(waitForGoogle, 100);
+          setTimeout(() => waitForGoogleSignIn(callback), 100);
         }
-      };
-      waitForGoogle();
-    });
-
-    // — Google callback only on button click —
-    async function handleGoogleCredential(response) {
-      clearError();
-      try {
-        justSignedIn = true;
-        const payload = decodeJwt(response.credential);
-        const cred    = GoogleAuthProvider.credential(response.credential);
-        await signInWithCredential(auth, cred);
-      } catch (err) {
-        showError(err.message);
       }
-    }
-  </script>
+
+      // b) Toggle login/signup UI
+      document.getElementById("toggleToSignUp")
+        .addEventListener("click", () => {
+          clearError();
+          document.getElementById("loginForm").classList.remove("active");
+          document.getElementById("signupForm").classList.add("active");
+        });
+      document.getElementById("toggleToLogin")
+        .addEventListener("click", () => {
+          clearError();
+          document.getElementById("signupForm").classList.remove("active");
+          document.getElementById("loginForm").classList.add("active");
+        });
+      document.getElementById("backToMain")
+        .addEventListener("click", redirectToMain);
+
+      // c) Email/password sign‑in
+      document.getElementById("loginBtn")
+        .addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("loginEmail").value.trim();
+          const pass  = document.getElementById("loginPassword").value.trim();
+          if (!email || !pass) return showError("Enter email and password.");
+          try {
+            justSignedIn = true;
+            const res = await signInWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user);
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+
+      // d) Email/password sign‑up
+      document.getElementById("signupBtn")
+        .addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("signupEmail").value.trim();
+          const pass  = document.getElementById("signupPassword").value.trim();
+          if (!email || pass.length < 6)
+            return showError("Valid email + min 6‑char password.");
+          try {
+            justSignedIn = true;
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user);
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+
+      // e) Trial overlay buttons
+      document.getElementById("trialYesBtn")
+        .addEventListener("click", () => window.location.href = "premium.html");
+      document.getElementById("trialNoBtn")
+        .addEventListener("click", () => window.location.href = "index.html");
+
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainer"),
+        { theme: "filled_dark", size: "large" }
+      );
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainerSignup"),
+        { theme: "filled_dark", size: "large" }
+      );
+    ;
+    // Wait until google.accounts is available
+function waitForGoogleSignIn(callback) {
+  if (window.google && google.accounts && google.accounts.id) {
+    callback();
+  } else {
+    setTimeout(() => waitForGoogleSignIn(callback), 100);
+  }
+}
+
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
 </body>
 </html>
