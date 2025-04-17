@@ -156,6 +156,80 @@
     </div>
   </div>
 
+
+      // b) Toggle login/signup UI
+      document.getElementById("toggleToSignUp")
+        .addEventListener("click", () => {
+          clearError();
+          document.getElementById("loginForm").classList.remove("active");
+          document.getElementById("signupForm").classList.add("active");
+        });
+      document.getElementById("toggleToLogin")
+        .addEventListener("click", () => {
+          clearError();
+          document.getElementById("signupForm").classList.remove("active");
+          document.getElementById("loginForm").classList.add("active");
+        });
+      document.getElementById("backToMain")
+        .addEventListener("click", redirectToMain);
+
+      // c) Email/password sign‑in
+      document.getElementById("loginBtn")
+        .addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("loginEmail").value.trim();
+          const pass  = document.getElementById("loginPassword").value.trim();
+          if (!email || !pass) return showError("Enter email and password.");
+          try {
+            justSignedIn = true;
+            const res = await signInWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user);
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+
+      // d) Email/password sign‑up
+      document.getElementById("signupBtn")
+        .addEventListener("click", async () => {
+          clearError();
+          const email = document.getElementById("signupEmail").value.trim();
+          const pass  = document.getElementById("signupPassword").value.trim();
+          if (!email || pass.length < 6)
+            return showError("Valid email + min 6‑char password.");
+          try {
+            justSignedIn = true;
+            const res = await createUserWithEmailAndPassword(auth, email, pass);
+            await handleUserData(res.user);
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+
+      // e) Trial overlay buttons
+      document.getElementById("trialYesBtn")
+        .addEventListener("click", () => window.location.href = "premium.html");
+      document.getElementById("trialNoBtn")
+        .addEventListener("click", () => window.location.href = "index.html");
+
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainer"),
+        { theme: "filled_dark", size: "large" }
+      );
+      google.accounts.id.renderButton(
+        document.getElementById("googleButtonContainerSignup"),
+        { theme: "filled_dark", size: "large" }
+      );
+    ;
+    // Wait until google.accounts is available
+function waitForGoogleSignIn(callback) {
+  if (window.google && google.accounts && google.accounts.id) {
+    callback();
+  } else {
+    setTimeout(() => waitForGoogleSignIn(callback), 100);
+  }
+}
+
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="module">
@@ -327,80 +401,6 @@
           setTimeout(() => waitForGoogleSignIn(callback), 100);
         }
       }
-
-      // b) Toggle login/signup UI
-      document.getElementById("toggleToSignUp")
-        .addEventListener("click", () => {
-          clearError();
-          document.getElementById("loginForm").classList.remove("active");
-          document.getElementById("signupForm").classList.add("active");
-        });
-      document.getElementById("toggleToLogin")
-        .addEventListener("click", () => {
-          clearError();
-          document.getElementById("signupForm").classList.remove("active");
-          document.getElementById("loginForm").classList.add("active");
-        });
-      document.getElementById("backToMain")
-        .addEventListener("click", redirectToMain);
-
-      // c) Email/password sign‑in
-      document.getElementById("loginBtn")
-        .addEventListener("click", async () => {
-          clearError();
-          const email = document.getElementById("loginEmail").value.trim();
-          const pass  = document.getElementById("loginPassword").value.trim();
-          if (!email || !pass) return showError("Enter email and password.");
-          try {
-            justSignedIn = true;
-            const res = await signInWithEmailAndPassword(auth, email, pass);
-            await handleUserData(res.user);
-          } catch (err) {
-            showError(err.message);
-          }
-        });
-
-      // d) Email/password sign‑up
-      document.getElementById("signupBtn")
-        .addEventListener("click", async () => {
-          clearError();
-          const email = document.getElementById("signupEmail").value.trim();
-          const pass  = document.getElementById("signupPassword").value.trim();
-          if (!email || pass.length < 6)
-            return showError("Valid email + min 6‑char password.");
-          try {
-            justSignedIn = true;
-            const res = await createUserWithEmailAndPassword(auth, email, pass);
-            await handleUserData(res.user);
-          } catch (err) {
-            showError(err.message);
-          }
-        });
-
-      // e) Trial overlay buttons
-      document.getElementById("trialYesBtn")
-        .addEventListener("click", () => window.location.href = "premium.html");
-      document.getElementById("trialNoBtn")
-        .addEventListener("click", () => window.location.href = "index.html");
-
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainer"),
-        { theme: "filled_dark", size: "large" }
-      );
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainerSignup"),
-        { theme: "filled_dark", size: "large" }
-      );
-    ;
-    // Wait until google.accounts is available
-function waitForGoogleSignIn(callback) {
-  if (window.google && google.accounts && google.accounts.id) {
-    callback();
-  } else {
-    setTimeout(() => waitForGoogleSignIn(callback), 100);
-  }
-}
-
     </script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
