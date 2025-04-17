@@ -235,6 +235,34 @@
           redirectToMain();
         }
       });
+      waitForGoogleSignIn(() => {
+  google.accounts.id.initialize({
+    client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
+    callback: async resp => {
+      try {
+        justSignedIn = true;
+        const payload = decodeJwt(resp.credential);
+        const cred    = GoogleAuthProvider.credential(resp.credential);
+        const result  = await signInWithCredential(auth, cred);
+        await handleUserData(result.user, {
+          name:  payload.name,
+          email: payload.email
+        });
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+  });
+
+  google.accounts.id.renderButton(
+    document.getElementById("googleButtonContainer"),
+    { theme: "filled_dark", size: "large" }
+  );
+  google.accounts.id.renderButton(
+    document.getElementById("googleButtonContainerSignup"),
+    { theme: "filled_dark", size: "large" }
+  );
+});
 
       // b) Toggle login/signup UI
       document.getElementById("toggleToSignUp")
@@ -291,24 +319,6 @@
       document.getElementById("trialNoBtn")
         .addEventListener("click", () => window.location.href = "index.html");
 
-      // f) Google Sign‑In (inline)
-      google.accounts.id.initialize({
-        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-        callback: async resp => {
-          try {
-            justSignedIn = true;
-            const payload = decodeJwt(resp.credential);
-            const cred    = GoogleAuthProvider.credential(resp.credential);
-            const result  = await signInWithCredential(auth, cred);
-            await handleUserData(result.user, {
-              name:  payload.name,
-              email: payload.email
-            });
-          } catch (err) {
-            showError(err.message);
-          }
-        }
-      });
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainer"),
         { theme: "filled_dark", size: "large" }
@@ -318,6 +328,15 @@
         { theme: "filled_dark", size: "large" }
       );
     });
+    // Wait until google.accounts is available
+function waitForGoogleSignIn(callback) {
+  if (window.google && google.accounts && google.accounts.id) {
+    callback();
+  } else {
+    setTimeout(() => waitForGoogleSignIn(callback), 100);
+  }
+}
+
   </script>
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
