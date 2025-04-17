@@ -5,26 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Login | Intuition Trades</title>
 
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script>
-    window.onload = () => {
-      // after *everything* (including GSI) is loaded...
-      google.accounts.id.initialize({
-        client_id: "YOUR_CLIENT_ID.apps.googleusercontent.com",
-        callback: yourCallback
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainer"),
-        { theme: "filled_dark", size: "large" }
-      );
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainerSignup"),
-        { theme: "filled_dark", size: "large" }
-      );
-    };
-  </script>
-  
+
+
   <style>
     /* RESET & BASE */
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -174,29 +156,6 @@
       </div>
     </div>
   </div>
-  <script
-  src="https://accounts.google.com/gsi/client"
-  async
-  defer
-  onload="initGSI()"
-></script>
-
-<script>
-  function initGSI() {
-    google.accounts.id.initialize({
-      client_id: "YOUR_CLIENT_ID.apps.googleusercontent.com",
-      callback: yourCallback
-    });
-    google.accounts.id.renderButton(
-      document.getElementById("googleButtonContainer"),
-      { theme: "filled_dark", size: "large" }
-    );
-    google.accounts.id.renderButton(
-      document.getElementById("googleButtonContainerSignup"),
-      { theme: "filled_dark", size: "large" }
-    );
-  }
-</script>
 
   <!-- FIREBASE & APP LOGIC -->
   <script type="module">
