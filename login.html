@@ -173,7 +173,17 @@
       GoogleAuthProvider,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-
+    onAuthStateChanged(auth, user => {
+  if (!user) return;       // nobody signed in yet—do nothing
+  if (justSignedIn) {
+    // they *just* logged in via one of our flows → show trial
+    showTrialOverlay();
+    justSignedIn = false;  // reset for future auth events
+  } else {
+    // they were already signed in *before* page load → send them home
+    redirectToMain();
+  }
+});
     // — 1) YOUR FIREBASE CONFIG —
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -225,13 +235,12 @@
         });
       }
     }
+// 1) At the top of your module, before DOMContentLoaded:
+let justSignedIn = false;
 
     // — 3) MAIN LOGIC ON DOM READY —
     window.addEventListener("DOMContentLoaded", () => {
-      // If already signed in, skip login entirely:
-      onAuthStateChanged(auth, user => {
-        if (user) redirectToMain();
-      });
+
 
       // Toggle between login & signup
       document.getElementById("toggleToSignUp")
