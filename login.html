@@ -198,6 +198,7 @@
       </div>
     </div>
 </body>  
+<script>
   <!-- Firebase & App Logic -->
   window.addEventListener("DOMContentLoaded", () => {
     // initialize GSI and Firebase listener here…
@@ -208,9 +209,8 @@
   <script type="module">
 import { initializeApp } 
   from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { 
-  getDatabase, ref, get, set, query, orderByChild, equalTo 
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+import { getDatabase, ref, get, set, query, orderByChild, equalTo } 
+  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -220,15 +220,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-
-function redirectToMain() {
-  window.location.href = "index.html";
-}
-
-function showTrialOverlay() {
-  document.getElementById("trialOverlay")
-          .classList.add("visible");
-}
+</script>
+<script>
 
     // Your Firebase config
     const firebaseConfig = {
@@ -270,7 +263,14 @@ function showTrialOverlay() {
     });
   }
 }
+function redirectToMain() {
+  window.location.href = "index.html";
+}
 
+function showTrialOverlay() {
+  document.getElementById("trialOverlay")
+          .classList.add("visible");
+}
 // after successful signInWithCredential or signInWithEmailAndPassword:
 showTrialOverlay();
 
@@ -323,6 +323,11 @@ showTrialOverlay();
 
 // hold onto the raw GSI token
 let pendingGoogleToken = null;
+async function googleSignInCallback(resp) {
+  pendingGoogleToken = resp.credential;   // ← this line is vital
+  // … your signInWithCredential, handleUserData, then…
+  showTrialOverlay();
+}
 
 function decodeJwt(token) {
   let b64 = token.split('.')[1]
