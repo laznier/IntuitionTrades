@@ -149,15 +149,17 @@
 
   <!-- Firebase & App Logic -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      signInWithCredential,
-      GoogleAuthProvider,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getDatabase, ref, get, set, query, orderByChild, equalTo }
+  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithCredential,
+  GoogleAuthProvider,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     // Your Firebase config
@@ -258,28 +260,59 @@
   let json = atob(base64);
   return JSON.parse(json);
 }
-    function googleSignInCallback(resp) {
-      pendingGoogleToken = resp.credential;
-      const user = decodeJwt(resp.credential);
-      document.getElementById("cardName").textContent  = user.name;
-      document.getElementById("cardEmail").textContent = user.email;
-      document.getElementById('googleCardOverlay')
-        .classList.add('visible');
-        document.getElementById('googleCardOverlay')
-        .classList.remove('visible');
+// hold onto the raw GSI token
+let pendingGoogleToken = null;
 
+function decodeJwt(token) {
+  let b64 = token.split('.')[1]
+    .replace(/-/g,'+').replace(/_/g,'/');
+  while (b64.length % 4) b64 += '=';
+  return JSON.parse(atob(b64));
+}
+
+function googleSignInCallback(resp) {
+  // immediately hand off to an async function
+  (async () => {
+    pendingGoogleToken = resp.credential;
+    const payload = decodeJwt(resp.credential);
+    const email   = payload.email;
+    const name    = payload.name;
+
+    // query users where email == payload.email
+    const dbRef = ref(db, 'users');
+    const q     = query(dbRef, orderByChild('email'), equalTo(email));
+    const snap  = await get(q);
+
+    if (snap.exists()) {
+      // existing user → sign them in and redirect
+      const cred   = GoogleAuthProvider.credential(pendingGoogleToken);
+      const result = await signInWithCredential(auth, cred);
+      await handleUserData(result.user);  // no‑op if already exists
+      redirectToMain();
+    } else {
+      // new user → show your signup card, prefilled
+      document.getElementById('cardName').textContent  = name;
+      document.getElementById('cardEmail').textContent = email;
+      document.getElementById('googleCardOverlay')
+              .classList.add('visible');
     }
-    document.getElementById("confirmGoogleBtn").addEventListener("click", async () => {
-      try {
-        const cred = GoogleAuthProvider.credential(pendingGoogleToken);
-        const res  = await signInWithCredential(auth, cred);
-        await handleUserData(res.user);
-        document.getElementById("googleCardOverlay").style.display = "none";
-        setTimeout(redirectToMain, 2000);
-      } catch (err) {
-        showError(err.message);
-      }
-    });
+  })().catch(err => showError(err.message));
+}
+
+document.getElementById('confirmGoogleBtn')
+  .addEventListener('click', async () => {
+    try {
+      const cred = GoogleAuthProvider.credential(pendingGoogleToken);
+      const res  = await signInWithCredential(auth, cred);
+      await handleUserData(res.user);
+      document.getElementById('googleCardOverlay')
+              .classList.remove('visible');
+      setTimeout(redirectToMain, 2000);
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
 
     // Initialize Google button and Firebase auth listener
     window.onload = () => {
