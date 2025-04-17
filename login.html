@@ -198,29 +198,22 @@
       </div>
     </div>
 </body>  
-<script>
-  <!-- Firebase & App Logic -->
-  window.addEventListener("DOMContentLoaded", () => {
-    // initialize GSI and Firebase listener here…
-    // attach click‐handlers for trialYesBtn / trialNoBtn here…
-    // attach click‐handlers for loginBtn / signupBtn here…
-  });
-</script>  
-  <script type="module">
-import { initializeApp } 
-  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getDatabase, ref, get, set, query, orderByChild, equalTo } 
-  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInWithCredential,
-  GoogleAuthProvider,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+<script type="module">
+  import { initializeApp } 
+    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getDatabase, ref, get, set, query, orderByChild, equalTo } 
+    from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+  import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithCredential,
+    GoogleAuthProvider,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+  
+  </script>
 
-</script>
 <script>
 
     // Your Firebase config
@@ -417,6 +410,15 @@ document.getElementById('trialNoBtn')
     window.location.href = 'index.html';
   });
 
+  
+  <!-- Firebase & App Logic -->
+  window.addEventListener("DOMContentLoaded", () => {
+    // initialize GSI and Firebase listener here…
+    // attach click‐handlers for trialYesBtn / trialNoBtn here…
+    // attach click‐handlers for loginBtn / signupBtn here…
+  });
+
+  
   </script>
 </body>
 </html>
