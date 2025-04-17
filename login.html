@@ -1,36 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Login | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- Include Google Identity Services script -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
-  <!-- Minimal CSS for a Modern, User-Friendly Login Page -->
   <style>
+    /* Base reset */
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: #111;
       color: #fff;
       font-family: Arial, sans-serif;
-      margin: 0;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       min-height: 100vh;
     }
     .login-container {
       background: #222;
-      padding: 20px;
+      padding: 2rem;
       border-radius: 8px;
       width: 100%;
       max-width: 360px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      position: relative;
     }
     .login-container h1 {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 1.5rem;
+    }
+    .error-message {
+      display: none;
+      color: #dc3545;
+      text-align: center;
+      margin-bottom: 1rem;
     }
     .login-form, .signup-form {
       display: none;
@@ -40,38 +45,69 @@
       display: flex;
     }
     .login-container input {
-      margin-bottom: 10px;
-      padding: 10px;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
       border: none;
       border-radius: 4px;
+      font-size: 1rem;
     }
     .login-container button {
-      padding: 10px;
+      padding: 0.75rem;
       border: none;
       border-radius: 4px;
       background: #16a34a;
       color: #fff;
+      font-size: 1rem;
       cursor: pointer;
-      margin-bottom: 10px;
+      margin-bottom: 1rem;
     }
-    .toggle-link {
+    .toggle-link, .back-link {
       text-align: center;
       color: #16a34a;
       cursor: pointer;
       text-decoration: underline;
-      margin-bottom: 10px;
-    }
-    .error-message {
-      color: #dc3545;
-      text-align: center;
-      margin-bottom: 10px;
-      display: none;
+      font-size: 0.9rem;
     }
     .back-link {
+      margin-top: 0.5rem;
+    }
+    /* Google Card Overlay */
+    #googleCardOverlay {
+  display: none;            /* hidden by default */
+  position: fixed;
+  top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.75);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+#googleCardOverlay.visible {
+  display: flex;
+}
+
+    .google-card {
+      background: #222;
+      padding: 2rem;
+      border-radius: 8px;
       text-align: center;
-      color: #16a34a;
-      text-decoration: underline;
-      margin-top: 10px;
+      max-width: 320px;
+      width: 90%;
+    }
+    .google-card h2 {
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+    }
+    .google-card p {
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+    }
+    .google-card button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 1rem;
       cursor: pointer;
     }
   </style>
@@ -79,41 +115,52 @@
 <body>
   <div class="login-container">
     <h1>Welcome to Intuition Trades</h1>
-    <!-- Error message container -->
     <div class="error-message" id="errorMessage"></div>
-    
-    <!-- Login Form (default shown) -->
+
+    <!-- Login Form -->
     <div class="login-form active" id="loginForm">
-      <input type="email" id="loginEmail" placeholder="Email" required>
-      <input type="password" id="loginPassword" placeholder="Password" required>
-      <button id="loginBtn">Log In</button>
-      <!-- Container where Google’s official dark button will be rendered -->
-      <div id="googleButtonContainer" style="margin-bottom:10px;"></div>
+      <input type="email" id="loginEmail" placeholder="Email" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button id="loginBtn">Sign In</button>
+      <div id="googleButtonContainer" style="margin-bottom:1rem;"></div>
       <div class="toggle-link" id="toggleToSignUp">Don't have an account? Sign Up</div>
     </div>
-    
+
     <!-- Signup Form -->
     <div class="signup-form" id="signupForm">
-      <input type="email" id="signupEmail" placeholder="Email" required>
-      <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required>
+      <input type="email" id="signupEmail" placeholder="Email" required />
+      <input type="password" id="signupPassword" placeholder="Password (min 6 chars)" required />
       <button id="signupBtn">Sign Up</button>
-      <!-- Container for Google official button on signup as well -->
-      <div id="googleButtonContainerSignup" style="margin-bottom:10px;"></div>
-      <div class="toggle-link" id="toggleToLogin">Already have an account? Log In</div>
+      <div id="googleButtonContainerSignup" style="margin-bottom:1rem;"></div>
+      <div class="toggle-link" id="toggleToLogin">Already have an account? Sign In</div>
     </div>
-    
-    <!-- Optional Back Link to Main Page -->
+
     <div class="back-link" id="backToMain">Back to Home</div>
   </div>
 
-  <!-- Firebase and Custom JS -->
-  <script type="module">
-    // Import Firebase modules (v9+ modular SDK)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+  <!-- Google Account Confirmation Card -->
+  <div id="googleCardOverlay" style="display:none;">
+    <div class="google-card">
+      <h2>Welcome, <span id="cardName"></span>!</h2>
+      <p>Email: <span id="cardEmail"></span></p>
+      <button id="confirmGoogleBtn">Continue</button>
+    </div>
+  </div>
 
-    // Firebase configuration (update with your project's values)
+  <!-- Firebase & App Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signInWithCredential,
+      GoogleAuthProvider,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    // Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -125,149 +172,134 @@
     };
 
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
+    const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getDatabase(app);
-    const googleProvider = new GoogleAuthProvider();
+    const db   = getDatabase(app);
+    const provider = new GoogleAuthProvider();
 
-    // DOM Element references for login/signup
-    const errorMessage = document.getElementById("errorMessage");
-    const loginForm = document.getElementById("loginForm");
-    const signupForm = document.getElementById("signupForm");
-    const toggleToSignUp = document.getElementById("toggleToSignUp");
-    const toggleToLogin = document.getElementById("toggleToLogin");
-    const backToMain = document.getElementById("backToMain");
-
-    // Login elements
-    const loginBtn = document.getElementById("loginBtn");
-    const loginEmail = document.getElementById("loginEmail");
-    const loginPassword = document.getElementById("loginPassword");
-
-    // Signup elements
-    const signupBtn = document.getElementById("signupBtn");
-    const signupEmail = document.getElementById("signupEmail");
-    const signupPassword = document.getElementById("signupPassword");
-
-    // Toggle between login and signup views
-    toggleToSignUp.addEventListener("click", () => {
-      loginForm.classList.remove("active");
-      signupForm.classList.add("active");
-      clearError();
-    });
-    toggleToLogin.addEventListener("click", () => {
-      signupForm.classList.remove("active");
-      loginForm.classList.add("active");
-      clearError();
-    });
-    backToMain.addEventListener("click", () => {
-      window.location.href = "index.html";
-    });
-
+    // Helpers
     function showError(msg) {
-      errorMessage.textContent = msg;
-      errorMessage.style.display = "block";
+      const el = document.getElementById("errorMessage");
+      el.textContent = msg;
+      el.style.display = "block";
     }
     function clearError() {
-      errorMessage.textContent = "";
-      errorMessage.style.display = "none";
+      const el = document.getElementById("errorMessage");
+      el.textContent = "";
+      el.style.display = "none";
     }
-
-    // Handle user data: create record if it does not exist.
     async function handleUserData(user) {
       const userRef = ref(db, "users/" + user.uid);
-      const snapshot = await get(userRef);
-      if (!snapshot.exists()) {
+      const snap = await get(userRef);
+      if (!snap.exists()) {
         await set(userRef, {
           email: user.email,
-          role: "basic", // default role is "basic"
+          role: "basic",
           createdAt: Date.now()
         });
       }
     }
-
-    // Redirect to main page after successful login/signup.
     function redirectToMain() {
       window.location.href = "index.html";
     }
 
-    // Email/Password Login
-    loginBtn.addEventListener("click", async () => {
+    // Toggle forms
+    document.getElementById("toggleToSignUp").addEventListener("click", () => {
       clearError();
-      const email = loginEmail.value.trim();
-      const password = loginPassword.value.trim();
-      if (!email || !password) {
-        showError("Please enter your email and password.");
-        return;
-      }
+      document.getElementById("loginForm").classList.remove("active");
+      document.getElementById("signupForm").classList.add("active");
+    });
+    document.getElementById("toggleToLogin").addEventListener("click", () => {
+      clearError();
+      document.getElementById("signupForm").classList.remove("active");
+      document.getElementById("loginForm").classList.add("active");
+    });
+    document.getElementById("backToMain").addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
+
+    // Email/Password sign in
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      clearError();
+      const email = document.getElementById("loginEmail").value.trim();
+      const pass  = document.getElementById("loginPassword").value.trim();
+      if (!email || !pass) return showError("Enter email and password.");
       try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        await handleUserData(result.user);
+        const res = await signInWithEmailAndPassword(auth, email, pass);
+        await handleUserData(res.user);
         redirectToMain();
-      } catch (error) {
-        console.error("Login Error:", error);
-        showError(error.message);
+      } catch (err) {
+        showError(err.message);
       }
     });
 
-    // Email/Password Signup
-    signupBtn.addEventListener("click", async () => {
+    // Email/Password sign up
+    document.getElementById("signupBtn").addEventListener("click", async () => {
       clearError();
-      const email = signupEmail.value.trim();
-      const password = signupPassword.value.trim();
-      if (!email || password.length < 6) {
-        showError("Please enter a valid email and a password (min 6 characters).");
-        return;
-      }
+      const email = document.getElementById("signupEmail").value.trim();
+      const pass  = document.getElementById("signupPassword").value.trim();
+      if (!email || pass.length < 6) return showError("Valid email + min 6‑char password.");
       try {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        await handleUserData(result.user);
+        const res = await createUserWithEmailAndPassword(auth, email, pass);
+        await handleUserData(res.user);
         redirectToMain();
-      } catch (error) {
-        console.error("Signup Error:", error);
-        showError(error.message);
+      } catch (err) {
+        showError(err.message);
       }
     });
 
-    // Google Sign-In via Firebase (if using popup) – but here we are going to render the official Google button!
-    async function googleSignInCallback(tokenResponse) {
-      console.log("Received token: ", tokenResponse.credential);
-      // Here you would typically send the token to your backend, then sign in to Firebase.
-      // For simplicity, we'll use Firebase's signInWithPopup fallback:
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        await handleUserData(result.user);
-        redirectToMain();
-      } catch (error) {
-        console.error("Google SignIn Error (popup fallback):", error);
-        showError(error.message);
-      }
+    // Google “card” flow
+    function decodeJwt(token) {
+  let base64Url = token.split('.')[1];
+  // convert URL‑safe to normal Base64
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  // pad with '=' to multiple of 4
+  while (base64.length % 4) base64 += '=';
+  let json = atob(base64);
+  return JSON.parse(json);
+}
+    function googleSignInCallback(resp) {
+      pendingGoogleToken = resp.credential;
+      const user = decodeJwt(resp.credential);
+      document.getElementById("cardName").textContent  = user.name;
+      document.getElementById("cardEmail").textContent = user.email;
+      document.getElementById('googleCardOverlay')
+        .classList.add('visible');
+        document.getElementById('googleCardOverlay')
+        .classList.remove('visible');
+
     }
+    document.getElementById("confirmGoogleBtn").addEventListener("click", async () => {
+      try {
+        const cred = GoogleAuthProvider.credential(pendingGoogleToken);
+        const res  = await signInWithCredential(auth, cred);
+        await handleUserData(res.user);
+        document.getElementById("googleCardOverlay").style.display = "none";
+        setTimeout(redirectToMain, 2000);
+      } catch (err) {
+        showError(err.message);
+      }
+    });
 
-    // Render Google’s official dark button provided by Google Identity Services.
+    // Initialize Google button and Firebase auth listener
     window.onload = () => {
-      // Initialize the Google Identity Services
       google.accounts.id.initialize({
-        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",  // <-- Replace with your real client ID
+        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
         callback: googleSignInCallback
       });
-      // Render Google's dark button (filled_dark)
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainer"),
         { theme: "filled_dark", size: "large" }
       );
-      // Also render on the signup form if needed:
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainerSignup"),
         { theme: "filled_dark", size: "large" }
       );
-    };
 
-    // Automatically redirect if already signed in.
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        redirectToMain();
-      }
-    });
+      onAuthStateChanged(auth, user => {
+        if (user) redirectToMain();
+      });
+    };
   </script>
 </body>
 </html>
