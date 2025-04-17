@@ -1774,6 +1774,7 @@ footer {
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     
+
     // 1) Paste your config here
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -1808,6 +1809,59 @@ footer {
           ? `Welcome ${name} (Premium)`
           : `Welcome ${name} (Basic)`;
     });
+    </script>
+    
+    <script type="module">
+      // ... your imports and firebase init above ...
+    
+      onAuthStateChanged(auth, async user => {
+        const indicator = document.getElementById("user-type-indicator");
+    
+        if (!user) {
+          indicator.textContent = "Not signed in";
+          return;
+        }
+    
+        // load name & role
+        const snap = await get(ref(db, "users/" + user.uid));
+        if (!snap.exists()) {
+          indicator.textContent = "Unknown user";
+          return;
+        }
+        const { role, name } = snap.val();
+        indicator.textContent =
+          role === "premium"
+            ? `Welcome ${name} (Premium)`
+            : `Welcome ${name} (Basic)`;
+    
+        if (role === "premium") {
+          // 1) Remove any premium tool overlays
+          document
+            .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+            .forEach(el => el.remove());
+    
+          // 2) Mark dropdown items unlocked so their link works
+          document
+            .querySelectorAll(".premium-dropdown-item")
+            .forEach(item => item.classList.add("unlocked"));
+        }
+      });
+    
+      // After the GSI library is loaded, make sure prompt() is available
+      window.addEventListener("load", () => {
+        // If non‑premium users click any of the remaining overlays,
+        // they'll get Google One‑Tap (or the sign‑in prompt).
+        document
+          .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+          .forEach(overlay => {
+            overlay.addEventListener("click", e => {
+              e.stopPropagation();
+              if (window.google && google.accounts && google.accounts.id) {
+                google.accounts.id.prompt();
+              }
+            });
+          });
+      });
     </script>
     
   <!-- ============================================================
@@ -2481,6 +2535,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+
 
 </script>
 </body>
