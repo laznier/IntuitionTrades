@@ -171,7 +171,7 @@
       getDatabase,
       ref,
       get,
-      update,
+      update
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     // --- FIREBASE SETUP ---
@@ -181,7 +181,7 @@
       projectId: "persuasive-net-456607-g8",
       storageBucket: "persuasive-net-456607-g8.appspot.com",
       messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2",
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
     const app  = initializeApp(firebaseConfig);
@@ -210,22 +210,24 @@
       while (b64.length % 4) b64 += '=';
       return JSON.parse(atob(b64));
     }
+
     async function handleUserData(user, profile = {}) {
       const userRef = ref(db, "users/" + user.uid);
       const snap    = await get(userRef);
       if (!snap.exists()) {
-        await set(userRef, {
-          email: user.email,
-          name: profile.name || user.displayName || "",
-          password: profile.password || "",
-          role: "basic",
+        // ⚡️ MERGE only these fields—never touches trialStart/trialUsed
+        await update(userRef, {
+          email:     user.email,
+          name:      profile.name     || user.displayName || "",
+          password:  profile.password || "",
+          role:      "basic",
           createdAt: Date.now()
         });
       }
     }
 
     window.addEventListener("DOMContentLoaded", () => {
-      // Manual Email Sign‑In
+      // Sign‑In with Email/Pass
       document.getElementById("loginBtn").addEventListener("click", async () => {
         clearError();
         const email = document.getElementById("loginEmail").value.trim();
@@ -241,7 +243,7 @@
         }
       });
 
-      // Manual Email Sign‑Up
+      // Sign‑Up with Email/Pass
       document.getElementById("signupBtn").addEventListener("click", async () => {
         clearError();
         const name  = document.getElementById("signupName").value.trim();
@@ -267,7 +269,7 @@
         redirectToMain();
       });
 
-      // Toggle Between Login / Signup Forms
+      // Toggle UI
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
         clearError();
         document.getElementById("loginForm").classList.remove("active");
@@ -282,7 +284,7 @@
       // Back to Main
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
 
-      // Manual Google Sign‑In (no auto prompt)
+      // Manual Google Sign‑In
       waitForGoogleSignIn(() => {
         google.accounts.id.initialize({
           client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
@@ -300,7 +302,7 @@
       });
     });
 
-    // Google callback only when user clicks button
+    // Google callback
     async function handleGoogleCredential(response) {
       clearError();
       try {
