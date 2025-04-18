@@ -1,12 +1,46 @@
-// pages/api/getPremiumData.js (Next.js example)
-import { verifyUser } from '../../lib/auth';
+// pages/api/getPremiumData.js
+import admin from 'firebase-admin';
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(
+      JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIAL)
+    ),
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+  });
+}
 
 export default async function handler(req, res) {
-  const user = await verifyUser(req);
-  if (!user || !user.isPremium) {
+  // 1) grab Bearer token
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Not authorized' });
   }
-  
-  // Otherwise, serve premium data
-  res.status(200).json({ /* premium data here */ });
+  const idToken = authHeader.split(' ')[1];
+
+  try {
+    // 2) verify token & get uid
+    const { uid } = await admin.auth().verifyIdToken(idToken);
+
+    // 3) fetch their profile
+    const snap = await admin
+      .database()
+      .ref(`users/${uid}/role`)
+      .once('value');
+    const role = snap.val();
+
+    // 4) enforce premium
+    if (role !== 'premium') {
+      return res.status(401).json({ error: 'Premium access required' });
+    }
+
+    // 5) serve your premium payload
+    const premiumData = {
+      /* …whatever this tool needs… */
+    };
+    return res.status(200).json({ premiumData });
+  } catch (e) {
+    console.error('Auth error in getPremiumData:', e);
+    return res.status(401).json({ error: 'Not authorized' });
+  }
 }
