@@ -237,32 +237,42 @@ button:hover {
     const auth = getAuth();
 
     // 🔒 Gatekeeper: only show & run the tool once we verify “premium”:
-    onAuthStateChanged(auth, async user => {
-      if (!user) {
-        alert("Please sign in to access this tool.");
-        return window.location.href = "/login.html";
-      }
+    let hasChecked = false;
 
-      // Grab a fresh ID token for our custom backend
-      const token = await user.getIdToken(/* forceRefresh */ true);
+onAuthStateChanged(auth, async user => {
+  if (hasChecked) return; // prevent double triggers
+  hasChecked = true;
 
-      // Verify on the server
-      const res = await fetch("/api/verify-google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
-      });
-      const { isPremium } = await res.json();
+  if (!user) {
+    alert("Please sign in to access this tool.");
+    return window.location.href = "/login.html";
+  }
 
-      if (!isPremium) {
-        alert("Premium access required.");
-        return window.location.href = "/";
-      }
-
-      // ✅ Passed! Un‑hide the page & initialize your congress tool.
-      document.getElementById("app").style.display = "block";
-      initializeCongressTool();
+  try {
+    const token = await user.getIdToken(true);
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
     });
+
+    const { isPremium } = await res.json();
+
+    if (!isPremium) {
+      alert("Premium access required.");
+      return window.location.href = "/";
+    }
+
+    // ✅ Passed!
+    document.getElementById("app").style.display = "block";
+    initializePremiumTool(); // <-- your tool's logic
+  } catch (e) {
+    alert("Error checking premium access.");
+    console.error(e);
+    window.location.href = "/";
+  }
+});
+
 
     // Pull out all of your existing “DOMContentLoaded” code into this:
     function initializeCongressTool() {
