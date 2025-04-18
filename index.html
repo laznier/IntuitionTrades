@@ -1364,13 +1364,15 @@ footer {
 <div class="header-right">
   <div id="user-type-indicator">Not signed in</div>
 
-  <!-- Sign‑In buttons -->
+  <!-- Upgrade to Premium button -->
+  <a href="/premium.html" class="login-btn" id="upgradeBtn" style="display: none;">Upgrade</a>
+  
+  <!-- Sign-In/Out Buttons -->
   <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
   <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
-
-  <!-- Sign‑Out button (hidden by default) -->
-  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
+  <a href="#" class="login-btn" id="signOutBtn" style="display: none;">Sign Out</a>
 </div>
+
 
 
     </header>
@@ -1801,8 +1803,8 @@ footer {
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    
 
+    
     // 1) Paste your config here
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -1822,21 +1824,31 @@ footer {
     // 3) Watch auth & update UI
     onAuthStateChanged(auth, async user => {
   const indicator   = document.getElementById("user-type-indicator");
+  const upgradeBtn  = document.getElementById("upgradeBtn");
   const googleBtn   = document.getElementById("googleSignInBtn");
   const emailBtn    = document.getElementById("emailSignInBtn");
   const signOutBtn  = document.getElementById("signOutBtn");
 
   if (!user) {
-    // not signed in
     indicator.textContent  = "Not signed in";
-    googleBtn.style.display   = "";      // show
-    emailBtn.style.display    = "";
-    signOutBtn.style.display  = "none";  // hide
+    googleBtn.style.display = "";
+    emailBtn.style.display = "";
+    signOutBtn.style.display = "none";
+    upgradeBtn.style.display = "none";
   } else {
-    // signed in → fetch name & role
     const snap = await get(ref(db, "users/" + user.uid));
     let role = "basic", name = "";
     if (snap.exists()) ({ role, name } = snap.val());
+    const isMobile = window.innerWidth < 500;
+    indicator.textContent = isMobile
+      ? `${role.charAt(0).toUpperCase() + role.slice(1)} User`
+      : `Welcome ${name} (${role.charAt(0).toUpperCase() + role.slice(1)})`;
+      googleBtn.style.display = "none";
+    emailBtn.style.display  = "none";
+    signOutBtn.style.display = "";
+    upgradeBtn.style.display = (role === "basic") ? "inline-block" : "none";
+
+
     indicator.textContent = role === "premium"
       ? `Welcome ${name} (Premium)`
       : `Welcome ${name} (Basic)`;
@@ -1855,6 +1867,13 @@ footer {
   // re–apply your premium/unlock logic now that indicator is updated
   adjustPremiumUI();
 });
+
+signOutBtn.addEventListener("click", e => {
+    e.preventDefault();
+    auth.signOut().catch(err => console.error("Sign out error:", err));
+  });
+
+  adjustPremiumUI();
 
     </script>
     
