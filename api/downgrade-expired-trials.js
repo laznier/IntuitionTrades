@@ -2,27 +2,24 @@
 
 const admin = require("firebase-admin");
 
+// Initialize once
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIAL);
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+    databaseURL: process.env.FIREBASE_DATABASE_URL
   });
 }
 
 const db = admin.database();
 
-export default async function handler(req, res) {
-  // Only allow GET (triggered by Vercel Cron)
+module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    // 24 hours ago
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-
-    // Get all users whose trialStart ≤ cutoff
     const snap = await db
       .ref("users")
       .orderByChild("trialStart")
@@ -30,22 +27,19 @@ export default async function handler(req, res) {
       .once("value");
 
     const updates = {};
-    snap.forEach(userSnap => {
-      const u = userSnap.val();
-      // only downgrade if they used trial and still premium
+    snap.forEach(child => {
+      const u = child.val();
       if (u.trialUsed && u.role === "premium") {
-        updates[`${userSnap.key}/role`] = "basic";
+        updates[`${child.key}/role`] = "basic";
       }
     });
 
-    if (Object.keys(updates).length) {
-      await db.ref("users").update(updates);
-      console.log(`Downgraded ${Object.keys(updates).length} users`);
-    }
+    const count = Object.keys(updates).length;
+    if (count) await db.ref("users").update(updates);
 
-    return res.status(200).json({ downgraded: Object.keys(updates).length });
+    return res.status(200).json({ downgraded: count });
   } catch (err) {
     console.error("Error downgrading trials:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
-}
+};
