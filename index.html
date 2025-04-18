@@ -1233,6 +1233,31 @@ footer {
     display: none; /* or visibility: hidden; if you'd like to keep the space */
   }
 }
+.upgrade-btn {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0.4rem 0.8rem;
+  background-color: var(--accent-color);
+  color: #fff;
+  border-radius: 4px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background var(--transition-speed), transform 0.2s ease;
+}
+.upgrade-btn:hover {
+  background-color: #22c55e;
+  transform: scale(1.05);
+}
+@media (max-width: 500px) {
+  /* On mobile, hide the user’s name and just show “Basic User” + Upgrade */
+  #user-type-indicator {
+    /* already handled by your JS */
+  }
+  .upgrade-btn {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
 
 </style>
 <body>
@@ -1363,15 +1388,22 @@ footer {
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
   <div id="user-type-indicator">Not signed in</div>
+  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn"></a>
+  <a href="/login.html" class="login-btn"    id="emailSignInBtn">Sign In</a>
 
-  <!-- Upgrade to Premium button -->
-  <a href="/premium.html" class="login-btn" id="upgradeBtn" style="display: none;">Upgrade</a>
-  
-  <!-- Sign-In/Out Buttons -->
-  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
-  <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
-  <a href="#" class="login-btn" id="signOutBtn" style="display: none;">Sign Out</a>
+  <!-- Upgrade button for basic users -->
+  <a href="/premium.html"
+     class="upgrade-btn"
+     id="upgradeBtn"
+     style="display:none;">
+    Upgrade to Premium
+  </a>
+
+  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">
+    Sign Out
+  </a>
 </div>
+
 
 
 
