@@ -75,8 +75,7 @@
     #trialYesBtn { background: #16a34a; color: #fff; border: none; }
     #trialNoBtn  { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
   </style>
-</head>
-
+</style>
 <body>
   <div class="login-container">
     <h1>Welcome to Intuition Trades</h1>
@@ -87,7 +86,13 @@
       <input type="email"    id="loginEmail"    placeholder="Email"    required />
       <input type="password" id="loginPassword" placeholder="Password" required />
       <button id="loginBtn">Sign In</button>
-      <div id="googleButtonContainer" style="margin-bottom:1rem;"></div>
+
+      <!-- Google Sign In -->
+      <div class="custom-google-btn" id="googleLoginBtn">
+        Sign in with Google
+        <span class="google-circle-btn"></span>
+      </div>
+
       <div class="toggle-link" id="toggleToSignUp">
         Don't have an account? Sign Up
       </div>
@@ -95,10 +100,17 @@
 
     <!-- SIGNUP FORM -->
     <div class="signup-form" id="signupForm">
-      <input type="email"    id="signupEmail"    placeholder="Email"                 required />
+      <input type="text"     id="signupName"     placeholder="Name"                 required />
+      <input type="email"    id="signupEmail"    placeholder="Email"                required />
       <input type="password" id="signupPassword" placeholder="Password (min 6 chars)" required />
       <button id="signupBtn">Sign Up</button>
-      <div id="googleButtonContainerSignup" style="margin-bottom:1rem;"></div>
+
+      <!-- Google Sign Up -->
+      <div class="custom-google-btn" id="googleSignupBtn">
+        Create an account with Google
+        <span class="google-circle-btn"></span>
+      </div>
+
       <div class="toggle-link" id="toggleToLogin">
         Already have an account? Sign In
       </div>
@@ -126,7 +138,7 @@
       getAuth,
       signInWithEmailAndPassword,
       createUserWithEmailAndPassword,
-      signInWithCredential,
+      signInWithPopup,
       GoogleAuthProvider,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
@@ -141,7 +153,7 @@
       equalTo
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    // Firebase config
+    // --- Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -151,42 +163,35 @@
       appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getDatabase(app);
+    const app      = initializeApp(firebaseConfig);
+    const auth     = getAuth(app);
+    const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // Helpers
-    const showError = msg => {
+    // --- Helpers
+    const showError       = msg => {
       const el = document.getElementById("errorMessage");
-      el.textContent = msg; el.style.display = "block";
+      el.textContent = msg;
+      el.style.display = "block";
     };
-    const clearError = () => {
+    const clearError      = () => {
       const el = document.getElementById("errorMessage");
-      el.textContent = ""; el.style.display = "none";
+      el.textContent = "";
+      el.style.display = "none";
     };
-    const redirectToMain = () => {
-      window.location.href = "index.html";
-    };
-    const showTrialOverlay = () => {
+    const redirectToMain  = () => window.location.href = "index.html";
+    const showTrialOverlay= () => {
       document.getElementById("trialOverlay").classList.add("visible");
     };
-    const decodeJwt = token => {
-      let b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-      while (b64.length % 4) b64 += '=';
-      return JSON.parse(atob(b64));
-    };
-
-    // Create user record if missing
-    async function handleUserData(user, profile={}) {
-      const userRef = ref(db, "users/" + user.uid);
+    async function handleUserData(user, profile = {}) {
+      const userRef = ref(db, `users/${user.uid}`);
       const snap    = await get(userRef);
       if (!snap.exists()) {
         await set(userRef, {
-          email: user.email,
-          name:  profile.name || user.displayName || "",
-          role:  "basic",
-          createdAt: Date.now()
+          email:     profile.email || user.email,
+          name:      profile.name  || user.displayName || "",
+          createdAt: Date.now(),
+          role:      "basic"
         });
       }
     }
@@ -194,141 +199,113 @@
     let justSignedIn = false;
 
     window.addEventListener("DOMContentLoaded", () => {
-      // 1) Initialize Google Sign‑In
-      google.accounts.id.initialize({
-        client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
-        callback: async resp => {
-          try {
-            clearError();
-            const payload = decodeJwt(resp.credential);
-            const cred    = GoogleAuthProvider.credential(resp.credential);
-
-            // If on Sign‑In form…
-            if (document.getElementById("loginForm").classList.contains("active")) {
-              // Check DB for existing email
-              const usersRef = ref(db, 'users');
-              const q        = query(usersRef, orderByChild('email'), equalTo(payload.email));
-              const snap     = await get(q);
-              if (!snap.exists()) {
-                // Switch to sign‑up
-                showError("No account found. Please sign up.");
-                document.getElementById("loginForm").classList.remove("active");
-                document.getElementById("signupForm").classList.add("active");
-                return;
-              }
-              // Proceed to sign in
-              justSignedIn = true;
-              await signInWithCredential(auth, cred);
-
-            } else {
-              // On Sign‑Up form → create new account
-              justSignedIn = true;
-              const result = await signInWithCredential(auth, cred);
-              await handleUserData(result.user, {
-                name:  payload.name,
-                email: payload.email
-              });
-            }
-          } catch (err) {
-            showError(err.message);
-          }
+      // 1) Email / Password Sign In
+      document.getElementById("loginBtn").addEventListener("click", async () => {
+        clearError();
+        const email = document.getElementById("loginEmail").value.trim();
+        const pass  = document.getElementById("loginPassword").value.trim();
+        if (!email || !pass) return showError("Enter email and password.");
+        try {
+          justSignedIn = true;
+          await signInWithEmailAndPassword(auth, email, pass);
+        } catch (err) {
+          showError(err.message);
         }
       });
-      // Render both buttons
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainer"),
-        { theme: "filled_dark", size: "large" }
-      );
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainerSignup"),
-        { theme: "filled_dark", size: "large" }
-      );
 
-      // 2) Auth state handling
+      // 2) Email / Password Sign Up
+      document.getElementById("signupBtn").addEventListener("click", async () => {
+        clearError();
+        const name  = document.getElementById("signupName").value.trim();
+        const email = document.getElementById("signupEmail").value.trim();
+        const pass  = document.getElementById("signupPassword").value.trim();
+        if (!name) return showError("Please enter your name.");
+        if (!email || pass.length < 6)
+          return showError("Valid email + min 6‑char password.");
+        try {
+          justSignedIn = true;
+          const res = await createUserWithEmailAndPassword(auth, email, pass);
+          await handleUserData(res.user, { name, email });
+          showTrialOverlay();
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+
+      // 3) Google Sign In (popup)
+      document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+        clearError();
+        try {
+          justSignedIn = true;
+          const result = await signInWithPopup(auth, provider);
+          await handleUserData(result.user, {
+            name:  result.user.displayName,
+            email: result.user.email
+          });
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+
+      // 4) Google Sign Up (popup + trial)
+      document.getElementById("googleSignupBtn").addEventListener("click", async () => {
+        clearError();
+        try {
+          justSignedIn = true;
+          const result = await signInWithPopup(auth, provider);
+          await handleUserData(result.user, {
+            name:  result.user.displayName,
+            email: result.user.email
+          });
+          showTrialOverlay();
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+
+      // 5) Trial overlay actions
+      document.getElementById("trialYesBtn").addEventListener("click", async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        await update(ref(db, `users/${user.uid}`), {
+          role:       "premium",
+          trialStart: Date.now(),
+          trialUsed:  true
+        });
+        document.getElementById("trialOverlay").classList.remove("visible");
+        redirectToMain();
+      });
+      document.getElementById("trialNoBtn").addEventListener("click", () => {
+        document.getElementById("trialOverlay").classList.remove("visible");
+        redirectToMain();
+      });
+
+      // 6) Auth state listener
       onAuthStateChanged(auth, async user => {
         if (!user) return;
         if (justSignedIn) {
-          const userRef = ref(db, `users/${user.uid}`);
-          const snap    = await get(userRef);
-          const data    = snap.val() || {};
-          if (!data.trialUsed) {
-            showTrialOverlay();
-          } else {
-            redirectToMain();
-          }
+          const snap = await get(ref(db, `users/${user.uid}`));
+          const data = snap.val() || {};
+          if (!data.trialUsed) showTrialOverlay();
+          else redirectToMain();
           justSignedIn = false;
         } else {
           redirectToMain();
         }
       });
 
-      // 3) Toggle between Login / Signup
-      document.getElementById("toggleToSignUp")
-        .addEventListener("click", () => {
-          clearError();
-          document.getElementById("loginForm").classList.remove("active");
-          document.getElementById("signupForm").classList.add("active");
-        });
-      document.getElementById("toggleToLogin")
-        .addEventListener("click", () => {
-          clearError();
-          document.getElementById("signupForm").classList.remove("active");
-          document.getElementById("loginForm").classList.add("active");
-        });
-      document.getElementById("backToMain")
-        .addEventListener("click", redirectToMain);
-
-      // 4) Email/password Sign‑In
-      document.getElementById("loginBtn")
-        .addEventListener("click", async () => {
-          clearError();
-          const email = document.getElementById("loginEmail").value.trim();
-          const pass  = document.getElementById("loginPassword").value.trim();
-          if (!email || !pass) return showError("Enter email and password.");
-          try {
-            justSignedIn = true;
-            await signInWithEmailAndPassword(auth, email, pass);
-          } catch (err) {
-            showError(err.message);
-          }
-        });
-
-      // 5) Email/password Sign‑Up
-      document.getElementById("signupBtn")
-        .addEventListener("click", async () => {
-          clearError();
-          const email = document.getElementById("signupEmail").value.trim();
-          const pass  = document.getElementById("signupPassword").value.trim();
-          if (!email || pass.length < 6)
-            return showError("Valid email + min 6‑char password.");
-          try {
-            justSignedIn = true;
-            const res = await createUserWithEmailAndPassword(auth, email, pass);
-            await handleUserData(res.user);
-          } catch (err) {
-            showError(err.message);
-          }
-        });
-
-      // 6) Trial overlay buttons
-      document.getElementById("trialYesBtn")
-        .addEventListener("click", async () => {
-          const user = auth.currentUser;
-          if (!user) return;
-          // Upgrade to premium for 24h
-          await update(ref(db, `users/${user.uid}`), {
-            role:       "premium",
-            trialStart: Date.now(),
-            trialUsed:  true
-          });
-          document.getElementById("trialOverlay").classList.remove("visible");
-          redirectToMain();
-        });
-      document.getElementById("trialNoBtn")
-        .addEventListener("click", () => {
-          document.getElementById("trialOverlay").classList.remove("visible");
-          redirectToMain();
-        });
+      // 7) UI toggles
+      document.getElementById("toggleToSignUp").addEventListener("click", () => {
+        clearError();
+        document.getElementById("loginForm").classList.remove("active");
+        document.getElementById("signupForm").classList.add("active");
+      });
+      document.getElementById("toggleToLogin").addEventListener("click", () => {
+        clearError();
+        document.getElementById("signupForm").classList.remove("active");
+        document.getElementById("loginForm").classList.add("active");
+      });
+      document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
   </script>
 </body>
