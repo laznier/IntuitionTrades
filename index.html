@@ -628,12 +628,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 .tool-video {
   width: 100%;
-  height: auto;
-  border-radius: 8px;
-  object-fit: cover;
+  height: 9.375rem;   /* same as the image */
+  object-fit: cover;   /* crop to fill */
+  border-radius: 0.375rem; /* if you want to match the card’s rounding */
   display: block;
-  margin-bottom: 1rem;
+  /* remove margin‑bottom if you don’t want extra space below */
+  margin-bottom: 0.5rem; /* or whatever spacing you prefer */
 }
+
 
 /* Newsletter Signup Section */
 #newsletter-signup {
@@ -1668,12 +1670,13 @@ footer {
         <!-- Premium Tool (locked by default) -->
         <div class="tool-card premium" id="premiumCard">
           <!-- VIDEO INSTEAD OF IMAGE -->
-          <video 
-            class="tool-video" 
-            src="videos/top5.mp4" 
-            autoplay muted loop playsinline 
-            poster="images/top5-poster.png"
-          ></video>
+          <video
+          class="tool-video"
+          src="videos/top5.mp4"
+          poster="images/top5.png"
+          autoplay muted loop playsinline>
+        </video>
+        
       
           <h2>Top Stocks Scanner</h2>
           <p>
