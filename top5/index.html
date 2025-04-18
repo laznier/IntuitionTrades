@@ -7,7 +7,7 @@
   <title>Top Stocks Scanner</title>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-
+  <script src="https://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/highcharts-more.js"></script>
   
   <style>
@@ -197,7 +197,7 @@
   
 </head>
 
-<body id="app" style="display:none">
+<body>
   <!-- Back to Main Page button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 <h1>Top Stocks Scanner (Premium)</h1>
@@ -301,60 +301,39 @@
   <div id="rriSliderSection"></div>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
-  // Initialize Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-    projectId: "persuasive-net-456607-g8",
-    storageBucket: "persuasive-net-456607-g8.appspot.com",
-    messagingSenderId: "1019332250475",
-    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-  };
-
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  // Delay anything premium-related until Firebase restores the session
-  onAuthStateChanged(auth, async user => {
-    if (!user) {
-      alert("Please sign in to access this tool.");
-      return window.location.href = "/login.html";
-    }
-
-    try {
-      const idToken = await user.getIdToken(true);
-
-      const res = await fetch("/api/verify-google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: idToken })
-      });
-
-      const { isPremium } = await res.json();
-
-      if (!isPremium) {
-        alert("Premium access required.");
-        return window.location.href = "/";
-      }
-
-      // ✅ All checks passed — show the tool
-      document.getElementById("app").style.display = "block";
-
-    } catch (err) {
-      console.error("Auth check failed:", err);
-      alert("Failed to verify premium access.");
-      window.location.href = "/";
-    }
-  });
-</script>
 
 <script>
+
+/***********************************************************************
+* Premium Check
+ ***********************************************************************/
+
+  async function checkPremiumAccess() {
+    const token = localStorage.getItem("googleToken");
+    if (!token) {
+      alert("Please sign in to access this tool.");
+      window.location.href = "/"; // redirect to main page
+      return;
+    }
+
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
+
+    if (!data.isPremium) {
+      alert("Premium access required.");
+      window.location.href = "/"; // or a pricing/signup page
+    }
+
+    // Otherwise user is premium — continue loading tool
+  }
+
+  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
+
+
 /***********************************************************************
  * Merged top-stocks + advanced RRI code
  ***********************************************************************/

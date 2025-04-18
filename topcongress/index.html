@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Congress Trading Insights</title>
-  <script defer src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
-  <title>Congress Trading Insights</title>
   <!-- Include Chart.js library -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -159,10 +156,9 @@ button:hover {
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-
   </style>
 </head>
-<body id="app" style="display:none">
+<body>
   <!-- Back to Main Page Button -->
   <button onclick="window.location.href='https://intuitiontrades.com'">Back to Main Page</button>
 
@@ -220,75 +216,37 @@ button:hover {
     <div id="details"></div>
   </div>
 
-
-  <script defer src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js"></script>
-
+  
 <script>
-  // Wait for page + Firebase to load
-  window.addEventListener("load", () => {
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-    };
+    /***********************************************************************
+* Premium Check
+ ***********************************************************************/
 
-    // Initialize Firebase immediately
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    // Delay 3s before we even check for an existing user/token
-    setTimeout(() => {
-      const unsubscribe = auth.onAuthStateChanged(async user => {
-        unsubscribe(); // Stop listening after first invocation
-
-        if (!user) {
-          alert("Please sign in to access this tool.");
-          return window.location.href = "/login.html";
-        }
-
-        try {
-          const idToken = await user.getIdToken(true);
-
-          const res = await fetch("/api/verify-google", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: idToken })
-          });
-          const { isPremium } = await res.json();
-
-          if (!isPremium) {
-            alert("Premium access required.");
-            return window.location.href = "/";
-          }
-
-          // ✅ All good: show the app
-          document.getElementById("app").style.display = "block";
-
-        } catch (err) {
-          console.error("Verify failed:", err);
-          alert("Error verifying premium access.");
-          window.location.href = "/";
-        }
-      });
-    }, 3000); // ← 3 second delay
-
-  });
-</script>
-
-
-
-    // Pull out all of your existing “DOMContentLoaded” code into this:
-    function initializeCongressTool() {
-      /***** your old DOMContentLoaded handlers, fetches, event‑listeners, etc. *****/
-      // e.g. loadCongressData(), wire up buttons, etc.
+  async function checkPremiumAccess() {
+    const token = localStorage.getItem("googleToken");
+    if (!token) {
+      alert("Please sign in to access this tool.");
+      window.location.href = "/"; // redirect to main page
+      return;
     }
 
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+    const data = await res.json();
 
+    if (!data.isPremium) {
+      alert("Premium access required.");
+      window.location.href = "/"; // or a pricing/signup page
+    }
+
+    // Otherwise user is premium — continue loading tool
+  }
+
+
+  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
     let allData = [];
