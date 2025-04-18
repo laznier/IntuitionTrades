@@ -159,7 +159,7 @@ button:hover {
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    
+
   </style>
 </head>
 <body id="app" style="display:none">
@@ -226,7 +226,7 @@ button:hover {
 
 <script>
   // Wait for page + Firebase to load
-  window.addEventListener("load", async () => {
+  window.addEventListener("load", () => {
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -237,44 +237,49 @@ button:hover {
       appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
     };
 
+    // Initialize Firebase immediately
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // Wait until Firebase restores session
-    const unsubscribe = auth.onAuthStateChanged(async user => {
-      unsubscribe(); // Stop listening
+    // Delay 3s before we even check for an existing user/token
+    setTimeout(() => {
+      const unsubscribe = auth.onAuthStateChanged(async user => {
+        unsubscribe(); // Stop listening after first invocation
 
-      if (!user) {
-        alert("Please sign in to access this tool.");
-        return window.location.href = "/login.html";
-      }
-
-      try {
-        const idToken = await user.getIdToken(true);
-
-        const res = await fetch("/api/verify-google", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: idToken })
-        });
-
-        const { isPremium } = await res.json();
-
-        if (!isPremium) {
-          alert("Premium access required.");
-          return window.location.href = "/";
+        if (!user) {
+          alert("Please sign in to access this tool.");
+          return window.location.href = "/login.html";
         }
 
-        // ✅ All good
-        document.getElementById("app").style.display = "block";
+        try {
+          const idToken = await user.getIdToken(true);
 
-      } catch (err) {
-        console.error("Verify failed:", err);
-        alert("Error verifying premium access.");
-        window.location.href = "/";
-      }
-    });
+          const res = await fetch("/api/verify-google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: idToken })
+          });
+          const { isPremium } = await res.json();
+
+          if (!isPremium) {
+            alert("Premium access required.");
+            return window.location.href = "/";
+          }
+
+          // ✅ All good: show the app
+          document.getElementById("app").style.display = "block";
+
+        } catch (err) {
+          console.error("Verify failed:", err);
+          alert("Error verifying premium access.");
+          window.location.href = "/";
+        }
+      });
+    }, 3000); // ← 3 second delay
+
   });
+</script>
+
 
 
     // Pull out all of your existing “DOMContentLoaded” code into this:
