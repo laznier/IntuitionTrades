@@ -217,7 +217,70 @@ button:hover {
   </div>
 
   
-  <script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+    // ← your existing firebaseConfig
+    const firebaseConfig = {
+      apiKey:             "AIzaSyCw3AOOCQh3...FXYMMEoPPH8",
+      authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId:          "persuasive-net-456607-g8",
+      storageBucket:      "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId:  "1019332250475",
+      appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+    };
+
+    // Initialize Firebase
+    initializeApp(firebaseConfig);
+    const auth = getAuth();
+
+    // 🔒 Gatekeeper: only show & run the tool once we verify “premium”:
+    let hasChecked = false;
+
+onAuthStateChanged(auth, async user => {
+  if (hasChecked) return; // prevent double triggers
+  hasChecked = true;
+
+  if (!user) {
+    alert("Please sign in to access this tool.");
+    return window.location.href = "/login.html";
+  }
+
+  try {
+    const token = await user.getIdToken(true);
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+
+    const { isPremium } = await res.json();
+
+    if (!isPremium) {
+      alert("Premium access required.");
+      return window.location.href = "/";
+    }
+
+    // ✅ Passed!
+    document.getElementById("app").style.display = "block";
+    initializePremiumTool(); // <-- your tool's logic
+  } catch (e) {
+    alert("Error checking premium access.");
+    console.error(e);
+    window.location.href = "/";
+  }
+});
+
+
+    // Pull out all of your existing “DOMContentLoaded” code into this:
+    function initializeCongressTool() {
+      /***** your old DOMContentLoaded handlers, fetches, event‑listeners, etc. *****/
+      // e.g. loadCongressData(), wire up buttons, etc.
+    }
+ 
+
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
     let allData = [];
