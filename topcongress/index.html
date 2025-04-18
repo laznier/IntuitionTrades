@@ -217,71 +217,47 @@ button:hover {
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-    // ← your existing firebaseConfig
-    const firebaseConfig = {
-      apiKey:             "AIzaSyCw3AOOCQh3...FXYMMEoPPH8",
-      authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-      projectId:          "persuasive-net-456607-g8",
-      storageBucket:      "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId:  "1019332250475",
-      appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-    };
-  
-    // Initialize Firebase and Auth
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-  
-    // Gatekeeper: only show & run the tool once we verify “premium”:
-    let hasChecked = false;
-  
-    onAuthStateChanged(auth, async user => {
-      if (hasChecked) return;    // prevent double‐runs
-      hasChecked = true;
-  
-      if (!user) {
+    (async () => {
+      // 1) pull your saved token
+      const token = localStorage.getItem("googleToken");
+      if (!token) {
         alert("Please sign in to access this tool.");
-        window.location.href = "/login.html";
-        return;
+        return window.location.href = "/login.html";
       }
   
+      // 2) verify with your API
       try {
-        // forceRefresh=true to ensure up‑to‑date claims
-        const token = await user.getIdToken(true);
         const res = await fetch("/api/verify-google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token })
         });
-  
+        if (!res.ok) throw new Error("verification failed");
         const { isPremium } = await res.json();
+  
         if (!isPremium) {
           alert("Premium access required.");
-          window.location.href = "/";
-          return;
+          return window.location.href = "/";
         }
   
-        // ✅ Passed!
+        // 3) unlocked! show & run
         document.getElementById("app").style.display = "block";
         initializeCongressTool();
-      } catch (e) {
-        alert("Error checking premium access.");
-        console.error(e);
-        window.location.href = "/";
+      } catch (err) {
+        console.error(err);
+        alert("Error validating premium access. Please sign in again.");
+        window.location.href = "/login.html";
       }
-    });
+    })();
   
-    // Your existing Congress logic goes here:
     function initializeCongressTool() {
-      /***** 
-        e.g. loadCongressData();
-        wire up buttons, fetches, event‑listeners, etc. 
+      /*****  
+        Your existing Congress‐tool logic goes here: 
+        e.g. loadCongressData(), wire up buttons, event listeners, fetches, etc. 
       *****/
     }
   </script>
+  
   
 
     // Global variables for debounce, timers, and fetched data
