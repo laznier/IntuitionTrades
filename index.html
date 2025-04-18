@@ -626,6 +626,14 @@ h1, h2, h3, h4, h5, h6 {
   background-color: inherit;
   color: inherit;
 }
+.tool-video {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+  margin-bottom: 1rem;
+}
 
 /* Newsletter Signup Section */
 #newsletter-signup {
@@ -1657,18 +1665,28 @@ footer {
     <section id="tools">
       <h2>Tools</h2>
       <div class="tool-grid">
-         <!-- Premium Tool (locked by default) -->
-         <div class="tool-card premium" id="premiumCard">
-          <img src="images/top5.png" alt="Top Stocks Scanner" />
+        <!-- Premium Tool (locked by default) -->
+        <div class="tool-card premium" id="premiumCard">
+          <!-- VIDEO INSTEAD OF IMAGE -->
+          <video 
+            class="tool-video" 
+            src="videos/top5-demo.mp4" 
+            autoplay muted loop playsinline 
+            poster="images/top5-poster.png"
+          ></video>
+      
           <h2>Top Stocks Scanner</h2>
-          <p>Auto evaluate thousands of tickers for Risk/Reward, Technical, Sentiment, Insider, Fundamental, and Congress signals.</p>
+          <p>
+            Auto evaluate thousands of tickers for Risk/Reward, Technical, 
+            Sentiment, Insider, Fundamental, and Congress signals.
+          </p>
           <div class="premium-overlay" id="premiumOverlay">
-            Premium Locked
-            <br>
+            Premium Locked<br>
             <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
           </div>
           <a href="top5/" class="tool-button">Open Premium Tool</a>
         </div>
+      </div>
                        
 
         <div class="tool-card basic">
