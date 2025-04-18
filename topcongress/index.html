@@ -217,66 +217,7 @@ button:hover {
   </div>
 
   
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-    // ← your web config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com/"
-    };
-  
-  
-
-  // 1) Init
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  (async () => {
-    // 2) Wait for sign‑in state
-    const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
-    if (!user) {
-      alert("Please sign in to access this premium tool.");
-      return window.location.href = "/login.html";
-    }
-
-    // 3) Fresh token
-    let idToken;
-    try {
-      idToken = await user.getIdToken(/* forceRefresh: */ false);
-    } catch {
-      alert("Auth error—please sign in again.");
-      return window.location.href = "/login.html";
-    }
-
-    // 4) Call your function with requirePremium
-    const res = await fetch("/api/verify-google", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ token: idToken, requirePremium: true })
-    });
-
-    if (!res.ok) {
-      alert("Upgrade to Premium to use this tool.");
-      return window.location.href = "/upgrade.html";
-    }
-
-    // 5) Success—show the UI and start your logic
-    document.getElementById("app").style.display = "block";
-    initializeCongressTool();  // or inline your code here
-  })();
-
-
-
- 
-  
-
+  <script>
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
     let allData = [];
