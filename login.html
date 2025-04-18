@@ -266,13 +266,23 @@
         { theme:"filled_dark", size:"large" }
       );
 
-      // C) Wire custom icon on Sign‑Up form
-      document.getElementById("customGoogleSignupBtn")
-        .addEventListener("click", () => {
-          document.getElementById("loginForm").classList.remove("active");
-          document.getElementById("signupForm").classList.add("active");
-          google.accounts.id.prompt();
-        });
+      // C) CUSTOM GOOGLE SIGN‑UP
+      document.getElementById("customGoogleSignupBtn").addEventListener("click", async () => {
+        clearError();
+        try {
+          justSignedIn = true;
+          const result = await signInWithPopup(auth, provider);
+          const user   = result.user;
+          await handleUserData(user, {
+            name:  user.displayName,
+            email: user.email
+          });
+          showTrialOverlay();
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+
 
       // D) Auth state listener → trial overlay logic
       onAuthStateChanged(auth, async user => {
@@ -359,6 +369,35 @@
           document.getElementById("trialOverlay").classList.remove("visible");
           redirectToMain();
         });
+    // E) AUTH STATE LISTENER
+    onAuthStateChanged(auth, user => {
+        if (!user) return;
+        if (justSignedIn) {
+          // trial prompt for email/password sign‑up is shown in the popup handler,
+          // but ensure email sign‑ins and Google sign‑ins that found an existing user
+          // get the overlay once:
+          get(ref(db, `users/${user.uid}`)).then(snap => {
+            const data = snap.val() || {};
+            if (!data.trialUsed) showTrialOverlay();
+            else redirectToMain();
+          });
+          justSignedIn = false;
+        } else {
+          redirectToMain();
+        }
+      });
+     // F) TOGGLE UI
+     document.getElementById("toggleToSignUp").addEventListener("click", () => {
+        clearError();
+        document.getElementById("loginForm").classList.remove("active");
+        document.getElementById("signupForm").classList.add("active");
+      });
+      document.getElementById("toggleToLogin").addEventListener("click", () => {
+        clearError();
+        document.getElementById("signupForm").classList.remove("active");
+        document.getElementById("loginForm").classList.add("active");
+      });
+      document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
   </script>
 </body>
