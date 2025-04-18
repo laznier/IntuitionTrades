@@ -302,37 +302,58 @@
 </div>
 
 
-<script>
-
-/***********************************************************************
-* Premium Check
- ***********************************************************************/
-
-  async function checkPremiumAccess() {
-    const token = localStorage.getItem("googleToken");
-    if (!token) {
-      alert("Please sign in to access this tool.");
-      window.location.href = "/"; // redirect to main page
-      return;
-    }
-
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+  import { getDatabase, ref, get }       from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js';
+  
+  // 1) Your Firebase config (same as login page)
+  const firebaseConfig = {
+    apiKey:        "AIzaSy…",
+    authDomain:    "persuasive-net-456607-g8.firebaseapp.com",
+    databaseURL:   "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+    projectId:     "persuasive-net-456607-g8",
+    // …any other config keys you have
+  };
+  
+  // 2) Initialize Firebase apps
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getDatabase(app);
+  
+  // 3) Premium access guard
+  function checkPremiumAccess() {
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        alert("Please sign in to access this tool.");
+        return window.location.href = "/";
+      }
+  
+      // Read their role from RTDB
+      const snap = await get(ref(db, `users/${user.uid}/role`));
+      const role = snap.exists() ? snap.val() : null;
+  
+      if (role !== "premium") {
+        alert("Premium access required.");
+        return window.location.href = "/";
+      }
+  
+      // If we get here, user is premium—kick off the rest of your tool:
+      initializeTool();
     });
-    const data = await res.json();
-
-    if (!data.isPremium) {
-      alert("Premium access required.");
-      window.location.href = "/"; // or a pricing/signup page
-    }
-
-    // Otherwise user is premium — continue loading tool
   }
-
+  
+  // 4) Wire it up on page load
   document.addEventListener("DOMContentLoaded", checkPremiumAccess);
-
+  
+  // 5) Move all of your existing tool’s code into this function
+  //    (so it only runs after the premium check passes)
+  function initializeTool() {
+    // … everything that used to run on DOMContentLoaded goes here …
+    // e.g. loadTickers, simulateOneTicker, render charts, etc.
+  }
+  </script>
+<script>  
 
 /***********************************************************************
  * Merged top-stocks + advanced RRI code
