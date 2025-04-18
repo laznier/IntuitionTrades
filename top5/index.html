@@ -1441,15 +1441,15 @@ function updateRRISlider(val){
  * spider chart
  ***********************************************************************/
  function updateSpiderChart(scores, ticker) {
-  // scores: [rri, tech, sent, insider, fundamental, congress]
   document.getElementById("spiderChartContainer").style.display = "block";
 
   Highcharts.chart('spiderChart', {
     chart: {
       polar: true,
       type: 'area',
-      backgroundColor: 'transparent',
+      backgroundColor: 'transparent'
     },
+
     title: {
       text: ticker,
       align: 'center',
@@ -1461,15 +1461,18 @@ function updateRRISlider(val){
         fontWeight: 'bold'
       }
     },
+
     pane: {
-  size: '80%',
-  background: [{
-    // light translucent fill for your max‑value circle
-    outerRadius: '100%',
-    innerRadius: '0%',
-    backgroundColor: Highcharts.color('#40C4FF').setOpacity(0.1).get()
-  }]
-},
+      size: '80%',
+      background: [{
+        outerRadius: '100%',
+        innerRadius: '0%',
+        backgroundColor: Highcharts
+          .color('#40C4FF')
+          .setOpacity(0.1)
+          .get()
+      }]
+    },
 
     xAxis: {
       categories: [
@@ -1486,19 +1489,22 @@ function updateRRISlider(val){
         style: { color: '#fff', fontSize: '12px' }
       }
     },
+
     yAxis: {
-  gridLineInterpolation: 'circle',
-  lineWidth: 0,
-  min: 0,
-  max: 100,
-  labels: { enabled: false }
-},
+      gridLineInterpolation: 'circle',  // ← THIS must be "circle"
+      lineWidth: 0,
+      min: 0,
+      max: 100,
+      labels: { enabled: false }
+    },
 
     tooltip: {
       shared: true,
       pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.1f}</b><br/>'
     },
+
     legend: { enabled: false },
+
     series: [{
       name: ticker,
       data: scores,
@@ -1512,9 +1518,11 @@ function updateRRISlider(val){
       },
       fillOpacity: 0.6
     }],
+
     credits: { enabled: false }
   });
 }
+
 
 /***********************************************************************
  * BATCH ANALYSIS
