@@ -216,7 +216,7 @@
       set,
       update
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
+    
     // --- Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -272,11 +272,15 @@
         try {
           justSignedIn = true;
           await signInWithEmailAndPassword(auth, email, pass);
+          const idToken = await auth.currentUser.getIdToken();
+          localStorage.setItem("googleToken", idToken);
         } catch (err) {
           showError(err.message);
         }
       });
-
+      </script>
+      <script type="module">
+        
       // Sign‑Up with Email
       document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
         e.preventDefault();
@@ -292,6 +296,9 @@
           const res = await createUserWithEmailAndPassword(auth, email, pass);
           await handleUserData(res.user, { name, email });
           showTrialOverlay();
+             // ← INSERT TOKEN GRAB / STORE HERE
+    const idToken = await auth.currentUser.getIdToken();
+    localStorage.setItem("googleToken", idToken);
         } catch (err) {
           showError(err.message);
         }
@@ -308,6 +315,8 @@
             name:  result.user.displayName,
             email: result.user.email
           });
+          const idToken = await auth.currentUser.getIdToken();
+    localStorage.setItem("googleToken", idToken);
         } catch (err) {
           showError(err.message);
         }
@@ -322,6 +331,8 @@
             name:  result.user.displayName,
             email: result.user.email
           });
+          const idToken = await auth.currentUser.getIdToken();
+    localStorage.setItem("googleToken", idToken);
           showTrialOverlay();
         } catch (err) {
           showError(err.message);
@@ -372,6 +383,9 @@
       });
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
+    
+    
+    
   </script>
 </body>
 </html>
