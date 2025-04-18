@@ -14,6 +14,7 @@
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
     }
+  
     /* CONTAINER */
     .login-container {
       background: #222; padding: 2rem; border-radius: 8px;
@@ -27,6 +28,7 @@
       display: none; color: #dc3545;
       text-align: center; margin-bottom: 1rem;
     }
+  
     /* FORMS */
     .login-form, .signup-form {
       display: none; flex-direction: column;
@@ -43,12 +45,14 @@
       background: #16a34a; color: #fff; font-size: 1rem;
       cursor: pointer; margin-bottom: 1rem;
     }
+  
     /* LINKS */
     .toggle-link, .back-link {
       text-align: center; color: #16a34a; cursor: pointer;
       text-decoration: underline; font-size: 0.9rem;
     }
     .back-link { margin-top: 0.5rem; }
+  
     /* TRIAL OVERLAY */
     .overlay {
       display: none; position: fixed; top:0; left:0;
@@ -74,70 +78,69 @@
     }
     #trialYesBtn { background: #16a34a; color: #fff; border: none; }
     #trialNoBtn  { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
-</style>
+  
+    /* Circular dark Google icon button */
+    .google-circle-btn {
+      display: inline-block;
+      width: 35px; height: 35px; margin-left: 8px;
+      background-color: #000;
+      background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
+      background-repeat: no-repeat; background-size: 35px;
+      background-position: center; border-radius: 100%;
+    }
+  </style>
 <body>
-    <div class="login-container">
-      <h1>Welcome to Intuition Trades</h1>
-      <div class="error-message" id="errorMessage"></div>
-  
-      <!-- LOGIN FORM -->
-      <div class="login-form active" id="loginForm">
-        <input type="email"    id="loginEmail"    placeholder="Email"    required />
-        <input type="password" id="loginPassword" placeholder="Password" required />
-  
-        <!-- Sign‑In buttons -->
-        <a href="/login.html"
-           class="google-circle-btn"
-           id="googleSignInBtn"
-           aria-label="Sign in with Google"></a>
-        <a href="/login.html"
-           class="login-btn"
-           id="emailSignInBtn">Sign In</a>
-  
-        <div class="toggle-link" id="toggleToSignUp">
-          Don't have an account? Sign Up
-        </div>
-      </div>
-  
-      <!-- SIGNUP FORM -->
-      <div class="signup-form" id="signupForm">
-        <input type="text"     id="signupName"     placeholder="Name"     required />
-        <input type="email"    id="signupEmail"    placeholder="Email"    required />
-        <input type="password" id="signupPassword" placeholder="Password" required />
-  
-        <!-- Sign‑Up buttons -->
-        <a href="/login.html"
-           class="google-circle-btn"
-           id="googleSignUpBtn"
-           aria-label="Sign up with Google"></a>
-        <a href="/login.html"
-           class="login-btn"
-           id="emailSignUpBtn">Sign Up</a>
-  
-        <div class="toggle-link" id="toggleToLogin">
-          Already have an account? Sign In
-        </div>
-      </div>
-  
-      <div class="back-link" id="backToMain">Back to Home</div>
-    </div>
-  
-    <!-- 24‑HOUR TRIAL OVERLAY -->
-    <div id="trialOverlay" class="overlay">
-      <div class="overlay-card">
-        <h2>Start Your 24‑Hour Premium Trial?</h2>
-        <p>Get full access to premium tools for the next 24 hours.</p>
-        <div class="overlay-actions">
-          <button id="trialYesBtn">Yes, Start Trial</button>
-          <button id="trialNoBtn">No, Thanks</button>
-        </div>
-      </div>
-    </div>
-  </body>
-  
+  <div class="login-container">
+    <h1>Welcome to Intuition Trades</h1>
+    <div class="error-message" id="errorMessage"></div>
 
-  <!-- FIREBASE & APP LOGIC -->
-  <script type="module">
+    <!-- LOGIN FORM -->
+    <div class="login-form active" id="loginForm">
+      <input type="email"    id="loginEmail"    placeholder="Email"    required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+
+      <!-- Sign‑In buttons -->
+      <a href="#" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
+      <a href="#" class="login-btn"         id="emailSignInBtn">Sign In</a>
+
+      <div class="toggle-link" id="toggleToSignUp">
+        Don't have an account? Sign Up
+      </div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div class="signup-form" id="signupForm">
+      <input type="text"     id="signupName"     placeholder="Name"     required />
+      <input type="email"    id="signupEmail"    placeholder="Email"    required />
+      <input type="password" id="signupPassword" placeholder="Password" required />
+
+      <!-- Sign‑Up buttons -->
+      <a href="#" class="google-circle-btn" id="googleSignUpBtn" aria-label="Sign up with Google"></a>
+      <a href="#" class="login-btn"         id="emailSignUpBtn">Sign Up</a>
+
+      <div class="toggle-link" id="toggleToLogin">
+        Already have an account? Sign In
+      </div>
+    </div>
+
+    <div class="back-link" id="backToMain">Back to Home</div>
+  </div>
+
+  <!-- 24‑HOUR TRIAL OVERLAY -->
+  <div id="trialOverlay" class="overlay">
+    <div class="overlay-card">
+      <h2>Start Your 24‑Hour Premium Trial?</h2>
+      <p>Get full access to premium tools for the next 24 hours.</p>
+      <div class="overlay-actions">
+        <button id="trialYesBtn">Yes, Start Trial</button>
+        <button id="trialNoBtn">No, Thanks</button>
+      </div>
+    </div>
+  </div>
+</body>
+
+
+<script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import {
       getAuth,
@@ -157,11 +160,11 @@
       orderByChild,
       equalTo
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-
+  
     // --- Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "intuitiontrades.com",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
       projectId: "persuasive-net-456607-g8",
       storageBucket: "persuasive-net-456607-g8.appspot.com",
       messagingSenderId: "1019332250475",
@@ -172,17 +175,15 @@
     const auth     = getAuth(app);
     const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
-
+  
     // --- Helpers
     const showError       = msg => {
       const el = document.getElementById("errorMessage");
-      el.textContent = msg;
-      el.style.display = "block";
+      el.textContent = msg; el.style.display = "block";
     };
     const clearError      = () => {
       const el = document.getElementById("errorMessage");
-      el.textContent = "";
-      el.style.display = "none";
+      el.textContent = ""; el.style.display = "none";
     };
     const redirectToMain  = () => window.location.href = "index.html";
     const showTrialOverlay= () => {
@@ -200,12 +201,13 @@
         });
       }
     }
-
+  
     let justSignedIn = false;
-
+  
     window.addEventListener("DOMContentLoaded", () => {
       // 1) Email / Password Sign In
-      document.getElementById("loginBtn").addEventListener("click", async () => {
+      document.getElementById("emailSignInBtn").addEventListener("click", async e => {
+        e.preventDefault();
         clearError();
         const email = document.getElementById("loginEmail").value.trim();
         const pass  = document.getElementById("loginPassword").value.trim();
@@ -217,9 +219,10 @@
           showError(err.message);
         }
       });
-
-      // 2) Email / Password Sign Up
-      document.getElementById("signupBtn").addEventListener("click", async () => {
+  
+      // 2) Email / Password Sign Up (button)
+      document.getElementById("signupBtn").addEventListener("click", async e => {
+        e.preventDefault();
         clearError();
         const name  = document.getElementById("signupName").value.trim();
         const email = document.getElementById("signupEmail").value.trim();
@@ -236,11 +239,32 @@
           showError(err.message);
         }
       });
-
-      // Delay binding of Google button handlers to ensure elements exist
+  
+      // 3) Email / Password Sign Up (anchor)
+      document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
+        e.preventDefault();
+        clearError();
+        const name  = document.getElementById("signupName").value.trim();
+        const email = document.getElementById("signupEmail").value.trim();
+        const pass  = document.getElementById("signupPassword").value.trim();
+        if (!name) return showError("Please enter your name.");
+        if (!email || pass.length < 6)
+          return showError("Valid email + min 6‑char password.");
+        try {
+          justSignedIn = true;
+          const res = await createUserWithEmailAndPassword(auth, email, pass);
+          await handleUserData(res.user, { name, email });
+          showTrialOverlay();
+        } catch (err) {
+          showError(err.message);
+        }
+      });
+  
+      // Delay binding of Google button handlers
       setTimeout(() => {
-        // 3) Google Sign In (popup)
-        document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+        // 4) Google Sign In (popup)
+        document.getElementById("googleSignInBtn").addEventListener("click", async e => {
+          e.preventDefault();
           clearError();
           try {
             justSignedIn = true;
@@ -253,9 +277,10 @@
             showError(err.message);
           }
         });
-
-        // 4) Google Sign Up (popup + trial)
-        document.getElementById("googleSignupBtn").addEventListener("click", async () => {
+  
+        // 5) Google Sign Up (popup + trial)
+        document.getElementById("googleSignUpBtn").addEventListener("click", async e => {
+          e.preventDefault();
           clearError();
           try {
             justSignedIn = true;
@@ -270,8 +295,8 @@
           }
         });
       }, 100);
-
-      // 5) Trial overlay actions
+  
+      // 6) Trial overlay actions
       document.getElementById("trialYesBtn").addEventListener("click", async () => {
         const user = auth.currentUser;
         if (!user) return;
@@ -287,8 +312,8 @@
         document.getElementById("trialOverlay").classList.remove("visible");
         redirectToMain();
       });
-
-      // 6) Auth state listener
+  
+      // 7) Auth state listener
       onAuthStateChanged(auth, async user => {
         if (!user) return;
         if (justSignedIn) {
@@ -301,8 +326,8 @@
           redirectToMain();
         }
       });
-
-      // 7) UI toggles
+  
+      // 8) UI toggles
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
         clearError();
         document.getElementById("loginForm").classList.remove("active");
@@ -316,6 +341,4 @@
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
   </script>
-</body>
-</html>
-
+  
