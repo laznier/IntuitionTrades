@@ -16,8 +16,15 @@ export default async function handler(req, res) {
   if (!authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Not authorized' });
   }
-  const idToken = authHeader.split(' ')[1];
 
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch('/api/getPremiumData', {
+    headers: {
+      'Authorization': `Bearer ${idToken}`
+    }
+  });
+  const { premiumData } = await res.json();
+  
   try {
     // 2) verify token & get uid
     const { uid } = await admin.auth().verifyIdToken(idToken);
