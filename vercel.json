@@ -3,9 +3,6 @@
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
-    },
-    "api/downgrade-expired-trials.js": {
-      "runtime": "@vercel/node@2.0.0"
     }
   },
   "rewrites": [

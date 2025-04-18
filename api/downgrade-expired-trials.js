@@ -2,7 +2,7 @@
 
 const admin = require("firebase-admin");
 
-// Initialize once
+// Initialize Firebase Admin once
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
   admin.initializeApp({
@@ -13,13 +13,17 @@ if (!admin.apps.length) {
 
 const db = admin.database();
 
-module.exports = async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
+    // 24 hours ago
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+
+    // Find users whose trialStart ≤ cutoff
     const snap = await db
       .ref("users")
       .orderByChild("trialStart")
@@ -35,7 +39,10 @@ module.exports = async function handler(req, res) {
     });
 
     const count = Object.keys(updates).length;
-    if (count) await db.ref("users").update(updates);
+    if (count) {
+      await db.ref("users").update(updates);
+      console.log(`Downgraded ${count} users`);
+    }
 
     return res.status(200).json({ downgraded: count });
   } catch (err) {
