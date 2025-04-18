@@ -182,7 +182,11 @@
       font-weight: bold;
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
+
 <body>
   <!-- Back to Main Page button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
@@ -271,19 +275,18 @@
 
 
 
-
- <!-- Container for technical chart and details and rri chart and details 
+ <!-- Container for technical chart and details -->
 <div id="techChart"></div>
 <div id="techDetails"></div>
 
-
+<!-- Risk vs Reward Index Section -->
 <div id="rriSection">
   <h2>Risk vs Reward Index (dbHJ Model)</h2>
   <div id="rriChart"></div>
   <div id="rriDetails"></div>
   <div id="rriSliderSection"></div>
 </div>
--->
+
 
 <script>
 
@@ -342,6 +345,29 @@ function parseAlphaDate(str){
   const min   = str.substring(11,13) || "00";
   const sec   = str.substring(13,15) || "00";
   return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+}
+function logStockWithRadar(ticker, scores) {
+  const container = document.createElement("div");
+  container.style.marginBottom = "2rem";
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <canvas id="radar-${ticker}" width="250" height="250"></canvas>
+      <div>
+        <strong>${ticker}</strong><br>
+        Technical: ${scores.tech.toFixed(1)}<br>
+        Sentiment: ${scores.sent.toFixed(1)}<br>
+        Insider: ${scores.ins.toFixed(1)}<br>
+        Fundamental: ${scores.fund.toFixed(1)}<br>
+        Congress: ${scores.cong.toFixed(1)}<br>
+        RRI: ${scores.rri.toFixed(1)}<br>
+        <strong>Aggregator: ${scores.agg.toFixed(1)}</strong>
+      </div>
+    </div>
+  `;
+  document.getElementById("status").appendChild(container);
+  document.getElementById("status").scrollTop = document.getElementById("status").scrollHeight;
+
+  createRadarChart(`radar-${ticker}`, scores);
 }
 
 /***********************************************************************
@@ -1516,6 +1542,56 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("wCongress").value = weights.wCong;
     document.getElementById("scalingFactor").value = weights.scale;
   });
+});
+function createRadarChart(canvasId, scores) {
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: ["Tech", "Sent", "Insider", "Fund", "Congress", "RRI"],
+      datasets: [{
+        label: "Score Profile",
+        data: [
+          scores.tech,
+          scores.sent,
+          scores.ins,
+          scores.fund,
+          scores.cong,
+          scores.rri
+        ],
+        fill: true,
+        backgroundColor: "rgba(22, 163, 74, 0.3)",
+        borderColor: "rgba(22, 163, 74, 1)",
+        pointBackgroundColor: "#fff",
+        pointBorderColor: "#16a34a"
+      }]
+    },
+    options: {
+      responsive: false,
+      scales: {
+        r: {
+          angleLines: { color: "#555" },
+          grid: { color: "#333" },
+          suggestedMin: 0,
+          suggestedMax: 100,
+          pointLabels: { color: "#fff", font: { size: 12 } },
+          ticks: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+}
+logStockWithRadar(ticker, {
+  tech: techVal,
+  sent: sentVal,
+  ins: insVal,
+  fund: fundVal,
+  cong: congVal,
+  rri: rriVal,
+  agg: aggregator
 });
 
 </script>
