@@ -197,7 +197,7 @@
   
 </head>
 
-<body>
+<body id="app" style="display:none">
   <!-- Back to Main Page button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
 <h1>Top Stocks Scanner (Premium)</h1>
@@ -303,11 +303,11 @@
 
 
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
-  import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
-  import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js';
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+  import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-  // 1) Firebase configuration
+  // 1) Your Firebase config (same as your login page)
   const firebaseConfig = {
     apiKey:             "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
     authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
@@ -318,26 +318,24 @@
     appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
   };
 
-  // 2) Initialize Firebase
-  initializeApp(firebaseConfig);
-  const auth = getAuth();
-  const db   = getDatabase();
+  // 2) Init Firebase
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getDatabase(app);
 
-  // 3) Gatekeeper: only proceed if user is signed in and premium
+  // 3) Only show the page if they’re signed in & premium
   onAuthStateChanged(auth, async user => {
     if (!user) {
       alert("Please sign in to access this tool.");
       return window.location.href = "/";
     }
     const snap = await get(ref(db, `users/${user.uid}/role`));
-    if (!snap.exists() || snap.val() !== 'premium') {
+    if (!snap.exists() || snap.val() !== "premium") {
       alert("Premium access required.");
       return window.location.href = "/";
     }
-
-    // 4) Load and run your entire tool code in one go
-    // Replace 'top5-tool.js' with the actual path to your Main script file
-    await import('/top5/index.html');
+    // ✅ they passed—unhide the entire page
+    document.getElementById("app").style.display = "block";
   });
 </script>
 
