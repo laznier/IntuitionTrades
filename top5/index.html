@@ -304,11 +304,12 @@
 
 
 
+
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { initializeApp }  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-  // ← your web config
   const firebaseConfig = {
     apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
     authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -319,63 +320,48 @@
     databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
   };
 
-  // 1) Init Firebase
   const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
   (async () => {
-    // 2) Wait for Firebase to restore session (or know there is none)
-    const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
-
-    // 3) Not signed in?
+    // wait for Firebase to restore the session
+    const user = await new Promise(r => onAuthStateChanged(auth, r));
     if (!user) {
       alert("Please sign in to access this premium tool.");
-      return window.location.href = "/login.html";
+      return location.href = "/login.html";
     }
 
-    // 4) Grab a fresh ID token
     let idToken;
     try {
-      idToken = await user.getIdToken(/* forceRefresh */ true);
-    } catch (err) {
-      console.error("Failed to get ID token:", err);
+      idToken = await user.getIdToken(true);
+    } catch (e) {
+      console.error(e);
       alert("Auth error—please sign in again.");
-      return window.location.href = "/login.html";
+      return location.href = "/login.html";
     }
 
-    // 5) Verify on your backend
-    let res, json;
-    try {
-      res = await fetch("/api/verify-google", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ token: idToken })
-      });
-    } catch (err) {
-      console.error("Network error when verifying premium:", err);
-      alert("Network error—please try again in a moment.");
-      return window.location.reload();
-    }
+    // call your newly‑deployed function
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: idToken, requirePremium: true })
+    });
 
-    if (!res.ok) {
-      // 401 for not logged, 403 or 400 for invalid, 500 for server errors
-      console.warn("verify-google returned", res.status);
-      alert("Premium access required.");
-      return window.location.href = "/upgrade.html";
-    }
-
-    json = await res.json();
-    if (json.role !== "premium") {
+    if (res.status === 403) {
+      // signed in but not premium
       alert("Upgrade to Premium to use this tool.");
-      return window.location.href = "/upgrade.html";
+      return location.href = "/upgrade.html";
+    } else if (!res.ok) {
+      // 401 or other error
+      console.warn("verify-google returned", res.status);
+      alert("Please sign in to access this premium tool.");
+      return location.href = "/login.html";
     }
 
-    // 6) ✅ All good—user is premium. Initialize your premium page:
-    if (typeof initPremiumTool === "function") {
-      initPremiumTool();
-    } else {
-      console.log("Premium OK—now bootstrapping your tool.");
-    }
+    // at this point { role: "premium" }
+    // ─── BOOTSTRAP YOUR PREMIUM TOOL ───
+    initCongressTool && initCongressTool();
+
   })();
 
 
