@@ -1851,50 +1851,48 @@ footer {
     
     // 3) Watch auth & update UI
     onAuthStateChanged(auth, async user => {
-  const indicator   = document.getElementById("user-type-indicator");
-  const googleBtn   = document.getElementById("googleSignInBtn");
-  const emailBtn    = document.getElementById("emailSignInBtn");
-  const signOutBtn  = document.getElementById("signOutBtn");
-  const goPremiumBtn= document.getElementById("goPremiumBtn");
+  const indicator    = document.getElementById("user-type-indicator");
+  const googleBtn    = document.getElementById("googleSignInBtn");
+  const emailBtn     = document.getElementById("emailSignInBtn");
+  const signOutBtn   = document.getElementById("signOutBtn");
+  const goPremiumBtn = document.getElementById("goPremiumBtn");
 
   if (!user) {
     // not signed in
-    indicator.textContent    = "Not signed in";
-    googleBtn.style.display  = "";       // show
-    emailBtn.style.display   = "";
-    signOutBtn.style.display = "none";   // hide
-    goPremiumBtn.style.display = "none"; // hide
+    indicator.textContent     = "Not signed in";
+    googleBtn.style.display   = "";       // show
+    emailBtn.style.display    = "";
+    signOutBtn.style.display  = "none";   // hide
+    goPremiumBtn.style.display = "none";  // hide
   } else {
-    // signed in → hide login buttons, show sign‑out
-    googleBtn.style.display   = "none";
-    emailBtn.style.display    = "none";
-    signOutBtn.style.display  = "";
-
-    // fetch their role & name
+    // signed in → fetch their role & name
     const snap = await get(ref(db, "users/" + user.uid));
     let role = "basic", name = "";
     if (snap.exists()) ({ role, name } = snap.val());
-
-    // update indicator
     indicator.textContent = `Welcome ${name} (${role === "premium" ? "Premium" : "Basic"})`;
 
-    // only show Go Premium for basic users
+    // show Go Premium only for basic users
     if (role === "basic") {
-      goPremiumBtn.style.display = "";            // revert to CSS → inline‑block
+      goPremiumBtn.style.display = "";
     } else {
       goPremiumBtn.style.display = "none";
     }
+
+    // hide sign‑in buttons, show sign‑out
+    googleBtn.style.display   = "none";
+    emailBtn.style.display    = "none";
+    signOutBtn.style.display  = "";      
   }
 
-  // wire up sign‑out
+  // wire up sign‑out:
   signOutBtn.addEventListener("click", e => {
     e.preventDefault();
-    auth.signOut().catch(err => console.error("Error signing out:", err));
+    auth.signOut().catch(console.error);
   });
 
-  // leave your adjustPremiumUI() for the overlays
   adjustPremiumUI();
 });
+
 
 
     </script>
