@@ -222,27 +222,18 @@ button:hover {
 * Premium Check
  ***********************************************************************/
 
- async function ensureSignedIn() {
-  const token = await getAuth().currentUser?.getIdToken(/* forceRefresh */ false);
-  if (!token) {
-    alert("Please sign in to access this tool.");
-    return window.location.href = "/login.html";
-  }
-  // optionally call your endpoint to double‑check the token is valid:
-  const res = await fetch("/api/verify-google", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token })
-  });
-  if (!res.ok) {
-    alert("Session expired—please sign in again.");
-    return window.location.href = "/login.html";
-  }
-  // signed in ✓
+ const token = await firebase.auth().currentUser.getIdToken()
+const res   = await fetch('/api/verify-google', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ token, requirePremium: true })
+})
+if (!res.ok) {
+  // 401 = not signed in, 403 = signed in but not premium
+  alert('Premium access required.')
+  return window.location.href = '/'
 }
-
-document.addEventListener("DOMContentLoaded", ensureSignedIn);
-
+// user is premium—proceed
 
 
 
