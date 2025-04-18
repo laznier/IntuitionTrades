@@ -732,6 +732,8 @@ h1, h2, h3, h4, h5, h6 {
 /*    Go Premium Button Style */
 /* ————————————————————————— */
 .go-premium-btn {
+  .go-premium-btn { display: inline-block; /* … */ }
+/* and in the tag: <a id="goPremiumBtn" style="display:none;"…> */
   margin-left: 8px;
   padding: 0.4rem 0.8rem;
   font-size: 0.9rem;
@@ -1853,48 +1855,47 @@ footer {
   const googleBtn   = document.getElementById("googleSignInBtn");
   const emailBtn    = document.getElementById("emailSignInBtn");
   const signOutBtn  = document.getElementById("signOutBtn");
-  const goPremiumBtn = document.getElementById("goPremiumBtn");
-
+  const goPremiumBtn= document.getElementById("goPremiumBtn");
 
   if (!user) {
     // not signed in
-    indicator.textContent  = "Not signed in";
-    googleBtn.style.display   = "";      // show
-    emailBtn.style.display    = "";
-    signOutBtn.style.display  = "none";  // hide
+    indicator.textContent    = "Not signed in";
+    googleBtn.style.display  = "";       // show
+    emailBtn.style.display   = "";
+    signOutBtn.style.display = "none";   // hide
+    goPremiumBtn.style.display = "none"; // hide
   } else {
-    // signed in → fetch name & role
+    // signed in → hide login buttons, show sign‑out
+    googleBtn.style.display   = "none";
+    emailBtn.style.display    = "none";
+    signOutBtn.style.display  = "";
+
+    // fetch their role & name
     const snap = await get(ref(db, "users/" + user.uid));
     let role = "basic", name = "";
     if (snap.exists()) ({ role, name } = snap.val());
-    indicator.textContent = role === "premium"
-      ? `Welcome ${name} (Premium)`
-      : `Welcome ${name} (Basic)`;
-      if (!user) {
-  goPremiumBtn.style.display = "none";
-} else {
-  // …you already fetched role & name…
-  if (role === "basic") {
-    goPremiumBtn.style.display = "";      // show for basic users
-  } else {
-    goPremiumBtn.style.display = "none";  // hide for premium
-  }
-}
 
-    // toggle buttons
-    googleBtn.style.display   = "none";
-    emailBtn.style.display    = "none";
-    signOutBtn.style.display  = "";      // show
+    // update indicator
+    indicator.textContent = `Welcome ${name} (${role === "premium" ? "Premium" : "Basic"})`;
+
+    // only show Go Premium for basic users
+    if (role === "basic") {
+      goPremiumBtn.style.display = "";            // revert to CSS → inline‑block
+    } else {
+      goPremiumBtn.style.display = "none";
+    }
   }
-  document.getElementById("signOutBtn")
-  .addEventListener("click", e => {
+
+  // wire up sign‑out
+  signOutBtn.addEventListener("click", e => {
     e.preventDefault();
     auth.signOut().catch(err => console.error("Error signing out:", err));
   });
 
-  // re–apply your premium/unlock logic now that indicator is updated
+  // leave your adjustPremiumUI() for the overlays
   adjustPremiumUI();
 });
+
 
     </script>
     
