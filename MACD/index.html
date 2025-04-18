@@ -134,19 +134,25 @@
   <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
   
   <script>
-    const token = await firebase.auth().currentUser.getIdToken()
-const res   = await fetch('/api/verify-google', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ token })
-})
-if (!res.ok) {
-  // either not signed in (401) or other error
-  alert('Please sign in to use this tool')
-  return window.location.href = '/login.html'
-}
-const { role } = await res.json()
-// you can show “upgrade” if role !== 'premium'
+    (async () => {
+      const token = await firebase.auth().currentUser.getIdToken()
+      const res   = await fetch('/api/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      })
+      if (!res.ok) {
+        // either not signed in (401) or other error
+        alert('Please sign in to use this tool')
+        return window.location.href = '/login.html'
+      }
+      const { role } = await res.json()
+      // you can show “upgrade” if role !== 'premium'
+      console.log('user role is', role)
+      // …now proceed to initialize your page…
+    })()
+
+  
 
     /*************** Autocomplete Functions ***************/
     let debounceTimeout;
