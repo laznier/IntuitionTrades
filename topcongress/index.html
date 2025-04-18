@@ -158,7 +158,7 @@ button:hover {
     }
   </style>
 </head>
-<body>
+<body id="app" style="display:none">
   <!-- Back to Main Page Button -->
   <button onclick="window.location.href='https://intuitiontrades.com'">Back to Main Page</button>
 
@@ -217,36 +217,60 @@ button:hover {
   </div>
 
   
-<script>
-    /***********************************************************************
-* Premium Check
- ***********************************************************************/
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-  async function checkPremiumAccess() {
-    const token = localStorage.getItem("googleToken");
-    if (!token) {
-      alert("Please sign in to access this tool.");
-      window.location.href = "/"; // redirect to main page
-      return;
-    }
+    // ← your existing firebaseConfig
+    const firebaseConfig = {
+      apiKey:             "AIzaSyCw3AOOCQh3...FXYMMEoPPH8",
+      authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId:          "persuasive-net-456607-g8",
+      storageBucket:      "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId:  "1019332250475",
+      appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+    };
 
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
+    // Initialize Firebase
+    initializeApp(firebaseConfig);
+    const auth = getAuth();
+
+    // 🔒 Gatekeeper: only show & run the tool once we verify “premium”:
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        alert("Please sign in to access this tool.");
+        return window.location.href = "/login.html";
+      }
+
+      // Grab a fresh ID token for our custom backend
+      const token = await user.getIdToken(/* forceRefresh */ true);
+
+      // Verify on the server
+      const res = await fetch("/api/verify-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token })
+      });
+      const { isPremium } = await res.json();
+
+      if (!isPremium) {
+        alert("Premium access required.");
+        return window.location.href = "/";
+      }
+
+      // ✅ Passed! Un‑hide the page & initialize your congress tool.
+      document.getElementById("app").style.display = "block";
+      initializeCongressTool();
     });
-    const data = await res.json();
 
-    if (!data.isPremium) {
-      alert("Premium access required.");
-      window.location.href = "/"; // or a pricing/signup page
+    // Pull out all of your existing “DOMContentLoaded” code into this:
+    function initializeCongressTool() {
+      /***** your old DOMContentLoaded handlers, fetches, event‑listeners, etc. *****/
+      // e.g. loadCongressData(), wire up buttons, etc.
     }
+  </script>
 
-    // Otherwise user is premium — continue loading tool
-  }
-
-
-  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
     let allData = [];
