@@ -10,7 +10,6 @@ if (!admin.apps.length) {
     databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
   })
 }
-
 const db = admin.database()
 
 export default async function handler(req, res) {
