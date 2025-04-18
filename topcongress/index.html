@@ -222,28 +222,27 @@ button:hover {
 * Premium Check
  ***********************************************************************/
 
-  async function checkPremiumAccess() {
-    const token = localStorage.getItem("googleToken");
-    if (!token) {
-      alert("Please sign in to access this tool.");
-      window.location.href = "/"; // redirect to main page
-      return;
-    }
-
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
-    });
-    const data = await res.json();
-
-    if (!data.isPremium) {
-      alert("Premium access required.");
-      window.location.href = "/"; // or a pricing/signup page
-    }
-
-    // Otherwise user is premium — continue loading tool
+ async function ensureSignedIn() {
+  const token = await getAuth().currentUser?.getIdToken(/* forceRefresh */ false);
+  if (!token) {
+    alert("Please sign in to access this tool.");
+    return window.location.href = "/login.html";
   }
+  // optionally call your endpoint to double‑check the token is valid:
+  const res = await fetch("/api/verify-google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+  if (!res.ok) {
+    alert("Session expired—please sign in again.");
+    return window.location.href = "/login.html";
+  }
+  // signed in ✓
+}
+
+document.addEventListener("DOMContentLoaded", ensureSignedIn);
+
 
 
   document.addEventListener("DOMContentLoaded", checkPremiumAccess);
