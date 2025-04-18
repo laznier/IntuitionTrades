@@ -237,7 +237,7 @@ button:hover {
   const auth = getAuth(app);
 
   (async () => {
-    // 2) Wait for Firebase to restore session (or know there is none)
+    // 2) Wait for Firebase to restore the session (or know there is none)
     const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
 
     // 3) Not signed in?
@@ -249,7 +249,7 @@ button:hover {
     // 4) Grab a fresh ID token
     let idToken;
     try {
-      idToken = await user.getIdToken(/* forceRefresh */ true);
+      idToken = await user.getIdToken(true);
     } catch (err) {
       console.error("Failed to get ID token:", err);
       alert("Auth error—please sign in again.");
@@ -257,7 +257,7 @@ button:hover {
     }
 
     // 5) Verify on your backend
-    let res, json;
+    let res;
     try {
       res = await fetch("/api/verify-google", {
         method:  "POST",
@@ -271,25 +271,33 @@ button:hover {
     }
 
     if (!res.ok) {
-      // 401 for not logged, 403 or 400 for invalid, 500 for server errors
       console.warn("verify-google returned", res.status);
-      alert("Premium access required.");
-      return window.location.href = "/upgrade.html";
-    }
-
-    json = await res.json();
-    if (json.role !== "premium") {
       alert("Upgrade to Premium to use this tool.");
       return window.location.href = "/upgrade.html";
     }
 
-    // 6) ✅ All good—user is premium. Initialize your premium page:
-    if (typeof initPremiumTool === "function") {
-      initPremiumTool();
-    } else {
-      console.log("Premium OK—now bootstrapping your tool.");
+    const { role } = await res.json();
+    if (role !== "premium") {
+      alert("Upgrade to Premium to use this tool.");
+      return window.location.href = "/upgrade.html";
     }
-  })();
+
+    // ────────────────────────────────────────────────
+    // 6) ✅ All good—**the user is signed‑in AND premium**.
+    // Now you can safely run **all** your premium‑tool code below.
+    // ────────────────────────────────────────────────
+
+    // example: your existing page logic goes here...
+    // fetchData(), renderCharts(), setupEventListeners(), etc.
+
+    // …everything that used to run “immediately” can live right here…
+    // e.g.:
+    // fetchCongressTrades()
+    //   .then(renderTrades)
+    //   .catch(console.error)
+
+
+
 
 
 
@@ -702,6 +710,7 @@ document.getElementById('applyFilter').addEventListener('click', () => {
       clearSuggestions();
     });
 
+  })();
 </script>
 </body>
 </html>
