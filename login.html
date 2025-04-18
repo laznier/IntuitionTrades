@@ -74,7 +74,6 @@
     }
     #trialYesBtn { background: #16a34a; color: #fff; border: none; }
     #trialNoBtn  { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
-  </style>
 </style>
 <body>
   <div class="login-container">
@@ -232,36 +231,39 @@
         }
       });
 
-      // 3) Google Sign In (popup)
-      document.getElementById("googleLoginBtn").addEventListener("click", async () => {
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-        } catch (err) {
-          showError(err.message);
-        }
-      });
+      // Delay binding of Google button handlers to ensure elements exist
+      setTimeout(() => {
+        // 3) Google Sign In (popup)
+        document.getElementById("googleLoginBtn").addEventListener("click", async () => {
+          clearError();
+          try {
+            justSignedIn = true;
+            const result = await signInWithPopup(auth, provider);
+            await handleUserData(result.user, {
+              name:  result.user.displayName,
+              email: result.user.email
+            });
+          } catch (err) {
+            showError(err.message);
+          }
+        });
 
-      // 4) Google Sign Up (popup + trial)
-      document.getElementById("googleSignupBtn").addEventListener("click", async () => {
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-          showTrialOverlay();
-        } catch (err) {
-          showError(err.message);
-        }
-      });
+        // 4) Google Sign Up (popup + trial)
+        document.getElementById("googleSignupBtn").addEventListener("click", async () => {
+          clearError();
+          try {
+            justSignedIn = true;
+            const result = await signInWithPopup(auth, provider);
+            await handleUserData(result.user, {
+              name:  result.user.displayName,
+              email: result.user.email
+            });
+            showTrialOverlay();
+          } catch (err) {
+            showError(err.message);
+          }
+        });
+      }, 100);
 
       // 5) Trial overlay actions
       document.getElementById("trialYesBtn").addEventListener("click", async () => {
@@ -310,3 +312,4 @@
   </script>
 </body>
 </html>
+
