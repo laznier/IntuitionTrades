@@ -231,21 +231,21 @@
     const auth     = getAuth(app);
     const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
-
+  
     // --- Helpers
-    const showError       = msg => {
+    const showError        = msg => {
       const el = document.getElementById("errorMessage");
       el.textContent = msg;
       el.style.display = "block";
     };
-    const clearError      = () => {
+    const clearError       = () => {
       const el = document.getElementById("errorMessage");
       el.textContent = "";
       el.style.display = "none";
     };
-    const redirectToMain  = () => window.location.href = "index.html";
-    const showTrialOverlay= () => document.getElementById("trialOverlay").classList.add("visible");
-
+    const redirectToMain   = () => window.location.href = "index.html";
+    const showTrialOverlay = () => document.getElementById("trialOverlay").classList.add("visible");
+  
     async function handleUserData(user, profile = {}) {
       const userRef = ref(db, `users/${user.uid}`);
       const snap    = await get(userRef);
@@ -258,9 +258,9 @@
         });
       }
     }
-
+  
     let justSignedIn = false;
-
+  
     window.addEventListener("DOMContentLoaded", () => {
       // Sign‑In with Email
       document.getElementById("emailSignInBtn").addEventListener("click", async e => {
@@ -278,9 +278,7 @@
           showError(err.message);
         }
       });
-      </script>
-      <script type="module">
-        
+  
       // Sign‑Up with Email
       document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
         e.preventDefault();
@@ -296,14 +294,14 @@
           const res = await createUserWithEmailAndPassword(auth, email, pass);
           await handleUserData(res.user, { name, email });
           showTrialOverlay();
-             // ← INSERT TOKEN GRAB / STORE HERE
-    const idToken = await auth.currentUser.getIdToken();
-    localStorage.setItem("googleToken", idToken);
+          // ← INSERT TOKEN GRAB / STORE HERE
+          const idToken = await auth.currentUser.getIdToken();
+          localStorage.setItem("googleToken", idToken);
         } catch (err) {
           showError(err.message);
         }
       });
-
+  
       // Google Sign‑In / Sign‑Up
       document.getElementById("googleSignInBtn").addEventListener("click", async e => {
         e.preventDefault();
@@ -316,7 +314,7 @@
             email: result.user.email
           });
           const idToken = await auth.currentUser.getIdToken();
-    localStorage.setItem("googleToken", idToken);
+          localStorage.setItem("googleToken", idToken);
         } catch (err) {
           showError(err.message);
         }
@@ -332,13 +330,13 @@
             email: result.user.email
           });
           const idToken = await auth.currentUser.getIdToken();
-    localStorage.setItem("googleToken", idToken);
+          localStorage.setItem("googleToken", idToken);
           showTrialOverlay();
         } catch (err) {
           showError(err.message);
         }
       });
-
+  
       // Trial overlay actions
       document.getElementById("trialYesBtn").addEventListener("click", async () => {
         const user = auth.currentUser;
@@ -355,7 +353,7 @@
         document.getElementById("trialOverlay").classList.remove("visible");
         redirectToMain();
       });
-
+  
       // Auth state listener
       onAuthStateChanged(auth, async user => {
         if (!user) return;
@@ -369,7 +367,7 @@
           redirectToMain();
         }
       });
-
+  
       // UI toggles
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
         clearError();
@@ -381,11 +379,9 @@
         document.getElementById("signupForm").classList.remove("active");
         document.getElementById("loginForm").classList.add("active");
       });
+  
+      // Back to home
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
-    
-    
-    
   </script>
-</body>
-</html>
+  
