@@ -259,7 +259,7 @@ button:hover {
     // 5) Verify on your backend
     let res;
     try {
-      res = await fetch("pages/api/verify-google", {
+      res = await fetch("/api/verify-google", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ token: idToken })
