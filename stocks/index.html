@@ -1846,33 +1846,7 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.0 };
     }
   }
-  function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
-  const manual = document.getElementById("useManualWeightsCheckbox").checked;
-  if (!manual) {
-    let auto = getAutoWeightsForRegime(regime);
-    let raw  = auto.wRRI*mc + auto.wTech*tech + auto.wSent*sent
-             + auto.wIns*ins + auto.wFund*fund + auto.wCong*cong;
-    return (raw - 50)*auto.scale + 50;
-  } else {
-    // read from wRRI, not wMC
-    const wRRI  = parseFloat(document.getElementById("wRRI").value)   || 0;
-    const wTech = parseFloat(document.getElementById("wTech").value)  || 0;
-    const wSent = parseFloat(document.getElementById("wSent").value)  || 0;
-    const wIns  = parseFloat(document.getElementById("wIns").value)   || 0;
-    const wFund = parseFloat(document.getElementById("wFund").value)  || 0;
-    const wCong = parseFloat(document.getElementById("wCong").value)  || 0;
-    const sc    = parseFloat(document.getElementById("manualScale").value) || 1;
-    let sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
-    // validate
-    if (Math.abs(sumW - 1) > 1e-9 || sc < 0 || sc > 5) {
-      console.warn("invalid manual weights/scale → fallback");
-      return (mc + tech + sent + ins + fund + cong) / 6;
-    }
-    let raw = wRRI*mc + wTech*tech + wSent*sent
-            + wIns*ins + wFund*fund + wCong*cong;
-    return (raw - 50)*sc + 50;
-  }
-}
+  
 
     /***********************************************
      * Buffer Overlay Functions
