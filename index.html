@@ -728,26 +728,6 @@ h1, h2, h3, h4, h5, h6 {
     gap: 10px;
     align-items: center;
 }
-/* ————————————————————————— */
-/*    Go Premium Button Style */
-/* ————————————————————————— */
-.go-premium-btn {
-  .go-premium-btn { display: inline-block; /* … */ }
-/* and in the tag: <a id="goPremiumBtn" style="display:none;"…> */
-  margin-left: 8px;
-  padding: 0.4rem 0.8rem;
-  font-size: 0.9rem;
-  color: #fff;
-  background: linear-gradient(45deg, #ff0080, #7928ca);
-  border: none;
-  border-radius: 4px;
-  text-decoration: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.go-premium-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(255, 0, 128, 0.5);
-}
 
 /* Footer */
 footer {
@@ -1380,27 +1360,17 @@ footer {
 
 
    
-  <!-- Sign‑in container aligned to the right -->
-  <div class="header-right">
-    <div id="user-type-indicator">Not signed in</div>
+<!-- Sign‑in container aligned to the right -->
+<div class="header-right">
+  <div id="user-type-indicator">Not signed in</div>
 
-    <!-- Sign‑In buttons -->
-    <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
-    <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
+  <!-- Sign‑In buttons -->
+  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
+  <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
 
-    <!-- Go Premium (hidden by default, shown to basic users only) -->
-    <a href="/premium.html"
-       class="go-premium-btn"
-       id="goPremiumBtn"
-       style="display:none;">
-      Go Premium
-    </a>
-
-    <!-- Sign‑Out button (hidden by default) -->
-    <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
-  </div>
-
-
+  <!-- Sign‑Out button (hidden by default) -->
+  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
+</div>
 
 
     </header>
@@ -1851,49 +1821,40 @@ footer {
     
     // 3) Watch auth & update UI
     onAuthStateChanged(auth, async user => {
-  const indicator    = document.getElementById("user-type-indicator");
-  const googleBtn    = document.getElementById("googleSignInBtn");
-  const emailBtn     = document.getElementById("emailSignInBtn");
-  const signOutBtn   = document.getElementById("signOutBtn");
-  const goPremiumBtn = document.getElementById("goPremiumBtn");
+  const indicator   = document.getElementById("user-type-indicator");
+  const googleBtn   = document.getElementById("googleSignInBtn");
+  const emailBtn    = document.getElementById("emailSignInBtn");
+  const signOutBtn  = document.getElementById("signOutBtn");
 
   if (!user) {
     // not signed in
-    indicator.textContent     = "Not signed in";
-    googleBtn.style.display   = "";       // show
+    indicator.textContent  = "Not signed in";
+    googleBtn.style.display   = "";      // show
     emailBtn.style.display    = "";
-    signOutBtn.style.display  = "none";   // hide
-    goPremiumBtn.style.display = "none";  // hide
+    signOutBtn.style.display  = "none";  // hide
   } else {
-    // signed in → fetch their role & name
+    // signed in → fetch name & role
     const snap = await get(ref(db, "users/" + user.uid));
     let role = "basic", name = "";
     if (snap.exists()) ({ role, name } = snap.val());
-    indicator.textContent = `Welcome ${name} (${role === "premium" ? "Premium" : "Basic"})`;
+    indicator.textContent = role === "premium"
+      ? `Welcome ${name} (Premium)`
+      : `Welcome ${name} (Basic)`;
 
-    // show Go Premium only for basic users
-    if (role === "basic") {
-      goPremiumBtn.style.display = "";
-    } else {
-      goPremiumBtn.style.display = "none";
-    }
-
-    // hide sign‑in buttons, show sign‑out
+    // toggle buttons
     googleBtn.style.display   = "none";
     emailBtn.style.display    = "none";
-    signOutBtn.style.display  = "";      
+    signOutBtn.style.display  = "";      // show
   }
-
-  // wire up sign‑out:
-  signOutBtn.addEventListener("click", e => {
+  document.getElementById("signOutBtn")
+  .addEventListener("click", e => {
     e.preventDefault();
-    auth.signOut().catch(console.error);
+    auth.signOut().catch(err => console.error("Error signing out:", err));
   });
 
+  // re–apply your premium/unlock logic now that indicator is updated
   adjustPremiumUI();
 });
-
-
 
     </script>
     
