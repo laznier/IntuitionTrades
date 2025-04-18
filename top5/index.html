@@ -1483,18 +1483,24 @@ async function runBatchAnalysis(){
 }
 
 
-  document.addEventListener("DOMContentLoaded", function() {
-    const manualCheckbox = document.getElementById("manualModeCheckbox");
-    const manualInputs = document.getElementById("manualInputs");
+document.addEventListener("DOMContentLoaded", function () {
+  const regimeDropdown = document.getElementById("marketRegimeSelect");
 
-    manualCheckbox.addEventListener("change", function() {
-      if (manualCheckbox.checked) {
-        manualInputs.style.display = "block";
-      } else {
-        manualInputs.style.display = "none";
-      }
-    });
-  })
+  regimeDropdown.addEventListener("change", function () {
+    const regime = regimeDropdown.value;
+    const weights = getAutoWeightsForRegime(regime);
+
+    // Populate the inputs with the auto weights
+    document.getElementById("wRRI").value = weights.wRRI;
+    document.getElementById("wTech").value = weights.wTech;
+    document.getElementById("wSent").value = weights.wSent;
+    document.getElementById("wInsider").value = weights.wIns;
+    document.getElementById("wFund").value = weights.wFund;
+    document.getElementById("wCongress").value = weights.wCong;
+    document.getElementById("scalingFactor").value = weights.scale;
+  });
+});
+
 
 </script>
 </body>
