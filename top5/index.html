@@ -1405,19 +1405,16 @@ async function simulateOneTicker(ticker, periodMonths, regime){
     logStatus("Error in simulateOneTicker for "+ ticker+" => "+ e.message);
   }
 
-  let aggregator= aggregatorFinal(techVal, sentVal, insVal, fundVal, congVal, rriVal, regime);
-  logStatus(
-    `Ticker ${ticker} evaluation:<br>
-     <strong>Technical</strong>: ${techVal.toFixed(2)}<br>
-     <strong>Sentiment</strong>: ${sentVal.toFixed(2)}<br>
-     <strong>Insider</strong>: ${insVal.toFixed(2)}<br>
-     <strong>Fundamental</strong>: ${fundVal.toFixed(2)}<br>
-     <strong>Congress</strong>: ${congVal.toFixed(2)}<br>
-     <strong>RRI</strong>: ${rriVal.toFixed(2)}<br>
-     <strong>Aggregator</strong>: ${aggregator.toFixed(2)}`
-  );
-  return { ticker, aggregator };
-}
+  logStockWithRadar(ticker, {
+  tech: techVal,
+  sent: sentVal,
+  ins: insVal,
+  fund: fundVal,
+  cong: congVal,
+  rri: rriVal,
+  agg: aggregator
+});
+
 
 /***********************************************************************
  * RRI Slider Update
