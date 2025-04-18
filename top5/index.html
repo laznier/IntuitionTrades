@@ -1482,6 +1482,19 @@ async function runBatchAnalysis(){
   logStatus(`Done! Processed ${processed} tickers.`);
 }
 
+  document.addEventListener("DOMContentLoaded", function() {
+    const manualCheckbox = document.getElementById("manualModeCheckbox");
+    const manualInputs = document.getElementById("manualInputs");
+
+    manualCheckbox.addEventListener("change", function() {
+      if (manualCheckbox.checked) {
+        manualInputs.style.display = "block";
+      } else {
+        manualInputs.style.display = "none";
+      }
+    });
+  });
+
 
 document.addEventListener("DOMContentLoaded", function () {
   const regimeDropdown = document.getElementById("marketRegimeSelect");
@@ -1500,9 +1513,6 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("scalingFactor").value = weights.scale;
   });
 });
-document.getElementById("techChar").style.display = 'none';
-document.getElementById("rriSection").style.display = 'none';
-
 
 </script>
 </body>
