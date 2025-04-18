@@ -83,25 +83,15 @@
 
     /* Custom Google Sign‑Up Row */
     .custom-google-signup {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1rem;
-      cursor: pointer;
-      font-size: 0.95rem;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem; cursor: pointer; font-size: 0.95rem;
     }
-    /* Circular dark Google icon button */
     .google-circle-btn {
-      display: inline-block;
-      width: 35px;
-      height: 35px;
-      margin-left: 8px;
-      background-color: #000;
+      display: inline-block; width: 35px; height: 35px;
+      margin-left: 8px; background-color: #000;
       background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
-      background-repeat: no-repeat;
-      background-size: 35px;
-      background-position: center;
-      border-radius: 100%;
+      background-repeat: no-repeat; background-size: 35px;
+      background-position: center; border-radius: 100%;
     }
   </style>
 </head>
@@ -177,7 +167,7 @@
       equalTo
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    // 1) CONFIG
+    // 1) YOUR FIREBASE CONFIG
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -215,10 +205,10 @@
       const snap    = await get(userRef);
       if (!snap.exists()) {
         await set(userRef, {
-          email: user.email,
-          name:  profile.name || user.displayName || "",
-          role:  "basic",
-          createdAt: Date.now()
+          email:     user.email,
+          name:      profile.name || user.displayName || "",
+          createdAt: Date.now(),
+          role:      "basic"
         });
       }
     }
@@ -226,7 +216,7 @@
     let justSignedIn = false;
 
     window.addEventListener("DOMContentLoaded", () => {
-      // A) Initialize GSI with popup mode
+      // A) Initialize GSI in popup mode
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
         callback: async resp => {
@@ -236,10 +226,12 @@
             const cred    = GoogleAuthProvider.credential(resp.credential);
 
             if (document.getElementById("loginForm").classList.contains("active")) {
-              // LOGIN → ensure email exists
-              const q    = query(ref(db, 'users'),
-                                orderByChild('email'),
-                                equalTo(payload.email));
+              // SIGN IN FLOW
+              const q    = query(
+                ref(db, 'users'),
+                orderByChild('email'),
+                equalTo(payload.email)
+              );
               const snap = await get(q);
               if (!snap.exists()) {
                 showError("No account found. Please sign up.");
@@ -251,13 +243,15 @@
               await signInWithCredential(auth, cred);
 
             } else {
-              // SIGNUP → create new user record
+              // SIGN UP FLOW
               justSignedIn = true;
               const result = await signInWithCredential(auth, cred);
               await handleUserData(result.user, {
                 name:  payload.name,
                 email: payload.email
               });
+              // Prompt trial immediately
+              showTrialOverlay();
             }
           } catch (err) {
             showError(err.message);
@@ -266,19 +260,17 @@
         ux_mode: "popup"
       });
 
-      // B) Render standard Google Sign‑In button in login form
+      // B) Render standard Google Sign‑In button
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainer"),
         { theme:"filled_dark", size:"large" }
       );
 
-      // C) Hook up our custom icon in signup form
+      // C) Wire custom icon on Sign‑Up form
       document.getElementById("customGoogleSignupBtn")
         .addEventListener("click", () => {
-          // ensure sign‑up card is visible
           document.getElementById("loginForm").classList.remove("active");
           document.getElementById("signupForm").classList.add("active");
-          // launch the popup
           google.accounts.id.prompt();
         });
 
@@ -330,7 +322,7 @@
           }
         });
 
-      // G) Email/password Sign‑Up (with Name)
+      // G) Email/password Sign‑Up
       document.getElementById("signupBtn")
         .addEventListener("click", async () => {
           clearError();
