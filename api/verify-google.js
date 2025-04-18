@@ -1,4 +1,6 @@
-import admin from 'firebase-admin'
+// api/verify-google.js
+
+const admin = require('firebase-admin')
 
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIAL)
@@ -8,28 +10,26 @@ if (!admin.apps.length) {
   })
 }
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).end('Method Not Allowed')
   }
 
-  const { token, requirePremium = false } = req.body
+  const { token, requirePremium = false } = req.body || {}
   if (!token) {
     return res.status(400).json({ error: 'Missing ID token' })
   }
 
   try {
-    // 1) Verify the token
+    // 1) Verify the Firebase ID token
     const decoded = await admin.auth().verifyIdToken(token)
     const uid = decoded.uid
 
-    // 2) Fetch their role once
-    const snap = await admin.database().ref(`users/${uid}/role`).once('value')
-    const role = snap.val() || 'basic'
-
-    // 3) If this call is only checking “signed in,” return here
+    // 2) If they only need to be signed in, we’re done:
     if (!requirePremium) {
+      const snap = await admin.database().ref(`users/${uid}/role`).once('value')
+      const role = snap.val() || 'basic'
       return res.status(200).json({
         isSignedIn: true,
         isPremium: role === 'premium',
@@ -37,7 +37,9 @@ export default async function handler(req, res) {
       })
     }
 
-    // 4) Otherwise enforce premium
+    // 3) Otherwise enforce premium access
+    const snap = await admin.database().ref(`users/${uid}/role`).once('value')
+    const role = snap.val()
     if (role !== 'premium') {
       return res.status(403).json({
         isSignedIn: true,
@@ -46,7 +48,7 @@ export default async function handler(req, res) {
       })
     }
 
-    // 5) All good—premium user!
+    // 4) All good: they’re premium
     return res.status(200).json({
       isSignedIn: true,
       isPremium: true,
