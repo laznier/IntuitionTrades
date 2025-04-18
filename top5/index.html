@@ -300,8 +300,28 @@
   <div id="rriDetails"></div>
   <div id="rriSliderSection"></div>
 </div>
+<script>
+document.getElementById("googleSignUpBtn").addEventListener("click", async e => {
+  e.preventDefault();
+  clearError();
+  try {
+    justSignedIn = true;
+    const result = await signInWithPopup(auth, provider);
+    await handleUserData(result.user, {
+      name:  result.user.displayName,
+      email: result.user.email
+    });
 
+    // ← INSERT TOKEN GRAB / STORE HERE
+    const idToken = await auth.currentUser.getIdToken();
+    localStorage.setItem("googleToken", idToken);
 
+    showTrialOverlay();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
