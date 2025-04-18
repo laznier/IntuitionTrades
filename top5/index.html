@@ -1481,6 +1481,21 @@ async function runBatchAnalysis(){
   }
   logStatus(`Done! Processed ${processed} tickers.`);
 }
+
+
+  document.addEventListener("DOMContentLoaded", function() {
+    const manualCheckbox = document.getElementById("manualModeCheckbox");
+    const manualInputs = document.getElementById("manualInputs");
+
+    manualCheckbox.addEventListener("change", function() {
+      if (manualCheckbox.checked) {
+        manualInputs.style.display = "block";
+      } else {
+        manualInputs.style.display = "none";
+      }
+    });
+  })
+
 </script>
 </body>
 </html>
