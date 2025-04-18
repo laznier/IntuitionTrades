@@ -1,0 +1,10 @@
+{
+    "name": "intuition-trades-functions",
+    "version": "1.0.0",
+    "engines": {
+        "node": "18.x"
+    },
+    "dependencies": {
+        "firebase-admin": "^11.11.1"
+    }
+}
