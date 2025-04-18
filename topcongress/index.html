@@ -158,7 +158,7 @@ button:hover {
     }
   </style>
 </head>
-<body>
+<body id="app" style="display:none">
   <!-- Back to Main Page Button -->
   <button onclick="window.location.href='https://intuitiontrades.com'">Back to Main Page</button>
 
@@ -216,63 +216,70 @@ button:hover {
     <div id="details"></div>
   </div>
 
-<!-- Premium check -->
+  
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-  const firebaseConfig = { /* … */ };
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+    // ← your existing firebaseConfig
+    const firebaseConfig = {
+      apiKey:             "AIzaSyCw3AOOCQh3...FXYMMEoPPH8",
+      authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId:          "persuasive-net-456607-g8",
+      storageBucket:      "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId:  "1019332250475",
+      appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+    };
 
-  (async () => {
-    const user = await new Promise(r => onAuthStateChanged(auth, r));
-    if (!user) {
-      alert("Please sign in to access this premium tool.");
-      return window.location.href = "/login.html";
+    // Initialize Firebase
+    initializeApp(firebaseConfig);
+    const auth = getAuth();
+
+    // 🔒 Gatekeeper: only show & run the tool once we verify “premium”:
+    let hasChecked = false;
+
+onAuthStateChanged(auth, async user => {
+  if (hasChecked) return; // prevent double triggers
+  hasChecked = true;
+
+  if (!user) {
+    alert("Please sign in to access this tool.");
+    return window.location.href = "/login.html";
+  }
+
+  try {
+    const token = await user.getIdToken(true);
+    const res = await fetch("/api/verify-google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token })
+    });
+
+    const { isPremium } = await res.json();
+
+    if (!isPremium) {
+      alert("Premium access required.");
+      return window.location.href = "/";
     }
 
-    let token;
-    try {
-      token = await user.getIdToken(true);
-    } catch (err) {
-      console.error("Failed to get ID token:", err);
-      alert("Auth error—please sign in again.");
-      return window.location.href = "/login.html";
+    // ✅ Passed!
+    document.getElementById("app").style.display = "block";
+    initializePremiumTool(); // <-- your tool's logic
+  } catch (e) {
+    alert("Error checking premium access.");
+    console.error(e);
+    window.location.href = "/";
+  }
+});
+
+
+    // Pull out all of your existing “DOMContentLoaded” code into this:
+    function initializeCongressTool() {
+      /***** your old DOMContentLoaded handlers, fetches, event‑listeners, etc. *****/
+      // e.g. loadCongressData(), wire up buttons, etc.
     }
-
-    let res;
-    try {
-      res = await fetch("/api/verify-google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, requirePremium: true })
-      });
-    } catch (err) {
-      console.error("Network error when verifying premium:", err);
-      alert("Network error—please try again in a moment.");
-      return;
-    }
-
-    if (!res.ok) {
-      console.warn("verify-google returned", res.status);
-      alert("Upgrade to Premium to use this tool.");
-      return window.location.href = "/upgrade.html";
-    }
-
-    const { role, isPremium } = await res.json();
-    console.log("premium tool check:", role, isPremium);
-    if (role !== "premium") {
-      alert("Upgrade to Premium to use this tool.");
-      return window.location.href = "/upgrade.html";
-    }
-
-    // ✅ Success! Launch your premium‐only logic here
-    initPremiumTool?.();
-  })();
-
-
-
+  
 
     // Global variables for debounce, timers, and fetched data
     let debounceTimeout, countdownInterval, searchingInterval;
@@ -682,7 +689,6 @@ document.getElementById('applyFilter').addEventListener('click', () => {
       });
       clearSuggestions();
     });
-
 
 </script>
 </body>
