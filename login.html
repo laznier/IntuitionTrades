@@ -95,7 +95,9 @@
 
     <!-- SIGNUP FORM -->
     <div class="signup-form" id="signupForm">
-      <input type="email"    id="signupEmail"    placeholder="Email"                 required />
+      <!-- NEW: Name field -->
+      <input type="text"    id="signupName"     placeholder="Name"                 required />
+      <input type="email"   id="signupEmail"    placeholder="Email"                required />
       <input type="password" id="signupPassword" placeholder="Password (min 6 chars)" required />
       <button id="signupBtn">Sign Up</button>
       <div id="googleButtonContainerSignup" style="margin-bottom:1rem;"></div>
@@ -151,23 +153,20 @@
       appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getDatabase(app);
+    const app      = initializeApp(firebaseConfig);
+    const auth     = getAuth(app);
+    const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
-    // Helpers
-    const showError = msg => {
+    const showError   = msg => {
       const el = document.getElementById("errorMessage");
       el.textContent = msg; el.style.display = "block";
     };
-    const clearError = () => {
+    const clearError  = () => {
       const el = document.getElementById("errorMessage");
       el.textContent = ""; el.style.display = "none";
     };
-    const redirectToMain = () => {
-      window.location.href = "index.html";
-    };
+    const redirectToMain = () => window.location.href = "index.html";
     const showTrialOverlay = () => {
       document.getElementById("trialOverlay").classList.add("visible");
     };
@@ -177,7 +176,6 @@
       return JSON.parse(atob(b64));
     };
 
-    // Create user record if missing
     async function handleUserData(user, profile={}) {
       const userRef = ref(db, "users/" + user.uid);
       const snap    = await get(userRef);
@@ -194,7 +192,7 @@
     let justSignedIn = false;
 
     window.addEventListener("DOMContentLoaded", () => {
-      // 1) Initialize Google Sign‑In
+      // Initialize GSI
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
         callback: async resp => {
@@ -203,25 +201,22 @@
             const payload = decodeJwt(resp.credential);
             const cred    = GoogleAuthProvider.credential(resp.credential);
 
-            // If on Sign‑In form…
             if (document.getElementById("loginForm").classList.contains("active")) {
-              // Check DB for existing email
+              // Sign‑In attempt → check if email exists
               const usersRef = ref(db, 'users');
               const q        = query(usersRef, orderByChild('email'), equalTo(payload.email));
               const snap     = await get(q);
               if (!snap.exists()) {
-                // Switch to sign‑up
                 showError("No account found. Please sign up.");
                 document.getElementById("loginForm").classList.remove("active");
                 document.getElementById("signupForm").classList.add("active");
                 return;
               }
-              // Proceed to sign in
               justSignedIn = true;
               await signInWithCredential(auth, cred);
 
             } else {
-              // On Sign‑Up form → create new account
+              // Sign‑Up → create & store name from Google profile
               justSignedIn = true;
               const result = await signInWithCredential(auth, cred);
               await handleUserData(result.user, {
@@ -234,23 +229,29 @@
           }
         }
       });
-      // Render both buttons
+
+      // Render Sign‑In button
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainer"),
-        { theme: "filled_dark", size: "large" }
+        { theme:"filled_dark", size:"large" }
       );
+      // Render Sign‑Up button with custom text
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainerSignup"),
-        { theme: "filled_dark", size: "large" }
+        { theme:"filled_dark", size:"large", text:"signup_with" }
       );
+      // After a brief delay, override to exactly your copy:
+      setTimeout(()=>{
+        const signUpEl = document.querySelector("#googleButtonContainerSignup div");
+        if (signUpEl) signUpEl.innerText = "Create an account with Google";
+      }, 100);
 
-      // 2) Auth state handling
+      // Auth state listener
       onAuthStateChanged(auth, async user => {
         if (!user) return;
         if (justSignedIn) {
-          const userRef = ref(db, `users/${user.uid}`);
-          const snap    = await get(userRef);
-          const data    = snap.val() || {};
+          const snap = await get(ref(db, `users/${user.uid}`));
+          const data = snap.val()||{};
           if (!data.trialUsed) {
             showTrialOverlay();
           } else {
@@ -262,7 +263,7 @@
         }
       });
 
-      // 3) Toggle between Login / Signup
+      // Toggle UI
       document.getElementById("toggleToSignUp")
         .addEventListener("click", () => {
           clearError();
@@ -278,7 +279,7 @@
       document.getElementById("backToMain")
         .addEventListener("click", redirectToMain);
 
-      // 4) Email/password Sign‑In
+      // Email/password Sign‑In
       document.getElementById("loginBtn")
         .addEventListener("click", async () => {
           clearError();
@@ -293,29 +294,30 @@
           }
         });
 
-      // 5) Email/password Sign‑Up
+      // Email/password Sign‑Up (now includes Name)
       document.getElementById("signupBtn")
         .addEventListener("click", async () => {
           clearError();
+          const name  = document.getElementById("signupName").value.trim();
           const email = document.getElementById("signupEmail").value.trim();
           const pass  = document.getElementById("signupPassword").value.trim();
+          if (!name) return showError("Please enter your name.");
           if (!email || pass.length < 6)
             return showError("Valid email + min 6‑char password.");
           try {
             justSignedIn = true;
             const res = await createUserWithEmailAndPassword(auth, email, pass);
-            await handleUserData(res.user);
+            await handleUserData(res.user, { name, email });
           } catch (err) {
             showError(err.message);
           }
         });
 
-      // 6) Trial overlay buttons
+      // Trial overlay actions
       document.getElementById("trialYesBtn")
         .addEventListener("click", async () => {
           const user = auth.currentUser;
           if (!user) return;
-          // Upgrade to premium for 24h
           await update(ref(db, `users/${user.uid}`), {
             role:       "premium",
             trialStart: Date.now(),
