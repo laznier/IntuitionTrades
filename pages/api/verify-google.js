@@ -1,4 +1,3 @@
-//pages/api/verify-google.js
 import admin from 'firebase-admin'
 
 if (!admin.apps.length) {
@@ -21,15 +20,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1) Verify the Firebase ID token
+    // 1) Verify the token
     const decoded = await admin.auth().verifyIdToken(token)
     const uid = decoded.uid
 
-    // 2) If they only need to be signed in, we’re done:
+    // 2) Fetch their role once
+    const snap = await admin.database().ref(`users/${uid}/role`).once('value')
+    const role = snap.val() || 'basic'
+
+    // 3) If this call is only checking “signed in,” return here
     if (!requirePremium) {
-      // (optional) fetch their role so the client can show “Upgrade” if needed
-      const snap = await admin.database().ref(`users/${uid}/role`).once('value')
-      const role = snap.val() || 'basic'
       return res.status(200).json({
         isSignedIn: true,
         isPremium: role === 'premium',
@@ -37,9 +37,7 @@ export default async function handler(req, res) {
       })
     }
 
-    // 3) Otherwise enforce premium access
-    const snap = await admin.database().ref(`users/${uid}/role`).once('value')
-    const role = snap.val()
+    // 4) Otherwise enforce premium
     if (role !== 'premium') {
       return res.status(403).json({
         isSignedIn: true,
@@ -48,7 +46,7 @@ export default async function handler(req, res) {
       })
     }
 
-    // 4) All good: they’re premium
+    // 5) All good—premium user!
     return res.status(200).json({
       isSignedIn: true,
       isPremium: true,
