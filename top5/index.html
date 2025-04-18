@@ -1462,8 +1462,15 @@ function updateRRISlider(val){
       }
     },
     pane: {
-      size: '80%'
-    },
+  size: '80%',
+  background: [{
+    // light translucent fill for your max‑value circle
+    outerRadius: '100%',
+    innerRadius: '0%',
+    backgroundColor: Highcharts.color('#40C4FF').setOpacity(0.1).get()
+  }]
+},
+
     xAxis: {
       categories: [
         'Risk vs Reward',
@@ -1480,12 +1487,13 @@ function updateRRISlider(val){
       }
     },
     yAxis: {
-      gridLineInterpolation: 'polygon',
-      lineWidth: 0,
-      min: 0,
-      max: 100,
-      labels: { enabled: false }
-    },
+  gridLineInterpolation: 'circle',
+  lineWidth: 0,
+  min: 0,
+  max: 100,
+  labels: { enabled: false }
+},
+
     tooltip: {
       shared: true,
       pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.1f}</b><br/>'
