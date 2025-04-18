@@ -51,11 +51,45 @@
       margin-bottom: 20px;
     }
     /* Possibly allow horizontal scroll for the log area. */
-    #status {
-      max-height: 300px;
-      overflow-y: auto;
-      overflow-x: auto;
-    }
+    #results {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  max-height: 60vh;       /* adjust as you like */
+  overflow-y: auto;
+}
+
+.ticker-entry {
+  display: flex;
+  background: var(--secondary-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  align-items: flex-start;
+}
+
+.ticker-info {
+  flex: 1;
+  color: var(--text-color);
+  font-family: monospace;
+}
+
+.ticker-chart {
+  width: 300px;
+  height: 300px;
+  margin-left: 1rem;
+}
+
+@media (max-width:768px) {
+  .ticker-entry { flex-direction: column; }
+  .ticker-chart {
+    width: 100%;
+    height: 250px;
+    margin-left: 0;
+    margin-top: 1rem;
+  }
+}
+
 
     h1 {
       margin-bottom: 1rem;
@@ -272,7 +306,9 @@
   </label>
 </div>
 
-<div id="status"></div>
+<!-- will hold one “card” per ticker -->
+<div id="results"></div>
+
 <button onclick="runBatchAnalysis()">Run Batch Analysis</button>
 
 <div id="progressContainer">
@@ -1276,6 +1312,8 @@ async function simulateOneTicker(ticker, periodMonths, regime){
     let hist= processHistoricalData(fullHist, periodMonths);
     if(hist.length<2) throw new Error("Not enough hist data for "+ ticker);
 
+    const resultsEl = document.getElementById('results');
+
     // Render Tech chart with that sliced data
     techVal= updateTechChart(hist);
 
@@ -1395,6 +1433,33 @@ async function simulateOneTicker(ticker, periodMonths, regime){
   } catch(e){
     logStatus("Error in simulateOneTicker for "+ ticker+" => "+ e.message);
   }
+// create a unique container for this ticker’s chart
+const chartId = `spider-${ticker}-${Date.now()}`;
+
+// build the HTML card
+const entry = document.createElement('div');
+entry.className = 'ticker-entry';
+entry.innerHTML = `
+  <div class="ticker-info">
+    <p><strong>${ticker}</strong></p>
+    <p>Technical: ${techVal.toFixed(2)}</p>
+    <p>Sentiment: ${sentVal.toFixed(2)}</p>
+    <p>Insider: ${insVal.toFixed(2)}</p>
+    <p>Fundamental: ${fundVal.toFixed(2)}</p>
+    <p>Congress: ${congVal.toFixed(2)}</p>
+    <p>RRI: ${rriVal.toFixed(2)}</p>
+  </div>
+  <div id="${chartId}" class="ticker-chart"></div>
+`;
+
+resultsEl.appendChild(entry);
+
+// draw the spider chart into that new div
+updateSpiderChart(
+  [ rriVal, techVal, sentVal, insVal, fundVal, congVal ],
+  ticker,
+  chartId
+);
 
     // show the spider
     updateSpiderChart(
@@ -1442,88 +1507,34 @@ function updateRRISlider(val){
 /***********************************************************************
  * spider chart
  ***********************************************************************/
- function updateSpiderChart(scores, ticker) {
-  document.getElementById("spiderChartContainer").style.display = "block";
-
-  Highcharts.chart('spiderChart', {
-    chart: {
-      polar: true,
-      type: 'area',
-      backgroundColor: 'transparent'
-    },
-
-    title: {
-      text: ticker,
-      align: 'center',
-      verticalAlign: 'middle',
-      y: 5,
-      style: {
-        fontSize: '20px',
-        color: '#fff',
-        fontWeight: 'bold'
-      }
-    },
-
+ function updateSpiderChart(scores, ticker, containerId) {
+  Highcharts.chart(containerId, {
+    chart: { polar: true, type: 'area', backgroundColor:'transparent' },
+    title: { text: ticker, align:'center', verticalAlign:'middle', y:5,
+             style:{ fontSize:'18px', color:'#fff', fontWeight:'bold' } },
     pane: {
-      size: '80%',
-      background: [{
-        outerRadius: '100%',
-        innerRadius: '0%',
-        backgroundColor: Highcharts
-          .color('#40C4FF')
-          .setOpacity(0.1)
-          .get()
+      size:'80%',
+      background:[{
+        outerRadius:'100%', innerRadius:'0%',
+        backgroundColor: Highcharts.color('#40C4FF').setOpacity(0.1).get()
       }]
     },
-
-    xAxis: {
-      categories: [
-        'Risk vs Reward',
-        'Technical',
-        'Sentiment',
-        'Insider',
-        'Fundamental',
-        'Congress'
-      ],
-      tickmarkPlacement: 'on',
-      lineWidth: 0,
-      labels: {
-        style: { color: '#fff', fontSize: '12px' }
+    xAxis:{ categories:['Risk vs Reward','Technical','Sentiment','Insider','Fundamental','Congress'],
+            tickmarkPlacement:'on', lineWidth:0,
+            labels:{ style:{ color:'#fff', fontSize:'11px' } } },
+    yAxis:{ gridLineInterpolation:'circle', lineWidth:0, min:0, max:100, labels:{ enabled:false } },
+    tooltip:{ shared:true, pointFormat:'<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.1f}</b><br/>' },
+    legend:{ enabled:false },
+    series:[{ name:ticker, data:scores, pointPlacement:'on', fillOpacity:0.6,
+      color:{
+        linearGradient:{ x1:0,y1:0,x2:1,y2:1 },
+        stops:[[0,'#FF4081'],[1,'#40C4FF']]
       }
-    },
-
-    yAxis: {
-      gridLineInterpolation: 'circle',  // ← THIS must be "circle"
-      lineWidth: 0,
-      min: 0,
-      max: 100,
-      labels: { enabled: false }
-    },
-
-    tooltip: {
-      shared: true,
-      pointFormat: '<span style="color:{series.color}">{series.name}</span>: <b>{point.y:.1f}</b><br/>'
-    },
-
-    legend: { enabled: false },
-
-    series: [{
-      name: ticker,
-      data: scores,
-      pointPlacement: 'on',
-      color: {
-        linearGradient: { x1: 0, y1: 0, x2: 1, y2: 1 },
-        stops: [
-          [0, '#FF4081'],
-          [1, '#40C4FF']
-        ]
-      },
-      fillOpacity: 0.6
     }],
-
-    credits: { enabled: false }
+    credits:{ enabled:false }
   });
 }
+
 
 
 /***********************************************************************
