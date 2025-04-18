@@ -302,36 +302,78 @@
 </div>
 
 
-<script>
+
 
 /***********************************************************************
 * Premium Check
  ***********************************************************************/
 
-  async function checkPremiumAccess() {
-    const token = localStorage.getItem("googleToken");
-    if (!token) {
+ <!--
+  1) Include these at the top of your <head> or right before your own page JS
+     (you can adjust the version numbers if you upgrade Firebase later)
+-->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+  // ← YOUR Firebase web config here ↓
+  const firebaseConfig = {
+    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+    projectId: "persuasive-net-456607-g8",
+    storageBucket: "persuasive-net-456607-g8.appspot.com",
+    messagingSenderId: "1019332250475",
+    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+  };
+
+  // Init
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  // IIFE so we can use await
+  (async () => {
+    // 1) Wait for Firebase to tell us who (if anyone) is signed in
+    const user = await new Promise(resolve => 
+      onAuthStateChanged(auth, resolve)
+    );
+
+    if (!user) {
       alert("Please sign in to access this tool.");
-      window.location.href = "/"; // redirect to main page
-      return;
+      return window.location.href = "/login.html";
     }
 
+    // 2) Grab a fresh ID token
+    const token = await user.getIdToken(true);
+
+    // 3) Send it to your verify endpoint
     const res = await fetch("/api/verify-google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token })
     });
-    const data = await res.json();
 
-    if (!data.isPremium) {
-      alert("Premium access required.");
-      window.location.href = "/"; // or a pricing/signup page
+    if (!res.ok) {
+      // 401 if not signed in or HTTP error
+      alert("Please sign in to access this tool.");
+      return window.location.href = "/login.html";
     }
 
-    // Otherwise user is premium — continue loading tool
-  }
+    const { role } = await res.json();
 
-  document.addEventListener("DOMContentLoaded", checkPremiumAccess);
+    // 4) Enforce Premium
+    if (role !== "premium") {
+      alert("Premium access required.");
+      return window.location.href = "/";
+    }
+
+    // ─── If we made it this far, user is Premium ───────────────────────────
+    // You can now safely initialize your premium‑only UI below, e.g.:
+    //   initCongressTradesTool();
+    console.log("Premium user confirmed!");
+  })();
+
+
 
 
 /***********************************************************************
