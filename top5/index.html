@@ -304,67 +304,81 @@
 
 
 
-/***********************************************************************
-* Premium Check
- ***********************************************************************/
-
- <script type="module">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-  async function protectPremiumTool() {
-    const auth = getAuth();
-    // 1) wait for Firebase to restore session
-    const user = await new Promise(resolve => {
-      const unsub = onAuthStateChanged(auth, u => {
-        unsub();
-        resolve(u);
-      });
-    });
-  
+
+  // ← your web config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+    projectId: "persuasive-net-456607-g8",
+    storageBucket: "persuasive-net-456607-g8.appspot.com",
+    messagingSenderId: "1019332250475",
+    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+  };
+
+  // 1) Init Firebase
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  (async () => {
+    // 2) Wait for Firebase to restore session (or know there is none)
+    const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
+
+    // 3) Not signed in?
     if (!user) {
-      alert("Please sign in to access this tool.");
+      alert("Please sign in to access this premium tool.");
       return window.location.href = "/login.html";
     }
-  
-    // 2) grab a fresh ID token
-    const token = await user.getIdToken(true);
-  
-    // 3) call your server‑side verifier
-    let res, payload;
+
+    // 4) Grab a fresh ID token
+    let idToken;
+    try {
+      idToken = await user.getIdToken(/* forceRefresh */ true);
+    } catch (err) {
+      console.error("Failed to get ID token:", err);
+      alert("Auth error—please sign in again.");
+      return window.location.href = "/login.html";
+    }
+
+    // 5) Verify on your backend
+    let res, json;
     try {
       res = await fetch("/api/verify-google", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
+        body:    JSON.stringify({ token: idToken })
       });
-      payload = await res.json();
     } catch (err) {
-      console.error("Network/server error on /api/verify-google:", err);
-      alert("A server error occurred. Please try again later.");
-      return;
+      console.error("Network error when verifying premium:", err);
+      alert("Network error—please try again in a moment.");
+      return window.location.reload();
     }
-  
+
     if (!res.ok) {
-      // could be 401, 400, 500…
-      console.error("verify-google returned error:", payload);
-      if (res.status === 401) {
-        alert("You don’t have access to this feature. Please upgrade.");
-      } else {
-        alert("An error occurred validating your session.");
-      }
-      return window.location.href = "/";
-    }
-  
-    if (payload.role !== "premium") {
+      // 401 for not logged, 403 or 400 for invalid, 500 for server errors
+      console.warn("verify-google returned", res.status);
       alert("Premium access required.");
-      return window.location.href = "/";
+      return window.location.href = "/upgrade.html";
     }
-  
-    // 🎉 You’re authenticated _and_ premium — now initialize your page:
-    initializeMyPremiumTool();
-  }
-  
-  protectPremiumTool();
+
+    json = await res.json();
+    if (json.role !== "premium") {
+      alert("Upgrade to Premium to use this tool.");
+      return window.location.href = "/upgrade.html";
+    }
+
+    // 6) ✅ All good—user is premium. Initialize your premium page:
+    if (typeof initPremiumTool === "function") {
+      initPremiumTool();
+    } else {
+      console.log("Premium OK—now bootstrapping your tool.");
+    }
+  })();
+
+
  
 
 
