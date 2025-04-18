@@ -14,10 +14,10 @@
       "destination": "/auth/callback/index.html"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/downgrade-expired-trials",
-      "schedule": "0 * * * *"
-    }
-  ]
+"crons": [
+  {
+    "path": "/api/downgrade-expired-trials",
+    "schedule": "0 0 * * *"
+  }
+]
 }
