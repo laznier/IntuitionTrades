@@ -1846,7 +1846,33 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.0 };
     }
   }
-  
+  function aggregatorFinal(mc, tech, sent, ins, fund, cong, regime) {
+    const manual = document.getElementById("useManualWeightsCheckbox").checked;
+    if(!manual){
+      let auto = getAutoWeightsForRegime(regime);
+      let raw = auto.wMC * mc + auto.wTech * tech + auto.wSent * sent + auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
+      return (raw - 50) * auto.scale + 50;
+    } else {
+      const wMC = parseFloat(document.getElementById("wMC").value) || 0;
+      const wTech = parseFloat(document.getElementById("wTech").value) || 0;
+      const wSent = parseFloat(document.getElementById("wSent").value) || 0;
+      const wIns = parseFloat(document.getElementById("wIns").value) || 0;
+      const wFund = parseFloat(document.getElementById("wFund").value) || 0;
+      const wCong = parseFloat(document.getElementById("wCong").value) || 0;
+      let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
+      let sumW = wMC + wTech + wSent + wIns + wFund + wCong;
+      let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
+      let invalidScale = (sc < 0 || sc > 5);
+      if(invalidWeights || invalidScale){
+        console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
+        let eq = (mc + tech + sent + ins + fund + cong) / 6;
+        return eq;
+      } else {
+        let raw = wMC * mc + wTech * tech + wSent * sent + wIns * ins + wFund * fund + wCong * cong;
+        return (raw - 50) * sc + 50;
+      }
+    }
+  }
     /***********************************************
      * Buffer Overlay Functions
      ***********************************************/
@@ -2006,7 +2032,38 @@ document.getElementById('congressSection').style.display = 'block';
 // Pass both uniqueBuyCount and uniqueSellCount
 let congressBull = updateCongressChart(congressObj.totalPurchase, congressObj.totalSale, congressObj.uniqueBuyCount, congressObj.uniqueSellCount);
 
-let aggregatedBull = aggregatorFinal(rri, techBull, sentBull, insiderBull, fundBull, congressBull, regime);
+// Pick manual vs auto when aggregating
+const useManual = document.getElementById("useManualWeightsCheckbox").checked;
+
+let aggregatedBull;
+if (useManual) {
+  // manual branch: uses the manual‐weights version of aggregatorFinal
+  aggregatedBull = aggregatorFinal(
+    rri,           // first argument = RRI from your simulation
+    techBull,
+    sentBull,
+    insiderBull,
+    fundBull,
+    congressBull
+    // note: no regime needed, the manual code path ignores it
+  );
+} else {
+  // auto branch: uses the auto‐weights version of aggregatorFinal
+  aggregatedBull = aggregatorFinal(
+    rri,           // first argument still = RRI
+    techBull,
+    sentBull,
+    insiderBull,
+    fundBull,
+    congressBull,
+    regime         // this time pass regime so the auto path can pick weights
+  );
+}
+
+// then update your UI as before...
+document.getElementById('aggregateMarker').style.left   = aggregatedBull + '%';
+document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
+
 
       document.getElementById('aggregateMarker').style.left = aggregatedBull + '%';
       document.getElementById('aggregateScoreText').innerText = aggregatedBull.toFixed(2) + '%';
