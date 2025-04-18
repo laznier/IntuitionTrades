@@ -1855,15 +1855,7 @@ function computeCongressScore(totalPurchase, totalSale, uniqueBuyCount, uniqueSe
       return "Neutral";
     }
   }
-  function getAutoWeightsForRegime(regime) {
-    if(regime === "Bear"){
-      return { wMC: 0.10, wTech: 0.05, wSent: 0.20, wIns: 0.20, wFund: 0.30, wCong: 0.15, scale: 1.00 };
-    } else if(regime === "Bull"){
-      return { wMC: 0.20, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.15, wCong: 0.15, scale: 3.00 };
-    } else {
-      return { wMC: 0.15, wTech: 0.20, wSent: 0.15, wIns: 0.15, wFund: 0.20, wCong: 0.15, scale: 2.0 };
-    }
-  }
+
   
 
     /***********************************************
