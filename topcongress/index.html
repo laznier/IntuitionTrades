@@ -232,79 +232,49 @@ button:hover {
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
   
-    // 1) Initialize
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
   
-    (async () => {
-      // 2) Wait for Firebase to restore the session (or tell us there is none)
-      const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
-  
-      // 3) Not signed in?
-      if (!user) {
-        alert("Please sign in to access this premium tool.");
-        return window.location.href = "/login.html";
-      }
-  
-      // 4) Grab a fresh ID token
-      let idToken;
-      try {
-        idToken = await user.getIdToken(true);
-      } catch (err) {
-        console.error("Failed to get ID token:", err);
-        alert("Auth error—please sign in again.");
-        return window.location.href = "/login.html";
-      }
-  
-      // 5) Verify on your backend (passing requirePremium: true)
-      let res;
-      try {
-        res = await fetch("/api/verify-google", {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ token: idToken, requirePremium: true })
-        });
-      } catch (err) {
-        console.error("Network error when verifying premium:", err);
-        alert("Network error—please try again in a moment.");
-        return window.location.reload();
-      }
-  
-      // 6) If they’re signed in but not premium (or any error), redirect them
-      if (!res.ok) {
-        console.warn("verify-google returned status", res.status);
-        alert("Upgrade to Premium to use this tool.");
-        return window.location.href = "/upgrade.html";
-      }
-  
-      const { isPremium } = await res.json();
-      if (!isPremium) {
-        alert("Upgrade to Premium to use this tool.");
-        return window.location.href = "/upgrade.html";
-      }
-  
-      // ────────────────────────────────────────────────
-      // 7) ✅ All good—**the user is signed‑in AND premium**.
-      // Now you can safely run **all** your premium‑tool code below.
-      // ────────────────────────────────────────────────
-  
-      // Example:
-      // initYourPremiumPage();
-      console.log("Premium access granted—bootstrapping your tool…");
-  
-      // …your existing page logic goes here…
-      // fetchData(), renderCharts(), setupEventListeners(), etc.
-  
-    })();
-  </script>
-  
-<script>
 
-    // Pull out all of your existing “DOMContentLoaded” code into this:
-    function initializeCongressTool() {
-      /***** your old DOMContentLoaded handlers, fetches, event‑listeners, etc. *****/
-      // e.g. loadCongressData(), wire up buttons, etc.
+  // 1) Init
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  (async () => {
+    // 2) Wait for sign‑in state
+    const user = await new Promise(resolve => onAuthStateChanged(auth, resolve));
+    if (!user) {
+      alert("Please sign in to access this premium tool.");
+      return window.location.href = "/login.html";
     }
+
+    // 3) Fresh token
+    let idToken;
+    try {
+      idToken = await user.getIdToken(true);
+    } catch {
+      alert("Auth error—please sign in again.");
+      return window.location.href = "/login.html";
+    }
+
+    // 4) Call your function with requirePremium
+    const res = await fetch("/api/verify-google", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ token: idToken, requirePremium: true })
+    });
+
+    if (!res.ok) {
+      alert("Upgrade to Premium to use this tool.");
+      return window.location.href = "/upgrade.html";
+    }
+
+    // 5) Success—show the UI and start your logic
+    document.getElementById("app").style.display = "block";
+    initializeCongressTool();  // or inline your code here
+  })();
+
+
+
+ 
   
 
     // Global variables for debounce, timers, and fetched data
