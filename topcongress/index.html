@@ -217,70 +217,67 @@ button:hover {
   </div>
 
   
-<!--
-  1) Include these at the top of your <head> or right before your own page JS
-     (you can adjust the version numbers if you upgrade Firebase later)
--->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-
-  // ← YOUR Firebase web config here ↓
-  const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    projectId: "persuasive-net-456607-g8",
-    storageBucket: "persuasive-net-456607-g8.appspot.com",
-    messagingSenderId: "1019332250475",
-    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-  };
-
-  // Init
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-
-  // IIFE so we can use await
-  (async () => {
-    // 1) Wait for Firebase to tell us who (if anyone) is signed in
-    const user = await new Promise(resolve => 
-      onAuthStateChanged(auth, resolve)
-    );
-
-    if (!user) {
-      alert("Please sign in to access this tool.");
-      return window.location.href = "/login.html";
+  /***********************************************************************
+  * Premium Check
+   ***********************************************************************/
+  
+   <script type="module">
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    
+    async function protectPremiumTool() {
+      const auth = getAuth();
+      // 1) wait for Firebase to restore session
+      const user = await new Promise(resolve => {
+        const unsub = onAuthStateChanged(auth, u => {
+          unsub();
+          resolve(u);
+        });
+      });
+    
+      if (!user) {
+        alert("Please sign in to access this tool.");
+        return window.location.href = "/login.html";
+      }
+    
+      // 2) grab a fresh ID token
+      const token = await user.getIdToken(true);
+    
+      // 3) call your server‑side verifier
+      let res, payload;
+      try {
+        res = await fetch("/api/verify-google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+        payload = await res.json();
+      } catch (err) {
+        console.error("Network/server error on /api/verify-google:", err);
+        alert("A server error occurred. Please try again later.");
+        return;
+      }
+    
+      if (!res.ok) {
+        // could be 401, 400, 500…
+        console.error("verify-google returned error:", payload);
+        if (res.status === 401) {
+          alert("You don’t have access to this feature. Please upgrade.");
+        } else {
+          alert("An error occurred validating your session.");
+        }
+        return window.location.href = "/";
+      }
+    
+      if (payload.role !== "premium") {
+        alert("Premium access required.");
+        return window.location.href = "/";
+      }
+    
+      // 🎉 You’re authenticated _and_ premium — now initialize your page:
+      initializeMyPremiumTool();
     }
-
-    // 2) Grab a fresh ID token
-    const token = await user.getIdToken(true);
-
-    // 3) Send it to your verify endpoint
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
-    });
-
-    if (!res.ok) {
-      // 401 if not signed in or HTTP error
-      alert("Please sign in to access this tool.");
-      return window.location.href = "/login.html";
-    }
-
-    const { role } = await res.json();
-
-    // 4) Enforce Premium
-    if (role !== "premium") {
-      alert("Premium access required.");
-      return window.location.href = "/";
-    }
-
-    // ─── If we made it this far, user is Premium ───────────────────────────
-    // You can now safely initialize your premium‑only UI below, e.g.:
-    //   initCongressTradesTool();
-    console.log("Premium user confirmed!");
-  })();
+    
+    protectPremiumTool();
 
 
 
