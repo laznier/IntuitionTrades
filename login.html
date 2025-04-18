@@ -305,6 +305,45 @@
       });
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
+
+    // delay so elements are guaranteed to exist
+setTimeout(() => {
+  // Sign‑In popup
+  document
+    .getElementById("googleLoginBtn")
+    .addEventListener("click", async () => {
+      clearError();
+      justSignedIn = true;
+      try {
+        const result = await signInWithPopup(auth, provider);
+        await handleUserData(result.user, {
+          name:  result.user.displayName,
+          email: result.user.email
+        });
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+
+  // Sign‑Up popup + trial
+  document
+    .getElementById("googleSignupBtn")
+    .addEventListener("click", async () => {
+      clearError();
+      justSignedIn = true;
+      try {
+        const result = await signInWithPopup(auth, provider);
+        await handleUserData(result.user, {
+          name:  result.user.displayName,
+          email: result.user.email
+        });
+        showTrialOverlay();
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+}, 100);
+
   </script>
 </body>
 </html>
