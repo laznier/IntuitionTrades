@@ -1,3 +1,5 @@
+// api/upgradeUser.js
+
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
@@ -22,14 +24,24 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Verify the user’s Firebase Auth ID token
     const decoded = await admin.auth().verifyIdToken(idToken);
     const uid = decoded.uid;
 
-    await db.ref(`users/${uid}/role`).set("premium");
+    // Atomically set role → premium and start the 24‑h trial
+    await db.ref(`users/${uid}`).update({
+      role:       "premium",
+      trialStart: admin.database.ServerValue.TIMESTAMP,
+      trialUsed:  true
+    });
 
-    res.status(200).json({ success: true, message: "User upgraded to premium." });
+    return res
+      .status(200)
+      .json({ success: true, message: "24 h trial started." });
   } catch (err) {
     console.error("Upgrade Error:", err);
-    res.status(500).json({ error: "Failed to upgrade user." });
+    return res
+      .status(500)
+      .json({ error: "Failed to upgrade user." });
   }
 };

@@ -3,12 +3,21 @@
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
+    },
+    "api/downgrade-expired-trials.js": {
+      "runtime": "nodejs18.x"
     }
   },
   "rewrites": [
     {
       "source": "/auth/callback",
       "destination": "/auth/callback/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/downgrade-expired-trials",
+      "schedule": "0 * * * *"
     }
   ]
 }
