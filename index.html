@@ -728,6 +728,24 @@ h1, h2, h3, h4, h5, h6 {
     gap: 10px;
     align-items: center;
 }
+/* ————————————————————————— */
+/*    Go Premium Button Style */
+/* ————————————————————————— */
+.go-premium-btn {
+  margin-left: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  color: #fff;
+  background: linear-gradient(45deg, #ff0080, #7928ca);
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.go-premium-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(255, 0, 128, 0.5);
+}
 
 /* Footer */
 footer {
@@ -1360,17 +1378,27 @@ footer {
 
 
    
-<!-- Sign‑in container aligned to the right -->
-<div class="header-right">
-  <div id="user-type-indicator">Not signed in</div>
+  <!-- Sign‑in container aligned to the right -->
+  <div class="header-right">
+    <div id="user-type-indicator">Not signed in</div>
 
-  <!-- Sign‑In buttons -->
-  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
-  <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
+    <!-- Sign‑In buttons -->
+    <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
+    <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
 
-  <!-- Sign‑Out button (hidden by default) -->
-  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
-</div>
+    <!-- Go Premium (hidden by default, shown to basic users only) -->
+    <a href="/premium.html"
+       class="go-premium-btn"
+       id="goPremiumBtn"
+       style="display:none;">
+      Go Premium
+    </a>
+
+    <!-- Sign‑Out button (hidden by default) -->
+    <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
+  </div>
+
+
 
 
     </header>
@@ -1825,6 +1853,8 @@ footer {
   const googleBtn   = document.getElementById("googleSignInBtn");
   const emailBtn    = document.getElementById("emailSignInBtn");
   const signOutBtn  = document.getElementById("signOutBtn");
+  const goPremiumBtn = document.getElementById("goPremiumBtn");
+
 
   if (!user) {
     // not signed in
@@ -1840,6 +1870,16 @@ footer {
     indicator.textContent = role === "premium"
       ? `Welcome ${name} (Premium)`
       : `Welcome ${name} (Basic)`;
+      if (!user) {
+  goPremiumBtn.style.display = "none";
+} else {
+  // …you already fetched role & name…
+  if (role === "basic") {
+    goPremiumBtn.style.display = "";      // show for basic users
+  } else {
+    goPremiumBtn.style.display = "none";  // hide for premium
+  }
+}
 
     // toggle buttons
     googleBtn.style.display   = "none";
