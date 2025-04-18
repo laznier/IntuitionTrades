@@ -1,4 +1,4 @@
-//api/verify-google.js
+//pages/api/verify-google.js
 import admin from 'firebase-admin'
 
 if (!admin.apps.length) {

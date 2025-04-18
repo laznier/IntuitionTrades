@@ -241,14 +241,14 @@ button:hover {
       // 3) call your server‑side verifier
       let res, payload;
       try {
-        res = await fetch("/api/verify-google", {
+        res = await fetch("pages/api/verify-google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token })
         });
         payload = await res.json();
       } catch (err) {
-        console.error("Network/server error on /api/verify-google:", err);
+        console.error("Network/server error on pages/api/verify-google:", err);
         alert("A server error occurred. Please try again later.");
         return;
       }
