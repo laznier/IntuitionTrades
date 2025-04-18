@@ -4,8 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Login | Intuition Trades</title>
+
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <style>
     /* RESET & BASE */
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -14,6 +16,7 @@
       display: flex; align-items: center; justify-content: center;
       min-height: 100vh;
     }
+
     /* CONTAINER */
     .login-container {
       background: #222; padding: 2rem; border-radius: 8px;
@@ -27,6 +30,7 @@
       display: none; color: #dc3545;
       text-align: center; margin-bottom: 1rem;
     }
+
     /* FORMS */
     .login-form, .signup-form {
       display: none; flex-direction: column;
@@ -43,12 +47,14 @@
       background: #16a34a; color: #fff; font-size: 1rem;
       cursor: pointer; margin-bottom: 1rem;
     }
+
     /* LINKS */
     .toggle-link, .back-link {
       text-align: center; color: #16a34a; cursor: pointer;
       text-decoration: underline; font-size: 0.9rem;
     }
     .back-link { margin-top: 0.5rem; }
+
     /* TRIAL OVERLAY */
     .overlay {
       display: none; position: fixed; top:0; left:0;
@@ -74,6 +80,29 @@
     }
     #trialYesBtn { background: #16a34a; color: #fff; border: none; }
     #trialNoBtn  { background: transparent; color: #16a34a; border: 1px solid #16a34a; }
+
+    /* Custom Google Sign‑Up Row */
+    .custom-google-signup {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    /* Circular dark Google icon button */
+    .google-circle-btn {
+      display: inline-block;
+      width: 35px;
+      height: 35px;
+      margin-left: 8px;
+      background-color: #000;
+      background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
+      background-repeat: no-repeat;
+      background-size: 35px;
+      background-position: center;
+      border-radius: 100%;
+    }
   </style>
 </head>
 
@@ -95,12 +124,17 @@
 
     <!-- SIGNUP FORM -->
     <div class="signup-form" id="signupForm">
-      <!-- NEW: Name field -->
-      <input type="text"    id="signupName"     placeholder="Name"                 required />
-      <input type="email"   id="signupEmail"    placeholder="Email"                required />
+      <input type="text"     id="signupName"     placeholder="Name"                 required />
+      <input type="email"    id="signupEmail"    placeholder="Email"                required />
       <input type="password" id="signupPassword" placeholder="Password (min 6 chars)" required />
       <button id="signupBtn">Sign Up</button>
-      <div id="googleButtonContainerSignup" style="margin-bottom:1rem;"></div>
+
+      <!-- custom Google signup -->
+      <div class="custom-google-signup" id="customGoogleSignup">
+        Create an account with Google
+        <span class="google-circle-btn" id="customGoogleSignupBtn"></span>
+      </div>
+
       <div class="toggle-link" id="toggleToLogin">
         Already have an account? Sign In
       </div>
@@ -143,7 +177,7 @@
       equalTo
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-    // Firebase config
+    // 1) CONFIG
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -158,6 +192,7 @@
     const db       = getDatabase(app);
     const provider = new GoogleAuthProvider();
 
+    // 2) HELPERS
     const showError   = msg => {
       const el = document.getElementById("errorMessage");
       el.textContent = msg; el.style.display = "block";
@@ -175,7 +210,6 @@
       while (b64.length % 4) b64 += '=';
       return JSON.parse(atob(b64));
     };
-
     async function handleUserData(user, profile={}) {
       const userRef = ref(db, "users/" + user.uid);
       const snap    = await get(userRef);
@@ -192,7 +226,7 @@
     let justSignedIn = false;
 
     window.addEventListener("DOMContentLoaded", () => {
-      // Initialize GSI
+      // A) Initialize GSI with popup mode
       google.accounts.id.initialize({
         client_id: "989729012898-33u478nul5lg3s6fvat2mk6ahgmp4pg5.apps.googleusercontent.com",
         callback: async resp => {
@@ -202,10 +236,11 @@
             const cred    = GoogleAuthProvider.credential(resp.credential);
 
             if (document.getElementById("loginForm").classList.contains("active")) {
-              // Sign‑In attempt → check if email exists
-              const usersRef = ref(db, 'users');
-              const q        = query(usersRef, orderByChild('email'), equalTo(payload.email));
-              const snap     = await get(q);
+              // LOGIN → ensure email exists
+              const q    = query(ref(db, 'users'),
+                                orderByChild('email'),
+                                equalTo(payload.email));
+              const snap = await get(q);
               if (!snap.exists()) {
                 showError("No account found. Please sign up.");
                 document.getElementById("loginForm").classList.remove("active");
@@ -216,7 +251,7 @@
               await signInWithCredential(auth, cred);
 
             } else {
-              // Sign‑Up → create & store name from Google profile
+              // SIGNUP → create new user record
               justSignedIn = true;
               const result = await signInWithCredential(auth, cred);
               await handleUserData(result.user, {
@@ -227,26 +262,27 @@
           } catch (err) {
             showError(err.message);
           }
-        }
+        },
+        ux_mode: "popup"
       });
 
-      // Render Sign‑In button
+      // B) Render standard Google Sign‑In button in login form
       google.accounts.id.renderButton(
         document.getElementById("googleButtonContainer"),
         { theme:"filled_dark", size:"large" }
       );
-      // Render Sign‑Up button with custom text
-      google.accounts.id.renderButton(
-        document.getElementById("googleButtonContainerSignup"),
-        { theme:"filled_dark", size:"large", text:"signup_with" }
-      );
-      // After a brief delay, override to exactly your copy:
-      setTimeout(()=>{
-        const signUpEl = document.querySelector("#googleButtonContainerSignup div");
-        if (signUpEl) signUpEl.innerText = "Create an account with Google";
-      }, 100);
 
-      // Auth state listener
+      // C) Hook up our custom icon in signup form
+      document.getElementById("customGoogleSignupBtn")
+        .addEventListener("click", () => {
+          // ensure sign‑up card is visible
+          document.getElementById("loginForm").classList.remove("active");
+          document.getElementById("signupForm").classList.add("active");
+          // launch the popup
+          google.accounts.id.prompt();
+        });
+
+      // D) Auth state listener → trial overlay logic
       onAuthStateChanged(auth, async user => {
         if (!user) return;
         if (justSignedIn) {
@@ -263,7 +299,7 @@
         }
       });
 
-      // Toggle UI
+      // E) UI toggles
       document.getElementById("toggleToSignUp")
         .addEventListener("click", () => {
           clearError();
@@ -279,7 +315,7 @@
       document.getElementById("backToMain")
         .addEventListener("click", redirectToMain);
 
-      // Email/password Sign‑In
+      // F) Email/password Sign‑In
       document.getElementById("loginBtn")
         .addEventListener("click", async () => {
           clearError();
@@ -294,7 +330,7 @@
           }
         });
 
-      // Email/password Sign‑Up (now includes Name)
+      // G) Email/password Sign‑Up (with Name)
       document.getElementById("signupBtn")
         .addEventListener("click", async () => {
           clearError();
@@ -313,7 +349,7 @@
           }
         });
 
-      // Trial overlay actions
+      // H) Trial overlay actions
       document.getElementById("trialYesBtn")
         .addEventListener("click", async () => {
           const user = auth.currentUser;
