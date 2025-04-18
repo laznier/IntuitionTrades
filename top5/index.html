@@ -300,67 +300,36 @@
   <div id="rriDetails"></div>
   <div id="rriSliderSection"></div>
 </div>
-<script>
-document.getElementById("googleSignUpBtn").addEventListener("click", async e => {
-  e.preventDefault();
-  clearError();
-  try {
-    justSignedIn = true;
-    const result = await signInWithPopup(auth, provider);
-    await handleUserData(result.user, {
-      name:  result.user.displayName,
-      email: result.user.email
-    });
 
-    // ← INSERT TOKEN GRAB / STORE HERE
-    const idToken = await auth.currentUser.getIdToken();
-    localStorage.setItem("googleToken", idToken);
-
-    showTrialOverlay();
-  } catch (err) {
-    showError(err.message);
-  }
-});
-</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
   import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-  // 1) Your Firebase config (same as your login page)
-  const firebaseConfig = {
-    apiKey:             "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
-    databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-    projectId:          "persuasive-net-456607-g8",
-    storageBucket:      "persuasive-net-456607-g8.appspot.com",
-    messagingSenderId:  "1019332250475",
-    appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-  };
+  // 1) Firebase config
+  const firebaseConfig = { /* … */ };
 
-  // 2) Init Firebase
+  // 2) Init
   const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db   = getDatabase(app);
 
-  // 3) Only show the page if they’re signed in & premium
+  // 3) Gatekeeper
   onAuthStateChanged(auth, async user => {
     if (!user) {
       alert("Please sign in to access this tool.");
-      return window.location.href = "/";
+      return window.location.href = "/login.html";  // your login page
     }
     const snap = await get(ref(db, `users/${user.uid}/role`));
     if (!snap.exists() || snap.val() !== "premium") {
       alert("Premium access required.");
-      return window.location.href = "/";
+      return window.location.href = "/pricing.html";  // or wherever
     }
-    // ✅ they passed—unhide the entire page
+    // ✅ passed
     document.getElementById("app").style.display = "block";
   });
 </script>
-
-<script>  
-
+<script>
 /***********************************************************************
  * Merged top-stocks + advanced RRI code
  ***********************************************************************/
