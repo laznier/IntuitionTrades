@@ -1512,38 +1512,56 @@ function computeStats(prices) {
 }
 
 function aggregatorFinal(rri, tech, sent, ins, fund, cong, regime) {
-  // For manual override, you might want to use the same naming for the first factor.
+  // decide which weight‐set to use
   const manual = document.getElementById("useManualWeightsCheckbox").checked;
-  if (!manual){
-    let auto = getAutoWeightsForRegime(regime);
-    // Use the auto weight for RRI (wRRI) and multiply it by the first parameter "rri"
-    let raw = auto.wRRI * rri + auto.wTech * tech + auto.wSent * sent +
-              auto.wIns * ins + auto.wFund * fund + auto.wCong * cong;
-    return (raw - 50) * auto.scale + 50;
-  } else {
-    // In the manual case, you might update the field IDs and labels accordingly.
-    // For consistency, change "wMC" to "wRRI" in the manual fields:
-    const wRRI_manual = parseFloat(document.getElementById("wRRI").value) || 0;
-    const wTech = parseFloat(document.getElementById("wTech").value) || 0;
-    const wSent = parseFloat(document.getElementById("wSent").value) || 0;
-    const wIns = parseFloat(document.getElementById("wIns").value) || 0;
-    const wFund = parseFloat(document.getElementById("wFund").value) || 0;
-    const wCong = parseFloat(document.getElementById("wCong").value) || 0;
-    let sc = parseFloat(document.getElementById("manualScale").value) || 1.0;
-    let sumW = wRRI_manual + wTech + wSent + wIns + wFund + wCong;
-    let invalidWeights = (Math.abs(sumW - 1) > 1e-9);
-    let invalidScale = (sc < 0 || sc > 5);
-    if(invalidWeights || invalidScale){
-      console.log("WARNING: manual weights invalid => fallback = direct average of 6 factors, no shift");
-      let eq = (rri + tech + sent + ins + fund + cong) / 6;
-      return eq;
-    } else {
-      let raw = wRRI_manual * rri + wTech * tech + wSent * sent +
-                wIns * ins + wFund * fund + wCong * cong;
-      return (raw - 50) * sc + 50;
+  const weights = manual
+    ? {
+        wRRI: parseFloat(document.getElementById("wRRI").value),
+        wTech: parseFloat(document.getElementById("wTech").value),
+        wSent: parseFloat(document.getElementById("wSent").value),
+        wIns:  parseFloat(document.getElementById("wIns").value),
+        wFund: parseFloat(document.getElementById("wFund").value),
+        wCong: parseFloat(document.getElementById("wCong").value),
+        scale: parseFloat(document.getElementById("manualScale").value)
+      }
+    : getAutoWeightsForRegime(regime);
+
+  // pack factors & weights
+  const factors = { rri, tech, sent, ins, fund, cong };
+  const { wRRI, wTech, wSent, wIns, wFund, wCong, scale } = weights;
+
+  // immediately throw if any factor or weight is invalid
+  for (let [name, val] of Object.entries(factors)) {
+    if (typeof val !== "number" || isNaN(val)) {
+      throw new Error(`Bad factor “${name}”: ${val}`);
     }
   }
+  for (let [name, val] of Object.entries({ wRRI, wTech, wSent, wIns, wFund, wCong, scale })) {
+    if (typeof val !== "number" || isNaN(val)) {
+      throw new Error(`Bad weight “${name}”: ${val}`);
+    }
+  }
+
+  // ensure manual weights sum to 1 and scale is in [0..5]
+  if (manual) {
+    const sumW = wRRI + wTech + wSent + wIns + wFund + wCong;
+    if (Math.abs(sumW - 1) > 1e-6 || scale < 0 || scale > 5) {
+      throw new Error(`Manual weights must sum to 1 (got ${sumW}) and scale 0–5 (got ${scale})`);
+    }
+  }
+
+  // compute raw & scaled
+  const raw =
+    wRRI  * rri +
+    wTech * tech +
+    wSent * sent +
+    wIns  * ins +
+    wFund * fund +
+    wCong * cong;
+
+  return (raw - 50) * scale + 50;
 }
+
 
     function updateInsiderCharts(insiderData) {
   // Create column series for buys and sells from the aggregated time series.
