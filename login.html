@@ -207,7 +207,8 @@
       createUserWithEmailAndPassword,
       signInWithPopup,
       GoogleAuthProvider,
-      onAuthStateChanged
+      onAuthStateChanged,
+      sendEmailVerification
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import {
       getDatabase,
@@ -292,8 +293,13 @@
         try {
           justSignedIn = true;
           const res = await createUserWithEmailAndPassword(auth, email, pass);
-          await handleUserData(res.user, { name, email });
-          showTrialOverlay();
+await handleUserData(res.user, { name, email });
+
+await sendEmailVerification(res.user); // ✉️ Send email
+alert("Verification email sent. Please check your inbox.");
+
+showTrialOverlay();
+
           // ← INSERT TOKEN GRAB / STORE HERE
           const idToken = await auth.currentUser.getIdToken();
           localStorage.setItem("googleToken", idToken);
@@ -356,17 +362,23 @@
   
       // Auth state listener
       onAuthStateChanged(auth, async user => {
-        if (!user) return;
-        if (justSignedIn) {
-          const snap = await get(ref(db, `users/${user.uid}`));
-          const data = snap.val() || {};
-          if (!data.trialUsed) showTrialOverlay();
-          else redirectToMain();
-          justSignedIn = false;
-        } else {
-          redirectToMain();
-        }
-      });
+  if (!user) return;
+
+  if (!user.emailVerified) {
+    showError("Please verify your email before accessing the site.");
+    return auth.signOut(); // prevent access
+  }
+
+  if (justSignedIn) {
+    const snap = await get(ref(db, `users/${user.uid}`));
+    const data = snap.val() || {};
+    if (!data.trialUsed) showTrialOverlay();
+    else redirectToMain();
+    justSignedIn = false;
+  } else {
+    redirectToMain();
+  }
+});
   
       // UI toggles
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
