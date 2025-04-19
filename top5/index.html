@@ -305,19 +305,12 @@
 <!-- *********************************************************************** 
      * Premium Check and Secure Init
      *********************************************************************** -->
-
-     <script type="module">
-      // This module defines initializeCongressTool and all its helpers…
-      export function initializeCongressTool() {
-        // your DOM event bindings, fetchButton listener, renderTopStocks, etc.
-      }
-    </script>
      <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
       import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
       import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
     
-      // Firebase config
+      // ——— Firebase configuration & initialization ———
       const firebaseConfig = {
         apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
         authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -327,36 +320,27 @@
         messagingSenderId: "1019332250475",
         appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
       };
-    
-      // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getDatabase(app);
     
-      // Hide the body until we verify the user
+      // Hide the page until we verify premium status
       document.body.style.visibility = "hidden";
     
-      // Listen once
+      // ——— Premium check & initialization ———
       const unsubscribe = onAuthStateChanged(auth, async user => {
-        // Immediately stop listening
         unsubscribe();
-    
         if (!user) {
-          // Not signed in
-          window.location.replace("/login.html");
-          return;
+          return window.location.replace("/login.html");
         }
-    
         try {
           const roleSnap = await get(ref(db, `users/${user.uid}/role`));
           const role = roleSnap.exists() ? roleSnap.val() : null;
-    
           if (role === "premium") {
             console.log("✅ Premium user verified.");
             document.body.style.visibility = "visible";
             initializeCongressTool();
           } else {
-            // Signed in but not premium
             window.location.replace("/upgrade.html");
           }
         } catch (err) {
@@ -365,14 +349,110 @@
           window.location.replace("/login.html");
         }
       });
-
     
-    
-   
-      document.addEventListener("DOMContentLoaded", () => {
+// ——— Main tool initialization ———
+function initializeTopStocksScanner() {
+  // holds the list of tickers loaded from your index file
+  const predeterminedTickers = [];
+  // timer placeholders (for any “Searching…” or debounce logic)
+  let debounceTimeout, countdownInterval, searchingInterval;
 
- 
+  // cache key DOM elements
+  const statusEl          = document.getElementById("status");
+  const progressContainer = document.getElementById("progressContainer");
+  const progressBarFill   = document.getElementById("progressBarFill");
+  const progressBarText   = document.getElementById("progressBarText");
+  const indexSelect       = document.getElementById("indexSelect");
+  const timeframeSelect   = document.getElementById("investmentTimeframe");
+  const runButton         = document.querySelector("button[onclick='runBatchAnalysis()']");
+  const manualModeCheckbox= document.getElementById("manualModeCheckbox");
+  const manualInputs      = document.getElementById("manualInputs");
+  const regimeDropdown    = document.getElementById("marketRegimeSelect");
 
+  /********** UTILITIES **********/
+  function logStatus(msg) {
+    statusEl.innerHTML += msg + "<br>";
+    statusEl.scrollTop = statusEl.scrollHeight;
+  }
+  function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+  function parseAlphaDate(str){
+    const year  = str.slice(0,4),
+          month = str.slice(4,6),
+          day   = str.slice(6,8),
+          hour  = str.slice(9,11)||"00",
+          min   = str.slice(11,13)||"00",
+          sec   = str.slice(13,15)||"00";
+    return new Date(`${year}-${month}-${day}T${hour}:${min}:${sec}Z`);
+  }
+
+  /********** LOAD TICKERS **********/
+  async function loadTickers(index) {
+    const root = "https://intuition-trades.vercel.app",
+          path = `${root}/tickers/${index}-tickers.txt`;
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(res.statusText);
+    const text = await res.text();
+    return text.replace(/"/g,"").split(/,|\r?\n/).map(t=>t.trim()).filter(t=>t);
+  }
+  indexSelect.addEventListener("change", async function(){
+    statusEl.innerHTML = "";
+    predeterminedTickers.length = 0;
+    if(!this.value){
+      logStatus("Please select an index first.");
+      return;
+    }
+    try {
+      const tks = await loadTickers(this.value);
+      if(!tks.length) throw new Error("No tickers found.");
+      tks.forEach(t=>predeterminedTickers.push(t));
+      logStatus(`Loaded ${tks.length} tickers for ${this.value.toUpperCase()}.`);
+    } catch(e){
+      logStatus(`Error loading tickers: ${e.message}`);
+    }
+  });
+  // fire initial load if indexSelect already has a value
+  if(indexSelect.value) indexSelect.dispatchEvent(new Event("change"));
+
+  /********** MANUAL MODE TOGGLE **********/
+  manualModeCheckbox.addEventListener("change", () => {
+    manualInputs.style.display = manualModeCheckbox.checked ? "block" : "none";
+  });
+
+  /********** AUTO-WEIGHTS POPULATOR **********/
+  regimeDropdown.addEventListener("change", () => {
+    const w = getAutoWeightsForRegime(regimeDropdown.value);
+    document.getElementById("wRRI").value      = w.wRRI;
+    document.getElementById("wTech").value     = w.wTech;
+    document.getElementById("wSent").value     = w.wSent;
+    document.getElementById("wInsider").value  = w.wIns;
+    document.getElementById("wFund").value     = w.wFund;
+    document.getElementById("wCongress").value= w.wCong;
+    document.getElementById("scalingFactor").value = w.scale;
+  });
+
+  /********** BATCH ANALYSIS **********/
+  runButton.addEventListener("click", runBatchAnalysis);
+
+  // now the bulk functions you've already written:
+  // — processHistoricalData
+  // — fetchHistoricalData
+  // — computeIchimoku, computeEMA, computeMACD, computeRSI, computeBollingerBands, computeWMA
+  // — polynomialRegression, predictValue, computeMomentumScoreUsingRegression
+  // — computeGapTrendScore, computeNewMACDScore, scoreRSI, scoreBollingerDual, scoreWMADual
+  // — updateTechChart
+  // — fetchSentimentData, computeSentBull
+  // — fetchInsiderData, fetchInsiderSentiment, computeNewInsiderScore
+  // — computeFundScores, fetchFundamentalData
+  // — fetchCongressData, computeDollarsScore, computeUniqueScore, computeCongressScore
+  // — determineSPYMarketRegime, computeSMA, classifyBySMA, computePriceSlope, classifyBySlope
+  // — getAutoWeightsForRegime, aggregatorFinal
+  // — fetchOptionsIV, computeStatsRRI, randn, runDBHJSimulation, computeRiskMetrics, computeRiskVsRewardIndex
+  // — simulateOneTicker
+  // — updateRRISlider, updateSpiderChart
+  // — runBatchAnalysis (full implementation)
+
+  // ... paste all of those function definitions here, unchanged ...
+};
 
 
 
@@ -1668,7 +1748,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("scalingFactor").value = weights.scale;
   });
 });
-});
+
 </script>
 </body>
 </html>
