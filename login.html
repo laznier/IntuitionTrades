@@ -370,7 +370,9 @@
 });
   
   
-    // Email Sign‑Up with duplicate‑email & Google‑only checks
+    // —————————————————————————————————————————
+// Email Sign‑Up with duplicate‑email & Google‑only checks
+// —————————————————————————————————————————
 document.getElementById("emailSignUpBtn")
 .addEventListener("click", async e => {
   e.preventDefault();
@@ -380,34 +382,34 @@ document.getElementById("emailSignUpBtn")
   const email = document.getElementById("signupEmail").value.trim();
   const pass  = document.getElementById("signupPassword").value.trim();
 
-  if (!name) return showError("Please enter your name.");
+  if (!name) 
+    return showError("Please enter your name.");
   if (!email || pass.length < 6)
-    return showError("Valid email + minimum 6‑character password.");
+    return showError("Valid email + minimum 6‑character password.");
 
   // 1) Look up existing sign‑in methods for this email
   let methods = [];
   try {
     methods = await fetchSignInMethodsForEmail(auth, email);
-  } catch (err) {
-    // if the email format is invalid, Firebase will throw here
+  } catch {
     return showError("That doesn’t look like a valid email address.");
   }
 
-  // 2) If they already used a Google‑only login...
+  // 2) If they already signed up via Google only…
   if (methods.includes("google.com") && !methods.includes("password")) {
     return showError(
-      "It looks like you signed up with Google. Please click the Google button to sign in."
+      "It looks like you signed up with Google—please click the Google button to sign in."
     );
   }
 
-  // 3) If they already have an email/password account...
+  // 3) If they already have an email/password account…
   if (methods.includes("password")) {
     showError("That email is already registered. Please sign in or reset your password.");
-    toggleToLogin();   // flip back to the login form
+    toggleToLogin();
     return;
   }
 
-  // 4) Otherwise go ahead and create the account
+  // 4) Otherwise, try to create the account:
   try {
     justSignedUp = true;
     const res = await createUserWithEmailAndPassword(auth, email, pass);
@@ -417,9 +419,17 @@ document.getElementById("emailSignUpBtn")
     await auth.signOut();
     toggleToLogin();
   } catch (err) {
-    showError(err.message);
+    // — intercept exactly the duplicate‑email error
+    if (err.code === "auth/email-already-in-use") {
+      // (as a last defense—should normally be caught above)
+      showError("That email is already registered. Please sign in or reset your password.");
+      toggleToLogin();
+    } else {
+      showError(err.message);
+    }
   }
 });
+
 
 
 
