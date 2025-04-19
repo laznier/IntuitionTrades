@@ -19,7 +19,7 @@
       justify-content: center;
       min-height: 100vh;
     }
-
+  
     /* CONTAINER */
     .login-container {
       background: #222;
@@ -29,18 +29,25 @@
       max-width: 360px;
       box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
-    .login-container h1 {
+  
+    .login-container h1, .login-container h2 {
       text-align: center;
-      margin-bottom: 1.5rem;
       font-size: 1.5rem;
     }
+    .login-container h2 {
+      margin-bottom: 0.2rem;
+    }
+    .login-container h1 {
+      margin-bottom: 1.5rem;
+    }
+  
     .error-message {
       display: none;
       color: #dc3545;
       text-align: center;
       margin-bottom: 1rem;
     }
-
+  
     /* FORMS */
     .login-form, .signup-form {
       display: none;
@@ -49,6 +56,7 @@
     .login-form.active, .signup-form.active {
       display: flex;
     }
+  
     .login-container input {
       margin-bottom: 1rem;
       padding: 0.75rem;
@@ -56,26 +64,51 @@
       border-radius: 4px;
       font-size: 1rem;
     }
-
-    /* BUTTON-LINKS */
-    .login-container .login-btn {
-      display: inline-block;
-      width: 100%;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 4px;
-      background: #16a34a;
-      color: #fff;
-      text-align: center;
-      text-decoration: none;
-      font-size: 1rem;
-      cursor: pointer;
+  
+    /* FLEX ROW for SIGN-IN + GOOGLE */
+    .signin-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 1rem;
     }
-    .login-container .login-btn:hover {
+  
+    /* Google Button */
+    .google-circle-btn {
+      width: 40px;
+      height: 40px;
+      background-color: #000;
+      background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
+      background-repeat: no-repeat;
+      background-size: 40px;
+      background-position: center;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+  
+    /* Green Sign-In/Sign-Up Button beside Google */
+    .login-btn {
+      flex-grow: 1;
+      height: 40px;
+      line-height: 1;
+      padding: 0 1rem;
+      background: #16a34a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+  
+    .login-btn:hover {
       background: #22c55e;
     }
-
+  
     /* TOGGLE LINKS */
     .toggle-link, .back-link {
       text-align: center;
@@ -84,10 +117,11 @@
       text-decoration: underline;
       font-size: 0.9rem;
     }
+  
     .back-link {
       margin-top: 0.5rem;
     }
-
+  
     /* TRIAL OVERLAY */
     .overlay {
       display: none;
@@ -99,9 +133,11 @@
       align-items: center;
       z-index: 1100;
     }
+  
     .overlay.visible {
       display: flex;
     }
+  
     .overlay-card {
       background: #222;
       padding: 2rem;
@@ -110,13 +146,16 @@
       max-width: 360px;
       width: 90%;
     }
+  
     .overlay-card h2 {
       margin-bottom: 1rem;
       font-size: 1.3rem;
     }
+  
     .overlay-card p {
       margin-bottom: 1.5rem;
     }
+  
     .overlay-actions button {
       margin: 0 .5rem;
       padding: .75rem 1.25rem;
@@ -124,47 +163,56 @@
       font-size: 1rem;
       cursor: pointer;
     }
+  
     #trialYesBtn {
       background: #16a34a;
       color: #fff;
       border: none;
     }
+  
     #trialNoBtn {
       background: transparent;
       color: #16a34a;
       border: 1px solid #16a34a;
     }
-
-    /* Google Circle Icon */
-    .google-circle-btn {
-      display: inline-block;
-      width: 35px; height: 35px;
-      margin-right: 8px;
-      background-color: #000;
-      background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
-      background-repeat: no-repeat;
-      background-size: 35px;
-      background-position: center;
-      border-radius: 50%;
+  
+    /* Resend button */
+    #resendVerifyBtn {
+      background: none;
+      border: 1px solid #16a34a;
+      color: #16a34a;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
       cursor: pointer;
-      vertical-align: middle;
+      font-size: 0.9rem;
+      width: 100%;
+      margin-top: 1rem;
+    }
+  
+    #resendVerifyBtn:hover {
+      background: #16a34a;
+      color: #000;
     }
   </style>
+  
 </head>
 
 <body>
   <div class="login-container">
-    <h1>Welcome to Intuition Trades</h1>
+    <h2>Welcome to</h2>
+      <h1>Intuition Trades</h1>
     <div class="error-message" id="errorMessage"></div>
 
     <!-- LOGIN FORM -->
     <div class="login-form active" id="loginForm">
       <input type="email"    id="loginEmail"    placeholder="Email"    required />
       <input type="password" id="loginPassword" placeholder="Password" required />
-      <div style="display:flex; align-items:center; margin-bottom:1rem;">
-        <div class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></div>
-        <a href="#" class="login-btn" id="emailSignInBtn">Sign In</a>
+      <div class="signin-row">
+        <button class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></button>
+        <button class="login-btn fullwidth" id="emailSignInBtn">Sign In</button>
       </div>
+      
+      
       <div class="toggle-link" id="forgotPasswordLink">Forgot Password?</div>
       <div class="toggle-link" id="toggleToSignUp">
         Don't have an account? Sign Up
@@ -176,7 +224,7 @@
       <input type="text"     id="signupName"     placeholder="Name"     required />
       <input type="email"    id="signupEmail"    placeholder="Email"    required />
       <input type="password" id="signupPassword" placeholder="Password" required />
-      <div style="display:flex; align-items:center; margin-bottom:1rem;">
+        <div class="signin-row">
         <div class="google-circle-btn" id="googleSignUpBtn" aria-label="Sign up with Google"></div>
         <a href="#" class="login-btn" id="emailSignUpBtn">Sign Up</a>
       </div>
