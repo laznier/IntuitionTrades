@@ -241,19 +241,21 @@ button:hover {
       const auth = getAuth(app);
       const db = getDatabase(app);
     
-      // Hide body until we know the user's role
+      // Hide the body until we verify the user
       document.body.style.visibility = "hidden";
     
-      // Auth state & role check
-      onAuthStateChanged(auth, async user => {
+      // Listen once
+      const unsubscribe = onAuthStateChanged(auth, async user => {
+        // Immediately stop listening
+        unsubscribe();
+    
         if (!user) {
-          // not logged in ⇒ send to login
+          // Not signed in
           window.location.replace("/login.html");
           return;
         }
     
         try {
-          // read /users/{uid}/role
           const roleSnap = await get(ref(db, `users/${user.uid}/role`));
           const role = roleSnap.exists() ? roleSnap.val() : null;
     
@@ -262,7 +264,7 @@ button:hover {
             document.body.style.visibility = "visible";
             initializeCongressTool();
           } else {
-            // logged in but not a premium user ⇒ upgrade page
+            // Signed in but not premium
             window.location.replace("/upgrade.html");
           }
         } catch (err) {
@@ -271,6 +273,7 @@ button:hover {
           window.location.replace("/login.html");
         }
       });
+    
     
  
     
