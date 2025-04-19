@@ -370,9 +370,7 @@
 });
   
   
-    // —————————————————————————————————————————
-// Email Sign‑Up with duplicate‑email & Google‑only checks
-// —————————————————————————————————————————
+    // Email Sign‑Up with duplicate‑email & Google‑only checks
 document.getElementById("emailSignUpBtn")
 .addEventListener("click", async e => {
   e.preventDefault();
@@ -382,34 +380,34 @@ document.getElementById("emailSignUpBtn")
   const email = document.getElementById("signupEmail").value.trim();
   const pass  = document.getElementById("signupPassword").value.trim();
 
-  if (!name) 
-    return showError("Please enter your name.");
+  if (!name) return showError("Please enter your name.");
   if (!email || pass.length < 6)
-    return showError("Valid email + minimum 6‑character password.");
+    return showError("Valid email + minimum 6‑character password.");
 
   // 1) Look up existing sign‑in methods for this email
   let methods = [];
   try {
     methods = await fetchSignInMethodsForEmail(auth, email);
-  } catch {
+  } catch (err) {
+    // if the email format is invalid, Firebase will throw here
     return showError("That doesn’t look like a valid email address.");
   }
 
-  // 2) If they already signed up via Google only…
+  // 2) If they already used a Google‑only login...
   if (methods.includes("google.com") && !methods.includes("password")) {
     return showError(
-      "It looks like you signed up with Google—please click the Google button to sign in."
+      "It looks like you signed up with Google. Please click the Google button to sign in."
     );
   }
 
-  // 3) If they already have an email/password account…
+  // 3) If they already have an email/password account...
   if (methods.includes("password")) {
     showError("That email is already registered. Please sign in or reset your password.");
-    toggleToLogin();
+    toggleToLogin();   // flip back to the login form
     return;
   }
 
-  // 4) Otherwise, try to create the account:
+  // 4) Otherwise go ahead and create the account
   try {
     justSignedUp = true;
     const res = await createUserWithEmailAndPassword(auth, email, pass);
@@ -419,55 +417,61 @@ document.getElementById("emailSignUpBtn")
     await auth.signOut();
     toggleToLogin();
   } catch (err) {
-    // — intercept exactly the duplicate‑email error
-    if (err.code === "auth/email-already-in-use") {
-      // (as a last defense—should normally be caught above)
-      showError("That email is already registered. Please sign in or reset your password.");
-      toggleToLogin();
-    } else {
-      showError(err.message);
-    }
+    showError(err.message);
   }
 });
 
 
 
-
   
       // Google Sign‑In / Sign‑Up
-      document.getElementById("googleSignInBtn").addEventListener("click", async e => {
-        e.preventDefault();
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-          const idToken = await auth.currentUser.getIdToken();
-          localStorage.setItem("googleToken", idToken);
-        } catch (err) {
-          showError(err.message);
-        }
-      });
-      document.getElementById("googleSignUpBtn").addEventListener("click", async e => {
-        e.preventDefault();
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-          const idToken = await auth.currentUser.getIdToken();
-          localStorage.setItem("googleToken", idToken);
-          showTrialOverlay();
-        } catch (err) {
-          showError(err.message);
-        }
-      });
+      document.getElementById("emailSignInBtn").addEventListener("click", async e => {
+  e.preventDefault();
+  clearError();
+
+  const email = document.getElementById("loginEmail").value.trim();
+  const pass  = document.getElementById("loginPassword").value.trim();
+  if (!email || !pass) {
+    return showError("Enter email and password.");
+  }
+
+  // 1) Look up existing sign‑in methods for this email
+  let methods = [];
+  try {
+    methods = await fetchSignInMethodsForEmail(auth, email);
+  } catch {
+    return showError("That doesn’t look like a valid email address.");
+  }
+
+  // 2) If they only ever used Google → nudge them to click the Google button
+  if (methods.includes("google.com") && !methods.includes("password")) {
+    return showError(
+      "It looks like you signed up with Google—please click the Google button to sign in."
+    );
+  }
+
+  // 3) Otherwise attempt normal password sign‑in
+  try {
+    justSignedIn = true;
+    await signInWithEmailAndPassword(auth, email, pass);
+    const idToken = await auth.currentUser.getIdToken();
+    localStorage.setItem("googleToken", idToken);
+    // …then your post‑sign‑in logic…
+  } catch (err) {
+    // Handle the “invalid‑credential” (and password errors) together:
+    if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
+      showError("Incorrect password. Try again or reset your password.");
+    }
+    else if (err.code === "auth/user-not-found") {
+      showError("No account found. Please sign up first.");
+      toggleToSignUp();
+    }
+    else {
+      showError(err.message);
+    }
+  }
+});
+
   
       // Trial overlay actions
       document.getElementById("trialYesBtn").addEventListener("click", async () => {
