@@ -1,22 +1,25 @@
-// /api/verify-google.js
-
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIAL);
-const databaseURL = process.env.FIREBASE_DATABASE_URL;
+let auth, db;
 
-// Prevent duplicate app initialization
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-    databaseURL,
-  });
+try {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_CREDENTIAL);
+  const databaseURL = process.env.FIREBASE_DATABASE_URL;
+
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert(serviceAccount),
+      databaseURL,
+    });
+  }
+
+  auth = getAuth();
+  db = getFirestore();
+} catch (err) {
+  console.error("🔥 Firebase Admin Init Error:", err.message);
 }
-
-const auth = getAuth();
-const db = getFirestore();
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -30,11 +33,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Verify the ID token
+    if (!auth || !db) {
+      throw new Error("Firebase Admin SDK failed to initialize.");
+    }
+
     const decoded = await auth.verifyIdToken(token);
     const uid = decoded.uid;
 
-    // Look up user role in Firestore
     const userRef = db.collection("users").doc(uid);
     const doc = await userRef.get();
 
