@@ -165,6 +165,7 @@
         <div class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></div>
         <a href="#" class="login-btn" id="emailSignInBtn">Sign In</a>
       </div>
+      <div class="toggle-link" id="forgotPasswordLink">Forgot Password?</div>
       <div class="toggle-link" id="toggleToSignUp">
         Don't have an account? Sign Up
       </div>
@@ -392,6 +393,19 @@ document.getElementById("resendVerifyBtn").addEventListener("click", async () =>
   if (user && !user.emailVerified) {
     await sendEmailVerification(user);
     alert("Verification email resent.");
+  }
+});
+document.getElementById("forgotPasswordLink").addEventListener("click", async () => {
+  clearError();
+  const email = document.getElementById("loginEmail").value.trim();
+  if (!email) {
+    return showError("Enter your email above first.");
+  }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    alert("Password reset email sent. Check your inbox.");
+  } catch (err) {
+    showError("Failed to send reset email: " + err.message);
   }
 });
 
