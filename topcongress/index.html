@@ -265,12 +265,26 @@ let debounceTimeout, countdownInterval, searchingInterval;
           } else {
             window.location.href = "/upgrade.html";
           }
+
+          if (role === "premium") {
+  console.log("✅ Premium user verified.");
+  document.documentElement.style.display = "block";
+  initializeCongressTool();
+  return; // ✅ add this
+} else {
+  window.location.href = "/upgrade.html";
+  return;
+}
+
         } catch (error) {
           console.error("🔥 Premium check failed:", error);
           alert("Error verifying your account. Try again.");
           window.location.href = "/login.html";
         }
+
       });
+
+      
       document.addEventListener("DOMContentLoaded", () => {
 
 
