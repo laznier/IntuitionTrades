@@ -524,19 +524,23 @@ document.getElementById("resendVerifyBtn").addEventListener("click", async () =>
     alert("Verification email resent.");
   }
 });
-document.getElementById("forgotPasswordLink").addEventListener("click", async () => {
-  clearError();
-  const email = document.getElementById("loginEmail").value.trim();
-  if (!email) {
-    return showError("Enter your email above first.");
-  }
-  try {
-    await auth.sendPasswordResetEmail(auth, email);
-    alert("Password reset email sent. Check your inbox.");
-  } catch (err) {
-    showError("Failed to send reset email: " + err.message);
-  }
-});
+document
+  .getElementById("forgotPasswordLink")
+  .addEventListener("click", async () => {
+    clearError();
+    const email = document.getElementById("loginEmail").value.trim();
+    if (!email) {
+      return showError("Enter your email above first.");
+    }
+    try {
+      // ← use the imported helper, not a method on `auth`
+      await sendPasswordResetEmail(auth, email);
+      alert("Password reset email sent. Check your inbox.");
+    } catch (err) {
+      showError("Failed to send reset email: " + err.message);
+    }
+  });
+
 
       // UI toggles
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
