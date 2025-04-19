@@ -337,7 +337,30 @@
       });
   
      // Sign‑Up with Email
-document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
+     document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
+  e.preventDefault();
+  clearError();
+
+  const name  = document.getElementById("signupName").value.trim();
+  const email = document.getElementById("signupEmail").value.trim();
+  const pass  = document.getElementById("signupPassword").value.trim();
+  if (!name) return showError("Please enter your name.");
+  if (!email || pass.length < 6)
+    return showError("Valid email + min 6‑char password.");
+
+  try {
+    justSignedUp = true;                                  // ← SET FLAG
+    const res = await createUserWithEmailAndPassword(auth, email, pass);
+    await handleUserData(res.user, { name, email });
+    await sendEmailVerification(res.user);
+    alert("Verification email sent. Please check your inbox before signing in.");
+    await auth.signOut();
+    toggleToLogin();
+  } catch (err) {
+    showError(err.message);
+  }
+});
+
   e.preventDefault();
   clearError();
 
@@ -422,27 +445,33 @@ document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
       // Auth state listener
       onAuthStateChanged(auth, async user => {
   if (!user) {
-    // no one signed in → just stay on the login page
+    // no user → show login
     return;
   }
 
-  // Block unverified users immediately
+  if (justSignedUp) {
+    // first sign‑up event → skip the emailVerified check so handleUserData can finish
+    justSignedUp = false;
+    return;
+  }
+
+  // any *other* sign‑in: enforce verification
   if (!user.emailVerified) {
     showError("Your email is not verified. Please check your inbox.");
     await auth.signOut();
     return;
   }
 
-  // At this point they're authenticated *and* verified
+  // ✓ verified users get in
   const snap = await get(ref(db, `users/${user.uid}`));
   const data = snap.val() || {};
-
   if (!data.trialUsed) {
     showTrialOverlay();
   } else {
     redirectToMain();
   }
 });
+
 
   
 document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
