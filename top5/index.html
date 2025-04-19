@@ -1635,6 +1635,8 @@ async function runBatchAnalysis(){
       }
     });
   });
+// after your runBatchAnalysis() definition:
+window.runBatchAnalysis = runBatchAnalysis;
 
 
 document.addEventListener("DOMContentLoaded", function () {
