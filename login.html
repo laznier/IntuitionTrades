@@ -422,29 +422,29 @@ showTrialOverlay();
       onAuthStateChanged(auth, async user => {
   if (!user) return;
 
-  if (!user.emailVerified) {
-    showError("Please verify your email before accessing the site.");
-    return auth.signOut(); // prevent access
-  }
-
+  // 1) If we just signed up or just signed in, allow data writes first
   if (justSignedIn) {
+    justSignedIn = false;
     const snap = await get(ref(db, `users/${user.uid}`));
     const data = snap.val() || {};
-    if (!data.trialUsed) showTrialOverlay();
-    else redirectToMain();
-    justSignedIn = false;
-  } else {
-    redirectToMain();
+    if (!data.trialUsed) {
+      showTrialOverlay();
+    } else {
+      redirectToMain();
+    }
+    return;
   }
-});
-  
-document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (user && !user.emailVerified) {
-    await sendEmailVerification(user);
-    alert("Verification email resent.");
+
+  // 2) For returning users, enforce email verification
+  if (!user.emailVerified) {
+    showError("Please verify your email before accessing the site.");
+    return auth.signOut();
   }
+
+  // 3) Normal signed‑in flow
+  redirectToMain();
 });
+
 document.getElementById("forgotPasswordLink").addEventListener("click", async () => {
   clearError();
   const email = document.getElementById("loginEmail").value.trim();
