@@ -1363,7 +1363,31 @@ footer {
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
   <div id="user-type-indicator">Not signed in</div>
-
+  <script>
+    (function(){
+      const el = document.getElementById('user-type-indicator');
+      if (!el) return;
+    
+      // store the full original
+      const fullText = el.textContent.trim();
+    
+      // try to pull "Basic" or "Premium" from the parentheses at the end
+      const match = fullText.match(/\(([^)]+)\)\s*$/);
+      const accountType = match ? match[1] : fullText;
+    
+      function updateIndicator() {
+        if (window.innerWidth <= 600) {
+          el.textContent = accountType;
+        } else {
+          el.textContent = fullText;
+        }
+      }
+    
+      window.addEventListener('resize', updateIndicator);
+      document.addEventListener('DOMContentLoaded', updateIndicator);
+    })();
+    </script>
+    
   <!-- Sign‑In buttons -->
   <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
   <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
