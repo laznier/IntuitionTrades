@@ -225,6 +225,9 @@ button:hover {
       import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
       import { getDatabase, ref, child, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
       
+      let allData = []; // ⬅ global so other functions can access it
+let debounceTimeout, countdownInterval, searchingInterval;
+
       // Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -268,12 +271,8 @@ button:hover {
           window.location.href = "/login.html";
         }
       });
-      
-      // You can now safely define your tool logic below
-      function initializeCongressTool() {
-        // 🔁 Timers, autocomplete, and everything else
-        let debounceTimeout, countdownInterval, searchingInterval;
-        let allData = [];
+      document.addEventListener("DOMContentLoaded", () => {
+
 
     // Full list of congress and senate members from your provided list
     const politicianNames = [
@@ -679,7 +678,8 @@ document.getElementById('applyFilter').addEventListener('click', () => {
       });
       clearSuggestions();
     });
-
+  
+  });
 </script>
 </body>
 </html>
