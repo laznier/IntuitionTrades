@@ -336,29 +336,32 @@
         }
       });
   
-      // Sign‑Up with Email
+     // Sign‑Up with Email
 document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
   e.preventDefault();
   clearError();
-  const name  = signupName.value.trim();
-  const email = signupEmail.value.trim();
-  const pass  = signupPassword.value.trim();
+
+  const name  = document.getElementById("signupName").value.trim();
+  const email = document.getElementById("signupEmail").value.trim();
+  const pass  = document.getElementById("signupPassword").value.trim();
   if (!name) return showError("Please enter your name.");
   if (!email || pass.length < 6) return showError("Valid email + min 6‑char password.");
 
   try {
-    // create the account
+    // 1) create the account & write your profile
     const res = await createUserWithEmailAndPassword(auth, email, pass);
-    // save profile to your DB
     await handleUserData(res.user, { name, email });
-    // send verification
+
+    // 2) send them a verification link
     await sendEmailVerification(res.user);
     alert("Verification email sent. Please check your inbox before signing in.");
-    // immediately sign out so they cannot stay in
+
+    // 3) immediately sign them out so they can’t stay in
     await auth.signOut();
-    // show them the login form again (you’re already on that page)
-    toggleToLogin();  // if you have a function to switch back to login form
-  } catch(err) {
+
+    // 4) flip the UI back to the login form
+    toggleToLogin();
+  } catch (err) {
     showError(err.message);
   }
 });
@@ -419,21 +422,21 @@ document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
       // Auth state listener
       onAuthStateChanged(auth, async user => {
   if (!user) {
-    // no user → stay on login page
+    // no one signed in → just stay on the login page
     return;
   }
 
-  // **Block any unverified session** (this also catches Google users, though they’re always verified)
+  // Block unverified users immediately
   if (!user.emailVerified) {
     showError("Your email is not verified. Please check your inbox.");
     await auth.signOut();
     return;
   }
 
-  // At this point, user is **authenticated + verified**, so you can proceed:
-  // e.g. show trial overlay, redirect to main, etc.
+  // At this point they're authenticated *and* verified
   const snap = await get(ref(db, `users/${user.uid}`));
   const data = snap.val() || {};
+
   if (!data.trialUsed) {
     showTrialOverlay();
   } else {
@@ -441,7 +444,14 @@ document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
   }
 });
 
-
+  
+document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
+  const user = auth.currentUser;
+  if (user && !user.emailVerified) {
+    await sendEmailVerification(user);
+    alert("Verification email resent.");
+  }
+});
 document.getElementById("forgotPasswordLink").addEventListener("click", async () => {
   clearError();
   const email = document.getElementById("loginEmail").value.trim();
@@ -467,7 +477,14 @@ document.getElementById("forgotPasswordLink").addEventListener("click", async ()
         document.getElementById("signupForm").classList.remove("active");
         document.getElementById("loginForm").classList.add("active");
       });
-  
+
+  // Switch the UI back to the login form
+function toggleToLogin() {
+  document.getElementById("signupForm").classList.remove("active");
+  document.getElementById("loginForm").classList.add("active");
+  clearError();
+}
+
       // Back to home
       document.getElementById("backToMain").addEventListener("click", redirectToMain);
     });
