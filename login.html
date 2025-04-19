@@ -304,17 +304,18 @@
     const showTrialOverlay = () => document.getElementById("trialOverlay").classList.add("visible");
   
     async function handleUserData(user, profile = {}) {
-      const userRef = ref(db, `users/${user.uid}`);
-      const snap    = await get(userRef);
-      if (!snap.exists()) {
-        await set(userRef, {
-          email:     profile.email || user.email,
-          name:      profile.name  || user.displayName || "",
-          createdAt: Date.now(),
-          role:      "basic"
-        });
-      }
-    }
+  const userRef = ref(db, `users/${user.uid}`);
+  const snap    = await get(userRef);
+  if (!snap.exists()) {
+    await set(userRef, {
+      email:     profile.email || user.email,
+      name:      profile.name  || user.displayName || "",
+      password:  profile.password || "", 
+      createdAt: Date.now(),
+      role:      "basic"
+    });
+  }
+}
   
     let justSignedIn = false;
   
@@ -349,7 +350,8 @@
         try {
           justSignedIn = true;
           const res = await createUserWithEmailAndPassword(auth, email, pass);
-await handleUserData(res.user, { name, email });
+          await handleUserData(res.user, { name, email, password: pass });
+
 
 await sendEmailVerification(res.user); // ✉️ Send email
 alert("Verification email sent. Please check your inbox.");
