@@ -217,17 +217,14 @@ button:hover {
   </div>
 
   
-<!-- ***********************************************************************
+<!-- *********************************************************************** 
      * Premium Check and Secure Init
      *********************************************************************** -->
      <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
       import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-      import { getDatabase, ref, child, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-      
-      let allData = []; // ⬅ global so other functions can access it
-let debounceTimeout, countdownInterval, searchingInterval;
-
+      import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    
       // Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -238,51 +235,45 @@ let debounceTimeout, countdownInterval, searchingInterval;
         messagingSenderId: "1019332250475",
         appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
       };
-      
+    
       // Initialize Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = getDatabase(app);
-      
-      // Hide the page initially
-      document.documentElement.style.display = "none";
-      
-      // Wait for auth and check premium access
-      onAuthStateChanged(auth, async (user) => {
+    
+      // Hide body until we know the user's role
+      document.body.style.visibility = "hidden";
+    
+      // Auth state & role check
+      onAuthStateChanged(auth, async user => {
         if (!user) {
-          window.location.href = "/login.html";
+          // not logged in ⇒ send to login
+          window.location.replace("/login.html");
           return;
         }
-      
+    
         try {
-          const roleSnap = await get(child(ref(db), `users/${user.uid}/role`));
+          // read /users/{uid}/role
+          const roleSnap = await get(ref(db, `users/${user.uid}/role`));
           const role = roleSnap.exists() ? roleSnap.val() : null;
-      
+    
           if (role === "premium") {
             console.log("✅ Premium user verified.");
-            document.documentElement.style.display = "block";
+            document.body.style.visibility = "visible";
             initializeCongressTool();
           } else {
-            window.location.href = "/upgrade.html";
+            // logged in but not a premium user ⇒ upgrade page
+            window.location.replace("/upgrade.html");
           }
-
-          if (role === "premium") {
-  console.log("✅ Premium user verified.");
-  document.documentElement.style.display = "block";
-  initializeCongressTool();
-  return; // ✅ add this
-} else {
-  window.location.href = "/upgrade.html";
-  return;
-}
-
-        } catch (error) {
-          console.error("🔥 Premium check failed:", error);
-          alert("Error verifying your account. Try again.");
-          window.location.href = "/login.html";
+        } catch (err) {
+          console.error("🔥 Premium check failed:", err);
+          alert("Error verifying your account. Please try again.");
+          window.location.replace("/login.html");
         }
-
       });
+    
+ 
+    
 
       
       document.addEventListener("DOMContentLoaded", () => {
