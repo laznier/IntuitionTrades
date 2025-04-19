@@ -337,34 +337,32 @@
       });
   
       // Sign‑Up with Email
-      document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
-        e.preventDefault();
-        clearError();
-        const name  = document.getElementById("signupName").value.trim();
-        const email = document.getElementById("signupEmail").value.trim();
-        const pass  = document.getElementById("signupPassword").value.trim();
-        if (!name) return showError("Please enter your name.");
-        if (!email || pass.length < 6)
-          return showError("Valid email + min 6‑char password.");
-        try {
-          justSignedIn = true;
-          const res = await createUserWithEmailAndPassword(auth, email, pass);
-          await handleUserData(res.user, { name, email });
+document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
+  e.preventDefault();
+  clearError();
+  const name  = signupName.value.trim();
+  const email = signupEmail.value.trim();
+  const pass  = signupPassword.value.trim();
+  if (!name) return showError("Please enter your name.");
+  if (!email || pass.length < 6) return showError("Valid email + min 6‑char password.");
 
+  try {
+    // create the account
+    const res = await createUserWithEmailAndPassword(auth, email, pass);
+    // save profile to your DB
+    await handleUserData(res.user, { name, email });
+    // send verification
+    await sendEmailVerification(res.user);
+    alert("Verification email sent. Please check your inbox before signing in.");
+    // immediately sign out so they cannot stay in
+    await auth.signOut();
+    // show them the login form again (you’re already on that page)
+    toggleToLogin();  // if you have a function to switch back to login form
+  } catch(err) {
+    showError(err.message);
+  }
+});
 
-
-await sendEmailVerification(res.user); // ✉️ Send email
-alert("Verification email sent. Please check your inbox.");
-
-showTrialOverlay();
-
-          // ← INSERT TOKEN GRAB / STORE HERE
-          const idToken = await auth.currentUser.getIdToken();
-          localStorage.setItem("googleToken", idToken);
-        } catch (err) {
-          showError(err.message);
-        }
-      });
   
       // Google Sign‑In / Sign‑Up
       document.getElementById("googleSignInBtn").addEventListener("click", async e => {
@@ -420,30 +418,29 @@ showTrialOverlay();
   
       // Auth state listener
       onAuthStateChanged(auth, async user => {
-  if (!user) return;
-
-  // 1) If we just signed up or just signed in, allow data writes first
-  if (justSignedIn) {
-    justSignedIn = false;
-    const snap = await get(ref(db, `users/${user.uid}`));
-    const data = snap.val() || {};
-    if (!data.trialUsed) {
-      showTrialOverlay();
-    } else {
-      redirectToMain();
-    }
+  if (!user) {
+    // no user → stay on login page
     return;
   }
 
-  // 2) For returning users, enforce email verification
+  // **Block any unverified session** (this also catches Google users, though they’re always verified)
   if (!user.emailVerified) {
-    showError("Please verify your email before accessing the site.");
-    return auth.signOut();
+    showError("Your email is not verified. Please check your inbox.");
+    await auth.signOut();
+    return;
   }
 
-  // 3) Normal signed‑in flow
-  redirectToMain();
+  // At this point, user is **authenticated + verified**, so you can proceed:
+  // e.g. show trial overlay, redirect to main, etc.
+  const snap = await get(ref(db, `users/${user.uid}`));
+  const data = snap.val() || {};
+  if (!data.trialUsed) {
+    showTrialOverlay();
+  } else {
+    redirectToMain();
+  }
 });
+
 
 document.getElementById("forgotPasswordLink").addEventListener("click", async () => {
   clearError();
