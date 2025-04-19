@@ -217,61 +217,84 @@ button:hover {
   </div>
 
   
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import {
+    getAuth,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-    // ← your existing firebaseConfig
-    const firebaseConfig = {
-      apiKey:             "AIzaSyCw3AOOCQh3...FXYMMEoPPH8",
-      authDomain:         "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL:        "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-      projectId:          "persuasive-net-456607-g8",
-      storageBucket:      "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId:  "1019332250475",
-      appId:              "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+    projectId: "persuasive-net-456607-g8",
+    storageBucket: "persuasive-net-456607-g8.appspot.com",
+    messagingSenderId: "1019332250475",
+    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com/"
+  };
 
-    // Initialize Firebase
-    initializeApp(firebaseConfig);
-    const auth = getAuth();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
-    // 🔒 Gatekeeper: only show & run the tool once we verify “premium”:
-    let hasChecked = false;
+  async function waitForAuth(timeoutMs = 10000) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Auth timeout")), timeoutMs);
 
-onAuthStateChanged(auth, async user => {
-  if (hasChecked) return; // prevent double triggers
-  hasChecked = true;
-
-  if (!user) {
-    alert("Please sign in to access this tool.");
-    return window.location.href = "/login.html";
-  }
-
-  try {
-    const token = await user.getIdToken(true);
-    const res = await fetch("/api/verify-google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token })
+      onAuthStateChanged(auth, (user) => {
+        clearTimeout(timeout);
+        if (user) resolve(user);
+        else reject(new Error("User not signed in"));
+      });
     });
-
-    const { isPremium } = await res.json();
-
-    if (!isPremium) {
-      alert("Premium access required.");
-      return window.location.href = "/";
-    }
-
-    // ✅ Passed!
-    document.getElementById("app").style.display = "block";
-    initializePremiumTool(); // <-- your tool's logic
-  } catch (e) {
-    alert("Error checking premium access.");
-    console.error(e);
-    window.location.href = "/";
   }
-});
+
+  async function getVerifiedToken(user, retries = 3) {
+    let delay = 1000;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const token = await user.getIdToken(/* forceRefresh */ true);
+        if (token) return token;
+      } catch (err) {
+        console.warn("Retry token fetch:", i + 1, err.message);
+      }
+      await new Promise(res => setTimeout(res, delay));
+    }
+    throw new Error("Failed to get valid ID token after retries.");
+  }
+
+  async function verifyUserIsPremium() {
+    try {
+      const user = await waitForAuth();
+      const idToken = await getVerifiedToken(user);
+
+      const res = await fetch("/api/verify-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: idToken, requirePremium: true })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        alert("Access Denied: " + res.status + " - " + errorText);
+        window.location.href = "/upgrade.html";
+        return;
+      }
+
+      // ✅ Premium confirmed, reveal UI
+      document.getElementById("app").style.display = "block";
+      initializeCongressTool();
+
+    } catch (err) {
+      console.error("Premium check failed:", err.message);
+      alert("Please sign in again: " + err.message);
+      window.location.href = "/login.html";
+    }
+  }
+
+  verifyUserIsPremium();
+</script>
+
 
 
     // Pull out all of your existing “DOMContentLoaded” code into this:
