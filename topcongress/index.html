@@ -216,82 +216,75 @@ button:hover {
     <div id="details"></div>
   </div>
 
-  <!-- 
-    /***********************************************************************
-* Premium Check
- ***********************************************************************/
--->
- <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
   
-  // 🔐 Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-    projectId: "persuasive-net-456607-g8",
-    storageBucket: "persuasive-net-456607-g8.appspot.com",
-    messagingSenderId: "1019332250475",
-    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-  };
-  
-  // ✅ Init Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
-  
-  // ⛔ Hide entire page by default
-  document.documentElement.style.display = "none";
-  
-  // 🚀 Auth + Premium Check
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      // ⛔ Not signed in
-      window.location.href = "/login.html";
-      return;
-    }
-  
-    try {
-      const roleSnap = await get(child(ref(db), `users/${user.uid}/role`));
-      const role = roleSnap.exists() ? roleSnap.val() : null;
-  
-      if (role === "premium") {
-        // ✅ Premium user
-        console.log("Premium access granted.");
-        document.documentElement.style.display = "block";
-        YOUR_TOOL_INIT_FUNCTION(); // ← replace this with your tool’s actual init
-      } else {
-        // 🚫 Not premium
-        window.location.href = "/upgrade.html";
-      }
-    } catch (err) {
-      console.error("🔥 Error checking role:", err.message);
-      alert("Error verifying your account. Try again.");
-      window.location.href = "/login.html";
-    }
-  });
-  
-  
-  
-  
-    document.addEventListener("DOMContentLoaded", checkPremiumAccess);
-    function initializeCongressTool() {// Global variables for debounce, timers, and fetched data}
-      let debounceTimeout, countdownInterval, searchingInterval;
-      let allData = [];
-  
-      // Full list of congress and senate members from your provided list
-      const politicianNames = [
-   "Alma Adams", " Robert Aderholt", " Pete Aguilar", " Mark Alford", " Rick Allen", " Nancy Pelosi", " Angela Alsobrooks", " Mark Amodei", " Gabe Amo", " Yassamin Ansari", " Jodey Arrington", " Jake Auchincloss", " Brian Babin", " Don Bacon", " James Baird", " Troy Balderson", " Tammy Baldwin", " Becca Balint", " Jim Banks", " Nanette Barragán", " John Barrasso", " Tom Barrett", " Garland “Andy” Barr", " Michael Baumgartner", " Aaron Bean", " Joyce Beatty", " Nicholas Begich", " Wesley Bell", " Michael Bennet", " Cliff Bentz", " Ami Bera", " Jack Bergman", " Donald Beyer", " Stephanie Bice", " Andy Biggs", " Sheri Biggs", " Gus Bilirakis", " Sanford Bishop", " Marsha Blackburn", " Richard Blumenthal", " Lisa Blunt Rochester", " Lauren Boebert", " Suzanne Bonamici", " Cory Booker", " John Boozman", " Mike Bost", " Brendan Boyle", " Josh Brecheen", " Robert Bresnahan", " Katie Britt", " Julia Brownley", " Shontel Brown", " Vern Buchanan", " Ted Budd", " Nicole (Nikki) Budzinski", " Tim Burchett", " Eric Burlison", " Janelle Bynum", " Ken Calvert", " Katherine “Kat” Cammack", " Maria Cantwell", " Shelley Capito", " Salud Carbajal", " Mike Carey", " André Carson", " Earl “Buddy” Carter", " John R. Carter", " Troy Carter", " Gregorio Casar", " Ed Case", " Bill Cassidy", " Sean Casten", " Kathy Castor", " Joaquin Castro", " Sheila Cherfilus-McCormick", " Judy Chu", " Juan Ciscomani", " Gilbert Cisneros", " Yvette Clarke", " Katherine Clark", " Emanuel Cleaver", " Ben Cline", " Michael Cloud", " James “Jim” Clyburn", " Andrew Clyde", " Steve Cohen", " Tom Cole", " Mike Collins", " Susan Collins", " James Comer", " Herbert Conaway", " Gerald Connolly", " Christopher Coons", " John Cornyn", " Luis Correa", " Catherine Cortez Masto", " Jim Costa", " Tom Cotton", " Joe Courtney", " Angie Craig", " Kevin Cramer", " Eli Crane", " Jeff Crank", " Michael “Mike” Crapo", " Eric “Rick” Crawford", " Dan Crenshaw", " Jasmine Crockett", " Jason Crow", " Ted Cruz", " Henry Cuellar", " John Curtis", " Steve Daines", " Warren Davidson", " Sharice Davids", " Danny Davis", " Donald Davis", " Madeleine Dean", " Diana DeGette", " Mónica De La Cruz", " Rosa DeLauro", " Suzan DelBene", " Chris Deluzio", " Mark DeSaulnier", " Scott DesJarlais", " Maxine Dexter", " Mario Diaz-Balart", " Debbie Dingell", " Lloyd Doggett", " Byron Donalds", " Troy Downing", " Tammy Duckworth", " Neal Dunn", " Richard Durbin", " Charles (Chuck) Edwards", " Sarah Elfreth", " Jake Ellzey", " Tom Emmer", " Joni Ernst", " Veronica Escobar", " Adriano Espaillat", " Ron Estes", " Dwight Evans", " Gabe Evans", " Mike Ezell", " Patrick “Pat” Fallon", " Julie Fedorchak", " Randy Feenstra", " John Fetterman", " Cleo Fields", " Shomari Figures", " Brad Finstad", " Michelle Fischbach", " Deb Fischer", " Scott Fitzgerald", " Brian Fitzpatrick", " Charles “Chuck” Fleischmann", " Lizzie Fletcher", " Mike Flood", " Vince Fong", " Bill Foster", " Valerie Foushee", " Virginia Foxx", " Lois Frankel", " Scott Franklin", " Laura Friedman", " Maxwell Frost", " Russell Fry", " Russ Fulcher", " Ruben Gallego", " John Garamendi", " Andrew Garbarino", " Jesús “Chuy” García", " Robert Julio Garcia", " Sylvia Garcia", " Brandon Gill", " Laura Gillen", " Kirsten Gillibrand", " Carlos Gimenez", " Marie Gluesenkamp Perez", " Jared Golden", " Craig Goldman", " Dan Goldman", " Jimmy Gomez", " Ernest “Tony” Gonzales", " Vicente Gonzalez", " Lance Gooden", " Maggie Goodlander", " Paul Gosar", " Josh Gottheimer", " Lindsey Graham", " Charles “Chuck” Grassley", " Sam Graves", " Adam Gray", " Al Green", " Marjorie Greene", " Mark E. Green", " Morgan Griffith", " Glenn Grothman", " Michael Guest", " Brett Guthrie", " Harriet Hageman", " Bill Hagerty", " Abraham Hamadeh", " Josh Harder", " Mike Haridopolos", " Pat Harrigan", " Andy Harris", " Mark Everette Harris", " Diana Harshbarger", " Margaret “Maggie” Hassan", " Joshua “Josh” Hawley", " Jahana Hayes", " Martin Heinrich", " Pablo José Hernández Rivera", " Kevin Hern", " John Hickenlooper", " Clay Higgins", " French Hill", " James “Jim” Himes", " Ashley Hinson", " Mazie Hirono", " John Hoeven", " Steven Horsford", " Erin Houchin", " Chrissy Houlahan", " Steny Hoyer", " Valerie Hoyle", " Richard Hudson", " Jared Huffman", " Bill Huizenga", " Wesley Hunt", " Jeff Hurd", " Jon Husted", " Cindy Hyde-Smith", " Darrell Issa", " Glenn Ivey", " Brian Jack", " Jonathan Jackson", " Ronny Jackson", " Sara Jacobs", " John James", " Pramila Jayapal", " Hakeem Jeffries", " Dusty Johnson", " Henry C. “Hank” Johnson", " Julie Johnson", " Mike Johnson", " Ron Johnson", " Jim Jordan", " David Joyce", " John Joyce", " Jim Justice", " Timothy “Tim” Kaine", " Sydney Kamlager-Dove", " Marcy Kaptur", " Thomas Kean", " William R. Keating", " Mark Kelly", " Mike Kelly", " Robin Kelly", " Trent Kelly", " John Neely Kennedy", " Mike Kennedy", " Timothy Kennedy", " Ro Khanna", " Jennifer Kiggans", " Kevin Kiley", " Andy Kim", " Young Kim", " Angus King", " Kimberlyn King-Hinds", " Amy Klobuchar", " Brad Knott", " Raja Krishnamoorthi", " David Kustoff", " Darin LaHood", " Nicolas LaLota", " Doug LaMalfa", " Greg Landsman", " Nicholas Langworthy", " James Lankford", " Rick Larsen", " John Larson", " George Latimer", " Robert Latta", " Michael Lawler", " Laurel Lee", " Mike Lee", " Summer Lee", " Susie Lee", " Teresa Leger Fernandez", " Julia Letlow", " Mike Levin", " Sam Liccardo", " Ted Lieu", " Zoe Lofgren", " Barry Loudermilk", " Frank Lucas", " Ben Luján", " Cynthia Lummis", " Anna Luna", " Morgan Luttrell", " Stephen Lynch", " Nancy Mace", " Ryan Mackenzie", " Seth Magaziner", " Nicole Malliotakis", " Celeste Maloy", " John Mannion", " Tracey Mann", " Edward “Ed” Markey", " Roger Marshall", " Thomas Massie", " Brian Mast", " Doris Matsui", " Lucy McBath", " Sarah McBride", " Michael McCaul", " Lisa McClain", " Jennifer McClellan", " Tom McClintock", " Betty McCollum", " Mitch McConnell", " Dave McCormick", " Rich McCormick", " Kristen McDonald Rivet", " Addison McDowell", " Morgan McGarvey", " James “Jim” McGovern", " John J. McGuire", " LaMonica McIver", " Gregory Meeks", " Robert Jacobsen Menendez", " Grace Meng", " Jeff Merkley", " Mark Messmer", " Daniel Meuser", " Kweisi Mfume", " Carol Miller", " Mary Miller", " Max Miller", " Mariannette Miller-Meeks", " Cory Mills", " Dave Min", " Ashley Moody", " John Moolenaar", " Barry Moore", " Blake Moore", " Gwen Moore", " Riley Moore", " Tim Moore", " Jerry Moran", " Nathaniel Moran", " Joseph Morelle", " Bernie Moreno", " Kelly Morrison", " Jared Moskowitz", " Seth Moulton", " James (Jim) Moylan", " Frank Mrvan", " Kevin Mullin", " Markwayne Mullin", " Lisa Murkowski", " Christopher Murphy", " Gregory Murphy", " Patty Murray", " Jerrold Nadler", " Richard Neal", " Joe Neguse", " Troy Nehls", " Dan Newhouse", " Donald Norcross", " Ralph Norman", " Eleanor Norton", " Zachary (Zach) Nunn", " Jay Obernolte", " Ayanna Pressley", " Mike Quigley", " Aumua Amata Radewagen", " Delia Ramirez", " Emily Randall", " Jamie Raskin", " John F. “Jack” Reed", " Guy Reschenthaler", " Pete Ricketts", " Josh Riley", " James Risch", " Luz Rivas", " Harold “Hal” Rogers", " Mike Rogers", " John W. Rose", " Jacky Rosen", " Deborah Ross", " Mike Rounds", " David Rouzer", " Chip Roy", " Raul Ruiz", " Michael Rulli", " John Rutherford", " Patrick Ryan", " Maria Salazar", " Andrea Salinas", " Linda Sánchez", " Bernard “Bernie” Sanders", " Steve Scalise", " Mary Scanlon", " Janice “Jan” Schakowsky", " Brian Schatz", " Adam Schiff", " Derek Schmidt", " Eric Schmitt", " Bradley “Brad” Schneider", " Hillary Scholten", " Kim Schrier", " Charles “Chuck” Schumer", " David Schweikert", " Austin Scott", " David Scott", " Rick Scott", " Robert “Bobby” Scott", " Tim Scott", " Keith Self", " Pete Sessions", " Terri Sewell", " Jeanne Shaheen", " Tim Sheehy", " Brad Sherman", " Mikie Sherrill", " Jefferson Shreve", " Lateefah Simon", " Michael “Mike” Simpson", " Elissa Slotkin", " Adam Smith", " Adrian Smith", " Christopher “Chris” Smith", " Jason Smith", " Tina Smith", " Lloyd Smucker", " Eric Sorensen", " Darren Soto", " Victoria Spartz", " Melanie Stansbury", " Greg Stanton", " Pete Stauber", " Elise Stefanik", " Bryan Steil", " Gregory Steube", " Haley Stevens", " Marilyn Strickland", " Dale Strong", " Marlin Stutzman", " Suhas Subramanyam", " Dan Sullivan", " Thomas Suozzi", " Eric Swalwell", " Emilia Sykes", " Mark Takano", " David Taylor", " Claudia Tenney", " Shri Thanedar", " Bennie Thompson", " Glenn Thompson", " Mike Thompson", " John Thune", " Thomas Tiffany", " Thom Tillis", " William Timmons", " Dina Titus", " Rashida Tlaib", " Jill Tokuda", " Paul Tonko", " Norma Torres", " Ritchie Torres", " Lori Trahan", " Derek Tran", " Tommy Tuberville", " Michael Turner", " Lauren Underwood", " David Valadao", " Jefferson Van Drew", " Beth Van Duyne", " Chris Van Hollen", " Derrick Van Orden", " Juan Vargas", " Gabriel (Gabe) Vasquez", " Marc Veasey", " Nydia Velázquez", " Eugene Vindman", " Ann Wagner", " Tim Walberg", " Mark Warner", " Raphael Warnock", " Elizabeth Warren", " Debbie Wasserman Schultz", " Maxine Waters", " Bonnie Watson Coleman", " Randy Weber", " Daniel Webster", " Peter Welch", " Bruce Westerman", " Sheldon Whitehouse", " George Whitesides", " Roger Wicker", " Tony Wied", " Nikema Williams", " Roger Williams", " Frederica Wilson", " Joe Wilson", " Robert Wittman", " Steve Womack", " Ron Wyden", " Rudy Yakym", " Todd Young", " Ryan Zinke"
-      ];
+<!-- ***********************************************************************
+     * Premium Check and Secure Init
+     *********************************************************************** -->
+     <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+      import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+      import { getDatabase, ref, child, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
       
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+        projectId: "persuasive-net-456607-g8",
+        storageBucket: "persuasive-net-456607-g8.appspot.com",
+        messagingSenderId: "1019332250475",
+        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+      };
       
-      // When loading starts, calculate interval time so that the entire list is cycled over 15 seconds.
-      // (Interval time in milliseconds = 15000 divided by the number of names.)
-      const totalCycleTime = 15000; // 15 seconds
-      const cycleInterval = totalCycleTime / politicianNames.length;
-  
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getDatabase(app);
+      
+      // Hide the page initially
+      document.documentElement.style.display = "none";
+      
+      // Wait for auth and check premium access
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          window.location.href = "/login.html";
+          return;
+        }
+      
+        try {
+          const roleSnap = await get(child(ref(db), `users/${user.uid}/role`));
+          const role = roleSnap.exists() ? roleSnap.val() : null;
+      
+          if (role === "premium") {
+            console.log("✅ Premium user verified.");
+            document.documentElement.style.display = "block";
+            initializeCongressTool();
+          } else {
+            window.location.href = "/upgrade.html";
+          }
+        } catch (error) {
+          console.error("🔥 Premium check failed:", error);
+          alert("Error verifying your account. Try again.");
+          window.location.href = "/login.html";
+        }
+      });
+      
+      // You can now safely define your tool logic below
+      function initializeCongressTool() {
+        // 🔁 Timers, autocomplete, and everything else
+        let debounceTimeout, countdownInterval, searchingInterval;
+        let allData = [];
+
+    // Full list of congress and senate members from your provided list
+    const politicianNames = [
+ "Alma Adams", " Robert Aderholt", " Pete Aguilar", " Mark Alford", " Rick Allen", " Nancy Pelosi", " Angela Alsobrooks", " Mark Amodei", " Gabe Amo", " Yassamin Ansari", " Jodey Arrington", " Jake Auchincloss", " Brian Babin", " Don Bacon", " James Baird", " Troy Balderson", " Tammy Baldwin", " Becca Balint", " Jim Banks", " Nanette Barragán", " John Barrasso", " Tom Barrett", " Garland “Andy” Barr", " Michael Baumgartner", " Aaron Bean", " Joyce Beatty", " Nicholas Begich", " Wesley Bell", " Michael Bennet", " Cliff Bentz", " Ami Bera", " Jack Bergman", " Donald Beyer", " Stephanie Bice", " Andy Biggs", " Sheri Biggs", " Gus Bilirakis", " Sanford Bishop", " Marsha Blackburn", " Richard Blumenthal", " Lisa Blunt Rochester", " Lauren Boebert", " Suzanne Bonamici", " Cory Booker", " John Boozman", " Mike Bost", " Brendan Boyle", " Josh Brecheen", " Robert Bresnahan", " Katie Britt", " Julia Brownley", " Shontel Brown", " Vern Buchanan", " Ted Budd", " Nicole (Nikki) Budzinski", " Tim Burchett", " Eric Burlison", " Janelle Bynum", " Ken Calvert", " Katherine “Kat” Cammack", " Maria Cantwell", " Shelley Capito", " Salud Carbajal", " Mike Carey", " André Carson", " Earl “Buddy” Carter", " John R. Carter", " Troy Carter", " Gregorio Casar", " Ed Case", " Bill Cassidy", " Sean Casten", " Kathy Castor", " Joaquin Castro", " Sheila Cherfilus-McCormick", " Judy Chu", " Juan Ciscomani", " Gilbert Cisneros", " Yvette Clarke", " Katherine Clark", " Emanuel Cleaver", " Ben Cline", " Michael Cloud", " James “Jim” Clyburn", " Andrew Clyde", " Steve Cohen", " Tom Cole", " Mike Collins", " Susan Collins", " James Comer", " Herbert Conaway", " Gerald Connolly", " Christopher Coons", " John Cornyn", " Luis Correa", " Catherine Cortez Masto", " Jim Costa", " Tom Cotton", " Joe Courtney", " Angie Craig", " Kevin Cramer", " Eli Crane", " Jeff Crank", " Michael “Mike” Crapo", " Eric “Rick” Crawford", " Dan Crenshaw", " Jasmine Crockett", " Jason Crow", " Ted Cruz", " Henry Cuellar", " John Curtis", " Steve Daines", " Warren Davidson", " Sharice Davids", " Danny Davis", " Donald Davis", " Madeleine Dean", " Diana DeGette", " Mónica De La Cruz", " Rosa DeLauro", " Suzan DelBene", " Chris Deluzio", " Mark DeSaulnier", " Scott DesJarlais", " Maxine Dexter", " Mario Diaz-Balart", " Debbie Dingell", " Lloyd Doggett", " Byron Donalds", " Troy Downing", " Tammy Duckworth", " Neal Dunn", " Richard Durbin", " Charles (Chuck) Edwards", " Sarah Elfreth", " Jake Ellzey", " Tom Emmer", " Joni Ernst", " Veronica Escobar", " Adriano Espaillat", " Ron Estes", " Dwight Evans", " Gabe Evans", " Mike Ezell", " Patrick “Pat” Fallon", " Julie Fedorchak", " Randy Feenstra", " John Fetterman", " Cleo Fields", " Shomari Figures", " Brad Finstad", " Michelle Fischbach", " Deb Fischer", " Scott Fitzgerald", " Brian Fitzpatrick", " Charles “Chuck” Fleischmann", " Lizzie Fletcher", " Mike Flood", " Vince Fong", " Bill Foster", " Valerie Foushee", " Virginia Foxx", " Lois Frankel", " Scott Franklin", " Laura Friedman", " Maxwell Frost", " Russell Fry", " Russ Fulcher", " Ruben Gallego", " John Garamendi", " Andrew Garbarino", " Jesús “Chuy” García", " Robert Julio Garcia", " Sylvia Garcia", " Brandon Gill", " Laura Gillen", " Kirsten Gillibrand", " Carlos Gimenez", " Marie Gluesenkamp Perez", " Jared Golden", " Craig Goldman", " Dan Goldman", " Jimmy Gomez", " Ernest “Tony” Gonzales", " Vicente Gonzalez", " Lance Gooden", " Maggie Goodlander", " Paul Gosar", " Josh Gottheimer", " Lindsey Graham", " Charles “Chuck” Grassley", " Sam Graves", " Adam Gray", " Al Green", " Marjorie Greene", " Mark E. Green", " Morgan Griffith", " Glenn Grothman", " Michael Guest", " Brett Guthrie", " Harriet Hageman", " Bill Hagerty", " Abraham Hamadeh", " Josh Harder", " Mike Haridopolos", " Pat Harrigan", " Andy Harris", " Mark Everette Harris", " Diana Harshbarger", " Margaret “Maggie” Hassan", " Joshua “Josh” Hawley", " Jahana Hayes", " Martin Heinrich", " Pablo José Hernández Rivera", " Kevin Hern", " John Hickenlooper", " Clay Higgins", " French Hill", " James “Jim” Himes", " Ashley Hinson", " Mazie Hirono", " John Hoeven", " Steven Horsford", " Erin Houchin", " Chrissy Houlahan", " Steny Hoyer", " Valerie Hoyle", " Richard Hudson", " Jared Huffman", " Bill Huizenga", " Wesley Hunt", " Jeff Hurd", " Jon Husted", " Cindy Hyde-Smith", " Darrell Issa", " Glenn Ivey", " Brian Jack", " Jonathan Jackson", " Ronny Jackson", " Sara Jacobs", " John James", " Pramila Jayapal", " Hakeem Jeffries", " Dusty Johnson", " Henry C. “Hank” Johnson", " Julie Johnson", " Mike Johnson", " Ron Johnson", " Jim Jordan", " David Joyce", " John Joyce", " Jim Justice", " Timothy “Tim” Kaine", " Sydney Kamlager-Dove", " Marcy Kaptur", " Thomas Kean", " William R. Keating", " Mark Kelly", " Mike Kelly", " Robin Kelly", " Trent Kelly", " John Neely Kennedy", " Mike Kennedy", " Timothy Kennedy", " Ro Khanna", " Jennifer Kiggans", " Kevin Kiley", " Andy Kim", " Young Kim", " Angus King", " Kimberlyn King-Hinds", " Amy Klobuchar", " Brad Knott", " Raja Krishnamoorthi", " David Kustoff", " Darin LaHood", " Nicolas LaLota", " Doug LaMalfa", " Greg Landsman", " Nicholas Langworthy", " James Lankford", " Rick Larsen", " John Larson", " George Latimer", " Robert Latta", " Michael Lawler", " Laurel Lee", " Mike Lee", " Summer Lee", " Susie Lee", " Teresa Leger Fernandez", " Julia Letlow", " Mike Levin", " Sam Liccardo", " Ted Lieu", " Zoe Lofgren", " Barry Loudermilk", " Frank Lucas", " Ben Luján", " Cynthia Lummis", " Anna Luna", " Morgan Luttrell", " Stephen Lynch", " Nancy Mace", " Ryan Mackenzie", " Seth Magaziner", " Nicole Malliotakis", " Celeste Maloy", " John Mannion", " Tracey Mann", " Edward “Ed” Markey", " Roger Marshall", " Thomas Massie", " Brian Mast", " Doris Matsui", " Lucy McBath", " Sarah McBride", " Michael McCaul", " Lisa McClain", " Jennifer McClellan", " Tom McClintock", " Betty McCollum", " Mitch McConnell", " Dave McCormick", " Rich McCormick", " Kristen McDonald Rivet", " Addison McDowell", " Morgan McGarvey", " James “Jim” McGovern", " John J. McGuire", " LaMonica McIver", " Gregory Meeks", " Robert Jacobsen Menendez", " Grace Meng", " Jeff Merkley", " Mark Messmer", " Daniel Meuser", " Kweisi Mfume", " Carol Miller", " Mary Miller", " Max Miller", " Mariannette Miller-Meeks", " Cory Mills", " Dave Min", " Ashley Moody", " John Moolenaar", " Barry Moore", " Blake Moore", " Gwen Moore", " Riley Moore", " Tim Moore", " Jerry Moran", " Nathaniel Moran", " Joseph Morelle", " Bernie Moreno", " Kelly Morrison", " Jared Moskowitz", " Seth Moulton", " James (Jim) Moylan", " Frank Mrvan", " Kevin Mullin", " Markwayne Mullin", " Lisa Murkowski", " Christopher Murphy", " Gregory Murphy", " Patty Murray", " Jerrold Nadler", " Richard Neal", " Joe Neguse", " Troy Nehls", " Dan Newhouse", " Donald Norcross", " Ralph Norman", " Eleanor Norton", " Zachary (Zach) Nunn", " Jay Obernolte", " Ayanna Pressley", " Mike Quigley", " Aumua Amata Radewagen", " Delia Ramirez", " Emily Randall", " Jamie Raskin", " John F. “Jack” Reed", " Guy Reschenthaler", " Pete Ricketts", " Josh Riley", " James Risch", " Luz Rivas", " Harold “Hal” Rogers", " Mike Rogers", " John W. Rose", " Jacky Rosen", " Deborah Ross", " Mike Rounds", " David Rouzer", " Chip Roy", " Raul Ruiz", " Michael Rulli", " John Rutherford", " Patrick Ryan", " Maria Salazar", " Andrea Salinas", " Linda Sánchez", " Bernard “Bernie” Sanders", " Steve Scalise", " Mary Scanlon", " Janice “Jan” Schakowsky", " Brian Schatz", " Adam Schiff", " Derek Schmidt", " Eric Schmitt", " Bradley “Brad” Schneider", " Hillary Scholten", " Kim Schrier", " Charles “Chuck” Schumer", " David Schweikert", " Austin Scott", " David Scott", " Rick Scott", " Robert “Bobby” Scott", " Tim Scott", " Keith Self", " Pete Sessions", " Terri Sewell", " Jeanne Shaheen", " Tim Sheehy", " Brad Sherman", " Mikie Sherrill", " Jefferson Shreve", " Lateefah Simon", " Michael “Mike” Simpson", " Elissa Slotkin", " Adam Smith", " Adrian Smith", " Christopher “Chris” Smith", " Jason Smith", " Tina Smith", " Lloyd Smucker", " Eric Sorensen", " Darren Soto", " Victoria Spartz", " Melanie Stansbury", " Greg Stanton", " Pete Stauber", " Elise Stefanik", " Bryan Steil", " Gregory Steube", " Haley Stevens", " Marilyn Strickland", " Dale Strong", " Marlin Stutzman", " Suhas Subramanyam", " Dan Sullivan", " Thomas Suozzi", " Eric Swalwell", " Emilia Sykes", " Mark Takano", " David Taylor", " Claudia Tenney", " Shri Thanedar", " Bennie Thompson", " Glenn Thompson", " Mike Thompson", " John Thune", " Thomas Tiffany", " Thom Tillis", " William Timmons", " Dina Titus", " Rashida Tlaib", " Jill Tokuda", " Paul Tonko", " Norma Torres", " Ritchie Torres", " Lori Trahan", " Derek Tran", " Tommy Tuberville", " Michael Turner", " Lauren Underwood", " David Valadao", " Jefferson Van Drew", " Beth Van Duyne", " Chris Van Hollen", " Derrick Van Orden", " Juan Vargas", " Gabriel (Gabe) Vasquez", " Marc Veasey", " Nydia Velázquez", " Eugene Vindman", " Ann Wagner", " Tim Walberg", " Mark Warner", " Raphael Warnock", " Elizabeth Warren", " Debbie Wasserman Schultz", " Maxine Waters", " Bonnie Watson Coleman", " Randy Weber", " Daniel Webster", " Peter Welch", " Bruce Westerman", " Sheldon Whitehouse", " George Whitesides", " Roger Wicker", " Tony Wied", " Nikema Williams", " Roger Williams", " Frederica Wilson", " Joe Wilson", " Robert Wittman", " Steve Womack", " Ron Wyden", " Rudy Yakym", " Todd Young", " Ryan Zinke"
+    ];
+    
+    
+    // When loading starts, calculate interval time so that the entire list is cycled over 15 seconds.
+    // (Interval time in milliseconds = 15000 divided by the number of names.)
+    const totalCycleTime = 15000; // 15 seconds
+    const cycleInterval = totalCycleTime / politicianNames.length;
 
     /* ================= Autocomplete Functions ================= */
     function clearSuggestions() {
