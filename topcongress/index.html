@@ -216,10 +216,16 @@ button:hover {
     <div id="details"></div>
   </div>
 
-  
-<!-- *********************************************************************** 
+  <!-- *********************************************************************** 
      * Premium Check and Secure Init
      *********************************************************************** -->
+  <script type="module">
+    // This module defines initializeCongressTool and all its helpers…
+    export function initializeCongressTool() {
+      // your DOM event bindings, fetchButton listener, renderTopStocks, etc.
+    }
+  </script>
+
      <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
       import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
@@ -273,11 +279,6 @@ button:hover {
           window.location.replace("/login.html");
         }
       });
-    
-    
- 
-    
-
       
       document.addEventListener("DOMContentLoaded", () => {
 
