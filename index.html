@@ -2535,28 +2535,40 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-  // this does two things:
-  // 1) on page load it wires up the overlays
-  // 2) if somewhere else you update #user-type-indicator later (e.g. in onAuthStateChanged),
-  //    just call `adjustPremiumUI()` again
   function adjustPremiumUI() {
     const indicator = document.getElementById("user-type-indicator");
-    const isPremium = indicator && indicator.textContent.includes("Premium");
+    const text = indicator ? indicator.textContent : "";
+
+    const isPremium = text.includes("Premium");
+    const isBasic   = text.includes("Basic");
+    const overlays  = document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay");
+
+    overlays.forEach(el => {
+      // Clean out any old handlers
+      el.replaceWith(el.cloneNode(true));
+    });
+
+    // Re‑query after cloning
     document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
       .forEach(el => {
         if (isPremium) {
-          // remove them entirely (tool cards become clickable)
+          // premium → remove overlays entirely
           el.remove();
         } else {
-          // if not premium, clicking the overlay sends you to login
+          // decide target based on basic vs not signed in
+          let target = isBasic ? "/upgrade.html" : "/login.html";
           el.style.cursor = "pointer";
           el.addEventListener("click", e => {
             e.preventDefault();
-            window.location.href = "/login.html";
+            window.location.href = target;
           });
         }
       });
   }
+
+  document.addEventListener("DOMContentLoaded", adjustPremiumUI);
+
+
   
   // fire on first load
   document.addEventListener("DOMContentLoaded", adjustPremiumUI);
