@@ -1228,11 +1228,19 @@ footer {
   display: none !important;
 }
 
-@media (max-width: 400px) {
-  #user-type-indicator {
-    display: none; /* or visibility: hidden; if you'd like to keep the space */
+
+
+@media screen and (max-width: 600px) {
+  .welcome .greeting,
+  .welcome .username {
+    display: none;
+  }
+  .welcome .role {
+    /* Optional: tighten spacing/font if needed */
+    margin-left: 0;
   }
 }
+
 
 </style>
 <body>
@@ -1362,7 +1370,15 @@ footer {
    
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
+
+  <!-- Replace this:
   <div id="user-type-indicator">Not signed in</div>
+  -->
+  <p class="welcome">
+    <span class="greeting">Welcome&nbsp;</span>
+    <span class="username">John</span>
+    <span class="role">Basic</span>
+  </p>
 
   <!-- Sign‑In buttons -->
   <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
@@ -1371,6 +1387,7 @@ footer {
   <!-- Sign‑Out button (hidden by default) -->
   <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
 </div>
+
 
 
     </header>
