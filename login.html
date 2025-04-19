@@ -495,26 +495,46 @@ document.getElementById("emailSignUpBtn")
       });
   
       // Auth state listener
-    onAuthStateChanged(auth, async user => {
-      if (!user) return;
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return;               // not signed in
 
-      if (justSignedUp) {
-        justSignedUp = false;
-        return;
-      }
+  // Skip the very first “just signed up” event so handleUserData can finish
+  if (justSignedUp) {
+    justSignedUp = false;
+    return;
+  }
 
-      if (!user.emailVerified) {
-        showError("Your email is not verified. Please check your inbox.");
-        await auth.signOut();
-        return;
-      }
+  // 1) Block unverified emails
+  if (!user.emailVerified) {
+    showError("Your email is not verified. Please check your inbox.");
+    await auth.signOut();
+    return;
+  }
 
-      // Verified → trial or redirect
-      const snap = await get(ref(db, `users/${user.uid}`));
-      const data = snap.val() || {};
-      if (!data.trialUsed) showTrialOverlay();
-      else redirectToMain();
-    });
+  // 2) Load user record
+  const userRef = ref(db, `users/${user.uid}`);
+  const snap    = await get(userRef);
+  const data    = snap.val() || {};
+  const now     = Date.now();
+  const trialStart = data.trialStart || 0;
+  const trialUsed  = data.trialUsed  === true;
+  const isPremium  = data.role === "premium";
+
+  // 3) If they've never taken a trial, show the overlay
+  if (!trialUsed) {
+    showTrialOverlay();
+    return;
+  }
+
+  // 4) If they’re marked premium but 24 h have passed, downgrade
+  if (isPremium && trialStart + 24*60*60*1000 <= now) {
+    await update(userRef, { role: "basic" });
+  }
+
+  // 5) Finally, send them on their way
+  redirectToMain();
+});
+
 
   
 document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
