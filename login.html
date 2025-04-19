@@ -183,8 +183,15 @@
         Already have an account? Sign In
       </div>
     </div>
-
     <div class="back-link" id="backToMain">Back to Home</div>
+    <!-- Resend Verification Button -->
+    <div style="text-align:center; margin-top:1rem;">
+      <button id="resendVerifyBtn" style="background:none; border:1px solid #16a34a; color:#16a34a; padding:0.5rem 1rem; border-radius:4px; cursor:pointer; font-size:0.9rem;">
+        Resend Verification Email
+      </button>
+    </div>
+    
+
   </div>
 
   <!-- 24‑HOUR TRIAL OVERLAY -->
@@ -380,6 +387,14 @@ showTrialOverlay();
   }
 });
   
+document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
+  const user = auth.currentUser;
+  if (user && !user.emailVerified) {
+    await sendEmailVerification(user);
+    alert("Verification email resent.");
+  }
+});
+
       // UI toggles
       document.getElementById("toggleToSignUp").addEventListener("click", () => {
         clearError();
