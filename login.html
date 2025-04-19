@@ -370,43 +370,44 @@
 });
   
   
-    // Email Sign‑Up with duplicate‑email check
-document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
+    // Email Sign‑Up with duplicate‑email & Google‑only checks
+document.getElementById("emailSignUpBtn")
+.addEventListener("click", async e => {
   e.preventDefault();
   clearError();
 
   const name  = document.getElementById("signupName").value.trim();
   const email = document.getElementById("signupEmail").value.trim();
   const pass  = document.getElementById("signupPassword").value.trim();
-  if (!name) {
-    return showError("Please enter your name.");
-  }
-  if (!email || pass.length < 6) {
+
+  if (!name) return showError("Please enter your name.");
+  if (!email || pass.length < 6)
     return showError("Valid email + minimum 6‑character password.");
-  }
 
   // 1) Look up existing sign‑in methods for this email
   let methods = [];
   try {
     methods = await fetchSignInMethodsForEmail(auth, email);
-  } catch {
-    // if the email format is invalid, Firebase will throw
+  } catch (err) {
+    // if the email format is invalid, Firebase will throw here
+    return showError("That doesn’t look like a valid email address.");
   }
 
-  // 2) If they already have a password account...
+  // 2) If they already used a Google‑only login...
+  if (methods.includes("google.com") && !methods.includes("password")) {
+    return showError(
+      "It looks like you signed up with Google. Please click the Google button to sign in."
+    );
+  }
+
+  // 3) If they already have an email/password account...
   if (methods.includes("password")) {
     showError("That email is already registered. Please sign in or reset your password.");
-    toggleToLogin();
+    toggleToLogin();   // flip back to the login form
     return;
   }
 
-  // 3) If they only used Google for this email...
-  if (methods.includes("google.com")) {
-    showError("Looks like you signed up with Google. Please click the Google button to sign in.");
-    return;
-  }
-
-  // 4) Otherwise, go ahead and create the account
+  // 4) Otherwise go ahead and create the account
   try {
     justSignedUp = true;
     const res = await createUserWithEmailAndPassword(auth, email, pass);
@@ -419,6 +420,7 @@ document.getElementById("emailSignUpBtn").addEventListener("click", async e => {
     showError(err.message);
   }
 });
+
 
 
   
