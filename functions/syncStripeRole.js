@@ -1,34 +1,25 @@
-const functions = require("firebase-functions");
+const {onDocumentWritten} = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
-admin.initializeApp();
 const db = admin.database();
 
-/**
- * Syncs Firestore `stripeRole` to Realtime Database `users/{uid}/role`
- */
-exports.syncStripeRole = functions.firestore
-  .document("customers/{uid}")
-  .onWrite(async (change, context) => {
-    const uid = context.params.uid;
+exports.syncStripeRole = onDocumentWritten("customers/{uid}", async (event) => {
+  const uid = event.params.uid;
 
-    // Safely get the latest stripeRole
-    const afterData = change.after.exists ? change.after.data() : null;
-    const stripeRole = afterData?.stripeRole;
+  if (!event.data.after.exists) {
+    console.log(`Customer document for ${uid} deleted.`);
+    return;
+  }
 
-    if (!stripeRole) {
-      console.log(`⚠️ No stripeRole found for ${uid}, setting to 'basic'.`);
-      // Default to "basic" if stripeRole is missing
-      await db.ref(`users/${uid}`).update({ role: "basic" });
-      return null;
-    }
+  const data = event.data.after.data();
 
-    try {
-      await db.ref(`users/${uid}`).update({ role: stripeRole });
-      console.log(`✅ Synced stripeRole (${stripeRole}) to RTDB for user ${uid}`);
-    } catch (error) {
-      console.error(`❌ Error syncing stripeRole for user ${uid}:`, error);
-    }
+  if (!data.stripeRole) {
+    console.log(`No stripeRole for ${uid}, skipping.`);
+    return;
+  }
 
-    return null;
-  });
+  const userRef = db.ref(`users/${uid}`);
+  await userRef.update({role: data.stripeRole});
+
+  console.log(`Synced stripeRole (${data.stripeRole}) for ${uid}`);
+});
