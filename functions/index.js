@@ -1,9 +1,9 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onValueWritten } = require("firebase-functions/v2/database");
 const { onRequest } = require("firebase-functions/v2/https");
 const functions = require("firebase-functions"); // For config only
 const admin = require("firebase-admin");
 const express = require("express");
+const { onValueWritten, onValueCreated } = require("firebase-functions/v2/database");
 
 
 // Initialize Firebase Admin SDK
@@ -130,28 +130,24 @@ exports.syncStripeRole = onValueWritten(
   }
 );
 
-const { onValueCreated } = require("firebase-functions/v2/database");
-
 exports.createCheckoutSession = onValueCreated(
   "/customers/{uid}/checkout_sessions/{sessionId}",
   async (event) => {
-    const snap = event.data;
+    // 👇 The new snapshot is here:
+    const snap = event.data.after;
     const data = snap.val();
     const uid  = event.params.uid;
 
-    // Validate session data
     if (!data || !data.price || !data.success_url || !data.cancel_url) {
       console.error("❌ Invalid checkout session data:", data);
       return null;
     }
 
-    // Use existing 'functions' import
     const stripeSecret = functions.config().stripe.secret;
     if (!stripeSecret) {
       console.error("❌ Stripe secret missing from config");
       return null;
     }
-
     const stripe = require("stripe")(stripeSecret);
 
     try {
@@ -161,9 +157,10 @@ exports.createCheckoutSession = onValueCreated(
         line_items: [{ price: data.price, quantity: 1 }],
         success_url: data.success_url,
         cancel_url:  data.cancel_url,
-        metadata: { firebaseUid: uid }
+        metadata:    { firebaseUid: uid },
       });
 
+      // write the URL back
       await snap.ref.update({ url: session.url });
     } catch (err) {
       console.error("❌ Stripe session creation failed:", err);
