@@ -52,11 +52,27 @@
     a:hover {
       text-decoration: underline;
     }
+
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #16a34a;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      animation: spin 1s linear infinite;
+      margin: 1rem auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <div class="card" id="content">
     <h1>Checking your subscription...</h1>
+    <div class="spinner"></div>
   </div>
 
   <script type="module">
@@ -94,15 +110,25 @@
         `;
 
         document.getElementById("manageBtn").addEventListener("click", () => {
-          content.innerHTML = `<h1>Redirecting to Stripe...</h1>`;
+          content.innerHTML = `
+            <h1>Redirecting to Stripe...</h1>
+            <div class="spinner"></div>
+          `;
+
           const portalRef = ref(db, "customers/" + user.uid + "/portal_url");
+          let fallbackTimer = setTimeout(() => {
+            content.innerHTML = `
+              <h1>Something went wrong.</h1>
+              <p>No Stripe portal URL was found after waiting. Please try again or contact support.</p>
+              <a href="/index.html">← Back to Home</a>
+            `;
+          }, 8000); // fallback after 8 seconds
 
           onValue(portalRef, (snap) => {
             const url = snap.val();
             if (url) {
-              setTimeout(() => window.location.assign(url), 500);
-            } else {
-              content.innerHTML = `<h1>Error: No portal URL found.</h1>`;
+              clearTimeout(fallbackTimer);
+              window.location.assign(url);
             }
           }, { onlyOnce: true });
         });
