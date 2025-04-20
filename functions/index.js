@@ -5,6 +5,7 @@ const functions = require("firebase-functions"); // For config only
 const admin = require("firebase-admin");
 const express = require("express");
 
+
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 const db = admin.database();
@@ -128,3 +129,4 @@ exports.syncStripeRole = onValueWritten(
     await db.ref(`users/${uid}`).update({ role: stripeRole });
   }
 );
+
