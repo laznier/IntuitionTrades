@@ -77,7 +77,6 @@
       onValue
     } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
   
-    // 1) Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -85,7 +84,6 @@
       projectId: "persuasive-net-456607-g8"
     };
   
-    // 2) Init
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
@@ -93,19 +91,14 @@
     const priceId = "price_1RFqhE2aov5okGgqB0OJ7DK4";
     const btn     = document.getElementById("subscribeBtn");
   
-    // 3) Don’t bind until we know auth is ready
     onAuthStateChanged(auth, user => {
       if (!user) {
         alert("Please sign in first.");
-        window.location.href = "/login.html";
-        return;
+        return window.location.href = "/login.html";
       }
   
-      // Now that we have a signed‑in user, attach the click handler:
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         console.log("Subscribe clicked for", user.uid);
-  
-        // Push a new checkout session
         const checkoutRef = push(
           ref(db, `customers/${user.uid}/checkout_sessions`),
           {
@@ -115,24 +108,22 @@
           }
         );
   
-        // Listen once for the Stripe URL
-        onValue(
-          checkoutRef,
-          snap => {
-            const data = snap.val();
-            console.log("Session snap:", data);
-            if (data?.error) {
-              alert(`Error: ${data.error.message}`);
-            }
-            if (data?.url) {
-              window.location.assign(data.url);
-            }
-          },
-          { onlyOnce: true }
-        );
+        const unsubscribe = onValue(checkoutRef, snap => {
+          const data = snap.val();
+          console.log("Session update:", data);
+          if (data?.error) {
+            unsubscribe();
+            return alert(`Error: ${data.error.message}`);
+          }
+          if (data?.url) {
+            unsubscribe();
+            window.location.assign(data.url);
+          }
+        });
       });
     });
   </script>
+  
   
 </body>
 </html>
