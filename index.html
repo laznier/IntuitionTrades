@@ -1227,52 +1227,16 @@ footer {
 .premium-dropdown-item.unlocked .premium-dropdown-overlay {
   display: none !important;
 }
-
 @media (max-width: 600px) {
-  /* 1) Make the entire header-right wrap neatly */
-  .header-right {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+  /* Make the overall header flex & wrap */
+  header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: flex-end;
-    gap: 4px;
-    width: calc(100% - 50px); /* reserve space for the hamburger */
+    justify-content: space-between;
+    padding: 0.5rem;
   }
 
-  /* 2) Let each child shrink or wrap as needed */
-  .header-right > * {
-    flex: 0 1 auto;
-    margin: 2px 0;
-  }
-
-  /* 3) Allow the user‑type text to break into two lines */
-  #user-type-indicator {
-    white-space: normal;               /* allow wrapping */
-    max-width: 100%;                   /* fill available width */
-    text-align: center;                /* center multi‑line text */
-    font-size: clamp(0.7rem, 2vw, 0.9rem);
-  }
-
-  /* 4) Make all buttons/icons uniform in height */
-  .login-btn,
-  .google-circle-btn,
-  #accountBtn,
-  #upgradeBtn {
-    flex: 0 1 40px;
-    height: 40px;
-    padding: 0;
-  }
-
-  /* 5) But let the Account/Upgrade text buttons grow if they need more room */
-  #accountBtn,
-  #upgradeBtn {
-    flex: 1 1 auto;
-    padding: 0.3rem 0.6rem;
-    font-size: clamp(0.7rem, 2vw, 0.9rem);
-  }
 }
 
 
