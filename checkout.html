@@ -66,47 +66,63 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    import { getAuth } from      "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      onValue
+    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
   
+    // 1) Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",  // ✅ REQUIRED!
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
       projectId: "persuasive-net-456607-g8"
     };
   
+    // 2) Init
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getDatabase(app);
+    const db   = getDatabase(app);
   
     const priceId = "price_1RFqhE2aov5okGgqB0OJ7DK4";
   
+    // 3) Button handler
     document.getElementById("subscribeBtn").addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (!user) return alert("Please sign in first.");
-
-  const checkoutSessionRef = await addDoc(
-    collection(doc(db, "customers", user.uid), "checkout_sessions"),
-    {
-      price: priceId,
-      success_url: window.location.origin + "/success.html",
-      cancel_url: window.location.origin + "/cancel.html",
-    }
-  );
-
-  onSnapshot(checkoutSessionRef, (snap) => {
-    const data = snap.data();
-    if (data?.error) {
-      alert(`Error: ${data.error.message}`);
-    }
-    if (data?.url) {
-      window.location.assign(data.url);
-    }
-  });
-});
-
+      const user = auth.currentUser;
+      if (!user) {
+        return alert("Please sign in first.");
+      }
+  
+      // Create a new checkout_session under RTDB:
+      const checkoutRef = push(
+        ref(db, `customers/${user.uid}/checkout_sessions`),
+        {
+          price:       priceId,
+          success_url: window.location.origin + "/success.html",
+          cancel_url:  window.location.origin + "/cancel.html"
+        }
+      );
+  
+      // Watch for Stripe to write back the session.url:
+      onValue(
+        checkoutRef,
+        snap => {
+          const data = snap.val();
+          if (data?.error) {
+            alert(`Error: ${data.error.message}`);
+          }
+          if (data?.url) {
+            window.location.assign(data.url);
+          }
+        },
+        { onlyOnce: true }
+      );
+    });
   </script>
+  
   
 </body>
 </html>
