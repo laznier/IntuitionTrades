@@ -66,60 +66,73 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth }                from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import {
+      getAuth,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
     import {
       getDatabase,
       ref,
       push,
       onValue
     } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-
-    // Your Firebase config
+  
+    // 1) Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
       projectId: "persuasive-net-456607-g8"
     };
-
-    // Initialize Firebase
+  
+    // 2) Init
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
-
+  
     const priceId = "price_1RFqhE2aov5okGgqB0OJ7DK4";
-
-    document.getElementById("subscribeBtn").addEventListener("click", async () => {
-      const user = auth.currentUser;
+    const btn     = document.getElementById("subscribeBtn");
+  
+    // 3) Don’t bind until we know auth is ready
+    onAuthStateChanged(auth, user => {
       if (!user) {
-        return alert("Please sign in first.");
+        alert("Please sign in first.");
+        window.location.href = "/login.html";
+        return;
       }
-
-      // Create a new checkout session in RTDB
-      const checkoutRef = push(
-        ref(db, `customers/${user.uid}/checkout_sessions`),
-        {
-          price:       priceId,
-          success_url: window.location.origin + "/success.html",
-          cancel_url:  window.location.origin + "/cancel.html"
-        }
-      );
-
-      // Listen once for Stripe to write back the session.url
-      onValue(
-        checkoutRef,
-        snap => {
-          const data = snap.val();
-          if (data?.error) {
-            alert(`Error: ${data.error.message}`);
+  
+      // Now that we have a signed‑in user, attach the click handler:
+      btn.addEventListener("click", async () => {
+        console.log("Subscribe clicked for", user.uid);
+  
+        // Push a new checkout session
+        const checkoutRef = push(
+          ref(db, `customers/${user.uid}/checkout_sessions`),
+          {
+            price:       priceId,
+            success_url: window.location.origin + "/success.html",
+            cancel_url:  window.location.origin + "/cancel.html"
           }
-          if (data?.url) {
-            window.location.assign(data.url);
-          }
-        },
-        { onlyOnce: true }
-      );
+        );
+  
+        // Listen once for the Stripe URL
+        onValue(
+          checkoutRef,
+          snap => {
+            const data = snap.val();
+            console.log("Session snap:", data);
+            if (data?.error) {
+              alert(`Error: ${data.error.message}`);
+            }
+            if (data?.url) {
+              window.location.assign(data.url);
+            }
+          },
+          { onlyOnce: true }
+        );
+      });
     });
   </script>
+  
 </body>
 </html>
