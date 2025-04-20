@@ -1365,9 +1365,10 @@ footer {
   <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
 
     <!-- Upgrade button (hidden by default) -->
-    <a href="/checkout.html" class="login-btn" id="upgradeBtn" style="display:none;">
-        Upgrade
-      </a>    
+  <a href="/checkout.html" class="login-btn" id="upgradeBtn" style="display:none;">
+    Upgrade
+  </a>
+
   <!-- Sign‑Out button (hidden by default) -->
   <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
   
@@ -1801,75 +1802,69 @@ footer {
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-  
-    // 1) Init Firebase
+    
+
+    // 1) Paste your config here
     const firebaseConfig = {
-      apiKey: "...",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive‑net‑456607‑g8.firebaseapp.com",
       projectId: "persuasive-net-456607-g8",
+      storageBucket: "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId: "1019332250475",
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
+    
+    // 2) Init
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getDatabase(app);
-  
+    
     // 3) Watch auth & update UI
-    onAuthStateChanged(auth, async (user) => {
-      const indicator  = document.getElementById("user-type-indicator");
-      const googleBtn  = document.getElementById("googleSignInBtn");
-      const emailBtn   = document.getElementById("emailSignInBtn");
-      const upgradeBtn = document.getElementById("upgradeBtn");
-      const signOutBtn = document.getElementById("signOutBtn");
-  
-      if (!user) {
-        // not signed in
-        indicator.textContent    = "Not signed in";
-        googleBtn.style.display  = "";
-        emailBtn.style.display   = "";
-        upgradeBtn.style.display = "none";
-        signOutBtn.style.display = "none";
-      } else {
-        // signed in → fetch name & role
-        const snap = await get(ref(db, `users/${user.uid}`));
-        let role = "basic", name = "";
-        if (snap.exists()) {
-          ({ role, name } = snap.val());
-        }
-  
-        // pick text for mobile vs desktop
-        const isMobile = window.matchMedia("(max-width:600px)").matches;
-        if (isMobile) {
-          indicator.textContent = role === "premium"
-            ? "Premium User"
-            : "Basic User";
-        } else {
-          indicator.textContent = role === "premium"
-            ? `Welcome ${name} (Premium)`
-            : `Welcome ${name} (Basic)`;
-        }
-  
-        // show/hide buttons
-        googleBtn.style.display  = "none";
-        emailBtn.style.display   = "none";
-        signOutBtn.style.display = "";       // always show
-        if (role === "basic") {
-          upgradeBtn.style.display = "";     // show upgrade
-        } else {
-          upgradeBtn.style.display = "none"; // hide for premium
-        }
-      }
-  
-      // handle sign‑out click
-      signOutBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        auth.signOut().catch(err => console.error("Error signing out:", err));
-      });
-  
-      // re‑apply premium‑unlock overlays
-      adjustPremiumUI();
-    });
-  </script>
-  
+    onAuthStateChanged(auth, async user => {
+  const indicator   = document.getElementById("user-type-indicator");
+  const googleBtn   = document.getElementById("googleSignInBtn");
+  const emailBtn    = document.getElementById("emailSignInBtn");
+  const signOutBtn  = document.getElementById("signOutBtn");
+
+  if (!user) {
+  indicator.textContent = "Not signed in";
+
+} else {
+  // signed in → fetch name & role
+  const snap = await get(ref(db, "users/" + user.uid));
+  let role = "basic", name = "";
+  if (snap.exists()) ({ role, name } = snap.val());
+
+  const isMobile = window.matchMedia("(max-width:600px)").matches;
+  if (isMobile) {
+    // On mobile, show only “Basic User” or “Premium User”
+    indicator.textContent = role === "premium"
+      ? "Premium User"
+      : "Basic User";
+  } else {
+    // Desktop: full welcome
+    indicator.textContent = role === "premium"
+      ? `Welcome ${name} (Premium)`
+      : `Welcome ${name} (Basic)`;
+  }
+
+    // toggle buttons
+    googleBtn.style.display   = "none";
+    emailBtn.style.display    = "none";
+    signOutBtn.style.display  = "";      // show
+  }
+  document.getElementById("signOutBtn")
+  .addEventListener("click", e => {
+    e.preventDefault();
+    auth.signOut().catch(err => console.error("Error signing out:", err));
+  });
+
+  // re–apply your premium/unlock logic now that indicator is updated
+  adjustPremiumUI();
+});
+
+    </script>
     
 
   <!-- ============================================================
