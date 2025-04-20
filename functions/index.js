@@ -130,3 +130,46 @@ exports.syncStripeRole = onValueWritten(
   }
 );
 
+const { onValueCreated } = require("firebase-functions/v2/database");
+
+exports.createCheckoutSession = onValueCreated(
+  "/customers/{uid}/checkout_sessions/{sessionId}",
+  async (event) => {
+    const snap = event.data;
+    const data = snap.val();
+    const uid  = event.params.uid;
+
+    // Validate session data
+    if (!data || !data.price || !data.success_url || !data.cancel_url) {
+      console.error("❌ Invalid checkout session data:", data);
+      return null;
+    }
+
+    // Use existing 'functions' import
+    const stripeSecret = functions.config().stripe.secret;
+    if (!stripeSecret) {
+      console.error("❌ Stripe secret missing from config");
+      return null;
+    }
+
+    const stripe = require("stripe")(stripeSecret);
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{ price: data.price, quantity: 1 }],
+        success_url: data.success_url,
+        cancel_url:  data.cancel_url,
+        metadata: { firebaseUid: uid }
+      });
+
+      await snap.ref.update({ url: session.url });
+    } catch (err) {
+      console.error("❌ Stripe session creation failed:", err);
+      await snap.ref.update({ error: { message: err.message } });
+    }
+
+    return null;
+  }
+);
