@@ -1229,15 +1229,52 @@ footer {
 }
 
 @media (max-width: 600px) {
+  /* 1) Make the entire header-right wrap neatly */
+  .header-right {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    width: calc(100% - 50px); /* reserve space for the hamburger */
+  }
+
+  /* 2) Let each child shrink or wrap as needed */
+  .header-right > * {
+    flex: 0 1 auto;
+    margin: 2px 0;
+  }
+
+  /* 3) Allow the user‑type text to break into two lines */
   #user-type-indicator {
-    display: inline-block;           /* allow width constraints */
-    max-width: calc(100% - 80px);    /* leave room for your menu buttons */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;         /* if it still overflows, show “…” */
-    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+    white-space: normal;               /* allow wrapping */
+    max-width: 100%;                   /* fill available width */
+    text-align: center;                /* center multi‑line text */
+    font-size: clamp(0.7rem, 2vw, 0.9rem);
+  }
+
+  /* 4) Make all buttons/icons uniform in height */
+  .login-btn,
+  .google-circle-btn,
+  #accountBtn,
+  #upgradeBtn {
+    flex: 0 1 40px;
+    height: 40px;
+    padding: 0;
+  }
+
+  /* 5) But let the Account/Upgrade text buttons grow if they need more room */
+  #accountBtn,
+  #upgradeBtn {
+    flex: 1 1 auto;
+    padding: 0.3rem 0.6rem;
+    font-size: clamp(0.7rem, 2vw, 0.9rem);
   }
 }
+
 
 
 </style>
@@ -2545,7 +2582,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-    // 1) Creates or removes the “Account” link
+    // 1) Creates or removes the “Account” link for Premium users
     function ensureAccountButton(isPremium) {
       const signOutBtn = document.getElementById('signOutBtn');
       let acctBtn = document.getElementById('accountBtn');
@@ -2558,7 +2595,6 @@ document.addEventListener("DOMContentLoaded", () => {
           acctBtn.textContent = 'Account';
           acctBtn.className = 'login-btn';
           acctBtn.style.marginLeft = '8px';
-          // place it just before “Sign Out”
           signOutBtn.insertAdjacentElement('beforebegin', acctBtn);
         }
       } else if (acctBtn) {
@@ -2566,19 +2602,41 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   
-    // 2) Your existing overlay logic + Account button injection
+    // 2) Creates or removes the “Upgrade” link for Basic users
+    function ensureUpgradeButton(isBasic) {
+      const signOutBtn = document.getElementById('signOutBtn');
+      let upgBtn = document.getElementById('upgradeBtn');
+  
+      if (isBasic) {
+        if (!upgBtn) {
+          upgBtn = document.createElement('a');
+          upgBtn.id = 'upgradeBtn';
+          upgBtn.href = 'checkout.html';
+          upgBtn.textContent = 'Upgrade';
+          upgBtn.className = 'login-btn';
+          upgBtn.style.marginLeft = '8px';
+          signOutBtn.insertAdjacentElement('beforebegin', upgBtn);
+        }
+      } else if (upgBtn) {
+        upgBtn.remove();
+      }
+    }
+  
+    // 3) Existing overlay logic + injections of Account/Upgrade buttons
     function adjustPremiumUI() {
       const indicator = document.getElementById("user-type-indicator");
       const text      = indicator ? indicator.textContent : "";
       const isPremium = text.includes("Premium");
       const isBasic   = text.includes("Basic");
   
-      // reset any old handlers on your lock overlays
-      document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+      // reset any old handlers on lock overlays
+      document
+        .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
         .forEach(el => el.replaceWith(el.cloneNode(true)));
   
       // re‑attach or remove overlays
-      document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+      document
+        .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
         .forEach(el => {
           if (isPremium) {
             el.remove();
@@ -2594,11 +2652,14 @@ document.addEventListener("DOMContentLoaded", () => {
   
       // inject or remove the Account button
       ensureAccountButton(isPremium);
+      // inject or remove the Upgrade button
+      ensureUpgradeButton(isBasic);
     }
   
-    // 3) Run it once on page load
+    // 4) Run it once on page load
     document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
+  
   
   
 </body>
