@@ -1227,8 +1227,8 @@ footer {
 .premium-dropdown-item.unlocked .premium-dropdown-overlay {
   display: none !important;
 }
-@media (max-width: 600px) {
-  /* Make the overall header flex & wrap */
+@media (max-width: 400px) {
+  /* 1) Turn the header into a wrapping flex container */
   header {
     display: flex;
     flex-wrap: wrap;
@@ -1237,7 +1237,27 @@ footer {
     padding: 0.5rem;
   }
 
+  /* 2) Hide the user‑type text entirely on phones */
+  #user-type-indicator {
+    display: none;
+  }
+
+  /* 3) Freeze all your header buttons/icons at their desktop sizes */
+  .google-circle-btn {
+    width: 35px;
+    height: 35px;
+  }
+  .login-btn,
+  #accountBtn,
+  #upgradeBtn {
+    height: 35px;
+    padding: 0 8px;
+    line-height: 35px;   /* vertically center the text */
+    white-space: nowrap; /* prevent wrapping */
+  }
 }
+``
+
 
 
 
