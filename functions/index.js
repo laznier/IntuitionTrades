@@ -4,6 +4,8 @@
 const { onSchedule }                         = require("firebase-functions/v2/scheduler");
 const { onRequest }                          = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated }     = require("firebase-functions/v2/database");
+const bodyParser = require("body-parser");
+const crypto = require("crypto");
 const admin                                  = require("firebase-admin");
 const express                                = require("express");
 
@@ -48,7 +50,7 @@ exports.downgradeExpiredTrials = onSchedule(
 
 
 // 2️⃣ Stripe Webhook via Express
-exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
+exports.stripeWebhook = onRequest({ region: "us-central1" }, (req, res) => {
   const stripeSecret = process.env.STRIPE_SECRET;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -59,36 +61,40 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
 
   const stripe = require("stripe")(stripeSecret);
   const sig = req.headers["stripe-signature"];
-  let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
-  } catch (err) {
-    console.error("❌ Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  // Verify raw body with Stripe's expectations
+  let rawBody = "";
+  req.on("data", chunk => { rawBody += chunk; });
+  req.on("end", () => {
+    try {
+      const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+      const sub = event.data.object;
+      const uid = sub.metadata.firebaseUid;
+      const userRef = admin.database().ref(`users/${uid}`);
 
-  const sub = event.data.object;
-  const uid = sub.metadata.firebaseUid;
-  const userRef = admin.database().ref(`users/${uid}`);
+      switch (event.type) {
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+          userRef.update({
+            role: "premium",
+            subscriptionExpiry: sub.current_period_end * 1000
+          });
+          break;
+        case "customer.subscription.deleted":
+          userRef.update({ role: "basic" });
+          break;
+        default:
+          console.log("Unhandled event type:", event.type);
+      }
 
-  switch (event.type) {
-    case "customer.subscription.created":
-    case "customer.subscription.updated":
-      await userRef.update({
-        role: "premium",
-        subscriptionExpiry: sub.current_period_end * 1000
-      });
-      break;
-    case "customer.subscription.deleted":
-      await userRef.update({ role: "basic" });
-      break;
-    default:
-      console.log("Unhandled event type:", event.type);
-  }
-
-  res.json({ received: true });
+      res.json({ received: true });
+    } catch (err) {
+      console.error("❌ Stripe constructEvent failed:", err.message);
+      res.status(400).send(`Webhook error: ${err.message}`);
+    }
+  });
 });
+
 
 
 // 3️⃣ Sync stripeRole → users.role
