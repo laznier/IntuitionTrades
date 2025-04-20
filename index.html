@@ -1228,11 +1228,7 @@ footer {
   display: none !important;
 }
 
-@media (max-width: 600px) {
-  #user-type-indicator {
-    display: none; /* or visibility: hidden; if you'd like to keep the space */
-  }
-}
+
 
 </style>
 <body>
@@ -1826,19 +1822,26 @@ footer {
   const signOutBtn  = document.getElementById("signOutBtn");
 
   if (!user) {
-    // not signed in
-    indicator.textContent  = "Not signed in";
-    googleBtn.style.display   = "";      // show
-    emailBtn.style.display    = "";
-    signOutBtn.style.display  = "none";  // hide
+  indicator.textContent = "Not signed in";
+  
+} else {
+  // signed in → fetch name & role
+  const snap = await get(ref(db, "users/" + user.uid));
+  let role = "basic", name = "";
+  if (snap.exists()) ({ role, name } = snap.val());
+
+  const isMobile = window.matchMedia("(max-width:600px)").matches;
+  if (isMobile) {
+    // On mobile, show only “Basic User” or “Premium User”
+    indicator.textContent = role === "premium"
+      ? "Premium User"
+      : "Basic User";
   } else {
-    // signed in → fetch name & role
-    const snap = await get(ref(db, "users/" + user.uid));
-    let role = "basic", name = "";
-    if (snap.exists()) ({ role, name } = snap.val());
+    // Desktop: full welcome
     indicator.textContent = role === "premium"
       ? `Welcome ${name} (Premium)`
       : `Welcome ${name} (Basic)`;
+  }
 
     // toggle buttons
     googleBtn.style.display   = "none";
@@ -2572,52 +2575,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // fire on first load
   document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
-  <!-- Insert within your existing Firebase Auth state change script -->
-<script type="module">
-    import { getFirestore, doc, addDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-    
-    // Initialize Firestore (reuse your Firebase app)
-    const fs = getFirestore(app);
-    
-    // Add upgrade/manage button logic
-    onAuthStateChanged(auth, async user => {
-      const headerRight = document.querySelector('.header-right');
-      
-      // Remove any existing upgrade/manage button first
-      const oldBtn = document.getElementById("subscriptionBtn");
-      if (oldBtn) oldBtn.remove();
-    
-      if (user) {
-        const snap = await get(ref(db, "users/" + user.uid));
-        let role = snap.exists() ? snap.val().role : "basic";
-        
-        const btn = document.createElement('a');
-        btn.id = "subscriptionBtn";
-        btn.classList.add('login-btn');
-        btn.style.cursor = 'pointer';
-    
-        if (role === "premium") {
-          btn.textContent = "Manage Subscription";
-          btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            const portalRef = await addDoc(collection(doc(fs, "customers", user.uid), "portal_sessions"), {
-              return_url: window.location.origin + "/index.html"
-            });
-    
-            onSnapshot(portalRef, snap => {
-              const data = snap.data();
-              if (data?.url) window.location.assign(data.url);
-            });
-          });
-        } else {
-          btn.textContent = "Upgrade";
-          btn.href = "/checkout.html";
-        }
-    
-        headerRight.insertBefore(btn, document.getElementById("signOutBtn"));
-      }
-    });
-    </script>
-    
+  
 </body>
 </html>
