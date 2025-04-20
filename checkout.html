@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Upgrade to Premium | Intuition Trades</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 2rem;
+    }
+    .plan-box {
+      background: #222;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      color: #ccc;
+    }
+    .price {
+      font-size: 1.5rem;
+      color: #16a34a;
+      margin: 1rem 0;
+    }
+    button {
+      background: #16a34a;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+  <div class="plan-box">
+    <h1>Premium Membership</h1>
+    <p>🚀 Unlimited tools</p>
+    <p>🔒 No ads, no distractions</p>
+    <p>⚡ Cancel anytime</p>
+    <div class="price">$9.99 / month</div>
+    <button id="subscribeBtn">Subscribe Now</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      projectId: "persuasive-net-456607-g8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const priceId = "price_1RFqhE2aov5okGgqB0OJ7DK4";
+
+
+    document.getElementById("subscribeBtn").addEventListener("click", async () => {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return alert("Please sign in first.");
+
+        const checkoutSessionRef = await addDoc(
+          collection(doc(db, "customers", user.uid), "checkout_sessions"),
+          {
+            price: priceId,
+            success_url: window.location.origin + "/success.html",
+            cancel_url: window.location.origin + "/cancel.html",
+          }
+        );
+
+        onSnapshot(checkoutSessionRef, (snap) => {
+          const data = snap.data();
+          if (data?.error) {
+            alert(`Error: ${data.error.message}`);
+          }
+          if (data?.url) {
+            window.location.assign(data.url);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

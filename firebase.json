@@ -14,5 +14,8 @@
       "enabled": true,
       "port": 4000
     }
+  },
+  "extensions": {
+    "firestore-stripe-subscriptions": "stripe/firestore-stripe-subscriptions@0.1.15"
   }
 }

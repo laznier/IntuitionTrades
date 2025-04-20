@@ -2555,7 +2555,7 @@ document.addEventListener("DOMContentLoaded", () => {
           el.remove();
         } else {
           // decide target based on basic vs not signed in
-          let target = isBasic ? "/upgrade.html" : "/login.html";
+          let target = isBasic ? "/checkout.html" : "/login.html";
           el.style.cursor = "pointer";
           el.addEventListener("click", e => {
             e.preventDefault();
