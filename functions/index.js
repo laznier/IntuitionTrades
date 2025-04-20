@@ -1,37 +1,45 @@
-// functions/index.js
-
-// 1) Use the v2 SDK for Pub/Sub scheduling:
-const { pubsub } = require('firebase-functions/v2');
-const admin     = require('firebase-admin');
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import * as admin from "firebase-admin";
 
 admin.initializeApp();
+const db = admin.database();
 
-// 2) Run every hour (you can tweak the interval as you like)
-exports.downgradeExpiredTrials = pubsub
-  .schedule('every 1 hours')
-  .onRun(async (context) => {
-    const db      = admin.database();
-    const now     = Date.now();
-    const usersRef= db.ref('users');
-    const snap    = await usersRef.once('value');
-
-    const updates = {};
-    snap.forEach(child => {
-      const u = child.val();
-      // if role is premium but trialStart + 24h is past
-      if (
-        u.role === 'premium' &&
-        typeof u.trialStart === 'number' &&
-        u.trialStart + 86400000 <= now
-      ) {
-        updates[child.key + '/role'] = 'basic';
+export const downgradeExpiredTrials = onSchedule(
+    "every 1 hours",           // Cron-like schedule expression
+    async (event) => {
+      const now = Date.now();
+      const usersRef = db.ref("users");
+      const snap = await usersRef.once("value");
+      const updates = {};
+  
+      snap.forEach(child => {
+        const data = child.val();
+        // Downgrade if trial expired
+        if (
+          data.role === "premium" &&
+          data.trialStart &&
+          now > data.trialStart + 86400000
+        ) {
+          updates[`${child.key}/role`] = "basic";
+        }
+        // Downgrade if subscription expired
+        if (
+          data.role === "premium" &&
+          data.subscriptionExpiry &&
+          now > data.subscriptionExpiry
+        ) {
+          updates[`${child.key}/role`] = "basic";
+        }
+      });
+  
+      if (Object.keys(updates).length > 0) {
+        await usersRef.update(updates);
       }
-    });
-
-    if (Object.keys(updates).length) {
-      await usersRef.update(updates);
-      console.log(`Downgraded ${Object.keys(updates).length} users back to basic.`);
-    } else {
-      console.log('No expired trials to downgrade.');
+      return null;
+    },
+    {
+      // Optional v2 options: specify region or time zone
+      timeZone: "Etc/UTC",
     }
-  });
+  );
+  
