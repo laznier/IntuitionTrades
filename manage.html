@@ -62,20 +62,18 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-    import { getFirestore, collection, doc, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+    import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId: "persuasive-net-456607-g8"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
-    const fs = getFirestore(app);
     const content = document.getElementById("content");
 
     onAuthStateChanged(auth, async (user) => {
@@ -99,31 +97,17 @@
         document.getElementById("manageBtn").addEventListener("click", async () => {
           content.innerHTML = `<h1>Redirecting to Stripe...</h1>`;
 
-          try {
-            const portalRef = await addDoc(
-              collection(doc(fs, "customers", user.uid), "portal_sessions"),
-              { return_url: window.location.origin + "/index.html" }
-            );
+          // Monitor portal URL in Realtime DB
+          const portalRef = ref(db, "customers/" + user.uid + "/portal_url");
 
-            onSnapshot(portalRef, (snap) => {
-              const data = snap.data();
-              if (data?.url) {
-                setTimeout(() => window.location.assign(data.url), 500);
-              } else if (data?.error) {
-                content.innerHTML = `
-                  <h1>Error</h1>
-                  <p>${data.error.message}</p>
-                  <a href="/index.html">← Back to Home</a>
-                `;
-              }
-            });
-          } catch (err) {
-            content.innerHTML = `
-              <h1>Unexpected Error</h1>
-              <p>${err.message}</p>
-              <a href="/index.html">← Back to Home</a>
-            `;
-          }
+          onValue(portalRef, (snap) => {
+            const url = snap.val();
+            if (url) {
+              setTimeout(() => window.location.assign(url), 500);
+            }
+          }, {
+            onlyOnce: true
+          });
         });
 
       } else {
