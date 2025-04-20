@@ -132,7 +132,9 @@ exports.createCheckoutSession = onValueCreated(
         line_items:           [{ price: data.price, quantity: 1 }],
         success_url:          data.success_url,
         cancel_url:           data.cancel_url,
-        metadata:             { firebaseUid: uid },
+        subscription_data: {
+          metadata: { firebaseUid: uid }
+        },
       });
       await snap.ref.update({ url: session.url });
     } catch (err) {
