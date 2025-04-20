@@ -1,38 +1,37 @@
 // functions/index.js
 
-const functions = require("firebase-functions");
-const admin     = require("firebase-admin");
+// 1) Use the v2 SDK for Pub/Sub scheduling:
+const { pubsub } = require('firebase-functions/v2');
+const admin     = require('firebase-admin');
+
 admin.initializeApp();
 
-// every hour, check for expired trials
-exports.downgradeExpiredTrials = functions.pubsub
-  .schedule("every 60 minutes")
-  .onRun(async (_context) => {
-    const db   = admin.database();
-    const now  = Date.now();
-    const usersSnap = await db.ref("users").once("value");
-    const updates   = {};
+// 2) Run every hour (you can tweak the interval as you like)
+exports.downgradeExpiredTrials = pubsub
+  .schedule('every 1 hours')
+  .onRun(async (context) => {
+    const db      = admin.database();
+    const now     = Date.now();
+    const usersRef= db.ref('users');
+    const snap    = await usersRef.once('value');
 
-    usersSnap.forEach(userSnap => {
-      const u = userSnap.val();
-      // if they used a trial, are still marked 'premium', and 24h has passed:
+    const updates = {};
+    snap.forEach(child => {
+      const u = child.val();
+      // if role is premium but trialStart + 24h is past
       if (
-        u.trialUsed === true &&
-        u.role === "premium" &&
-        typeof u.trialStart === "number" &&
-        u.trialStart + 24 * 3600 * 1000 <= now
+        u.role === 'premium' &&
+        typeof u.trialStart === 'number' &&
+        u.trialStart + 86400000 <= now
       ) {
-        updates[`${userSnap.key}/role`] = "basic";
+        updates[child.key + '/role'] = 'basic';
       }
     });
 
     if (Object.keys(updates).length) {
-      await db.ref("users").update(updates);
-      console.log(
-        `Downgraded ${Object.keys(updates).length} user(s) from premium→basic.`
-      );
+      await usersRef.update(updates);
+      console.log(`Downgraded ${Object.keys(updates).length} users back to basic.`);
     } else {
-      console.log("No expired trials at this time.");
+      console.log('No expired trials to downgrade.');
     }
-    return null;
   });
