@@ -53,14 +53,6 @@ app.post(
   "/webhook",
   express.raw({ type: "application/json" }),
   (req, res) => {
-    const stripeSecret  = process.env.STRIPE_SECRET;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!stripeSecret || !webhookSecret) {
-      console.error("❌ Missing STRIPE_SECRET or STRIPE_WEBHOOK_SECRET env vars");
-      return res.status(500).send("Configuration error");
-    }
-    const stripe = require("stripe")(stripeSecret);
-
     const sig = req.headers["stripe-signature"];
     let event;
     try {
@@ -96,7 +88,7 @@ app.post(
     res.json({ received: true });
   }
 );
-exports.stripeWebhook = onRequest({ region: "us-central1", memory: "256MiB" }, app);
+exports.stripeWebhook = onRequest({ region: "us-central1" }, app);
 
 
 // 3️⃣ Sync stripeRole → users.role
