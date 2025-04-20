@@ -2545,44 +2545,61 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-  function adjustPremiumUI() {
-    const indicator = document.getElementById("user-type-indicator");
-    const text = indicator ? indicator.textContent : "";
-
-    const isPremium = text.includes("Premium");
-    const isBasic   = text.includes("Basic");
-    const overlays  = document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay");
-
-    overlays.forEach(el => {
-      // Clean out any old handlers
-      el.replaceWith(el.cloneNode(true));
-    });
-
-    // Re‑query after cloning
-    document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
-      .forEach(el => {
-        if (isPremium) {
-          // premium → remove overlays entirely
-          el.remove();
-        } else {
-          // decide target based on basic vs not signed in
-          let target = isBasic ? "/checkout.html" : "/login.html";
-          el.style.cursor = "pointer";
-          el.addEventListener("click", e => {
-            e.preventDefault();
-            window.location.href = target;
-          });
-        }
-      });
-  }
-
-  document.addEventListener("DOMContentLoaded", adjustPremiumUI);
-
-
+    // 1) Creates or removes the “Account” link
+    function ensureAccountButton(isPremium) {
+      const signOutBtn = document.getElementById('signOutBtn');
+      let acctBtn = document.getElementById('accountBtn');
   
-  // fire on first load
-  document.addEventListener("DOMContentLoaded", adjustPremiumUI);
+      if (isPremium) {
+        if (!acctBtn) {
+          acctBtn = document.createElement('a');
+          acctBtn.id = 'accountBtn';
+          acctBtn.href = 'manage.html';
+          acctBtn.textContent = 'Account';
+          acctBtn.className = 'login-btn';
+          acctBtn.style.marginLeft = '8px';
+          // place it just before “Sign Out”
+          signOutBtn.insertAdjacentElement('beforebegin', acctBtn);
+        }
+      } else if (acctBtn) {
+        acctBtn.remove();
+      }
+    }
+  
+    // 2) Your existing overlay logic + Account button injection
+    function adjustPremiumUI() {
+      const indicator = document.getElementById("user-type-indicator");
+      const text      = indicator ? indicator.textContent : "";
+      const isPremium = text.includes("Premium");
+      const isBasic   = text.includes("Basic");
+  
+      // reset any old handlers on your lock overlays
+      document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+        .forEach(el => el.replaceWith(el.cloneNode(true)));
+  
+      // re‑attach or remove overlays
+      document.querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
+        .forEach(el => {
+          if (isPremium) {
+            el.remove();
+          } else {
+            const target = isBasic ? "/checkout.html" : "/login.html";
+            el.style.cursor = "pointer";
+            el.addEventListener("click", e => {
+              e.preventDefault();
+              window.location.href = target;
+            });
+          }
+        });
+  
+      // inject or remove the Account button
+      ensureAccountButton(isPremium);
+    }
+  
+    // 3) Run it once on page load
+    document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
+  
   
 </body>
 </html>
