@@ -1228,6 +1228,16 @@ footer {
   display: none !important;
 }
 
+@media (max-width: 600px) {
+  #user-type-indicator {
+    display: inline-block;           /* allow width constraints */
+    max-width: calc(100% - 80px);    /* leave room for your menu buttons */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;         /* if it still overflows, show “…” */
+    font-size: clamp(0.7rem, 1.2vw, 0.9rem);
+  }
+}
 
 
 </style>
@@ -1364,14 +1374,8 @@ footer {
   <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
   <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
 
-    <!-- Upgrade button (hidden by default) -->
-  <a href="/checkout.html" class="login-btn" id="upgradeBtn" style="display:none;">
-    Upgrade
-  </a>
-
   <!-- Sign‑Out button (hidden by default) -->
   <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
-  
 </div>
 
 
@@ -1828,37 +1832,35 @@ footer {
   const signOutBtn  = document.getElementById("signOutBtn");
 
   if (!user) {
-  indicator.textContent = "Not signed in";
-
-} else {
-  // signed in → fetch name & role
-  const snap = await get(ref(db, "users/" + user.uid));
-  let role = "basic", name = "";
-  if (snap.exists()) ({ role, name } = snap.val());
-
-  const isMobile = window.matchMedia("(max-width:600px)").matches;
-  if (isMobile) {
-    // On mobile, show only “Basic User” or “Premium User”
-    indicator.textContent = role === "premium"
-      ? "Premium User"
-      : "Basic User";
+    // not signed in
+    indicator.textContent  = "Not signed in";
+    googleBtn.style.display   = "";      // show
+    emailBtn.style.display    = "";
+    signOutBtn.style.display  = "none";  // hide
   } else {
-    // Desktop: full welcome
+    // signed in → fetch name & role
+    const snap = await get(ref(db, "users/" + user.uid));
+    let role = "basic", name = "";
+    if (snap.exists()) ({ role, name } = snap.val());
     indicator.textContent = role === "premium"
       ? `Welcome ${name} (Premium)`
       : `Welcome ${name} (Basic)`;
-  }
 
     // toggle buttons
     googleBtn.style.display   = "none";
     emailBtn.style.display    = "none";
     signOutBtn.style.display  = "";      // show
   }
-  document.getElementById("signOutBtn")
-  .addEventListener("click", e => {
-    e.preventDefault();
-    auth.signOut().catch(err => console.error("Error signing out:", err));
-  });
+signOutBtn.addEventListener("click", e => {
+  e.preventDefault();
+  auth.signOut()
+    .then(() => {
+      // successful sign‑out → reload the page
+      window.location.reload();
+    })
+    .catch(err => console.error("Error signing out:", err));
+});
+
 
   // re–apply your premium/unlock logic now that indicator is updated
   adjustPremiumUI();
