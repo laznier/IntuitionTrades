@@ -68,22 +68,21 @@ app.post(
 
     const sub     = event.data.object;
     const uid     = sub.metadata.firebaseUid;
-    const custRef = db.ref(`customers/${uid}`);
+    const userRef = db.ref(`users/${uid}`);
 
-    switch (event.type) {
-      case "customer.subscription.created":
-      case "customer.subscription.updated":
-        custRef.update({
-          stripeRole:        sub.status === "active" ? "premium" : "basic",
-          subscriptionExpiry: sub.current_period_end * 1000
-        });
-        break;
-      case "customer.subscription.deleted":
-        custRef.update({ stripeRole: "basic" });
-        break;
-      default:
-        break;
-    }
+switch (event.type) {
+  case "customer.subscription.created":
+  case "customer.subscription.updated":
+    userRef.update({
+      role: "premium",
+      subscriptionExpiry: sub.current_period_end * 1000
+    });
+    break;
+  case "customer.subscription.deleted":
+    userRef.update({ role: "basic" });
+    break;
+}
+
 
     res.json({ received: true });
   }
