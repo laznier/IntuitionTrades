@@ -48,46 +48,47 @@ exports.downgradeExpiredTrials = onSchedule(
 
 
 // 2️⃣ Stripe Webhook via Express
-const app = express();
-app.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        webhookSecret
-      );
-    } catch (err) {
-      console.error("❌ Webhook signature error:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
+exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
+  const stripeSecret = process.env.STRIPE_SECRET;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    const sub     = event.data.object;
-    const uid     = sub.metadata.firebaseUid;
-    const userRef = db.ref(`users/${uid}`);
-
-switch (event.type) {
-  case "customer.subscription.created":
-  case "customer.subscription.updated":
-    userRef.update({
-      role: "premium",
-      subscriptionExpiry: sub.current_period_end * 1000
-    });
-    break;
-  case "customer.subscription.deleted":
-    userRef.update({ role: "basic" });
-    break;
-}
-
-
-    res.json({ received: true });
+  if (!stripeSecret || !webhookSecret) {
+    console.error("❌ Missing Stripe env vars");
+    return res.status(500).send("Missing Stripe config");
   }
-);
-exports.stripeWebhook = onRequest({ region: "us-central1" }, app);
+
+  const stripe = require("stripe")(stripeSecret);
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error("❌ Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  const sub = event.data.object;
+  const uid = sub.metadata.firebaseUid;
+  const userRef = admin.database().ref(`users/${uid}`);
+
+  switch (event.type) {
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+      await userRef.update({
+        role: "premium",
+        subscriptionExpiry: sub.current_period_end * 1000
+      });
+      break;
+    case "customer.subscription.deleted":
+      await userRef.update({ role: "basic" });
+      break;
+    default:
+      console.log("Unhandled event type:", event.type);
+  }
+
+  res.json({ received: true });
+});
 
 
 // 3️⃣ Sync stripeRole → users.role
