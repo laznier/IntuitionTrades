@@ -82,9 +82,8 @@
         return;
       }
 
-      const userRef = ref(db, "users/" + user.uid);
-      const snap = await get(userRef);
-      const role = snap.val()?.role;
+      const roleSnap = await get(ref(db, "users/" + user.uid + "/role"));
+      const role = roleSnap.exists() ? roleSnap.val() : "basic";
 
       if (role === "premium") {
         content.innerHTML = `
@@ -94,20 +93,18 @@
           <a href="/index.html">← Back to Home</a>
         `;
 
-        document.getElementById("manageBtn").addEventListener("click", async () => {
+        document.getElementById("manageBtn").addEventListener("click", () => {
           content.innerHTML = `<h1>Redirecting to Stripe...</h1>`;
-
-          // Monitor portal URL in Realtime DB
           const portalRef = ref(db, "customers/" + user.uid + "/portal_url");
 
           onValue(portalRef, (snap) => {
             const url = snap.val();
             if (url) {
               setTimeout(() => window.location.assign(url), 500);
+            } else {
+              content.innerHTML = `<h1>Error: No portal URL found.</h1>`;
             }
-          }, {
-            onlyOnce: true
-          });
+          }, { onlyOnce: true });
         });
 
       } else {

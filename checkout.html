@@ -67,36 +67,33 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getFirestore, doc, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+  
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",  // ✅ REQUIRED!
       projectId: "persuasive-net-456607-g8"
     };
-
+  
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db = getFirestore(app);
-
+    const db = getDatabase(app);
+  
     const priceId = "price_1RFqhE2aov5okGgqB0OJ7DK4";
-
-
+  
     document.getElementById("subscribeBtn").addEventListener("click", async () => {
       onAuthStateChanged(auth, async (user) => {
         if (!user) return alert("Please sign in first.");
-
-        const checkoutSessionRef = await addDoc(
-          collection(doc(db, "customers", user.uid), "checkout_sessions"),
-          {
-            price: priceId,
-            success_url: window.location.origin + "/success.html",
-            cancel_url: window.location.origin + "/cancel.html",
-          }
-        );
-
-        onSnapshot(checkoutSessionRef, (snap) => {
-          const data = snap.data();
+  
+        const checkoutRef = push(ref(db, `customers/${user.uid}/checkout_sessions`), {
+          price: priceId,
+          success_url: window.location.origin + "/success.html",
+          cancel_url: window.location.origin + "/cancel.html",
+        });
+  
+        onValue(checkoutRef, (snap) => {
+          const data = snap.val();
           if (data?.error) {
             alert(`Error: ${data.error.message}`);
           }
@@ -107,5 +104,6 @@
       });
     });
   </script>
+  
 </body>
 </html>
