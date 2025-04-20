@@ -130,22 +130,24 @@ exports.syncStripeRole = onValueWritten(
   }
 );
 
+// 4️⃣ Create Checkout Session when client pushes a new child (v2-only)
 exports.createCheckoutSession = onValueCreated(
   "/customers/{uid}/checkout_sessions/{sessionId}",
   async (event) => {
-    // 👇 The new snapshot is here:
-    const snap = event.data.after;
+    // 👇 event.data is already the snapshot of the newly created node
+    const snap = event.data;
     const data = snap.val();
     const uid  = event.params.uid;
 
+    // Validate
     if (!data || !data.price || !data.success_url || !data.cancel_url) {
-      console.error("❌ Invalid checkout session data:", data);
+      console.error("Invalid checkout session data:", data);
       return null;
     }
 
     const stripeSecret = functions.config().stripe.secret;
     if (!stripeSecret) {
-      console.error("❌ Stripe secret missing from config");
+      console.error("Stripe secret missing from config");
       return null;
     }
     const stripe = require("stripe")(stripeSecret);
@@ -160,10 +162,10 @@ exports.createCheckoutSession = onValueCreated(
         metadata:    { firebaseUid: uid },
       });
 
-      // write the URL back
+      // write back the URL
       await snap.ref.update({ url: session.url });
     } catch (err) {
-      console.error("❌ Stripe session creation failed:", err);
+      console.error("Stripe session creation failed:", err);
       await snap.ref.update({ error: { message: err.message } });
     }
 
