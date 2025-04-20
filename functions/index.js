@@ -4,14 +4,18 @@
 const { onSchedule }                         = require("firebase-functions/v2/scheduler");
 const { onRequest }                          = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated }     = require("firebase-functions/v2/database");
-const bodyParser = require("body-parser");
-const crypto = require("crypto");
-const admin                                  = require("firebase-admin");
-const express                                = require("express");
 
-// Initialize Admin SDK
+const express                                = require("express");
+const stripeLib                              = require("stripe");        // ✅ add this
+const admin                                  = require("firebase-admin");
+
 admin.initializeApp();
 const db = admin.database();
+
+// ✅ Set up Express for raw body parsing (only used for stripeWebhook)
+const app = express();
+app.use(express.raw({ type: "application/json" }));
+
 
 
 // 1️⃣ Scheduled downgradeExpiredTrials
@@ -50,7 +54,7 @@ exports.downgradeExpiredTrials = onSchedule(
 
 
 // 2️⃣ Stripe Webhook via Express
-exports.stripeWebhook = onRequest({ region: "us-central1" }, (req, res) => {
+app.post("/webhook", async (req, res) => {
   const stripeSecret = process.env.STRIPE_SECRET;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -59,41 +63,45 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, (req, res) => {
     return res.status(500).send("Missing Stripe config");
   }
 
-  const stripe = require("stripe")(stripeSecret);
+  const stripe = stripeLib(stripeSecret);
   const sig = req.headers["stripe-signature"];
+  let event;
 
-  // Verify raw body with Stripe's expectations
-  let rawBody = "";
-  req.on("data", chunk => { rawBody += chunk; });
-  req.on("end", () => {
-    try {
-      const event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-      const sub = event.data.object;
-      const uid = sub.metadata.firebaseUid;
-      const userRef = admin.database().ref(`users/${uid}`);
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+  } catch (err) {
+    console.error("❌ Signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-      switch (event.type) {
-        case "customer.subscription.created":
-        case "customer.subscription.updated":
-          userRef.update({
-            role: "premium",
-            subscriptionExpiry: sub.current_period_end * 1000
-          });
-          break;
-        case "customer.subscription.deleted":
-          userRef.update({ role: "basic" });
-          break;
-        default:
-          console.log("Unhandled event type:", event.type);
-      }
+  const sub = event.data.object;
+  const uid = sub.metadata.firebaseUid;
+  const userRef = db.ref(`users/${uid}`);
 
-      res.json({ received: true });
-    } catch (err) {
-      console.error("❌ Stripe constructEvent failed:", err.message);
-      res.status(400).send(`Webhook error: ${err.message}`);
+  try {
+    switch (event.type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+        await userRef.update({
+          role: "premium",
+          subscriptionExpiry: sub.current_period_end * 1000
+        });
+        break;
+      case "customer.subscription.deleted":
+        await userRef.update({ role: "basic" });
+        break;
+      default:
+        console.log("Unhandled event type:", event.type);
     }
-  });
+    res.json({ received: true });
+  } catch (dbErr) {
+    console.error("❌ Firebase update failed:", dbErr.message);
+    res.status(500).send("Database error");
+  }
 });
+
+exports.stripeWebhook = onRequest({ region: "us-central1" }, app);
+
 
 
 
