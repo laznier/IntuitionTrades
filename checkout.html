@@ -66,16 +66,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import {
-      getDatabase,
-      ref,
-      push,
-      onValue
-    } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -94,32 +86,36 @@
     onAuthStateChanged(auth, user => {
       if (!user) {
         alert("Please sign in first.");
-        return window.location.href = "/login.html";
+        window.location.href = "/login.html";
+        return;
       }
 
       btn.addEventListener("click", async () => {
         console.log("Subscribe clicked for", user.uid);
 
+        // Create a new child reference under checkout_sessions
         const newSessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
-        await newSessionRef.set({
+        // Write session request data
+        await set(newSessionRef, {
           price:       priceId,
           success_url: window.location.origin + "/success.html",
           cancel_url:  window.location.origin + "/cancel.html"
         });
 
+        // Listen for Stripe to write back the session URL or error
         const unsubscribe = onValue(newSessionRef, snap => {
           const data = snap.val();
           console.log("Session update:", data);
           if (data?.error) {
             unsubscribe();
-            return alert(`Error: ${data.error.message}`);
+            alert(`Error: ${data.error.message}`);
           }
           if (data?.url) {
             unsubscribe();
             window.location.assign(data.url);
           }
-        });
-      });
+        }, { onlyOnce: false });
+      }, { once: true });
     });
   </script>
 </body>
