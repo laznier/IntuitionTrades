@@ -4,6 +4,7 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest, onCall } = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated } = require("firebase-functions/v2/database");
+const functions = require("firebase-functions");
 
 const admin = require("firebase-admin");
 const stripeLib = require("stripe");
