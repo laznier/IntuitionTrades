@@ -86,12 +86,13 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const expiry = Number(sub.current_period_end) * 1000;
-
+        const subscriptionItem = sub.items?.data?.[0];
+        const expiry = Number(subscriptionItem?.current_period_end) * 1000;
+        
         if (!Number.isFinite(expiry) || expiry <= 0) {
-          console.error("❌ Subscription expiry is invalid:", sub.current_period_end);
+          console.error("❌ Invalid subscription expiry (NaN or missing):", subscriptionItem?.current_period_end);
           return res.status(400).send("Invalid expiry timestamp");
-        }
+        }        
         
         await userRef.update({
           role: "premium",
