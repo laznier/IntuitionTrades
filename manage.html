@@ -68,56 +68,57 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js";
+  
     const firebaseConfig = {
-      apiKey:    "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain:"persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL:"https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
       projectId: "persuasive-net-456607-g8"
     };
-
+  
     const app       = initializeApp(firebaseConfig);
     const auth      = getAuth(app);
     const db        = getDatabase(app);
     const functions = getFunctions(app);
     const content   = document.getElementById("content");
-
+  
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = "/login.html";
         return;
       }
-
+  
       const roleSnap = await get(ref(db, `users/${user.uid}/role`));
       const role = roleSnap.exists() ? roleSnap.val() : "basic";
-
+  
       if (role !== "premium") {
         window.location.href = "/checkout.html";
         return;
       }
-
+  
       content.innerHTML = `
         <h1>You're a Premium Member</h1>
         <p>Manage your subscription anytime from the Stripe Customer Portal.</p>
         <button id="manageBtn">Manage Subscription</button>
         <a href="/index.html">← Back to Home</a>
       `;
-
+  
       document.getElementById("manageBtn").addEventListener("click", async () => {
         content.innerHTML = `
           <h1>Redirecting to Stripe...</h1>
           <div class="spinner"></div>
         `;
+  
         try {
-          const getUrl = httpsCallable(functions, "getBillingPortalUrl");
-          const result = await getUrl(); // Callable returns { url }
-          if (result.data?.url) {
-            window.location.assign(result.data.url);
-          } else {
-            throw new Error("No portal URL returned from backend.");
-          }
+          const getPortalUrl = httpsCallable(functions, "getBillingPortalUrl");
+          const result = await getPortalUrl();
+  
+          const url = result?.data?.url;
+          if (!url) throw new Error("No portal URL returned from backend.");
+  
+          window.location.assign(url);
         } catch (err) {
           content.innerHTML = `
             <h1>Oops!</h1>
@@ -128,5 +129,6 @@
       });
     });
   </script>
+  
 </body>
 </html>

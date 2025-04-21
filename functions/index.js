@@ -175,7 +175,7 @@ exports.createCheckoutSession = onValueCreated(
   }
 );
 // 5️⃣ Create Billing Portal Session (Callable)
-exports.createBillingPortal = onCall({ region: "us-central1" }, async (request) => {
+exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new functions.https.HttpsError("unauthenticated", "You must be signed in.");
@@ -183,16 +183,18 @@ exports.createBillingPortal = onCall({ region: "us-central1" }, async (request) 
 
   const stripeSecret = process.env.STRIPE_SECRET;
   if (!stripeSecret) {
-    throw new functions.https.HttpsError("internal", "Stripe secret is missing");
+    console.error("❌ STRIPE_SECRET is not set.");
+    throw new functions.https.HttpsError("internal", "Stripe secret is missing.");
   }
 
-  const stripe = require("stripe")(stripeSecret);
+  const stripe = stripeLib(stripeSecret);
   const db = admin.database();
 
   const customerSnap = await db.ref(`customers/${uid}/stripeCustomerId`).once("value");
   const customerId = customerSnap.val();
 
   if (!customerId) {
+    console.error(`❌ No Stripe customer ID found for UID: ${uid}`);
     throw new functions.https.HttpsError("not-found", "Stripe customer ID not found.");
   }
 
@@ -202,9 +204,10 @@ exports.createBillingPortal = onCall({ region: "us-central1" }, async (request) 
       return_url: "https://www.intuitiontrades.com/manage.html"
     });
 
+    console.log(`✅ Billing portal session created for UID: ${uid}`);
     return { url: session.url };
   } catch (err) {
-    console.error("❌ Failed to create billing portal session:", err.message);
+    console.error("❌ Stripe session creation failed:", err.message);
     throw new functions.https.HttpsError("internal", "Stripe session creation failed.");
   }
 });
