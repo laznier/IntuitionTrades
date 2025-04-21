@@ -94,10 +94,13 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
           return res.status(400).send("Invalid expiry timestamp");
         }        
         
-        await userRef.update({
-          role: "premium",
-          subscriptionExpiry: expiry
-        });
+        await db.ref("serviceMarker").set(true); // ✅ temporary rules bypass
+await userRef.update({
+  role: "premium",
+  subscriptionExpiry: expiry
+});
+await db.ref("serviceMarker").remove(); // ✅ cleanup after write
+
          
         break;
       }
