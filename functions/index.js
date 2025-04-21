@@ -35,12 +35,22 @@ exports.downgradeExpiredTrials = onSchedule(
       if (
         data.role === "premium" &&
         (
-          (data.trialStart       && now > data.trialStart + 86400000) ||
-          (data.subscriptionExpiry && now > data.subscriptionExpiry)
+          // Scenario A: subscription expired and trial expired or never existed
+          (data.subscriptionExpiry && now > data.subscriptionExpiry &&
+           (!data.trialStart || now > data.trialStart + 86400000))
+          
+          ||
+      
+          // Scenario B: never subscribed, but trial expired
+          (!data.subscriptionExpiry &&
+           data.trialStart &&
+           now > data.trialStart + 86400000)
         )
-      ) {
+      )
+       {
         updates[`${uid}/role`] = "basic";
       }
+      
     });
 
     if (Object.keys(updates).length) {
