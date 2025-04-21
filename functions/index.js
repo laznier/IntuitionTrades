@@ -178,35 +178,54 @@ exports.createCheckoutSession = onValueCreated(
 exports.createBillingPortal = onValueCreated(
   "/customers/{uid}/createPortal",
   async event => {
-    const snap = event.data;
     const uid = event.params.uid;
-
     const stripeSecret = process.env.STRIPE_SECRET;
-    if (!stripeSecret) {
-      console.error("❌ Missing STRIPE_SECRET env var");
+    if (!stripeSecret) return null;
+
+    const stripe = require("stripe")(stripeSecret);
+    const customerRootRef = db.ref(`customers/${uid}`);
+
+    // 🔍 Look for most recent checkout session
+    const sessionsSnap = await customerRootRef.child("checkout_sessions").once("value");
+    const sessions = sessionsSnap.val();
+
+    if (!sessions) {
+      console.error("❌ No checkout sessions found for", uid);
       return null;
     }
 
-    const stripe = require("stripe")(stripeSecret);
-    const customerSnap = await snap.ref.parent.once("value");
-    const customerId = customerSnap.val()?.stripeCustomerId;
+    // 🧠 Find latest session by timestamp
+    const latestSessionId = Object.keys(sessions)
+      .map(k => ({ id: k, timestamp: sessions[k]?.created || 0 }))
+      .sort((a, b) => b.timestamp - a.timestamp)[0]?.id;
 
-    if (!customerId) {
-      console.error("❌ No Stripe customer ID found for", uid);
+    if (!latestSessionId) {
+      console.error("❌ Could not determine latest session for", uid);
+      return null;
+    }
+
+    const latestSessionRef = customerRootRef.child(`checkout_sessions/${latestSessionId}`);
+    const sessionSnap = await latestSessionRef.once("value");
+    const sessionData = sessionSnap.val();
+
+    const stripeCustomerId = sessionData?.customer;
+    if (!stripeCustomerId) {
+      console.error("❌ No customer ID found in session", latestSessionId);
       return null;
     }
 
     try {
       const portalSession = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: "https://www.intuitiontrades.com/manage.html",
+        customer: stripeCustomerId,
+        return_url: "https://www.intuitiontrades.com/manage.html"
       });
 
-      await snap.ref.parent.child("portal_url").set(portalSession.url);
+      await customerRootRef.child("portal_url").set(portalSession.url);
     } catch (err) {
-      console.error("❌ Failed to create billing portal session:", err.message);
+      console.error("❌ Failed to create billing portal session:", err);
     }
 
     return null;
   }
 );
+
