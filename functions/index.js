@@ -166,7 +166,11 @@ exports.createCheckoutSession = onValueCreated(
           metadata: { firebaseUid: uid }
         },
       });
-      await snap.ref.update({ url: session.url });
+      await Promise.all([
+        snap.ref.update({ url: session.url }),
+        db.ref(`customers/${uid}/stripeCustomerId`).set(session.customer)
+      ]);
+      
     } catch (err) {
       console.error("❌ Stripe session failed:", err);
       await snap.ref.update({ error: { message: err.message } });
