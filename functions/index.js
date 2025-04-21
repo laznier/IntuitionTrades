@@ -1,9 +1,8 @@
 // index.js
 
-// -------------- Imports & Init --------------
-// -------------- Imports & Init --------------
+// -------------------- Imports & Initialization --------------------
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall } = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated } = require("firebase-functions/v2/database");
 
 const admin = require("firebase-admin");
@@ -11,6 +10,7 @@ const stripeLib = require("stripe");
 
 admin.initializeApp();
 const db = admin.database();
+
 
 
 
@@ -174,3 +174,37 @@ exports.createCheckoutSession = onValueCreated(
     return null;
   }
 );
+// 5️⃣ Create Billing Portal Session (Callable)
+exports.createBillingPortal = onCall({ region: "us-central1" }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError("unauthenticated", "You must be signed in.");
+  }
+
+  const stripeSecret = process.env.STRIPE_SECRET;
+  if (!stripeSecret) {
+    throw new functions.https.HttpsError("internal", "Stripe secret is missing");
+  }
+
+  const stripe = require("stripe")(stripeSecret);
+  const db = admin.database();
+
+  const customerSnap = await db.ref(`customers/${uid}/stripeCustomerId`).once("value");
+  const customerId = customerSnap.val();
+
+  if (!customerId) {
+    throw new functions.https.HttpsError("not-found", "Stripe customer ID not found.");
+  }
+
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: "https://www.intuitiontrades.com/manage.html"
+    });
+
+    return { url: session.url };
+  } catch (err) {
+    console.error("❌ Failed to create billing portal session:", err.message);
+    throw new functions.https.HttpsError("internal", "Stripe session creation failed.");
+  }
+});
