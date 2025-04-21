@@ -93,14 +93,18 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
           console.error("❌ Invalid subscription expiry (NaN or missing):", subscriptionItem?.current_period_end);
           return res.status(400).send("Invalid expiry timestamp");
         }        
+        await userRef.update({
+          role: "premium",
+          subscriptionExpiry: expiry
+        });
         
-        await db.ref("serviceMarker").set(true); // ✅ temporary rules bypass
-await userRef.update({
-  role: "premium",
-  subscriptionExpiry: expiry
-});
-await db.ref("serviceMarker").remove(); // ✅ cleanup after write
-
+        // ✅ Also store the Stripe customer ID
+        if (sub.customer) {
+          await db.ref(`customers/${uid}/stripeCustomerId`).set(sub.customer);
+        }
+        
+        // ✅ Cleanup after write
+        await db.ref("serviceMarker").remove();        
          
         break;
       }
@@ -166,17 +170,7 @@ exports.createCheckoutSession = onValueCreated(
           metadata: { firebaseUid: uid }
         },
       });
-
-      // ✅ Fetch full session (includes customer ID)
-const fullSession = await stripe.checkout.sessions.retrieve(session.id);
-
-// ✅ Save customer ID to database
-await db.ref(`customers/${uid}/stripeCustomerId`).set(fullSession.customer);
-
-// Save URL to DB for redirect
-await snap.ref.update({ url: session.url });
-      
-      
+      await snap.ref.update({ url: session.url });
     } catch (err) {
       console.error("❌ Stripe session failed:", err);
       await snap.ref.update({ error: { message: err.message } });
