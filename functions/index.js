@@ -174,3 +174,39 @@ exports.createCheckoutSession = onValueCreated(
     return null;
   }
 );
+// 5️⃣ Create Billing Portal Session
+exports.createBillingPortal = onValueCreated(
+  "/customers/{uid}/createPortal",
+  async event => {
+    const snap = event.data;
+    const uid = event.params.uid;
+
+    const stripeSecret = process.env.STRIPE_SECRET;
+    if (!stripeSecret) {
+      console.error("❌ Missing STRIPE_SECRET env var");
+      return null;
+    }
+
+    const stripe = require("stripe")(stripeSecret);
+    const customerSnap = await snap.ref.parent.once("value");
+    const customerId = customerSnap.val()?.stripeCustomerId;
+
+    if (!customerId) {
+      console.error("❌ No Stripe customer ID found for", uid);
+      return null;
+    }
+
+    try {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: "https://www.intuitiontrades.com/manage.html",
+      });
+
+      await snap.ref.parent.child("portal_url").set(portalSession.url);
+    } catch (err) {
+      console.error("❌ Failed to create billing portal session:", err.message);
+    }
+
+    return null;
+  }
+);

@@ -108,28 +108,31 @@
       `;
 
       document.getElementById("manageBtn").addEventListener("click", async () => {
-        // show spinner
-        content.innerHTML = `
-          <h1>Redirecting to Stripe...</h1>
-          <div class="spinner"></div>
-        `;
+  content.innerHTML = `
+    <h1>Redirecting to Stripe...</h1>
+    <div class="spinner"></div>
+  `;
 
-        try {
-          // read the portal URL your backend should have written here
-          const portalSnap = await get(ref(db, `customers/${user.uid}/portal_url`));
-          const url = portalSnap.val();
-          if (!url) throw new Error("Stripe portal URL not available yet.");
-          window.location.assign(url);
-        } catch (err) {
-          // display an error if something went wrong
-          content.innerHTML = `
-            <h1>Oops!</h1>
-            <p>${err.message}</p>
-            <a href="/index.html">← Back to Home</a>
-          `;
-        }
-      });
-    });
+  try {
+    // ✅ trigger backend to create portal session
+    await set(ref(db, `customers/${user.uid}/createPortal`), Date.now());
+
+    // 🔁 wait a moment before reading (or implement polling)
+    await new Promise(r => setTimeout(r, 2000));
+
+    const portalSnap = await get(ref(db, `customers/${user.uid}/portal_url`));
+    const url = portalSnap.val();
+    if (!url) throw new Error("Stripe portal URL not available yet.");
+    window.location.assign(url);
+  } catch (err) {
+    content.innerHTML = `
+      <h1>Oops!</h1>
+      <p>${err.message}</p>
+      <a href="/index.html">← Back to Home</a>
+    `;
+  }
+});
+});
   </script>
 </body>
 </html>
