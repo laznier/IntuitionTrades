@@ -93,18 +93,14 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
           console.error("❌ Invalid subscription expiry (NaN or missing):", subscriptionItem?.current_period_end);
           return res.status(400).send("Invalid expiry timestamp");
         }        
-        await userRef.update({
-          role: "premium",
-          subscriptionExpiry: expiry
-        });
         
-        // ✅ Also store the Stripe customer ID
-        if (sub.customer) {
-          await db.ref(`customers/${uid}/stripeCustomerId`).set(sub.customer);
-        }
-        
-        // ✅ Cleanup after write
-        await db.ref("serviceMarker").remove();        
+        await db.ref("serviceMarker").set(true); // ✅ temporary rules bypass
+await userRef.update({
+  role: "premium",
+  subscriptionExpiry: expiry
+});
+await db.ref("serviceMarker").remove(); // ✅ cleanup after write
+
          
         break;
       }
@@ -178,40 +174,3 @@ exports.createCheckoutSession = onValueCreated(
     return null;
   }
 );
-// 5️⃣ Create Billing Portal Session
-exports.createBillingPortal = onValueCreated(
-  "/customers/{uid}/createPortal",
-  async event => {
-    const uid = event.params.uid;
-    const stripeSecret = process.env.STRIPE_SECRET;
-    if (!stripeSecret) return null;
-
-    const stripe = require("stripe")(stripeSecret);
-
-    // ✅ Pull the Stripe Customer ID directly from customers/<uid>/stripeCustomerId
-    const customerRef = db.ref(`customers/${uid}`);
-    const customerSnap = await customerRef.once("value");
-    const stripeCustomerId = customerSnap.val()?.stripeCustomerId;
-
-    if (!stripeCustomerId) {
-      console.error("❌ No Stripe customer ID found for", uid);
-      return null;
-    }
-
-    try {
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: stripeCustomerId,
-        return_url: "https://www.intuitiontrades.com/manage.html"
-      });
-
-      // ✅ Write portal URL
-      await customerRef.child("portal_url").set(portalSession.url);
-    } catch (err) {
-      console.error("❌ Failed to create billing portal session:", err);
-    }
-
-    return null;
-  }
-);
-
-
