@@ -67,73 +67,71 @@
   </div>
 
   <script type="module">
-    import { initializeApp }     from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-
-
+    import { getDatabase, ref, get, push } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+  
     const firebaseConfig = {
       apiKey:    "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain:"persuasive-net-456607-g8.firebaseapp.com",
       databaseURL:"https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
       projectId: "persuasive-net-456607-g8"
     };
-
-    // init
+  
     const app     = initializeApp(firebaseConfig);
     const auth    = getAuth(app);
     const db      = getDatabase(app);
     const content = document.getElementById("content");
-
+  
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // not signed in
         return void (window.location.href = "/login.html");
       }
-
-      // fetch role
+  
       const roleSnap = await get(ref(db, `users/${user.uid}/role`));
       const role     = roleSnap.exists() ? roleSnap.val() : "basic";
-
+  
       if (role !== "premium") {
-        // not premium → send to checkout
         return void (window.location.href = "/checkout.html");
       }
-
-      // premium: render manage UI
+  
       content.innerHTML = `
         <h1>You're a Premium Member</h1>
         <p>Manage your subscription anytime from the Stripe Customer Portal.</p>
         <button id="manageBtn">Manage Subscription</button>
         <a href="/index.html">← Back to Home</a>
       `;
-
+  
       document.getElementById("manageBtn").addEventListener("click", async () => {
-  content.innerHTML = `
-    <h1>Redirecting to Stripe...</h1>
-    <div class="spinner"></div>
-  `;
-
-  try {
-    // ✅ trigger backend to create portal session
-    await set(ref(db, `customers/${user.uid}/createPortal`), Date.now());
-
-    // 🔁 wait a moment before reading (or implement polling)
-    await new Promise(r => setTimeout(r, 2000));
-
-    const portalSnap = await get(ref(db, `customers/${user.uid}/portal_url`));
-    const url = portalSnap.val();
-    if (!url) throw new Error("Stripe portal URL not available yet.");
-    window.location.assign(url);
-  } catch (err) {
-    content.innerHTML = `
-      <h1>Oops!</h1>
-      <p>${err.message}</p>
-      <a href="/index.html">← Back to Home</a>
-    `;
-  }
-});
-});
+        content.innerHTML = `
+          <h1>Redirecting to Stripe...</h1>
+          <div class="spinner"></div>
+        `;
+  
+        try {
+          // ✅ Write a unique child to trigger function
+          await push(ref(db, `customers/${user.uid}/createPortal`), {
+            created: Date.now()
+          });
+  
+          // ⏳ Wait 2 seconds then fetch portal URL
+          await new Promise(r => setTimeout(r, 2000));
+  
+          const portalSnap = await get(ref(db, `customers/${user.uid}/portal_url`));
+          const url = portalSnap.val();
+  
+          if (!url) throw new Error("Stripe portal URL not available yet.");
+          window.location.assign(url);
+        } catch (err) {
+          content.innerHTML = `
+            <h1>Oops!</h1>
+            <p>${err.message}</p>
+            <a href="/index.html">← Back to Home</a>
+          `;
+        }
+      });
+    });
   </script>
+  
 </body>
 </html>
