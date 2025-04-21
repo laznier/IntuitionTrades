@@ -187,34 +187,14 @@ exports.createBillingPortal = onValueCreated(
     if (!stripeSecret) return null;
 
     const stripe = require("stripe")(stripeSecret);
-    const customerRootRef = db.ref(`customers/${uid}`);
 
-    // 🔍 Look for most recent checkout session
-    const sessionsSnap = await customerRootRef.child("checkout_sessions").once("value");
-    const sessions = sessionsSnap.val();
+    // ✅ Pull the Stripe Customer ID directly from customers/<uid>/stripeCustomerId
+    const customerRef = db.ref(`customers/${uid}`);
+    const customerSnap = await customerRef.once("value");
+    const stripeCustomerId = customerSnap.val()?.stripeCustomerId;
 
-    if (!sessions) {
-      console.error("❌ No checkout sessions found for", uid);
-      return null;
-    }
-
-    // 🧠 Find latest session by timestamp
-    const latestSessionId = Object.keys(sessions)
-      .map(k => ({ id: k, timestamp: sessions[k]?.created || 0 }))
-      .sort((a, b) => b.timestamp - a.timestamp)[0]?.id;
-
-    if (!latestSessionId) {
-      console.error("❌ Could not determine latest session for", uid);
-      return null;
-    }
-
-    const latestSessionRef = customerRootRef.child(`checkout_sessions/${latestSessionId}`);
-    const sessionSnap = await latestSessionRef.once("value");
-    const sessionData = sessionSnap.val();
-
-    const stripeCustomerId = sessionData?.customer;
     if (!stripeCustomerId) {
-      console.error("❌ No customer ID found in session", latestSessionId);
+      console.error("❌ No Stripe customer ID found for", uid);
       return null;
     }
 
@@ -224,7 +204,8 @@ exports.createBillingPortal = onValueCreated(
         return_url: "https://www.intuitiontrades.com/manage.html"
       });
 
-      await customerRootRef.child("portal_url").set(portalSession.url);
+      // ✅ Write portal URL
+      await customerRef.child("portal_url").set(portalSession.url);
     } catch (err) {
       console.error("❌ Failed to create billing portal session:", err);
     }
@@ -232,4 +213,5 @@ exports.createBillingPortal = onValueCreated(
     return null;
   }
 );
+
 
