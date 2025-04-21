@@ -166,10 +166,16 @@ exports.createCheckoutSession = onValueCreated(
           metadata: { firebaseUid: uid }
         },
       });
-      await Promise.all([
-        snap.ref.update({ url: session.url }),
-        db.ref(`customers/${uid}/stripeCustomerId`).set(session.customer)
-      ]);
+
+      // ✅ Fetch full session (includes customer ID)
+const fullSession = await stripe.checkout.sessions.retrieve(session.id);
+
+// ✅ Save customer ID to database
+await db.ref(`customers/${uid}/stripeCustomerId`).set(fullSession.customer);
+
+// Save URL to DB for redirect
+await snap.ref.update({ url: session.url });
+      
       
     } catch (err) {
       console.error("❌ Stripe session failed:", err);
