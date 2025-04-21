@@ -1,15 +1,17 @@
 // index.js
 
 // -------------- Imports & Init --------------
+// -------------- Imports & Init --------------
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated } = require("firebase-functions/v2/database");
 
-const stripeLib = require("stripe");
 const admin = require("firebase-admin");
+const stripeLib = require("stripe");
 
 admin.initializeApp();
 const db = admin.database();
+
 
 
 
@@ -49,7 +51,7 @@ exports.downgradeExpiredTrials = onSchedule(
 
 
 // 2️⃣ Stripe Webhook via Express
-exports.stripeWebhook = onRequest({ region: "us-central1" }, (req, res) => {
+exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
   const stripeSecret = process.env.STRIPE_SECRET;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -59,48 +61,54 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, (req, res) => {
   }
 
   const stripe = stripeLib(stripeSecret);
+
+  // 🔥 Get raw body directly from req.rawBody (works in Gen 2 onRequest)
   const sig = req.headers["stripe-signature"];
-  let rawBody = "";
+  let event;
 
-  req.on("data", chunk => {
-    rawBody += chunk;
-  });
+  try {
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+  } catch (err) {
+    console.error("❌ Stripe signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
 
-  req.on("end", async () => {
-    let event;
+  const sub = event.data.object;
+  const uid = sub.metadata?.firebaseUid;
+  if (!uid) {
+    console.error("❌ No Firebase UID in metadata");
+    return res.status(400).send("Missing UID");
+  }
 
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-    } catch (err) {
-      console.error("❌ Stripe signature verification failed:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
+  const userRef = db.ref(`users/${uid}`);
 
-    const sub = event.data.object;
-    const uid = sub.metadata.firebaseUid;
-    const userRef = db.ref(`users/${uid}`);
-
-    try {
-      switch (event.type) {
-        case "customer.subscription.created":
-        case "customer.subscription.updated":
-          await userRef.update({
-            role: "premium",
-            subscriptionExpiry: sub.current_period_end * 1000
-          });
-          break;
-        case "customer.subscription.deleted":
-          await userRef.update({ role: "basic" });
-          break;
+  try {
+    switch (event.type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const expiry = sub.current_period_end ? sub.current_period_end * 1000 : null;
+        if (!expiry || isNaN(expiry)) {
+          throw new Error("Invalid subscription expiry (NaN)");
+        }
+        await userRef.update({
+          role: "premium",
+          subscriptionExpiry: expiry
+        });
+        break;
       }
 
-      res.json({ received: true });
-    } catch (err) {
-      console.error("❌ Firebase DB update failed:", err.message);
-      res.status(500).send("Database error");
+      case "customer.subscription.deleted":
+        await userRef.update({ role: "basic" });
+        break;
     }
-  });
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error("❌ Firebase update failed:", err.message);
+    res.status(500).send("DB Error");
+  }
 });
+
 
 
 
