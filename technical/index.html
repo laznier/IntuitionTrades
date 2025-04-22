@@ -729,30 +729,69 @@
 
     // Ichimoku Chart with Candlestick using Highstock
     function plotCandlestickIchimoku(prices, ichimokuData) {
+  // 1) Prepare the raw data arrays
   const ohlc = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
-  const senkouA = ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]);
-  const senkouB = ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]);
-  const tenkan = ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]);
-  const kijun  = ichimokuData.kijun.map(item => [item.date.getTime(), item.value]);
-  const chikou = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
+  const tenkan   = ichimokuData.tenkan.map(d => [d.date.getTime(), d.value]);
+  const kijun    = ichimokuData.kijun .map(d => [d.date.getTime(), d.value]);
+  const chikou   = ichimokuData.chikou.map(d => [d.date.getTime(), d.value]);
+  // Align Senkou A/B to same length
+  const cloudLen = Math.min(ichimokuData.senkouA.length, ichimokuData.senkouB.length);
+  const senkouA  = ichimokuData.senkouA.slice(0, cloudLen).map(d => [d.date.getTime(), d.value]);
+  const senkouB  = ichimokuData.senkouB.slice(0, cloudLen).map(d => [d.date.getTime(), d.value]);
 
-  // Match the cloud lengths to avoid index errors
-  const cloudLen = Math.min(senkouA.length, senkouB.length);
+  // 2) Build bullish vs bearish cloud segments
+  const bullCloud = [];
+  const bearCloud = [];
+  for (let i = 0; i < cloudLen; i++) {
+    const [tA, vA] = senkouA[i];
+    const [tB, vB] = senkouB[i];
+    const low  = Math.min(vA, vB);
+    const high = Math.max(vA, vB);
+    if (vA >= vB) {
+      bullCloud.push([tA, low, high]);
+      bearCloud.push([tA, null, null]);
+    } else {
+      bearCloud.push([tA, low, high]);
+      bullCloud.push([tA, null, null]);
+    }
+  }
 
+  // 3) Render with Highcharts Stock
   Highcharts.stockChart('ichimokuChart', {
     chart: {
       backgroundColor: 'transparent',
       style: { fontFamily: 'Arial, sans-serif' }
     },
     rangeSelector: { enabled: false },
-    title: { text: 'Ichimoku Cloud with Candlesticks', style: { color: '#fff' } },
-    xAxis: { type: 'datetime', labels: { style: { color: '#ccc' } } },
-    yAxis: { title: { text: 'Price', style: { color: '#ccc' } } },
-    tooltip: { split: true },
+    navigator: { enabled: false },
+    scrollbar: { enabled: false },
+    title: {
+      text: 'Ichimoku Cloud',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'datetime',
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333',
+      lineColor: '#444',
+      tickColor: '#444'
+    },
+    yAxis: {
+      title: { text: 'Price', style: { color: '#ccc' } },
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333'
+    },
+    tooltip: { 
+      split: true,
+      backgroundColor: '#222',
+      style: { color: '#fff' }
+    },
     legend: {
-      itemStyle: { color: '#ccc' }
+      itemStyle: { color: '#ccc' },
+      itemHoverStyle: { color: '#fff' }
     },
     series: [
+      // price candles
       {
         type: 'candlestick',
         name: 'Price',
@@ -762,6 +801,29 @@
         lineColor: '#999',
         upLineColor: '#16a34a'
       },
+      // bullish cloud
+      {
+        type: 'arearange',
+        name: 'Bullish Cloud',
+        data: bullCloud,
+        color: 'rgba(0,255,0,0.1)',
+        fillOpacity: 0.25,
+        lineWidth: 0,
+        zIndex: 0,
+        enableMouseTracking: false
+      },
+      // bearish cloud
+      {
+        type: 'arearange',
+        name: 'Bearish Cloud',
+        data: bearCloud,
+        color: 'rgba(255,0,0,0.1)',
+        fillOpacity: 0.25,
+        lineWidth: 0,
+        zIndex: 0,
+        enableMouseTracking: false
+      },
+      // Tenkan & Kijun
       {
         type: 'line',
         name: 'Tenkan-sen',
@@ -776,34 +838,7 @@
         color: '#f06292',
         dashStyle: 'ShortDot'
       },
-      {
-        type: 'area',
-        name: 'Ichimoku Cloud',
-        data: senkouA.slice(0, cloudLen),
-        color: 'rgba(0,255,0,0.15)',
-        fillColor: {
-          linearGradient: [0, 0, 0, 300],
-          stops: [[0, 'rgba(0,255,0,0.2)'], [1, 'rgba(0,255,0,0.05)']]
-        },
-        lineWidth: 0,
-        marker: { enabled: false },
-        enableMouseTracking: false,
-        zIndex: 0
-      },
-      {
-        type: 'area',
-        name: 'Ichimoku Cloud',
-        data: senkouB.slice(0, cloudLen),
-        color: 'rgba(255,0,0,0.15)',
-        fillColor: {
-          linearGradient: [0, 0, 0, 300],
-          stops: [[0, 'rgba(255,0,0,0.2)'], [1, 'rgba(255,0,0,0.05)']]
-        },
-        lineWidth: 0,
-        marker: { enabled: false },
-        enableMouseTracking: false,
-        zIndex: 0
-      },
+      // Chikou
       {
         type: 'line',
         name: 'Chikou Span',
@@ -812,9 +847,20 @@
         dashStyle: 'Dot'
       }
     ],
+    responsive: {
+      rules: [{
+        condition: { maxWidth: 600 },
+        chartOptions: {
+          xAxis: { labels: { style: { fontSize: '10px' } } },
+          yAxis: { labels: { style: { fontSize: '10px' } } },
+          legend: { enabled: false }
+        }
+      }]
+    },
     credits: { enabled: false }
   });
 }
+
 
     /*************** Main Analysis Function ***************/
     document.getElementById("runAnalysis").addEventListener("click", async () => {
