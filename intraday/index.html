@@ -579,20 +579,22 @@ function plotChart(points, symbol, range) {
       try {
         let rawData, points;
         if (range === "1D") {
-          // For 1D: 1 minute intervals with full output to capture a full day
-          rawData = await fetchIntradayData(symbol, "1min", "full");
-          points = parseIntradayData(rawData, "1min");
-        } else if (range === "5D") {
-          // For 5D: 5 minute intervals with full output to cover more data
-          rawData = await fetchIntradayData(symbol, "5min", "full");
-          points = parseIntradayData(rawData, "5min");
-        } else if (range === "1M") {
-          rawData = await fetchIntradayData(symbol, "60min", "full");
-          points = parseIntradayData(rawData, "60min");
-        } else {
-          rawData = await fetchHistoricalData(symbol);
-          points = parseHistoricalData(rawData);
-        }
+  rawData = await fetchIntradayData(symbol, "1min", "full");
+  points = parseIntradayData(rawData, "1min");
+} else if (range === "5D") {
+  rawData = await fetchIntradayData(symbol, "5min", "full");
+  points = parseIntradayData(rawData, "5min");
+} else if (range === "1M") {
+  rawData = await fetchIntradayData(symbol, "60min", "full");
+  points = parseIntradayData(rawData, "60min");
+} else {
+  rawData = await fetchHistoricalData(symbol);
+  points = parseHistoricalData(rawData);
+}
+
+// ✅ Trim points BEFORE plotting and topBar
+points = filterDataForRange(points, range);
+
         if (points.length === 0) {
   document.getElementById('noDataMsg').style.display = 'block';
   document.getElementById('chart').innerHTML = ''; // clear old chart
