@@ -236,10 +236,8 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
     throw new functions.https.HttpsError("internal", "Stripe session creation failed.");
   }
 });
-
-
-// 6️⃣ Repair Missing Stripe Data (Scheduled)
-exports.repairSubscriptionSync = onSchedule(
+// 6️⃣ Repair Stripe Customer IDs via Email Matching (Every 2 min)
+exports.repairCustomerIdSync = onSchedule(
   {
     schedule: "every 2 minutes",
     timeZone: "Etc/UTC",
@@ -249,74 +247,57 @@ exports.repairSubscriptionSync = onSchedule(
   async () => {
     const stripeSecret = process.env.STRIPE_SECRET;
     if (!stripeSecret) {
-      console.error("❌ STRIPE_SECRET not found in environment");
+      console.error("❌ STRIPE_SECRET not set.");
       return null;
     }
 
     const stripe = stripeLib(stripeSecret);
-    const allCustomers = [];
-    let starting_after = undefined;
+    const dbSnap = await db.ref("users").once("value");
+    const users = dbSnap.val() || {};
+
+    // 🧠 Build map: email → UID
+    const emailToUid = {};
+    for (const uid in users) {
+      const email = users[uid]?.email?.toLowerCase();
+      if (email) emailToUid[email] = uid;
+    }
 
     // 🌀 Page through all Stripe customers
+    let starting_after;
+    const updates = {};
+    let count = 0;
+
     while (true) {
       const resp = await stripe.customers.list({
         limit: 100,
         starting_after,
       });
-      if (resp.data.length === 0) break;
-      allCustomers.push(...resp.data);
+
+      for (const customer of resp.data) {
+        const email = customer.email?.toLowerCase();
+        const uid = emailToUid[email];
+        if (uid) {
+          updates[`customers/${uid}/stripeCustomerId`] = customer.id;
+          console.log(`✅ Matched ${email} → ${uid} → ${customer.id}`);
+          count++;
+        } else {
+          console.warn(`⚠️ No match for customer ${customer.id} (${email})`);
+        }
+      }
+
       if (!resp.has_more) break;
       starting_after = resp.data[resp.data.length - 1].id;
     }
 
-    console.log(`📦 Retrieved ${allCustomers.length} customers from Stripe`);
-
-    const updates = {};
-    for (const customer of allCustomers) {
-      const uid = customer.metadata?.firebaseUid;
-      const customerId = customer.id;
-
-      if (!uid || !customerId) {
-        console.warn(`⚠️ Skipping customer (missing UID or ID): ${customerId}`);
-        continue;
-      }
-
-      updates[`customers/${uid}/stripeCustomerId`] = customerId;
-
-      // 🧠 Get their subscriptions
-      try {
-        const subs = await stripe.subscriptions.list({
-          customer: customerId,
-          status: "all",
-          limit: 1,
-        });
-
-        const sub = subs.data[0];
-        if (!sub) continue;
-
-        const expiry = sub.current_period_end * 1000;
-        const isActive = sub.status === "active";
-
-        updates[`users/${uid}/subscriptionExpiry`] = expiry;
-        updates[`users/${uid}/role`] = isActive ? "premium" : "basic";
-
-        console.log(`🔁 Synced UID: ${uid} | ${customerId} → ${isActive ? "premium" : "basic"} (expires ${new Date(expiry).toISOString()})`);
-      } catch (err) {
-        console.error(`❌ Failed to retrieve subscriptions for customer ${customerId}:`, err.message);
-      }
-    }
-
     if (Object.keys(updates).length) {
       await db.ref().update(updates);
-      console.log("✅ Applied updates to", Object.keys(updates).length / 3, "users");
+      console.log(`✅ Synced ${count} customer IDs to Firebase`);
     } else {
-      console.log("⚠️ No updates necessary.");
+      console.log("⚠️ No updates made.");
     }
 
     return null;
   }
 );
-
-
 
 
