@@ -661,11 +661,31 @@
         xAxis: { type: 'datetime' },
         yAxis: { title: { text: 'Price' } },
         series: [
-          { name: 'Price', data: prices.map(p => [p.date.getTime(), p.close]), color: '#ffffff' },
-          { name: 'SMA', data: bands.map(b => [b.date.getTime(), b.sma]), color: 'blue' },
-          { name: 'Upper Band', data: bands.map(b => [b.date.getTime(), b.upper]), color: 'green' },
-          { name: 'Lower Band', data: bands.map(b => [b.date.getTime(), b.lower]), color: 'red' }
-        ],
+  {
+    name: 'Price',
+    type: 'line',
+    data: prices.map(p => [p.date.getTime(), p.close]),
+    color: '#ffffff',
+    zIndex: 1,
+    tooltip: { valueDecimals: 2 }
+  },
+  {
+    name: 'SMA',
+    data: bands.map(b => [b.date.getTime(), b.sma]),
+    color: 'blue'
+  },
+  {
+    name: 'Upper Band',
+    data: bands.map(b => [b.date.getTime(), b.upper]),
+    color: 'green'
+  },
+  {
+    name: 'Lower Band',
+    data: bands.map(b => [b.date.getTime(), b.lower]),
+    color: 'red'
+  }
+],
+
         credits: { enabled: false }
       });
       return bands;
@@ -714,25 +734,70 @@
 
 
     // WMA Chart
-    function plotWMA(prices, wmas) {
-      Highcharts.chart('wmaChart', {
-        chart: { type: 'line', backgroundColor: 'transparent' },
-        title: { text: 'WMA Chart' },
-        xAxis: { type: 'datetime' },
-        yAxis: { title: { text: 'Price' } },
-        series: [{
-          name: 'Price',
-          data: prices.map(p => [p.date.getTime(), p.close]),
-          color: '#ffffff'
-        }, {
-          name: 'WMA',
-          data: wmas.map(item => [item.date.getTime(), item.wma]),
-          color: 'red'
-        }],
-        credits: { enabled: false }
-      });
-      return wmas;
+function plotWMA(prices, wmas) {
+  Highcharts.chart('wmaChart', {
+    chart: {
+      type: 'line',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'WMA Chart',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'datetime',
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333',
+      lineColor: '#444',
+      tickColor: '#444'
+    },
+    yAxis: {
+      title: { text: 'Price', style: { color: '#ccc' } },
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333'
+    },
+    tooltip: {
+      backgroundColor: '#222',
+      style: { color: '#fff' },
+      valueDecimals: 2
+    },
+    series: [
+      {
+        name: 'Price',
+        type: 'line',
+        data: prices.map(p => [p.date.getTime(), p.close]),
+        color: '#ffffff',
+        zIndex: 2,
+        marker: { enabled: false }
+      },
+      {
+        name: 'WMA',
+        data: wmas.map(item => [item.date.getTime(), item.wma]),
+        color: 'red',
+        zIndex: 1,
+        marker: { enabled: false }
+      }
+    ],
+    credits: { enabled: false },
+    legend: {
+      itemStyle: { color: '#ccc' },
+      itemHoverStyle: { color: '#fff' }
+    },
+    responsive: {
+      rules: [{
+        condition: { maxWidth: 600 },
+        chartOptions: {
+          legend: { enabled: false },
+          xAxis: { labels: { style: { fontSize: '10px' } } },
+          yAxis: { labels: { style: { fontSize: '10px' } } }
+        }
+      }]
     }
+  });
+
+  return wmas;
+}
+
 
     // Ichimoku Chart with Candlestick using Highstock
     function plotIchimoku(prices, ichimokuData) {
