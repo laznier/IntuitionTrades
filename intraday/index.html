@@ -213,6 +213,10 @@ button:hover {
     <div id="loading" style="display:none;">Loading data...</div>
   </div>
 
+  <div id="noDataMsg" style="display: none; text-align: center; margin-top: 1rem; color: #f87171;">
+    No chart data available for this time range (often happens after market hours).
+  </div>
+  
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
@@ -451,7 +455,7 @@ button:hover {
 
       Highcharts.stockChart('chart', {
         chart: {
-          backgroundColor: '#fff',
+          backgroundColor: 'transparent',
           marginRight: 80,
           events: {
             load: function () {
@@ -578,11 +582,14 @@ button:hover {
           rawData = await fetchHistoricalData(symbol);
           points = parseHistoricalData(rawData);
         }
-        points = filterDataForRange(points, range);
         if (points.length === 0) {
-          alert("No data found for this symbol and range.");
-          return;
-        }
+  document.getElementById('noDataMsg').style.display = 'block';
+  document.getElementById('chart').innerHTML = ''; // clear old chart
+  return;
+} else {
+  document.getElementById('noDataMsg').style.display = 'none';
+}
+
         plotChart(points, symbol, range);
         updateTopBar(points, symbol);
       } catch (err) {
