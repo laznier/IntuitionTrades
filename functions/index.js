@@ -236,3 +236,63 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
     throw new functions.https.HttpsError("internal", "Stripe session creation failed.");
   }
 });
+
+
+// 6️⃣ Repair Missing Stripe Data (Scheduled)
+exports.repairSubscriptionSync = onSchedule(
+  {
+    schedule: "every 3 hours",
+    timeZone: "Etc/UTC",
+    region: "us-central1",
+    memory: "256MiB",
+  },
+  async () => {
+    const stripeSecret = process.env.STRIPE_SECRET;
+    if (!stripeSecret) {
+      console.error("❌ STRIPE_SECRET not found in environment");
+      return null;
+    }
+
+    const stripe = stripeLib(stripeSecret);
+    const customerSnap = await db.ref("customers").once("value");
+    const customers = customerSnap.val() || {};
+    const updates = {};
+
+    for (const uid in customers) {
+      const stripeId = customers[uid]?.stripeCustomerId;
+      if (!stripeId) continue;
+
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: stripeId,
+          status: "all",
+          limit: 1,
+        });
+
+        const sub = subs.data[0];
+        if (!sub) continue;
+
+        const expiry = sub.current_period_end * 1000;
+        const role = sub.status === "active" ? "premium" : "basic";
+
+        updates[`users/${uid}/role`] = role;
+        updates[`users/${uid}/subscriptionExpiry`] = expiry;
+        updates[`customers/${uid}/stripeRole`] = role;
+
+        console.log(`🔁 Synced UID: ${uid} → ${role} (expires: ${new Date(expiry).toISOString()})`);
+      } catch (err) {
+        console.error(`❌ Failed to sync UID: ${uid} →`, err.message);
+      }
+    }
+
+    if (Object.keys(updates).length) {
+      await db.ref().update(updates);
+      console.log("✅ Repaired subscriptions for", Object.keys(updates).length / 3, "users");
+    } else {
+      console.log("⚠️ No updates made.");
+    }
+
+    return null;
+  }
+);
+
