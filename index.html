@@ -2031,14 +2031,14 @@ const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
         .catch(error => console.error("Error fetching intraday data for", ticker, error));
     }
 
-// Update the 10 weekly pick tickers (VRSN, ATO, MOH, ERIE, MRK, TSLA, BA, ALB, PLTR, AXON) and the initial date
+// Update the 10 weekly pick tickers (ATO, VRSN, FL, NI, PPL, ALB, BA, DXCM, AMD, TSLA) and the initial date
 document.addEventListener('DOMContentLoaded', () => {
   const initialDate = "2025-04-11";
   document.querySelectorAll('.performance-header').forEach(header => {
     header.textContent = "Performance Since " + initialDate;
   });
 
-  const tickers = ["VRSN", "ATO", "MOH", "ERIE", "MRK", "TSLA", "BA", "ALB", "PLTR", "AXON"];
+  const tickers = ["VRSN", "ATO", "NI", "GL", "PPL", "TSLA", "BA", "DXCM", "ALB", "AMD"];
   tickers.forEach(ticker => {
     const perfEl = document.getElementById(`performance-${ticker}`);
     if (perfEl) {
