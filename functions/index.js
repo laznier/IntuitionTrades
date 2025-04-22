@@ -241,7 +241,7 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
 // 6️⃣ Repair Missing Stripe Data (Scheduled)
 exports.repairSubscriptionSync = onSchedule(
   {
-    schedule: "every 10 minutes",
+    schedule: "every 2 minutes", // ✅ Run every 2 minutes
     timeZone: "Etc/UTC",
     region: "us-central1",
     memory: "256MiB",
@@ -254,42 +254,59 @@ exports.repairSubscriptionSync = onSchedule(
     }
 
     const stripe = stripeLib(stripeSecret);
-    const allSubs = [];
-
-    // 🌀 Page through all subscriptions
+    const allCustomers = [];
     let starting_after = undefined;
+
+    // 🌀 Page through all customers
     while (true) {
-      const resp = await stripe.subscriptions.list({
-        status: "all",
+      const resp = await stripe.customers.list({
         limit: 100,
         starting_after,
       });
 
       if (resp.data.length === 0) break;
-      allSubs.push(...resp.data);
+      allCustomers.push(...resp.data);
       if (!resp.has_more) break;
       starting_after = resp.data[resp.data.length - 1].id;
     }
 
-    console.log(`📦 Retrieved ${allSubs.length} subscriptions from Stripe`);
+    console.log(`📦 Retrieved ${allCustomers.length} customers from Stripe`);
 
     const updates = {};
-    for (const sub of allSubs) {
-      const uid = sub.metadata?.firebaseUid;
-      const customerId = sub.customer;
-      const expiry = sub.current_period_end * 1000;
-      const isActive = sub.status === "active";
+    for (const customer of allCustomers) {
+      const uid = customer.metadata?.firebaseUid;
+      const customerId = customer.id;
 
-      if (!uid || !customerId || !Number.isFinite(expiry)) {
-        console.warn("⚠️ Skipping invalid sub:", sub.id);
+      if (!uid || !customerId) {
+        console.warn("⚠️ Skipping customer (missing UID or ID):", customer.id);
         continue;
       }
 
-      updates[`customers/${uid}/stripeCustomerId`] = customerId;
-      updates[`users/${uid}/subscriptionExpiry`] = expiry;
-      updates[`users/${uid}/role`] = isActive ? "premium" : "basic";
+      // 🔍 Get latest subscription for this customer
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 1,
+        });
 
-      console.log(`🔁 Synced UID: ${uid} | ${sub.id} | ${customerId} → ${isActive ? "premium" : "basic"} (expires ${new Date(expiry).toISOString()})`);
+        const sub = subs.data[0];
+        if (!sub || !Number.isFinite(sub.current_period_end)) {
+          console.warn("⚠️ No valid subscription for:", customerId);
+          continue;
+        }
+
+        const expiry = sub.current_period_end * 1000;
+        const isActive = sub.status === "active";
+
+        updates[`customers/${uid}/stripeCustomerId`] = customerId;
+        updates[`users/${uid}/subscriptionExpiry`] = expiry;
+        updates[`users/${uid}/role`] = isActive ? "premium" : "basic";
+
+        console.log(`🔁 Synced UID: ${uid} | ${customerId} → ${isActive ? "premium" : "basic"} (expires: ${new Date(expiry).toISOString()})`);
+      } catch (err) {
+        console.error(`❌ Failed to sync customer ${customerId}:`, err.message);
+      }
     }
 
     if (Object.keys(updates).length) {
@@ -302,5 +319,6 @@ exports.repairSubscriptionSync = onSchedule(
     return null;
   }
 );
+
 
 
