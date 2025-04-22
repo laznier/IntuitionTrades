@@ -44,91 +44,16 @@
       text-decoration: none;
     }
     a:hover { text-decoration: underline; }
-    .spinner {
-      border: 4px solid #333;
-      border-top: 4px solid #16a34a;
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
-      animation: spin 1s linear infinite;
-      margin: 1rem auto;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body>
-  <div class="card" id="content">
-    <h1>Checking your subscription...</h1>
-    <div class="spinner"></div>
+  <div class="card">
+    <h1>You're a Premium Member</h1>
+    <p>Manage or cancel your subscription anytime.</p>
+    <button onclick="window.location.href='https://billing.stripe.com/p/login/bIY8xueS4baQeOsbII'">
+      Go to Stripe Portal
+    </button>
+    <a href="/index.html">← Back to Home</a>
   </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-functions.js";
-  
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-      projectId: "persuasive-net-456607-g8"
-    };
-  
-    const app       = initializeApp(firebaseConfig);
-    const auth      = getAuth(app);
-    const db        = getDatabase(app);
-    const functions = getFunctions(app);
-    const content   = document.getElementById("content");
-  
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = "/login.html";
-        return;
-      }
-  
-      const roleSnap = await get(ref(db, `users/${user.uid}/role`));
-      const role = roleSnap.exists() ? roleSnap.val() : "basic";
-  
-      if (role !== "premium") {
-        window.location.href = "/checkout.html";
-        return;
-      }
-  
-      content.innerHTML = `
-        <h1>You're a Premium Member</h1>
-        <p>Manage your subscription anytime from the Stripe Customer Portal.</p>
-        <button id="manageBtn">Manage Subscription</button>
-        <a href="/index.html">← Back to Home</a>
-      `;
-  
-      document.getElementById("manageBtn").addEventListener("click", async () => {
-        content.innerHTML = `
-          <h1>Redirecting to Stripe...</h1>
-          <div class="spinner"></div>
-        `;
-  
-        try {
-          const getPortalUrl = httpsCallable(functions, "getBillingPortalUrl");
-          const result = await getPortalUrl();
-  
-          const url = result?.data?.url;
-          if (!url) throw new Error("No portal URL returned from backend.");
-  
-          window.location.assign(url);
-        } catch (err) {
-          content.innerHTML = `
-            <h1>Oops!</h1>
-            <p>${err.message}</p>
-            <a href="/index.html">← Back to Home</a>
-          `;
-        }
-      });
-    });
-  </script>
-  
 </body>
 </html>
