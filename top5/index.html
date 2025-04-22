@@ -191,6 +191,9 @@
   @media screen and (max-width: 768px) {
     #spiderChart { height: 300px; }
   }
+  .visually-hidden {
+  display: none !important;
+}
 
   </style>
   
@@ -289,10 +292,13 @@
 
 
  <!-- Container for technical chart and details -->
-<div id="techChart"></div>
+ <div class="visually-hidden">
+ <div id="techChart"></div>
 <div id="techDetails"></div>
+ </div>
 
 <!-- Risk vs Reward Index Section -->
+<div class="visually-hidden">
 <div id="rriSection">
   <h2>Risk vs Reward Index (dbHJ Model)</h2>
   <div id="rriChart"></div>
