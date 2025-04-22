@@ -730,39 +730,27 @@
     // Ichimoku Chart with Candlestick using Highstock
     function plotCandlestickIchimoku(prices, ichimokuData) {
   const ohlc = prices.map(p => [p.date.getTime(), p.open, p.high, p.low, p.close]);
-
-  // Convert Span A and B to [timestamp, value]
   const senkouA = ichimokuData.senkouA.map(item => [item.date.getTime(), item.value]);
   const senkouB = ichimokuData.senkouB.map(item => [item.date.getTime(), item.value]);
+  const tenkan = ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]);
+  const kijun  = ichimokuData.kijun.map(item => [item.date.getTime(), item.value]);
+  const chikou = ichimokuData.chikou.map(item => [item.date.getTime(), item.value]);
+
+  // Match the cloud lengths to avoid index errors
+  const cloudLen = Math.min(senkouA.length, senkouB.length);
 
   Highcharts.stockChart('ichimokuChart', {
     chart: {
-      backgroundColor: '#111',
-      style: {
-        fontFamily: 'Arial, sans-serif'
-      }
-    },
-    title: { text: 'Ichimoku Cloud', style: { color: '#fff' } },
-    xAxis: {
-      type: 'datetime',
-      labels: { style: { color: '#ccc' } },
-      lineColor: '#444',
-      tickColor: '#444'
-    },
-    yAxis: {
-      title: { text: 'Price', style: { color: '#ccc' } },
-      labels: { style: { color: '#ccc' } },
-      gridLineColor: '#444'
+      backgroundColor: 'transparent',
+      style: { fontFamily: 'Arial, sans-serif' }
     },
     rangeSelector: { enabled: false },
-    tooltip: {
-      split: true,
-      backgroundColor: '#222',
-      style: { color: '#fff' }
-    },
+    title: { text: 'Ichimoku Cloud with Candlesticks', style: { color: '#fff' } },
+    xAxis: { type: 'datetime', labels: { style: { color: '#ccc' } } },
+    yAxis: { title: { text: 'Price', style: { color: '#ccc' } } },
+    tooltip: { split: true },
     legend: {
-      itemStyle: { color: '#ccc' },
-      itemHoverStyle: { color: '#fff' }
+      itemStyle: { color: '#ccc' }
     },
     series: [
       {
@@ -770,66 +758,63 @@
         name: 'Price',
         data: ohlc,
         color: '#ff4d4d',
-        upColor: '#16a34a'
+        upColor: '#16a34a',
+        lineColor: '#999',
+        upLineColor: '#16a34a'
       },
       {
         type: 'line',
         name: 'Tenkan-sen',
-        data: ichimokuData.tenkan.map(item => [item.date.getTime(), item.value]),
-        color: 'cyan'
+        data: tenkan,
+        color: '#4fc3f7',
+        dashStyle: 'ShortDash'
       },
       {
         type: 'line',
         name: 'Kijun-sen',
-        data: ichimokuData.kijun.map(item => [item.date.getTime(), item.value]),
-        color: 'orange'
+        data: kijun,
+        color: '#f06292',
+        dashStyle: 'ShortDot'
       },
       {
+        type: 'area',
         name: 'Ichimoku Cloud',
-        data: senkouA,
-        type: 'arearange',
+        data: senkouA.slice(0, cloudLen),
+        color: 'rgba(0,255,0,0.15)',
+        fillColor: {
+          linearGradient: [0, 0, 0, 300],
+          stops: [[0, 'rgba(0,255,0,0.2)'], [1, 'rgba(0,255,0,0.05)']]
+        },
         lineWidth: 0,
-        color: 'rgba(0,255,0,0.3)',     // Green cloud
-        fillOpacity: 0.3,
-        linkedTo: ':previous',
-        zIndex: 0,
         marker: { enabled: false },
-        dataLabels: { enabled: false },
-        states: { hover: { enabled: false } },
-        dataGrouping: { enabled: false },
-        tooltip: { valueDecimals: 2 },
         enableMouseTracking: false,
-        // Red/green cloud depends on comparison
-        zones: senkouA.map(([time, a], i) => ({
-          value: time,
-          color: senkouA[i][1] >= senkouB[i][1]
-            ? 'rgba(0,255,0,0.3)' // green
-            : 'rgba(255,0,0,0.3)' // red
-        }))
+        zIndex: 0
       },
       {
-        type: 'line',
-        name: 'Senkou Span A',
-        data: senkouA,
-        color: 'lime'
-      },
-      {
-        type: 'line',
-        name: 'Senkou Span B',
-        data: senkouB,
-        color: 'red'
+        type: 'area',
+        name: 'Ichimoku Cloud',
+        data: senkouB.slice(0, cloudLen),
+        color: 'rgba(255,0,0,0.15)',
+        fillColor: {
+          linearGradient: [0, 0, 0, 300],
+          stops: [[0, 'rgba(255,0,0,0.2)'], [1, 'rgba(255,0,0,0.05)']]
+        },
+        lineWidth: 0,
+        marker: { enabled: false },
+        enableMouseTracking: false,
+        zIndex: 0
       },
       {
         type: 'line',
         name: 'Chikou Span',
-        data: ichimokuData.chikou.map(item => [item.date.getTime(), item.value]),
-        color: 'violet'
+        data: chikou,
+        color: '#ba68c8',
+        dashStyle: 'Dot'
       }
     ],
     credits: { enabled: false }
   });
 }
-
 
     /*************** Main Analysis Function ***************/
     document.getElementById("runAnalysis").addEventListener("click", async () => {
