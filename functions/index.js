@@ -178,6 +178,7 @@ exports.createCheckoutSession = onValueCreated(
       await snap.ref.update({ error: { message: "Configuration error" } });
       return null;
     }
+
     const stripe = require("stripe")(stripeSecret);
 
     try {
@@ -190,15 +191,29 @@ exports.createCheckoutSession = onValueCreated(
         subscription_data: {
           metadata: { firebaseUid: uid }
         },
+        customer_creation: "always"
       });
+
+      // Write the session URL back
       await snap.ref.update({ url: session.url });
+
+      // ✅ If customer ID is already available, store it
+      if (session.customer) {
+        await db.ref(`customers/${uid}/stripeCustomerId`).set(session.customer);
+        console.log(`✅ Wrote customer ID (${session.customer}) for UID: ${uid}`);
+      } else {
+        console.log(`ℹ️ Session created, but customer ID not yet available. Will be handled in webhook.`);
+      }
+
     } catch (err) {
       console.error("❌ Stripe session failed:", err);
       await snap.ref.update({ error: { message: err.message } });
     }
+
     return null;
   }
 );
+
 // 5️⃣ Create Billing Portal Session (Callable)
 exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) => {
   const uid = request.auth?.uid;
@@ -236,68 +251,65 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
     throw new functions.https.HttpsError("internal", "Stripe session creation failed.");
   }
 });
-// 6️⃣ Repair Stripe Customer IDs via Email Matching (Every 2 min)
-exports.repairCustomerIdSync = onSchedule(
+exports.repairStripeCustomerLinks = onSchedule(
   {
     schedule: "every 2 minutes",
     timeZone: "Etc/UTC",
     region: "us-central1",
-    memory: "256MiB",
+    memory: "256MiB"
   },
   async () => {
     const stripeSecret = process.env.STRIPE_SECRET;
     if (!stripeSecret) {
-      console.error("❌ STRIPE_SECRET not set.");
+      console.error("❌ STRIPE_SECRET not found");
       return null;
     }
 
     const stripe = stripeLib(stripeSecret);
-    const dbSnap = await db.ref("users").once("value");
-    const users = dbSnap.val() || {};
-
-    // 🧠 Build map: email → UID
-    const emailToUid = {};
-    for (const uid in users) {
-      const email = users[uid]?.email?.toLowerCase();
-      if (email) emailToUid[email] = uid;
-    }
-
-    // 🌀 Page through all Stripe customers
+    const allCustomers = [];
     let starting_after;
-    const updates = {};
-    let count = 0;
 
+    // 🔄 Fetch all customers from Stripe
     while (true) {
       const resp = await stripe.customers.list({
         limit: 100,
-        starting_after,
+        starting_after
       });
-
-      for (const customer of resp.data) {
-        const email = customer.email?.toLowerCase();
-        const uid = emailToUid[email];
-        if (uid) {
-          updates[`customers/${uid}/stripeCustomerId`] = customer.id;
-          console.log(`✅ Matched ${email} → ${uid} → ${customer.id}`);
-          count++;
-        } else {
-          console.warn(`⚠️ No match for customer ${customer.id} (${email})`);
-        }
-      }
-
+      allCustomers.push(...resp.data);
       if (!resp.has_more) break;
       starting_after = resp.data[resp.data.length - 1].id;
     }
 
+    console.log(`📦 Retrieved ${allCustomers.length} Stripe customers`);
+
+    // 🔄 Fetch all Firebase users
+    const usersSnap = await db.ref("users").once("value");
+    const firebaseUsers = usersSnap.val() || {};
+    const updates = {};
+
+    for (const [uid, data] of Object.entries(firebaseUsers)) {
+      const email = data.email?.toLowerCase();
+      if (!email) continue;
+
+      const match = allCustomers.find(
+        (cust) => cust.email?.toLowerCase() === email
+      );
+
+      if (match) {
+        updates[`customers/${uid}/stripeCustomerId`] = match.id;
+        console.log(`✅ Matched Stripe ${match.id} to UID ${uid}`);
+      } else {
+        console.warn(`❌ No match for UID ${uid} (${email})`);
+      }
+    }
+
     if (Object.keys(updates).length) {
       await db.ref().update(updates);
-      console.log(`✅ Synced ${count} customer IDs to Firebase`);
+      console.log("✅ Updated", Object.keys(updates).length, "Stripe links");
     } else {
-      console.log("⚠️ No updates made.");
+      console.log("⚠️ No updates made");
     }
 
     return null;
   }
 );
-
-
