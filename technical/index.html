@@ -653,43 +653,84 @@
     }
 
     // Bollinger Bands Chart
-    function plotBollinger(prices) {
-      let bands = computeBollingerBands(prices);
-      Highcharts.chart('bbChart', {
-        chart: { type: 'line', backgroundColor: 'transparent' },
-        title: { text: 'Bollinger Bands' },
-        xAxis: { type: 'datetime' },
-        yAxis: { title: { text: 'Price' } },
-        series: [
-  {
-    name: 'Price',
-    type: 'line',
-    data: prices.map(p => [p.date.getTime(), p.close]),
-    color: '#ffffff',
-    zIndex: 1,
-    tooltip: { valueDecimals: 2 }
-  },
-  {
-    name: 'SMA',
-    data: bands.map(b => [b.date.getTime(), b.sma]),
-    color: 'blue'
-  },
-  {
-    name: 'Upper Band',
-    data: bands.map(b => [b.date.getTime(), b.upper]),
-    color: 'green'
-  },
-  {
-    name: 'Lower Band',
-    data: bands.map(b => [b.date.getTime(), b.lower]),
-    color: 'red'
-  }
-],
+function plotBollinger(prices) {
+  const bands = computeBollingerBands(prices);
 
-        credits: { enabled: false }
-      });
-      return bands;
+  Highcharts.chart('bbChart', {
+    chart: {
+      type: 'line',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: 'Bollinger Bands',
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'datetime',
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333',
+      lineColor: '#444',
+      tickColor: '#444'
+    },
+    yAxis: {
+      title: { text: 'Price', style: { color: '#ccc' } },
+      labels: { style: { color: '#ccc' } },
+      gridLineColor: '#333'
+    },
+    tooltip: {
+      backgroundColor: '#222',
+      style: { color: '#fff' },
+      valueDecimals: 2
+    },
+    series: [
+      {
+        name: 'Price',
+        type: 'line',
+        data: prices.map(p => [p.date.getTime(), p.close]),
+        color: '#ffffff',
+        zIndex: 2,
+        marker: { enabled: false }
+      },
+      {
+        name: 'SMA (20)',
+        data: bands.map(b => [b.date.getTime(), b.sma]),
+        color: 'blue',
+        zIndex: 1,
+        marker: { enabled: false }
+      },
+      {
+        name: 'Upper Band',
+        data: bands.map(b => [b.date.getTime(), b.upper]),
+        color: 'green',
+        marker: { enabled: false }
+      },
+      {
+        name: 'Lower Band',
+        data: bands.map(b => [b.date.getTime(), b.lower]),
+        color: 'red',
+        marker: { enabled: false }
+      }
+    ],
+    credits: { enabled: false },
+    legend: {
+      itemStyle: { color: '#ccc' },
+      itemHoverStyle: { color: '#fff' }
+    },
+    responsive: {
+      rules: [{
+        condition: { maxWidth: 600 },
+        chartOptions: {
+          legend: { enabled: false },
+          xAxis: { labels: { style: { fontSize: '10px' } } },
+          yAxis: { labels: { style: { fontSize: '10px' } } }
+        }
+      }]
     }
+  });
+
+  return bands;
+}
+
 
     // MACD Chart
     function plotMACD(prices) {
