@@ -254,45 +254,53 @@ exports.repairSubscriptionSync = onSchedule(
     }
 
     const stripe = stripeLib(stripeSecret);
-    const customerSnap = await db.ref("customers").once("value");
-    const customers = customerSnap.val() || {};
+    const allSubs = [];
+
+    // 🌀 Page through all subscriptions
+    let starting_after = undefined;
+    while (true) {
+      const resp = await stripe.subscriptions.list({
+        status: "all",
+        limit: 100,
+        starting_after,
+      });
+
+      if (resp.data.length === 0) break;
+      allSubs.push(...resp.data);
+      if (!resp.has_more) break;
+      starting_after = resp.data[resp.data.length - 1].id;
+    }
+
+    console.log(`📦 Retrieved ${allSubs.length} subscriptions from Stripe`);
+
     const updates = {};
+    for (const sub of allSubs) {
+      const uid = sub.metadata?.firebaseUid;
+      const customerId = sub.customer;
+      const expiry = sub.current_period_end * 1000;
+      const isActive = sub.status === "active";
 
-    for (const uid in customers) {
-      const stripeId = customers[uid]?.stripeCustomerId;
-      if (!stripeId) continue;
-
-      try {
-        const subs = await stripe.subscriptions.list({
-          customer: stripeId,
-          status: "all",
-          limit: 1,
-        });
-
-        const sub = subs.data[0];
-        if (!sub) continue;
-
-        const expiry = sub.current_period_end * 1000;
-        const role = sub.status === "active" ? "premium" : "basic";
-
-        updates[`users/${uid}/role`] = role;
-        updates[`users/${uid}/subscriptionExpiry`] = expiry;
-        updates[`customers/${uid}/stripeRole`] = role;
-
-        console.log(`🔁 Synced UID: ${uid} → ${role} (expires: ${new Date(expiry).toISOString()})`);
-      } catch (err) {
-        console.error(`❌ Failed to sync UID: ${uid} →`, err.message);
+      if (!uid || !customerId || !Number.isFinite(expiry)) {
+        console.warn("⚠️ Skipping invalid sub:", sub.id);
+        continue;
       }
+
+      updates[`customers/${uid}/stripeCustomerId`] = customerId;
+      updates[`users/${uid}/subscriptionExpiry`] = expiry;
+      updates[`users/${uid}/role`] = isActive ? "premium" : "basic";
+
+      console.log(`🔁 Synced UID: ${uid} | ${sub.id} | ${customerId} → ${isActive ? "premium" : "basic"} (expires ${new Date(expiry).toISOString()})`);
     }
 
     if (Object.keys(updates).length) {
       await db.ref().update(updates);
-      console.log("✅ Repaired subscriptions for", Object.keys(updates).length / 3, "users");
+      console.log("✅ Applied updates to", Object.keys(updates).length / 3, "users");
     } else {
-      console.log("⚠️ No updates made.");
+      console.log("⚠️ No updates necessary.");
     }
 
     return null;
   }
 );
+
 
