@@ -241,7 +241,7 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
 // 6️⃣ Repair Missing Stripe Data (Scheduled)
 exports.repairSubscriptionSync = onSchedule(
   {
-    schedule: "every 2 minutes", // ✅ Run every 2 minutes
+    schedule: "every 2 minutes",
     timeZone: "Etc/UTC",
     region: "us-central1",
     memory: "256MiB",
@@ -257,13 +257,12 @@ exports.repairSubscriptionSync = onSchedule(
     const allCustomers = [];
     let starting_after = undefined;
 
-    // 🌀 Page through all customers
+    // 🌀 Page through all Stripe customers
     while (true) {
       const resp = await stripe.customers.list({
         limit: 100,
         starting_after,
       });
-
       if (resp.data.length === 0) break;
       allCustomers.push(...resp.data);
       if (!resp.has_more) break;
@@ -278,11 +277,13 @@ exports.repairSubscriptionSync = onSchedule(
       const customerId = customer.id;
 
       if (!uid || !customerId) {
-        console.warn("⚠️ Skipping customer (missing UID or ID):", customer.id);
+        console.warn(`⚠️ Skipping customer (missing UID or ID): ${customerId}`);
         continue;
       }
 
-      // 🔍 Get latest subscription for this customer
+      updates[`customers/${uid}/stripeCustomerId`] = customerId;
+
+      // 🧠 Get their subscriptions
       try {
         const subs = await stripe.subscriptions.list({
           customer: customerId,
@@ -291,21 +292,17 @@ exports.repairSubscriptionSync = onSchedule(
         });
 
         const sub = subs.data[0];
-        if (!sub || !Number.isFinite(sub.current_period_end)) {
-          console.warn("⚠️ No valid subscription for:", customerId);
-          continue;
-        }
+        if (!sub) continue;
 
         const expiry = sub.current_period_end * 1000;
         const isActive = sub.status === "active";
 
-        updates[`customers/${uid}/stripeCustomerId`] = customerId;
         updates[`users/${uid}/subscriptionExpiry`] = expiry;
         updates[`users/${uid}/role`] = isActive ? "premium" : "basic";
 
-        console.log(`🔁 Synced UID: ${uid} | ${customerId} → ${isActive ? "premium" : "basic"} (expires: ${new Date(expiry).toISOString()})`);
+        console.log(`🔁 Synced UID: ${uid} | ${customerId} → ${isActive ? "premium" : "basic"} (expires ${new Date(expiry).toISOString()})`);
       } catch (err) {
-        console.error(`❌ Failed to sync customer ${customerId}:`, err.message);
+        console.error(`❌ Failed to retrieve subscriptions for customer ${customerId}:`, err.message);
       }
     }
 
@@ -319,6 +316,7 @@ exports.repairSubscriptionSync = onSchedule(
     return null;
   }
 );
+
 
 
 
