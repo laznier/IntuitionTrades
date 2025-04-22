@@ -527,16 +527,22 @@ onAuthStateChanged(auth, async (user) => {
   const trialUsed  = data.trialUsed  === true;
   const isPremium  = data.role === "premium";
 
-  // 3) If they've never taken a trial, show the overlay
-  if (!trialUsed) {
-    showTrialOverlay();
-    return;
-  }
+// 3) If they've never taken a trial AND are still basic, show the overlay
+if (!trialUsed && !isPremium) {
+  showTrialOverlay();
+  return;
+}
 
-  // 4) If they’re marked premium but 24 h have passed, downgrade
-  if (isPremium && trialStart + 24*60*60*1000 <= now) {
-    await update(userRef, { role: "basic" });
-  }
+ // 4) Determine trial and subscription status
+const isTrialExpired = trialUsed && (trialStart + 24 * 60 * 60 * 1000 <= now);
+const isSubscriptionActive = subscriptionExpiry && now < subscriptionExpiry;
+
+// 🔻 If they’re on a trial and it expired, AND there’s no active subscription, downgrade
+if (isPremium && isTrialExpired && !isSubscriptionActive) {
+  await update(userRef, { role: "basic" });
+}
+
+
 
   // 5) Finally, send them on their way
   redirectToMain();
