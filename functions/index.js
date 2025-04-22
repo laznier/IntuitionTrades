@@ -241,7 +241,7 @@ exports.getBillingPortalUrl = onCall({ region: "us-central1" }, async (request) 
 // 6️⃣ Repair Missing Stripe Data (Scheduled)
 exports.repairSubscriptionSync = onSchedule(
   {
-    schedule: "every 3 hours",
+    schedule: "every 10 minutes",
     timeZone: "Etc/UTC",
     region: "us-central1",
     memory: "256MiB",
