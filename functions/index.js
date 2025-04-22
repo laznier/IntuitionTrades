@@ -72,8 +72,6 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
   }
 
   const stripe = stripeLib(stripeSecret);
-
-  // 🔥 Get raw body directly from req.rawBody (works in Gen 2 onRequest)
   const sig = req.headers["stripe-signature"];
   let event;
 
@@ -84,51 +82,67 @@ exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) =>
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  const sub = event.data.object;
-  const uid = sub.metadata?.firebaseUid;
-  if (!uid) {
-    console.error("❌ No Firebase UID in metadata");
-    return res.status(400).send("Missing UID");
-  }
+  const eventType = event.type;
+  const object = event.data.object;
+  const uid = object.metadata?.firebaseUid;
 
-  const userRef = db.ref(`users/${uid}`);
+  const userRef = uid ? db.ref(`users/${uid}`) : null;
 
   try {
-    switch (event.type) {
-      case "customer.subscription.created":
-      case "customer.subscription.updated": {
-        const subscriptionItem = sub.items?.data?.[0];
-        const expiry = Number(subscriptionItem?.current_period_end) * 1000;
-        
-        if (!Number.isFinite(expiry) || expiry <= 0) {
-          console.error("❌ Invalid subscription expiry (NaN or missing):", subscriptionItem?.current_period_end);
-          return res.status(400).send("Invalid expiry timestamp");
-        }        
-        
-        await db.ref("serviceMarker").set(true); // ✅ temporary rules bypass
-await userRef.update({
-  role: "premium",
-  subscriptionExpiry: expiry
-});
-await db.ref("serviceMarker").remove(); // ✅ cleanup after write
+    switch (eventType) {
 
-         
+      // ✅ New: store Stripe customer ID for later use
+      case "checkout.session.completed": {
+        const customerId = object.customer;
+        const sessionUid = object.metadata?.firebaseUid;
+
+        if (sessionUid && customerId) {
+          await db.ref(`customers/${sessionUid}/stripeCustomerId`).set(customerId);
+          console.log(`✅ Stored Stripe customer ID (${customerId}) for UID: ${sessionUid}`);
+        } else {
+          console.error("❌ Missing firebaseUid or customer ID in checkout.session.completed");
+        }
         break;
       }
 
-      case "customer.subscription.deleted":
-        await userRef.update({ role: "basic" });
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        if (!uid || !userRef) {
+          console.error("❌ UID missing for subscription update");
+          return res.status(400).send("Missing UID");
+        }
+
+        const subscriptionItem = object.items?.data?.[0];
+        const expiry = Number(subscriptionItem?.current_period_end) * 1000;
+
+        if (!Number.isFinite(expiry) || expiry <= 0) {
+          console.error("❌ Invalid subscription expiry timestamp");
+          return res.status(400).send("Invalid expiry");
+        }
+
+        await db.ref("serviceMarker").set(true); // ✅ bypass rules
+        await userRef.update({
+          role: "premium",
+          subscriptionExpiry: expiry
+        });
+        await db.ref("serviceMarker").remove(); // ✅ cleanup
         break;
+      }
+
+      case "customer.subscription.deleted": {
+        if (uid && userRef) {
+          await userRef.update({ role: "basic" });
+        }
+        break;
+      }
     }
 
     res.json({ received: true });
   } catch (err) {
-    console.error("❌ Firebase update failed:", err.message);
-    res.status(500).send("DB Error");
+    console.error("❌ Webhook processing error:", err.message);
+    res.status(500).send("Internal Error");
   }
 });
-
-
 
 
 
