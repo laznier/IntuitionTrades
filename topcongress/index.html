@@ -156,14 +156,6 @@ button:hover {
       background-color: var(--accent-color);
       color: var(--text-color);
     }
-    /* Add to your <style> section */
-.no-results {
-  color: #ff4d4d;
-  text-align: center;
-  font-weight: bold;
-  margin-top: 1rem;
-}
-
   </style>
 </head>
 <body>
@@ -455,19 +447,6 @@ document.getElementById('filterPolitician').addEventListener('input', () => {
       document.getElementById('buyCol').style.display = topBuys.length > 0 ? 'block' : 'none';
       document.getElementById('sellCol').style.display = topSells.length > 0 ? 'block' : 'none';
     }
-
-    // After rendering top stocks
-if (filteredData.length === 0) {
-  const tradesTitle = document.getElementById('tradesTitle');
-  tradesTitle.innerText = "No matching trades found. Try adjusting your filters.";
-  tradesTitle.style.display = 'block';
-
-  // Also hide buy/sell columns and details
-  document.getElementById('buyCol').style.display = 'none';
-  document.getElementById('sellCol').style.display = 'none';
-  document.getElementById('detailsSection').style.display = 'none';
-}
-
 
     // Fetch data when the user clicks the fetch button
     document.getElementById('fetchButton').addEventListener('click', async () => {
