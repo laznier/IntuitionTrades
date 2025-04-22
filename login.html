@@ -524,8 +524,9 @@ onAuthStateChanged(auth, async (user) => {
   const data    = snap.val() || {};
   const now     = Date.now();
   const trialStart = data.trialStart || 0;
-  const trialUsed  = data.trialUsed  === true;
-  const isPremium  = data.role === "premium";
+const trialUsed  = data.trialUsed  === true;
+const subscriptionExpiry = data.subscriptionExpiry || 0;
+const isPremium  = data.role === "premium";
 
 // 3) If they've never taken a trial AND are still basic, show the overlay
 if (!trialUsed && !isPremium) {
