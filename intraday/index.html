@@ -168,6 +168,17 @@ button:hover {
       }
     
     }
+    @media (max-width: 600px) {
+  #chart {
+    height: 400px;
+    padding: 0; /* remove internal padding if any */
+  }
+  .chartContainer {
+    padding: 0;
+    border: none;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -429,134 +440,134 @@ button:hover {
     /***************************************
      * 5) CHART PLOTTING FUNCTION
      ***************************************/
-    function plotChart(points, symbol, range) {
-      let seriesData, chartType, seriesOptions = {};
+    /***************************************
+ * 5) CHART PLOTTING FUNCTION (Optimized for Mobile)
+ ***************************************/
+function plotChart(points, symbol, range) {
+  let seriesData, chartType, seriesOptions = {};
 
-      if (range === "1D" || range === "5D" || range === "1M" || range === "YTD") {
-        seriesData = points.map(p => [p.x, p.y]);
-        chartType = 'line';
-        const firstClose = points[0].close;
-        const lastClose = points[points.length - 1].close;
-        let color = 'blue';
-        if (lastClose > firstClose) color = 'green';
-        else if (lastClose < firstClose) color = 'red';
-        seriesOptions = {
-          color: color,
-          fillColor: Highcharts.color(color).setOpacity(0.15).get()
-        };
-      } else {
-        seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
-        chartType = 'candlestick';
-        seriesOptions = {
-          color: 'red',
-          upColor: 'green'
-        };
+  if (["1D", "5D", "1M", "YTD"].includes(range)) {
+    seriesData = points.map(p => [p.x, p.y]);
+    chartType = 'line';
+    const firstClose = points[0].close;
+    const lastClose = points[points.length - 1].close;
+    const color = lastClose > firstClose ? 'green' : (lastClose < firstClose ? 'red' : 'blue');
+    seriesOptions = {
+      color,
+      fillColor: Highcharts.color(color).setOpacity(0.15).get()
+    };
+  } else {
+    seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
+    chartType = 'candlestick';
+    seriesOptions = {
+      color: 'red',
+      upColor: 'green'
+    };
+  }
+
+  Highcharts.stockChart('chart', {
+    chart: {
+      backgroundColor: 'transparent',
+      marginRight: 0,
+      marginLeft: 0,
+      spacingRight: 0,
+      spacingLeft: 0,
+      pinchType: 'x',
+      panning: { enabled: true, type: 'x' },
+      zooming: { type: 'x' },
+      events: {
+        load: function () {
+          const chart = this;
+          const series = chart.series[0];
+          const pts = series.points;
+          if (!pts || pts.length === 0) return;
+
+          const lastPoint = pts[pts.length - 1];
+          const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
+          const lineY = (series.type === 'candlestick')
+            ? chart.plotTop + lastPoint.plotClose
+            : chart.plotTop + lastPoint.plotY;
+
+          // Static last price line
+          chart.lastPriceLine = chart.renderer.path([
+            'M', chart.plotLeft, lineY,
+            'L', chart.plotLeft + chart.plotWidth, lineY
+          ]).attr({
+            'stroke-width': 1,
+            stroke: 'gray',
+            dashstyle: 'Dash'
+          }).add();
+
+          // Last price label
+          chart.lastPriceLabel = chart.renderer.text(
+            lastPrice.toFixed(2),
+            chart.plotLeft + chart.plotWidth + 5,
+            lineY + 4
+          ).css({ color: 'gray' }).add();
+
+          // Crosshair setup
+          chart.crosshairLine = chart.renderer.path().attr({
+            'stroke-width': 1,
+            stroke: 'black',
+            dashstyle: 'Solid'
+          }).add();
+
+          chart.crosshairLabel = chart.renderer.text('', chart.plotLeft + chart.plotWidth + 5, chart.plotTop)
+            .css({ color: 'black' }).add();
+
+          // Mouse move crosshair update
+          Highcharts.addEvent(chart.container, 'mousemove', function (e) {
+            const event = chart.pointer.normalize(e);
+            const yVal = chart.yAxis[0].toValue(event.chartY, false);
+            const yPix = chart.yAxis[0].toPixels(yVal, true);
+
+            chart.crosshairLine.attr({
+              d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
+            });
+
+            chart.crosshairLabel.attr({
+              text: yVal.toFixed(2),
+              x: chart.plotLeft + chart.plotWidth + 5,
+              y: yPix + 4
+            });
+          });
+
+          Highcharts.addEvent(chart.container, 'mouseleave', function () {
+            chart.crosshairLine.attr({ d: [] });
+            chart.crosshairLabel.attr({ text: '' });
+          });
+        }
       }
-
-      Highcharts.stockChart('chart', {
-        chart: {
-          backgroundColor: 'transparent',
-          marginRight: 80,
-          events: {
-            load: function () {
-              const chart = this;
-              const yAxis = chart.yAxis[0];
-              const series = chart.series[0];
-              // Use series.points for both line and candlestick charts.
-              const pts = series.points;
-              if (!pts || pts.length === 0) return;
-              const lastPoint = pts[pts.length - 1];
-              const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
-              let lineY;
-              if (series.type === 'candlestick') {
-                // For candlestick charts, use plotClose.
-                lineY = chart.plotTop + lastPoint.plotClose;
-              } else {
-                // For line charts, use plotY.
-                lineY = chart.plotTop + lastPoint.plotY;
-              }
-              // Draw the fixed dashed line at the exact pixel of the last data point.
-              chart.lastPriceLine = chart.renderer.path([
-                'M', chart.plotLeft, lineY,
-                'L', chart.plotLeft + chart.plotWidth, lineY
-              ]).attr({
-                'stroke-width': 1,
-                stroke: 'gray',
-                dashstyle: 'Dash'
-              }).add();
-              // Draw the fixed last-price label on the right.
-              chart.lastPriceLabel = chart.renderer.text(lastPrice.toFixed(2),
-                chart.plotLeft + chart.plotWidth + 5,
-                lineY + 4
-              ).css({ color: 'gray' }).add();
-              // Create dynamic crosshair line and label.
-              chart.crosshairLine = chart.renderer.path().attr({
-                'stroke-width': 1,
-                stroke: 'black',
-                dashstyle: 'Solid'
-              }).add();
-              chart.crosshairLabel = chart.renderer.text('',
-                chart.plotLeft + chart.plotWidth + 5,
-                chart.plotTop
-              ).css({ color: 'black' }).add();
-              // Update crosshair on mousemove using unrounded conversion.
-              Highcharts.addEvent(chart.container, 'mousemove', function(e) {
-                const event = chart.pointer.normalize(e);
-                // Use false to avoid rounding discrepancies.
-                const yVal = chart.yAxis[0].toValue(event.chartY, false);
-                const yPix = chart.yAxis[0].toPixels(yVal, true);
-                chart.crosshairLine.attr({
-                  d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
-                });
-                chart.crosshairLabel.attr({
-                  text: yVal.toFixed(2),
-                  x: chart.plotLeft + chart.plotWidth + 5,
-                  y: yPix + 4
-                });
-              });
-              Highcharts.addEvent(chart.container, 'mouseleave', function() {
-                chart.crosshairLine.attr({ d: [] });
-                chart.crosshairLabel.attr({ text: '' });
-              });
-            }
-          }
-        },
-        time: {
-          useUTC: false
-        },
-        accessibility: {
-          enabled: false
-        },
-        rangeSelector: {
-          enabled: false
-        },
-        title: {
-          text: `${symbol.toUpperCase()} Price`
-        },
-        xAxis: {
-          type: 'datetime',
-          maxPadding: 0.15
-        },
-        yAxis: {
-          title: { text: 'Price' }
-        },
-        tooltip: {
-          split: false,
-          shared: true,
-          xDateFormat: '%Y-%m-%d %H:%M:%S'
-        },
-        series: [{
-          name: symbol.toUpperCase(),
-          data: seriesData,
-          type: chartType,
-          tooltip: { valueDecimals: 2 },
-          ...seriesOptions
-        }],
-        navigator: { enabled: true },
-        scrollbar: { enabled: true },
-        credits: { enabled: false }
-      });
-    }
+    },
+    time: { useUTC: false },
+    accessibility: { enabled: false },
+    rangeSelector: { enabled: false },
+    title: { text: `${symbol.toUpperCase()} Price` },
+    xAxis: {
+      type: 'datetime',
+      maxPadding: 0
+    },
+    yAxis: {
+      title: { text: 'Price' }
+    },
+    tooltip: {
+      split: false,
+      shared: true,
+      xDateFormat: '%Y-%m-%d %H:%M:%S',
+      followTouchMove: true
+    },
+    series: [{
+      name: symbol.toUpperCase(),
+      data: seriesData,
+      type: chartType,
+      tooltip: { valueDecimals: 2 },
+      ...seriesOptions
+    }],
+    navigator: { enabled: true, margin: 0 },
+    scrollbar: { enabled: true, height: 14 },
+    credits: { enabled: false }
+  });
+}
 
     /***************************************
      * 6) MAIN LOAD FUNCTION
