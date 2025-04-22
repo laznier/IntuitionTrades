@@ -163,19 +163,6 @@ button:hover {
   font-weight: bold;
   margin-top: 1rem;
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.no-results {
-  color: #ff4d4d;
-  text-align: center;
-  font-weight: bold;
-  margin-top: 1rem;
-  opacity: 0;
-  animation: fadeIn 0.7s ease-out forwards;
-}
 
   </style>
 </head>
@@ -474,8 +461,6 @@ if (filteredData.length === 0) {
   const tradesTitle = document.getElementById('tradesTitle');
   tradesTitle.innerText = "No matching trades found. Try adjusting your filters.";
   tradesTitle.style.display = 'block';
-  tradesTitle.className = 'no-results';
-
 
   // Also hide buy/sell columns and details
   document.getElementById('buyCol').style.display = 'none';
@@ -543,7 +528,7 @@ if (filteredData.length === 0) {
     });
 
     // Apply filter by days, politician, and stock
-    document.getElementById('applyFilter').addEventListener('click', () => {
+document.getElementById('applyFilter').addEventListener('click', () => {
   const daysInput = document.getElementById('filterDays').value.trim();
   const days = daysInput === "" ? null : parseInt(daysInput);
   const politicianFilter = document.getElementById('filterPolitician').value.trim().toLowerCase();
@@ -566,36 +551,31 @@ if (filteredData.length === 0) {
     return true;
   });
 
-  const tradesTitleEl = document.getElementById('tradesTitle');
-  tradesTitleEl.className = ''; // Reset previous classes
-
-  if (filteredData.length === 0) {
-    tradesTitleEl.className = 'no-results';
-    tradesTitleEl.innerText = "No matching trades found. Try adjusting your filters.";
-    tradesTitleEl.style.display = 'block';
-    document.getElementById('buyCol').style.display = 'none';
-    document.getElementById('sellCol').style.display = 'none';
-    document.getElementById('detailsSection').style.display = 'none';
-  } else {
-    let tradesTitle = "";
-    if (stockFilter && days && politicianFilter) {
-      let repName = filteredData[0]?.Representative || document.getElementById('filterPolitician').value.trim();
-      tradesTitle = `${stockFilter.toUpperCase()} trades by ${repName} in the last ${days} days`;
-    } else if (stockFilter && days) {
-      tradesTitle = `${stockFilter.toUpperCase()} trades in the last ${days} days`;
-    } else if (stockFilter) {
-      tradesTitle = `${stockFilter.toUpperCase()} trades`;
-    } else if (days) {
-      tradesTitle = `All reported trades in the last ${days} days`;
+  // Construct the trades title based on filters:
+  let tradesTitle = "";
+  if (stockFilter && days && politicianFilter) {
+    // If all three filters are applied, try to get the full politician name from the first transaction.
+    let repName = "";
+    if (filteredData.length > 0 && filteredData[0].Representative) {
+      repName = filteredData[0].Representative;
     } else {
-      tradesTitle = "All reported trades";
+      repName = document.getElementById('filterPolitician').value.trim();
     }
-
-    tradesTitleEl.innerText = tradesTitle;
-    tradesTitleEl.style.display = 'block';
-    renderTopStocks(filteredData);
-    document.getElementById('detailsSection').style.display = 'none';
+    tradesTitle = `${stockFilter.toUpperCase()} trades by ${repName} in the last ${days} days`;
+  } else if (stockFilter && days) {
+    tradesTitle = `${stockFilter.toUpperCase()} trades in the last ${days} days`;
+  } else if (stockFilter) {
+    tradesTitle = `${stockFilter.toUpperCase()} trades`;
+  } else if (days) {
+    tradesTitle = `All reported trades in the last ${days} days`;
+  } else {
+    tradesTitle = "All reported trades";
   }
+  document.getElementById('tradesTitle').innerText = tradesTitle;
+  document.getElementById('tradesTitle').style.display = 'block';
+
+  renderTopStocks(filteredData);
+  document.getElementById('detailsSection').style.display = 'none';
 });
 
 
