@@ -257,7 +257,7 @@
         btn.disabled = true;
 
         // Create a new session in RTDB
-        const sessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
+        const sessionRef = push(ref(db, `FAKE/PATH/${user.uid}/checkout_sessions`));
         set(sessionRef, {
           price:       priceId,
           success_url: success_url,
