@@ -213,3 +213,52 @@ exports.createCheckoutSession = onValueCreated(
   }
 );
 
+// 5️⃣ Create Backup Checkout Session (Callable)
+exports.createBackupCheckoutSession = onCall(
+  { region: "us-central1" },
+  async (req) => {
+    const { data, auth } = req;
+    const price       = data.price;
+    const success_url = data.success_url;
+    const cancel_url  = data.cancel_url;
+
+    // 1. Require auth
+    if (!auth || !auth.uid) {
+      // v2 onCall: throw an HttpsError
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "You must be signed in to subscribe."
+      );
+    }
+    const uid = auth.uid;
+
+    // 2. Load Stripe
+    const stripeSecret = process.env.STRIPE_SECRET;
+    if (!stripeSecret) {
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "Stripe secret key not configured."
+      );
+    }
+    const stripe = stripeLib(stripeSecret);
+
+    try {
+      // 3. Create checkout session
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [{ price, quantity: 1 }],
+        success_url,
+        cancel_url,
+        subscription_data: {
+          metadata: { firebaseUid: uid }
+        },
+      });
+
+      return { url: session.url };
+    } catch (err) {
+      console.error("❌ Backup session error:", err);
+      throw new functions.https.HttpsError("internal", err.message);
+    }
+  }
+);
