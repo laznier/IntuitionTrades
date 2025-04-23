@@ -15,100 +15,40 @@
       --accent-hover: #22c55e;
       --border-radius: 12px;
     }
-
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    .topnav ul li a {
-  text-decoration: none;
-}
 
-    .main-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: calc(100vh - 50px); /* avoid hiding menu bar */
-}
+    body {
+      font-family: var(--font-family);
+      background-color: #111;
+      color: var(--text-color);
+    }
 
-
+    /* Background */
     .background-fixed {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center center;
       z-index: -9999;
       transform: translateZ(0);
     }
-
     body.day .background-fixed {
       background-image: url('/images/day-background.png');
     }
-
     body.night .background-fixed {
       background-image: url('/images/night-background.png');
     }
 
-    @media (max-width: 768px) {
-      body.day .background-fixed,
-      body.night .background-fixed {
-        background-size: cover;
-      }
-    }
-
-    .plan-box {
-      background: #222;
-      border-radius: var(--border-radius);
-      padding: 2rem;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
-      max-width: 400px;
-      width: 100%;
-    }
-
-    h1 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
-      color: var(--accent-color);
-    }
-
-    p {
-      margin-bottom: 0.75rem;
-      font-size: 1rem;
-      color: #ccc;
-    }
-
-    .price {
-      font-size: 1.5rem;
-      color: var(--accent-color);
-      margin: 1rem 0;
-    }
-
-    button {
-      background: var(--accent-color);
-      color: white;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-
-    button:hover {
-      background: var(--accent-hover);
-    }
-/* Navigation Styles (Reuse from main site theme) */
-.topnav {
+    /* Nav */
+    .topnav {
       background-color: var(--primary-bg);
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
       white-space: nowrap;
     }
     .topnav ul {
@@ -117,15 +57,112 @@
     }
     .topnav ul li a {
       display: block;
-      padding: 0.875rem 1.25rem;
+      padding: .875rem 1.25rem;
       color: var(--text-color);
-      transition: background-color var(--transition-speed), color var(--transition-speed);
+      text-decoration: none;
     }
     .topnav ul li a:hover {
       background-color: #ddd;
       color: #333;
     }
-    
+
+    /* Main Plan Box */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      min-height: calc(100vh - 50px);
+    }
+    .plan-box {
+      background: #222;
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      color: var(--accent-color);
+    }
+    p {
+      margin-bottom: .75rem;
+      font-size: 1rem;
+      color: #ccc;
+    }
+    .price {
+      font-size: 1.5rem;
+      color: var(--accent-color);
+      margin: 1rem 0;
+    }
+    button {
+      background: var(--accent-color);
+      color: white;
+      padding: .75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .3s ease;
+    }
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    /* Loading Overlay */
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .loader {
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid var(--accent-color);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Error Container */
+    #errorContainer {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+    .error-box {
+      background: #222;
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      text-align: center;
+      max-width: 400px;
+      width: 80%;
+      color: #fff;
+    }
+    .error-box p {
+      margin-bottom: 1rem;
+    }
+    .error-box button {
+      margin: 0 .5rem;
+    }
   </style>
 </head>
 <body>
@@ -150,76 +187,109 @@
     </div>
   </main>
 
-  <!-- your scripts below remain unchanged -->
-</body>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <div class="loader"></div>
+  </div>
 
+  <!-- Error Container -->
+  <div id="errorContainer">
+    <div class="error-box">
+      <p id="errorMessage">Oops—something went wrong.</p>
+      <button id="retryBtn">Retry</button>
+      <button id="backupBtn">Use Backup Checkout</button>
+    </div>
+  </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-    projectId: "persuasive-net-456607-g8"
-  };
+    // --- Firebase Init ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId: "persuasive-net-456607-g8"
+    };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getDatabase(app);
 
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getDatabase(app);
+    // --- UI Elements ---
+    const btn             = document.getElementById("subscribeBtn");
+    const loadingOverlay  = document.getElementById("loadingOverlay");
+    const errorContainer  = document.getElementById("errorContainer");
+    const errorMessageEl  = document.getElementById("errorMessage");
+    const retryBtn        = document.getElementById("retryBtn");
+    const backupBtn       = document.getElementById("backupBtn");
+    const priceId         = "price_1RGXodFEfvI8pkt9Iy7vN0wU";
+    const success_url     = window.location.origin + "/success.html";
+    const cancel_url      = window.location.origin + "/cancel.html";
 
-  const priceId = "price_1RGXodFEfvI8pkt9Iy7vN0wU";
-  const btn     = document.getElementById("subscribeBtn");
-
-  onAuthStateChanged(auth, user => {
-    if (!user) {
-      alert("Please sign in first.");
-      window.location.href = "/login.html";
-      return;
+    function showLoading() {
+      loadingOverlay.style.display = "flex";
+    }
+    function hideLoading() {
+      loadingOverlay.style.display = "none";
+    }
+    function showError(msg) {
+      hideLoading();
+      errorMessageEl.textContent = msg;
+      errorContainer.style.display = "flex";
     }
 
-    btn.addEventListener("click", async () => {
-      console.log("Subscribe clicked for", user.uid);
+    // Retry & Backup handlers
+    retryBtn .addEventListener("click", () => location.reload());
+    backupBtn.addEventListener("click", () => window.location.href = "/checkoutbackup.html");
 
-      // Create a new child reference under checkout_sessions
-      const newSessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
-      // Write session request data
-      await set(newSessionRef, {
-        price:       priceId,
-        success_url: window.location.origin + "/success.html",
-        cancel_url:  window.location.origin + "/cancel.html",
-      });
+    // Authentication & Subscribe flow
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        alert("Please sign in first.");
+        window.location.href = "/login.html";
+        return;
+      }
 
-      // Listen for Stripe to write back the session URL or error
-      const unsubscribe = onValue(newSessionRef, snap => {
-        const data = snap.val();
-        console.log("Session update:", data);
-        if (data?.error) {
-          unsubscribe();
-          alert(`Error: ${data.error.message}`);
-        }
-        if (data?.url) {
-          unsubscribe();
-          window.location.assign(data.url);
-        }
-      }, { onlyOnce: false });
-    }, { once: true });
-  });
-</script>
-  <script>document.addEventListener("DOMContentLoaded", () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const sunrise = 6;
-    const sunset = 19;
-  
-    if (hours >= sunset || hours < sunrise) {
-      document.body.classList.add('night');
-    } else {
-      document.body.classList.add('day');
-    }
-  });
+      btn.addEventListener("click", () => {
+        showLoading();
+        btn.disabled = true;
+
+        // Create a new session in RTDB
+        const sessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
+        set(sessionRef, {
+          price:       priceId,
+          success_url: success_url,
+          cancel_url:  cancel_url
+        });
+
+        // Listen for Stripe response
+        const unsubscribe = onValue(sessionRef, snap => {
+          const data = snap.val() || {};
+          if (data.error) {
+            unsubscribe();
+            showError(data.error.message || "Internal error");
+          }
+          if (data.url) {
+            unsubscribe();
+            window.location.assign(data.url);
+          }
+        });
+      }, { once: true });
+    });
+  </script>
+
+  <script>
+    // Day/Night background toggle
+    document.addEventListener("DOMContentLoaded", () => {
+      const hour = new Date().getHours();
+      if (hour >= 19 || hour < 6) {
+        document.body.classList.add('night');
+      } else {
+        document.body.classList.add('day');
+      }
+    });
   </script>
 </body>
 </html>
