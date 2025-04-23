@@ -256,7 +256,7 @@
   showLoading();
   btn.disabled = true;
 
-  const sessionRef = push(ref(db, `FAKE/PATH/${user.uid}/checkout_sessions`));
+  const sessionRef = push(ref(db, `custom.../${user.uid}/checkout_sessions`));
   set(sessionRef, {
     price:       priceId,
     success_url: success_url,
