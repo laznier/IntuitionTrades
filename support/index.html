@@ -231,37 +231,55 @@ const holder = document.getElementById('chartHolder');
   holder.appendChild(chartDiv);
 
 
-        // Render and await the chart’s load event:
-  await new Promise(resolve => {
-    Highcharts.chart(chartDiv, {
-      chart: {
-        type: 'line',
-        backgroundColor: 'transparent',
-        events: {
-          load: resolve      // this fires when the chart has finished rendering
+     // Inside simulateOne(), replace your render-await block with this:
+
+await new Promise(resolve => {
+  Highcharts.chart(chartDiv, {
+    chart: {
+      type: 'line',
+      backgroundColor: 'transparent'
+    },
+    title: {
+      text: `${ticker} | Score: ${score}`,
+      style: { color: '#fff' }
+    },
+    xAxis: {
+      type: 'datetime'
+    },
+    yAxis: {
+      title: { text: 'Price' },
+      plotLines: [{
+        value: best.price,
+        color: ACCENT_COLOR,
+        width: 2,
+        dashStyle: 'ShortDash',
+        label: {
+          text: 'Support',
+          style: { color: ACCENT_COLOR }
         }
-      },
-      title: { text:`${ticker} | Score: ${score}`, style:{ color:'#fff' } },
-      xAxis: { type:'datetime' },
-      yAxis: {
-        title:{ text:'Price' },
-        plotLines:[{
-          value: best.price,
-          color: ACCENT_COLOR,
-          width: 2,
-          dashStyle:'ShortDash',
-          label:{ text:'Support', style:{ color:ACCENT_COLOR } }
-        }]
-      },
-      series:[{
-        name:'Close',
-        data: data.map(p=>[p.date.getTime(), p.close]),
-        color: HIGHLIGHT_COLOR,
-        marker:{ enabled:false }
-      }],
-      credits:{ enabled:false }
-    });
+      }]
+    },
+    plotOptions: {
+      series: {
+        animation: {
+          duration: 800  // or whatever you like
+        },
+        events: {
+          // fires when the series animation is complete
+          afterAnimate: resolve
+        }
+      }
+    },
+    series: [{
+      name: 'Close',
+      data: data.map(p => [p.date.getTime(), p.close]),
+      color: HIGHLIGHT_COLOR,
+      marker: { enabled: false }
+    }],
+    credits: { enabled: false }
   });
+});
+
 
 
       } catch (err) {
