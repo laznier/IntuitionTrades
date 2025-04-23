@@ -2,61 +2,236 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contact | Intuition Trades</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Contact Intuition Trades for support, feedback, or business inquiries." />
   <style>
+    :root {
+      --font-family: 'Arial', sans-serif;
+      --text-color: #fff;
+      --primary-bg: #333;
+      --section-bg: rgba(0, 0, 0, 0.33);
+      --accent-color: #16a34a;
+      --highlight-color: #3b82f6;
+      --border-radius: 4px;
+      --transition-speed: 0.3s;
+      --section-padding: 3rem 1rem;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
     body {
-      font-family: Arial, sans-serif;
+      font-family: var(--font-family);
+      color: var(--text-color);
       background-color: #111;
-      color: #eee;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem;
       line-height: 1.6;
     }
-    h1 {
-      color: #16a34a;
-      margin-bottom: 1rem;
+
+    a {
+      text-decoration: none;
+      color: var(--accent-color);
+      transition: color var(--transition-speed);
     }
+
+    a:hover {
+      color: var(--highlight-color);
+    }
+
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      z-index: -9999;
+      transform: translateZ(0);
+    }
+
+    body.day .background-fixed {
+      background-image: url('/images/day-background.png');
+    }
+
+    body.night .background-fixed {
+      background-image: url('/images/night-background.png');
+    }
+
+    @media (max-width: 768px) {
+      body.day .background-fixed {
+        background-image: url('/images/day-background.png');
+      }
+
+      body.night .background-fixed {
+        background-image: url('/images/night-background.png');
+      }
+    }
+
+    .topnav {
+      background-color: var(--primary-bg);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .topnav ul {
+      display: flex;
+      list-style: none;
+    }
+
+    .topnav ul li a {
+      display: block;
+      padding: 0.875rem 1.25rem;
+      color: var(--text-color);
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+
+    .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+
+    .hero {
+      position: relative;
+      padding: var(--section-padding);
+      text-align: center;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 0;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .content-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--section-bg);
+      border-radius: var(--border-radius);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: var(--accent-color);
+    }
+
     h2 {
-      color: #ccc;
       font-size: 1.2rem;
       margin-top: 2rem;
+      color: #ccc;
     }
+
     p {
       margin-bottom: 0.75rem;
     }
-    a {
-      color: #16a34a;
-      text-decoration: underline;
-    }
+
     .email-block {
       background-color: #1c1c1c;
       padding: 1rem;
       border: 1px solid #333;
       border-radius: 8px;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: var(--section-bg);
+      margin-top: 2rem;
+    }
+
+    footer ul {
+      list-style: none;
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 0;
+      margin-top: 0.5rem;
+    }
+
+    footer ul a {
+      color: #aaa;
+    }
+
+    footer ul a:hover {
+      color: var(--accent-color);
     }
   </style>
 </head>
 <body>
-  <h1>Contact Us</h1>
-  <p>We’d love to hear from you! Whether it’s feedback, bug reports, or partnership ideas — choose the appropriate email below.</p>
+  <div class="background-fixed"></div>
 
-  <div class="email-block">
-    <h2>🛠️ Tool Suggestions & Bug Reports</h2>
-    <p>If you have feedback on any of our tools or notice a bug, please reach out to:</p>
-    <p><strong>Email:</strong> <a href="mailto:admin@intuitiontrades.com">admin@intuitiontrades.com</a></p>
-  </div>
+  <header>
+    <nav class="topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+      </ul>
+    </nav>
+  </header>
 
-  <div class="email-block">
-    <h2>💼 Business, Payments, or Legal</h2>
-    <p>For issues related to subscriptions, payments, or business inquiries:</p>
-    <p><strong>Email:</strong> <a href="mailto:intuitiontrades@gmail.com">intuitiontrades@gmail.com</a></p>
-  </div>
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Contact Us</h1>
+      <p>We're here to help. Choose the best contact for your needs.</p>
+    </div>
+  </header>
 
-  <p style="margin-top: 2rem;">We respond to most emails within 1–2 business days.</p>
-  <p>Prefer to send anonymous suggestions or comments? <a href="/feedback.html">Leave feedback instead</a>.</p>
+  <main>
+    <section class="content-container">
+      <p>We’d love to hear from you! Whether it’s feedback, bug reports, or partnership ideas — choose the appropriate email below.</p>
 
+      <div class="email-block">
+        <h2>🛠️ Tool Suggestions & Bug Reports</h2>
+        <p>If you have feedback on any of our tools or notice a bug, please reach out to:</p>
+        <p><strong>Email:</strong> <a href="mailto:admin@intuitiontrades.com">admin@intuitiontrades.com</a></p>
+      </div>
+
+      <div class="email-block">
+        <h2>💼 Business, Payments, or Legal</h2>
+        <p>For issues related to subscriptions, payments, or business inquiries:</p>
+        <p><strong>Email:</strong> <a href="mailto:intuitiontrades@gmail.com">intuitiontrades@gmail.com</a></p>
+      </div>
+
+      <p style="margin-top: 2rem;">We respond to most emails within 1–2 business days.</p>
+      <p>Prefer to send anonymous suggestions or comments? <a href="/feedback.html">Leave feedback instead</a>.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+    <ul>
+      <li><a href="/privacy.html">Privacy</a></li>
+      <li><a href="/terms.html">Terms</a></li>
+      <li><a href="/disclaimer.html">Disclaimer</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const sunrise = 6;
+      const sunset = 19;
+      document.body.classList.add((hours >= sunset || hours < sunrise) ? 'night' : 'day');
+    });
+  </script>
 </body>
 </html>

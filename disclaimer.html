@@ -3,30 +3,213 @@
 <head>
   <meta charset="UTF-8">
   <title>Disclaimer | Intuition Trades</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Disclaimer for Intuition Trades — outlining limitations, financial guidance, and data source policies." />
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; padding: 2rem; background: #111; color: #eee; max-width: 800px; margin: auto; }
-    h1, h2 { color: #dc3545; }
-    a { color: #16a34a; text-decoration: underline; }
+    :root {
+      --font-family: 'Arial', sans-serif;
+      --text-color: #fff;
+      --primary-bg: #333;
+      --secondary-bg: #444;
+      --section-bg: rgba(0, 0, 0, 0.33);
+      --accent-color: #16a34a;
+      --highlight-color: #3b82f6;
+      --base-font-size: 16px;
+      --line-height: 1.5;
+      --border-radius: 4px;
+      --transition-speed: 0.3s;
+      --section-padding: 3rem 1rem;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html {
+      font-size: var(--base-font-size);
+    }
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background-color: #111;
+      line-height: var(--line-height);
+    }
+    a {
+      text-decoration: none;
+      color: var(--accent-color);
+      transition: color 0.3s ease;
+    }
+    a:hover {
+      color: var(--highlight-color);
+    }
+
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      z-index: -9999;
+      transform: translateZ(0);
+    }
+    body.day .background-fixed {
+      background-image: url('/images/day-background.png');
+    }
+    body.night .background-fixed {
+      background-image: url('/images/night-background.png');
+    }
+
+    @media (max-width: 768px) {
+      body.day .background-fixed {
+        background-image: url('/images/day-background.png');
+      }
+      body.night .background-fixed {
+        background-image: url('/images/night-background.png');
+      }
+    }
+
+    .topnav {
+      background-color: var(--primary-bg);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .topnav ul {
+      display: flex;
+      list-style: none;
+    }
+    .topnav ul li a {
+      display: block;
+      padding: 0.875rem 1.25rem;
+      color: var(--text-color);
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+    .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+
+    .hero {
+      position: relative;
+      padding: var(--section-padding);
+      text-align: center;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .content-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--section-bg);
+      border-radius: var(--border-radius);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #dc3545;
+    }
+    h2 {
+      font-size: 1.5rem;
+      margin-top: 2rem;
+      color: #dc3545;
+    }
+    p {
+      margin-bottom: 1rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: var(--section-bg);
+      margin-top: 2rem;
+    }
+    footer ul {
+      list-style: none;
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 0;
+      margin-top: 0.5rem;
+    }
+    footer ul a {
+      color: #aaa;
+    }
+    footer ul a:hover {
+      color: var(--accent-color);
+    }
   </style>
 </head>
 <body>
-  <h1>Disclaimer</h1>
-  <p>Last updated: April 22, 2025</p>
+  <div class="background-fixed"></div>
 
-  <p>The information provided on Intuition Trades is for general informational and educational purposes only. All stock analysis, forecasts, and data are provided "as is" and do not constitute financial advice.</p>
+  <header>
+    <nav class="topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+      </ul>
+    </nav>
+  </header>
 
-  <h2>No Investment Advice</h2>
-  <p>We are not licensed financial advisors. You should not rely solely on the tools or information on this site to make investment decisions. Always consult a licensed professional before investing.</p>
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Disclaimer</h1>
+      <p>Understand the limitations and responsibilities when using Intuition Trades.</p>
+    </div>
+  </header>
 
-  <h2>No Guarantees</h2>
-  <p>Although we strive for accuracy, we do not guarantee any outcomes or the accuracy of any stock predictions or performance data presented.</p>
+  <main>
+    <section class="content-container">
+      <p><strong>Last updated:</strong> April 22, 2025</p>
 
-  <h2>Third-Party Data</h2>
-  <p>Some data may be provided by external APIs or sources. We are not responsible for errors or delays in this information.</p>
+      <p>The information provided on Intuition Trades is for general informational and educational purposes only. All stock analysis, forecasts, and data are provided "as is" and do not constitute financial advice.</p>
 
-  <p>By using this site, you agree to hold Intuition Trades harmless for any losses or damages resulting from your use of the site.</p>
+      <h2>No Investment Advice</h2>
+      <p>We are not licensed financial advisors. You should not rely solely on the tools or information on this site to make investment decisions. Always consult a licensed professional before investing.</p>
 
-  <p>Contact: <a href="mailto:support@intuitiontrades.com">support@intuitiontrades.com</a></p>
+      <h2>No Guarantees</h2>
+      <p>Although we strive for accuracy, we do not guarantee any outcomes or the accuracy of any stock predictions or performance data presented.</p>
+
+      <h2>Third-Party Data</h2>
+      <p>Some data may be provided by external APIs or sources. We are not responsible for errors or delays in this information.</p>
+
+      <p>By using this site, you agree to hold Intuition Trades harmless for any losses or damages resulting from your use of the site.</p>
+
+      <p>Contact: <a href="mailto:admin@intuitiontrades.com">admin@intuitiontrades.com</a></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+    <ul>
+      <li><a href="/privacy.html">Privacy</a></li>
+      <li><a href="/terms.html">Terms</a></li>
+      <li><a href="/disclaimer.html">Disclaimer</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const sunrise = 6;
+      const sunset = 19;
+      document.body.classList.add((hours >= sunset || hours < sunrise) ? 'night' : 'day');
+    });
+  </script>
 </body>
 </html>

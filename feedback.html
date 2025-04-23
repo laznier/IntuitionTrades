@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Feedback | Intuition Trades</title>
   <meta name="description" content="Send us your thoughts, suggestions, or questions." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     :root {
       --font-family: 'Arial', sans-serif;
@@ -13,43 +13,108 @@
       --secondary-bg: #444;
       --section-bg: rgba(0, 0, 0, 0.33);
       --accent-color: #16a34a;
+      --base-font-size: 16px;
+      --line-height: 1.5;
+      --heading-margin-bottom: 1rem;
+      --section-padding: 3rem 1rem;
+      --section-margin-bottom: 2rem;
+      --button-padding: 0.5rem 1rem;
       --border-radius: 4px;
+      --transition-speed: 0.3s;
     }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
+    html {
+      font-size: var(--base-font-size);
+    }
     body {
       font-family: var(--font-family);
-      background-color: #111;
       color: var(--text-color);
+      background-color: #111;
+      line-height: var(--line-height);
+    }
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      z-index: -9999;
+      transform: translateZ(0);
+    }
+    body.day .background-fixed {
+      background-image: url('/images/day-background.png');
+    }
+    body.night .background-fixed {
+      background-image: url('/images/night-background.png');
+    }
+    @media (max-width: 768px) {
+      body.day .background-fixed {
+        background-image: url('/images/day-background.png');
+      }
+      body.night .background-fixed {
+        background-image: url('/images/night-background.png');
+      }
+    }
+
+    .topnav {
+      background-color: var(--primary-bg);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .topnav ul {
+      display: flex;
+      list-style: none;
+    }
+    .topnav ul li a {
+      display: block;
+      padding: 0.875rem 1.25rem;
+      color: var(--text-color);
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+    .topnav ul li a:hover {
+      background-color: #ddd;
+      color: #333;
+    }
+
+    .hero {
+      position: relative;
+      padding: var(--section-padding);
+      text-align: center;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 0;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .content-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--section-bg);
+      border-radius: var(--border-radius);
       line-height: 1.6;
     }
-    header, footer {
-      background-color: var(--primary-bg);
-      text-align: center;
-      padding: 1rem;
-    }
-    .hero {
-      text-align: center;
-      padding: 3rem 1rem;
-      background: rgba(0, 0, 0, 0.7);
-    }
-    .hero h1 {
-      font-size: 2.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .hero p {
-      color: #ccc;
-    }
-    .content-container {
-      max-width: 600px;
-      margin: 2rem auto;
-      background: var(--section-bg);
-      padding: 2rem;
-      border-radius: var(--border-radius);
-    }
+
     label {
       display: block;
       margin: 1rem 0 0.5rem;
@@ -67,23 +132,30 @@
       color: #fff;
     }
     button {
-      display: block;
       background-color: var(--accent-color);
       color: #fff;
       border: none;
       padding: 0.75rem 1.5rem;
       border-radius: var(--border-radius);
       cursor: pointer;
+      display: block;
       margin: 0 auto;
     }
     button:hover {
       background-color: #128a3c;
     }
     .note {
-      font-size: 0.9rem;
-      color: #bbb;
       text-align: center;
       margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #bbb;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: var(--section-bg);
+      margin-top: 2rem;
     }
     footer ul {
       list-style: none;
@@ -95,7 +167,6 @@
     }
     footer ul a {
       color: #aaa;
-      text-decoration: none;
     }
     footer ul a:hover {
       color: var(--accent-color);
@@ -103,32 +174,43 @@
   </style>
 </head>
 <body>
+  <div class="background-fixed"></div>
+
   <header>
-    <h1>Intuition Trades</h1>
+    <nav class="topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+      </ul>
+    </nav>
   </header>
 
-  <section class="hero">
-    <h1>We'd Love Your Feedback</h1>
-    <p>Share your thoughts, suggestions, or any issues you're experiencing.</p>
-  </section>
+  <header class="hero">
+    <div class="hero-content">
+      <h1>We'd Love Your Feedback</h1>
+      <p>Share your thoughts, suggestions, or issues you’re experiencing.</p>
+    </div>
+  </header>
 
   <main>
-    <div class="content-container">
-      <form action="https://formspree.io/f/mvgzdrgl" method="POST">
-        <label for="name">Your Name (optional):</label>
-        <input type="text" id="name" name="name" placeholder="e.g. John Doe" />
+    <section>
+      <div class="content-container">
+        <form action="https://formspree.io/f/mvgzdrgl" method="POST">
+          <label for="name">Your Name (optional):</label>
+          <input type="text" id="name" name="name" placeholder="e.g. John Doe">
 
-        <label for="email">Your Email (optional):</label>
-        <input type="email" id="email" name="email" placeholder="example@domain.com" />
+          <label for="email">Your Email (optional):</label>
+          <input type="email" id="email" name="email" placeholder="example@domain.com">
 
-        <label for="message">Your Feedback:</label>
-        <textarea id="message" name="message" rows="5" placeholder="Your feedback here..."></textarea>
+          <label for="message">Your Feedback:</label>
+          <textarea id="message" name="message" rows="5" placeholder="Your feedback here..."></textarea>
 
-        <button type="submit">Send Feedback</button>
-      </form>
-
-      <p class="note">For business or payment issues, please visit our <a href="/contact.html">contact page</a>.</p>
-    </div>
+          <button type="submit">Send Feedback</button>
+        </form>
+        <p class="note">
+          For billing or business-related issues, please use our <a href="/contact.html">contact page</a>.
+        </p>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -140,5 +222,15 @@
       <li><a href="/contact.html">Contact</a></li>
     </ul>
   </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const sunrise = 6;
+      const sunset = 19;
+      document.body.classList.add((hours >= sunset || hours < sunrise) ? 'night' : 'day');
+    });
+  </script>
 </body>
 </html>
