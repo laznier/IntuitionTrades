@@ -487,27 +487,31 @@
     }
 /**
  * Try progressively smaller ZigZag thresholds
- * until we get at least 3 pivots (enough to fit a line).
+ * until we get ≥2 highs AND ≥2 lows.
  */
  function findZigZagWithFallback(points) {
-  const steps = [0.05, 0.03, 0.02, 0.01, 0.005];
+  const steps = [0.05, 0.03, 0.02, 0.01, 0.005, 0.002, 0.001, 0.0005];
   for (let th of steps) {
     const piv = computeZigZag(points, th);
-    // require at least 3 pivot points
-    if (piv.length >= 3) {
+    const { highs, lows } = splitHighsLows(piv);
+    if (highs.length >= 2 && lows.length >= 2) {
+      console.log(
+        `ZigZag threshold=${(th*100).toFixed(2)}% → highs=${highs.length}, lows=${lows.length}`
+      );
       return piv;
     }
   }
-  // if absolutely nothing, return empty array
+  console.warn("No adequate pivots found (even at 0.05%), no trend-lines will render.");
   return [];
 }
+
 
     /***************************************
      * 6) PLOT CHART WITH LATEST TRENDLINES
      ***************************************/
     function plotChart(points, symbol, range) {
        // 1) pivots (auto-fallback thresholds)
-         const pivots = findZigZagWithFallback(points);
+       const pivots = findZigZagWithFallback(points);
       const { highs, lows } = splitHighsLows(pivots);
 
       // 2) only last N swings
