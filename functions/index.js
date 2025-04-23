@@ -191,7 +191,6 @@ exports.createCheckoutSession = onValueCreated(
         subscription_data: {
           metadata: { firebaseUid: uid }
         },
-        customer_creation: "always"
       });
 
       // Write the session URL back
