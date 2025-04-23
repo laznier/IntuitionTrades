@@ -223,11 +223,14 @@ async function fetchHistoricalData(ticker) {
         const score = scoreSupportMatch(currentPrice, best, slope);
         log(`✅ ${ticker}: Score ${score} | Support $${best.price.toFixed(2)} (${best.touches} touches)`);
 
-        // Create and append chart container
-        const holder = document.getElementById('chartHolder');
+// *** Clear previous chart before drawing new one ***
+const holder = document.getElementById('chartHolder');
+        holder.innerHTML = '';
+
         const chartDiv = document.createElement('div');
         chartDiv.className = 'chart-container';
         holder.appendChild(chartDiv);
+
 
         // Render with Highcharts
         Highcharts.chart(chartDiv, {
