@@ -24,11 +24,70 @@
       padding: 2rem;
     }
     h1 { text-align: center; margin-bottom: 1rem; font-weight: 600; }
-    .param-section { border: 1px solid #444; background-color: var(--secondary-bg); padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .param-section {
+      border: 1px solid #444;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
     label, select { display: block; margin: 0.3rem 0; font-size: 1rem; }
-    button { font-size: 1rem; padding: 0.5rem 1rem; cursor: pointer; margin-bottom: 1rem; border: none; border-radius: 4px; background: var(--accent-color); color: var(--text-color); transition: background var(--transition-speed), transform 0.2s ease; }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 4px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      transition: background var(--transition-speed), transform 0.2s ease;
+    }
     button:hover { background: #1e3a8a; transform: scale(1.05); }
-    #status { margin-top: 1rem; white-space: pre-wrap; font-family: monospace; background: var(--secondary-bg); padding: 1rem; border: 1px solid #444; border-radius: 4px; max-height: 300px; overflow-y: auto; }
+    #status {
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      font-family: monospace;
+      background: var(--secondary-bg);
+      padding: 1rem;
+      border: 1px solid #444;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    #progressContainer {
+      margin-top: 1rem;
+      display: none;
+      background-color: var(--secondary-bg);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .progress-bar-base {
+      width: 100%;
+      background-color: #222;
+      border-radius: 10px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0;
+      background-color: var(--accent-color);
+      transition: width var(--transition-speed) ease-in-out;
+    }
+    .progress-bar-text {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      text-align: center;
+      line-height: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
     .chart-container { margin-top: 20px; width: 100%; height: 400px; }
   </style>
 </head>
@@ -53,147 +112,251 @@
         <option value="long">Long Term (24 mo)</option>
       </select>
     </label>
-    <!-- Threshold is now fixed at 5% -->
+    <!-- ZigZag threshold is fixed internally at 5% -->
   </div>
 
   <button id="runBtn">Run Scanner</button>
+
+  <div id="progressContainer">
+    <div class="progress-bar-base">
+      <div id="progressFill" class="progress-bar-fill"></div>
+      <div id="progressText" class="progress-bar-text">0%</div>
+    </div>
+  </div>
+
   <div id="status"></div>
   <div id="chartHolder"></div>
 
 <script>
-// hard-code 5%
-const THRESHOLD_PCT = 5;
+const THRESHOLD_PCT = 5;  // fixed 5% threshold
 
-// ... (loadTickers, log, sleep, fetchHistoricalData, sliceByMonths unchanged) ...
+// 1) Load ticker list from your hosted file
+async function loadTickers(index) {
+  const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(resp.statusText);
+  const txt = await resp.text();
+  return txt
+    .replace(/"/g, '')
+    .split(/,|\n/)
+    .map(t=>t.trim())
+    .filter(t=>t);
+}
 
+// 2) Utility log
+function log(msg){
+  const s = document.getElementById('status');
+  s.innerHTML += msg + '\n';
+  s.scrollTop = s.scrollHeight;
+}
+
+// 3) Pause helper
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+// 4) Fetch daily close data from your API route
+async function fetchHistoricalData(ticker){
+  const resp = await fetch(`/api/historical?symbol=${ticker}`);
+  const j = await resp.json();
+  const ts = j['Time Series (Daily)'] || {};
+  return Object.entries(ts)
+    .map(([d,v])=>({ date:new Date(d), close:+v['4. close'] }))
+    .sort((a,b)=>a.date - b.date);
+}
+
+// 5) Slice last N months
+function sliceByMonths(data, months){
+  const end = data[data.length-1].date;
+  const start = new Date(end);
+  start.setMonth(start.getMonth()-months);
+  return data.filter(p=>p.date >= start);
+}
+
+// 6) ZigZag pivot detection
 function zigzag(data, pct){
   const threshold = pct/100;
-  let pivots=[], lastPivotPrice=data[0].close, lastPivotIdx=0, dir=null;
-  for(let i=1;i<data.length;i++){
-    const price = data[i].close, change=(price-lastPivotPrice)/lastPivotPrice;
+  let pivots = [],
+      lastPivotPrice = data[0].close,
+      lastPivotIdx = 0,
+      dir = null;
+
+  for(let i=1; i<data.length; i++){
+    const price = data[i].close,
+          change = (price - lastPivotPrice)/lastPivotPrice;
+
     if(dir===null){
-      if(Math.abs(change)>=threshold){
-        dir = change>0?'up':'down';
-        pivots.push({ type: dir==='up'?'trough':'peak', price:lastPivotPrice, idx:lastPivotIdx });
-        pivots.push({ type: dir==='up'?'peak':'trough', price, idx:i });
-        lastPivotPrice=price; lastPivotIdx=i;
+      if(Math.abs(change) >= threshold){
+        dir = change>0 ? 'up' : 'down';
+        pivots.push({
+          type: dir==='up' ? 'trough' : 'peak',
+          price: lastPivotPrice,
+          idx: lastPivotIdx
+        });
+        pivots.push({
+          type: dir==='up' ? 'peak' : 'trough',
+          price,
+          idx: i
+        });
+        lastPivotPrice = price;
+        lastPivotIdx = i;
       }
-    } else if(dir==='up'){
-      if(price>lastPivotPrice){ lastPivotPrice=price; lastPivotIdx=i; }
-      else if((lastPivotPrice-price)/lastPivotPrice>=threshold){
+    }
+    else if(dir==='up'){
+      if(price > lastPivotPrice){
+        lastPivotPrice = price;
+        lastPivotIdx = i;
+      }
+      else if((lastPivotPrice - price)/lastPivotPrice >= threshold){
         pivots.push({ type:'peak', price:lastPivotPrice, idx:lastPivotIdx });
         pivots.push({ type:'trough', price, idx:i });
-        dir='down'; lastPivotPrice=price; lastPivotIdx=i;
+        dir = 'down';
+        lastPivotPrice = price;
+        lastPivotIdx = i;
       }
-    } else {
-      if(price<lastPivotPrice){ lastPivotPrice=price; lastPivotIdx=i; }
-      else if((price-lastPivotPrice)/lastPivotPrice>=threshold){
+    }
+    else { // dir==='down'
+      if(price < lastPivotPrice){
+        lastPivotPrice = price;
+        lastPivotIdx = i;
+      }
+      else if((price - lastPivotPrice)/lastPivotPrice >= threshold){
         pivots.push({ type:'trough', price:lastPivotPrice, idx:lastPivotIdx });
         pivots.push({ type:'peak', price, idx:i });
-        dir='up'; lastPivotPrice=price; lastPivotIdx=i;
+        dir = 'up';
+        lastPivotPrice = price;
+        lastPivotIdx = i;
       }
     }
   }
   return pivots;
 }
 
+// 7) Process one ticker: plot & score
 async function simulateOneTicker(ticker, months){
-  const full = await fetchHistoricalData(ticker);
-  const hist = sliceByMonths(full, months);
-  if(hist.length<10){ log(` ${ticker}: insufficient data.`); return; }
-
-  // get all pivots
-  const piv = zigzag(hist, THRESHOLD_PCT);
-  const peaks = piv.filter(p=>p.type==='peak');
-  const troughs = piv.filter(p=>p.type==='trough');
-
-  // prepare plotLines for every pivot
-  const plotLines = [
-    ...peaks.map(p=>({
-      value: p.price,
-      color: 'red',
-      width: 1,
-      dashStyle: 'ShortDash',
-      label:{ text:'R', style:{ color:'red' } }
-    })),
-    ...troughs.map(p=>({
-      value: p.price,
-      color: 'green',
-      width: 1,
-      dashStyle: 'ShortDash',
-      label:{ text:'S', style:{ color:'green' } }
-    }))
-  ];
-
-  // find most recent pivot for scoring
-  const latestRes = peaks.length ? peaks[peaks.length-1].price : null;
-  const latestSup = troughs.length ? troughs[troughs.length-1].price : null;
-
-  // draw chart
-  const container = document.createElement('div');
-  container.className = 'chart-container';
-  document.getElementById('chartHolder').innerHTML = '';
-  document.getElementById('chartHolder').appendChild(container);
-
-  Highcharts.chart(container, {
-    chart:{ type:'line', backgroundColor:'transparent' },
-    title:{ text:ticker, style:{ color:'#fff' } },
-    xAxis:{ type:'datetime' },
-    yAxis:{
-      title:{ text:'Price', style:{ color:'#fff' } },
-      plotLines
-    },
-    series:[{
-      name:'Close',
-      data: hist.map(p=>[p.date.getTime(), p.close]),
-      marker:{ enabled:false }
-    }],
-    credits:{ enabled:false }
-  });
-
-  // compute score
-  const P = hist[hist.length-1].close;
-  let raw;
-  if(latestSup && latestRes){
-    const diffSupPct = Math.abs(P - latestSup) / latestSup;
-    // if within ±5% of support, push into [0.9,0.99]
-    if(diffSupPct <= THRESHOLD_PCT/100){
-      raw = 0.9 + ((THRESHOLD_PCT/100 - diffSupPct) / (THRESHOLD_PCT/100)) * 0.09;
-    } else {
-      raw = 1 - (P - latestSup) / (latestRes - latestSup);
+  try {
+    const full = await fetchHistoricalData(ticker);
+    const hist = sliceByMonths(full, months);
+    if(hist.length < 10){
+      log(` ${ticker}: insufficient data.`);
+      return;
     }
-  } else {
-    raw = 0.5;
+
+    // get all pivots
+    const piv = zigzag(hist, THRESHOLD_PCT);
+    const peaks   = piv.filter(p=>p.type==='peak');
+    const troughs = piv.filter(p=>p.type==='trough');
+
+    // build plotLines for every pivot
+    const plotLines = [
+      ...peaks.map(p=>({
+        value: p.price,
+        color: 'red',
+        width: 1,
+        dashStyle: 'ShortDash',
+        label: { text:'R', style:{ color:'red' } }
+      })),
+      ...troughs.map(p=>({
+        value: p.price,
+        color: 'green',
+        width: 1,
+        dashStyle: 'ShortDash',
+        label: { text:'S', style:{ color:'green' } }
+      }))
+    ];
+
+    // latest pivot for score
+    const latestRes = peaks.length ? peaks[peaks.length-1].price : null;
+    const latestSup = troughs.length ? troughs[troughs.length-1].price : null;
+
+    // prepare chart container
+    const holder = document.getElementById('chartHolder');
+    holder.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'chart-container';
+    holder.appendChild(div);
+
+    // render chart
+    Highcharts.chart(div, {
+      chart: { type:'line', backgroundColor:'transparent' },
+      title: { text:ticker, style:{ color:'#fff' } },
+      xAxis:{ type:'datetime' },
+      yAxis:{
+        title:{ text:'Price', style:{ color:'#fff' } },
+        plotLines
+      },
+      series:[{
+        name:'Close',
+        data: hist.map(p=>[p.date.getTime(), p.close]),
+        marker:{ enabled:false }
+      }],
+      credits:{ enabled:false }
+    });
+
+    // compute support score
+    const P = hist[hist.length-1].close;
+    let raw;
+    if(latestSup && latestRes){
+      const supDiffPct = Math.abs(P - latestSup)/latestSup;
+      // within ±5% of support → map into [0.90,0.99]
+      if(supDiffPct <= THRESHOLD_PCT/100){
+        raw = 0.90 + ((THRESHOLD_PCT/100 - supDiffPct) / (THRESHOLD_PCT/100)) * 0.09;
+      } else {
+        raw = 1 - (P - latestSup)/(latestRes - latestSup);
+      }
+    } else {
+      raw = 0.50;
+    }
+    // clamp so never exactly 0 or 1
+    raw = Math.max(0.01, Math.min(0.99, raw));
+    const score = Math.round(raw * 100);
+
+    log(` ${ticker}: Support Score = ${score}`);
   }
-  // clamp away from 0 and 1
-  raw = Math.max(0.01, Math.min(0.99, raw));
-  const score = Math.round(raw * 100);
-  log(` ${ticker}: Support Score = ${score}`);
+  catch(e){
+    log(` ${ticker}: error ${e.message}`);
+  }
 }
 
+// 8) Runner
 async function runScanner(){
   document.getElementById('status').innerHTML = '';
   const idx = document.getElementById('indexSelect').value;
-  const tf = document.getElementById('timeframeSelect').value;
-  if(!idx||!tf){ alert('Select index & timeframe'); return; }
-  const months = tf==='short'?4: tf==='medium'?12:24;
+  const tf  = document.getElementById('timeframeSelect').value;
+  if(!idx || !tf){
+    alert('Please select both index and timeframe');
+    return;
+  }
+  const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
 
-  // load tickers
+  // tickers
   let tks = [];
-  try{ tks = await loadTickers(idx); log(`Loaded ${tks.length} tickers`); }
-  catch(e){ alert('Failed to load tickers'); return; }
+  try {
+    tks = await loadTickers(idx);
+    log(`Loaded ${tks.length} tickers`);
+  } catch {
+    alert('Failed to load tickers');
+    return;
+  }
 
-  for(const [i,tk] of tks.entries()){
-    const pct = Math.round((i+1)/tks.length*100);
-    log(`\n[${pct}%] Scanning ${tk}...`);
-    await simulateOneTicker(tk, months);
+  // show progress
+  const pc = document.getElementById('progressContainer');
+  const fill = document.getElementById('progressFill');
+  const txt  = document.getElementById('progressText');
+  pc.style.display = 'block';
+
+  for(let i=0; i<tks.length; i++){
+    const pct = Math.round((i+1)/tks.length * 100);
+    fill.style.width = `${pct}%`;
+    txt.textContent = `${pct}%`;
+    log(`\n[${pct}%] Scanning ${tks[i]}...`);
+    await simulateOneTicker(tks[i], months);
     await sleep(500);
   }
-  log('\nDone scanning all tickers.');
+
+  log('\nAll done.');
 }
 
-window.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('runBtn').addEventListener('click',runScanner);
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('runBtn').addEventListener('click', runScanner);
 });
 </script>
 </body>
