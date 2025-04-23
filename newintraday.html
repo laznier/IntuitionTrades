@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -171,7 +170,7 @@
     @media (max-width: 600px) {
       #chart {
         height: 400px;
-        padding: 0; /* remove internal padding if any */
+        padding: 0;
       }
       .chartContainer {
         padding: 0;
@@ -231,6 +230,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
+    // ← your web config
     const firebaseConfig = {
       apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
       authDomain: "persuasive-net-456607-g8.firebaseapp.com",
@@ -241,7 +241,7 @@
       databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
     (async () => {
@@ -257,208 +257,267 @@
     })();
   </script>
 
-<script>
+  <script>
     /***************************************
      * AUTOCOMPLETE FUNCTIONS
      ***************************************/
     let debounceTimeout;
     function clearSuggestions() {
       const list = document.getElementById('ticker-suggestions');
-      if (list) { list.innerHTML = ''; list.style.display = 'none'; }
+      if (list) {
+        list.innerHTML = '';
+        list.style.display = 'none';
+      }
       const fullNameElem = document.getElementById('company-full-name');
-      if (fullNameElem) fullNameElem.innerText = '';
+      if (fullNameElem) {
+        fullNameElem.innerText = '';
+      }
     }
     async function fetchTickerSuggestions(searchQuery) {
       try {
-        const resp = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-        if (!resp.ok) throw new Error(resp.statusText);
-        const data = await resp.json();
+        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        const data = await response.json();
         return data.bestMatches || [];
-      } catch (e) {
-        console.error("Ticker suggestions error:", e);
+      } catch (error) {
+        console.error("Error fetching ticker suggestions:", error);
         return [];
       }
     }
     function renderTickerSuggestions(suggestions) {
       const list = document.getElementById('ticker-suggestions');
       list.innerHTML = '';
-      if (!suggestions.length) { list.style.display = 'none'; return; }
+      if (!suggestions || suggestions.length === 0) {
+        list.style.display = 'none';
+        return;
+      }
       list.style.display = 'block';
       suggestions.forEach(item => {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span>
-                        <span class="company-name">(${item["2. name"]})</span>`;
+        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
         li.addEventListener('click', () => {
           document.getElementById('ticker').value = item["1. symbol"];
-          document.getElementById('company-full-name').innerText = item["2. name"];
+          const fullNameElem = document.getElementById('company-full-name');
+          if (fullNameElem) {
+            fullNameElem.innerText = item["2. name"];
+          }
           clearSuggestions();
         });
         list.appendChild(li);
       });
     }
-  
+
     /***************************************
-     * 1) DATA FETCH
+     * 1) DATA FETCH FUNCTIONS
      ***************************************/
-    async function fetchIntradayData(symbol, interval, outputsize="compact") {
-      const r = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
-      return r.json();
+    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
+      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
+      return response.json();
     }
     async function fetchHistoricalData(symbol) {
-      const r = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
-      return r.json();
+      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
+      return response.json();
     }
-  
+
     /***************************************
-     * 2) DATA PARSE
+     * 2) DATA PARSE FUNCTIONS
      ***************************************/
     function parseIntradayData(data, interval) {
-      const key = `Time Series (${interval})`, raw = data[key];
+      const seriesKey = `Time Series (${interval})`;
+      const raw = data[seriesKey];
       if (!raw) return [];
-      return Object.entries(raw).map(([ts,rec]) => {
-        const date = new Date(ts.replace(" ","T"));
-        return {
+      let points = [];
+      for (const timestamp in raw) {
+        const rec = raw[timestamp];
+        const date = new Date(timestamp.replace(" ", "T"));
+        points.push({
           x: date.getTime(),
           y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"],10),
-          original: ts
-        };
-      }).sort((a,b)=>a.x-b.x);
+          volume: parseInt(rec["5. volume"], 10),
+          original: timestamp
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
     }
     function parseHistoricalData(data) {
-      const key = Object.keys(data).find(k=>k.startsWith("Time Series")), raw=data[key];
+      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
+      const raw = data[seriesKey];
       if (!raw) return [];
-      return Object.entries(raw).map(([d,rec])=>{
-        const date=new Date(d);
-        return {
+      let points = [];
+      for (const dateStr in raw) {
+        const rec = raw[dateStr];
+        const date = new Date(dateStr);
+        points.push({
           x: date.getTime(),
           y: parseFloat(rec["4. close"]),
           open: parseFloat(rec["1. open"]),
           high: parseFloat(rec["2. high"]),
           low: parseFloat(rec["3. low"]),
           close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"]||rec["5. volume"],10),
-          original: d
-        };
-      }).sort((a,b)=>a.x-b.x);
+          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
+          original: dateStr
+        });
+      }
+      points.sort((a, b) => a.x - b.x);
+      return points;
     }
-  
+
     /***************************************
-     * 3) FILTER BY RANGE
+     * 3) FILTERING DATA BY RANGE
      ***************************************/
     function filterDataForRange(points, range) {
-      const now = Date.now(), ms = 24*60*60*1e3;
-      let cutoff;
-      switch(range) {
-        case "1D": cutoff = now - ms; break;
-        case "5D": cutoff = now - 5*ms; break;
-        case "1M": cutoff = now - 30*ms; break;
-        case "6M": cutoff = now - 180*ms; break;
+      const now = new Date();
+      let fromDate;
+      switch (range) {
+        case "1D":
+          fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case "5D":
+          fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+          break;
+        case "1M":
+          fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "6M":
+          fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+          break;
         case "YTD":
-          const y=new Date().getFullYear();
-          cutoff=new Date(y,0,1).getTime(); break;
-        case "1Y": cutoff = now - 365*ms; break;
-        case "5Y": cutoff = now - 5*365*ms; break;
-        default:   cutoff = now - ms;
+          fromDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case "1Y":
+          fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        case "5Y":
+          fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       }
-      return points.filter(p=>p.x>=cutoff);
+      return points.filter(p => p.x >= fromDate.getTime());
     }
-  
+
     /***************************************
      * 4) TOP BAR UPDATE
      ***************************************/
     function updateTopBar(points, symbol) {
-      if (points.length<2) return;
-      const first=points[0], last=points[points.length-1];
-      const diff= last.close-first.close;
-      const pct= (diff/first.close)*100;
-      document.getElementById('priceInfo').textContent=`${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-      const ch = document.getElementById('changeInfo');
-      if (diff>=0) {
-        ch.textContent=`+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
-        ch.style.color="#16a34a";
+      if (points.length < 2) return;
+      const first = points[0];
+      const last = points[points.length - 1];
+      const diff = last.close - first.close;
+      const pct = (diff / first.close) * 100;
+
+      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
+      const changeEl = document.getElementById('changeInfo');
+      if (diff >= 0) {
+        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#16a34a";
       } else {
-        ch.textContent=`${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
-        ch.style.color="#dc2626";
+        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
+        changeEl.style.color = "#dc2626";
       }
-      document.getElementById('timeInfo').textContent=`As of ${last.original} US/Eastern`;
+      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
     }
-  
+
     /***************************************
-     * 5) ZIGZAG & TRENDLINE HELPERS
+     * 5) ZIGZAG & OLS FITTING HELPERS
      ***************************************/
-    function computeZigZag(points, threshold=0.05) {
+    function computeZigZag(points, threshold = 0.05) {
       if (!points.length) return [];
-      const pivots = [{...points[0]}];
-      let last=points[0].y, trend=null;
-      for (let i=1;i<points.length;i++) {
-        const p=points[i].y, t=points[i].x;
-        if (!trend||trend==='down') {
-          if (p>last*(1+threshold)) { pivots.push({x:t,y:p}); last=p; trend='up'; }
+      const pivots = [{ ...points[0] }];
+      let lastPivot = points[0].y;
+      let trend = null;
+
+      for (let i = 1; i < points.length; i++) {
+        const price = points[i].y;
+        const time = points[i].x;
+
+        if (trend === null || trend === 'down') {
+          if (price > lastPivot * (1 + threshold)) {
+            pivots.push({ x: time, y: price });
+            lastPivot = price;
+            trend = 'up';
+          }
         }
-        if (!trend||trend==='up') {
-          if (p<last*(1-threshold)) { pivots.push({x:t,y:p}); last=p; trend='down'; }
+        if (trend === null || trend === 'up') {
+          if (price < lastPivot * (1 - threshold)) {
+            pivots.push({ x: time, y: price });
+            lastPivot = price;
+            trend = 'down';
+          }
         }
       }
       return pivots;
     }
+
     function splitHighsLows(pivots) {
-      const highs=[], lows=[];
-      for (let i=1;i<pivots.length-1;i++){
-        const c=pivots[i].y;
-        if (c>pivots[i-1].y && c>pivots[i+1].y) highs.push(pivots[i]);
-        if (c<pivots[i-1].y && c<pivots[i+1].y) lows.push(pivots[i]);
+      const highs = [];
+      const lows = [];
+      for (let i = 1; i < pivots.length - 1; i++) {
+        const p = pivots[i].y;
+        if (p > pivots[i - 1].y && p > pivots[i + 1].y) {
+          highs.push(pivots[i]);
+        }
+        if (p < pivots[i - 1].y && p < pivots[i + 1].y) {
+          lows.push(pivots[i]);
+        }
       }
       return { highs, lows };
     }
+
     function computeOLSLine(points) {
-      const n=points.length;
-      if (n<2) return null;
-      let sumX=0,sumY=0,sumXY=0,sumX2=0;
+      const n = points.length;
+      if (n < 2) return null;
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
       for (const p of points) {
-        sumX+=p.x; sumY+=p.y; sumXY+=p.x*p.y; sumX2+=p.x*p.x;
+        sumX += p.x;
+        sumY += p.y;
+        sumXY += p.x * p.y;
+        sumX2 += p.x * p.x;
       }
-      const m=(n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX);
-      const b=(sumY - m*sumX)/n;
-      return {m,b};
+      const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      const b = (sumY - m * sumX) / n;
+      return { m, b };
     }
-  
+
     /***************************************
-     * 6) PLOT CHART + LATEST TREND LINES
+     * 6) PLOT CHART WITH LATEST TRENDLINES
      ***************************************/
     function plotChart(points, symbol, range) {
-      // 1) pivots
-      const pivots = computeZigZag(points,0.05);
+      // 1) detect pivots
+      const pivots = computeZigZag(points, 0.05);
       const { highs, lows } = splitHighsLows(pivots);
-  
-      // 2) only latest N swings
-      const N=5;
+
+      // 2) only last N swings
+      const N = 5;
       const recentHighs = highs.slice(-N);
       const recentLows  = lows.slice(-N);
-  
-      // 3) fit lines on those
+
+      // 3) fit trendlines
       const highLine = computeOLSLine(recentHighs);
       const lowLine  = computeOLSLine(recentLows);
-  
-      // 4) price series
-      let seriesData, chartType, seriesOptions={};
+
+      // 4) main series
+      let seriesData, chartType, seriesOptions = {};
       if (["1D","5D","1M","YTD"].includes(range)) {
-        seriesData = points.map(p=>[p.x,p.y]);
-        chartType='line';
-        const fc=points[0].close, lc=points[points.length-1].close;
-        const color=lc>fc?'green':lc<fc?'red':'blue';
-        seriesOptions={ color, fillColor: Highcharts.color(color).setOpacity(0.15).get() };
+        seriesData = points.map(p => [p.x, p.y]);
+        chartType = 'line';
+        const fc = points[0].close, lc = points[points.length - 1].close;
+        const color = lc > fc ? 'green' : lc < fc ? 'red' : 'blue';
+        seriesOptions = { color, fillColor: Highcharts.color(color).setOpacity(0.15).get() };
       } else {
-        seriesData=points.map(p=>[p.x,p.open,p.high,p.low,p.close]);
-        chartType='candlestick';
-        seriesOptions={ color:'red', upColor:'green' };
+        seriesData = points.map(p => [p.x,p.open,p.high,p.low,p.close]);
+        chartType = 'candlestick';
+        seriesOptions = { color:'red', upColor:'green' };
       }
-  
-      // 5) build endpoints
+
+      // 5) compute endpoints
       const xMin = points[0].x, xMax = points[points.length-1].x;
       const upperLineData = highLine ? [
         [xMin, highLine.m*xMin + highLine.b],
@@ -468,8 +527,8 @@
         [xMin, lowLine.m*xMin + lowLine.b],
         [xMax, lowLine.m*xMax + lowLine.b]
       ] : [];
-  
-      // 6) render
+
+      // 6) render Highcharts
       Highcharts.stockChart('chart', {
         chart:{
           backgroundColor:'transparent',
@@ -477,34 +536,29 @@
           panning:{enabled:true,type:'x'},
           zooming:{type:'x'},
           events:{
-            load() {
+            load(){
               const chart=this, series=chart.series[0], pts=series.points;
               if (!pts||!pts.length) return;
-              const lp=pts[pts.length-1],
-                    lastPrice = series.type==='candlestick'?lp.close:lp.y,
-                    lineY = series.type==='candlestick'
-                      ? chart.plotTop+lp.plotClose
-                      : chart.plotTop+lp.plotY;
-  
-              // static price
-              chart.renderer.path([
-                'M',chart.plotLeft,lineY,
-                'L',chart.plotLeft+chart.plotWidth,lineY
-              ]).attr({'stroke-width':1,stroke:'gray',dashstyle:'Dash'}).add();
-  
-              chart.renderer.text(
-                lastPrice.toFixed(2),
-                chart.plotLeft+chart.plotWidth+5,
-                lineY+4
-              ).css({color:'gray'}).add();
-  
+              const lp=pts[pts.length-1];
+              const lastPrice = series.type==='candlestick'?lp.close:lp.y;
+              const lineY = series.type==='candlestick'
+                ? chart.plotTop+lp.plotClose
+                : chart.plotTop+lp.plotY;
+
+              // static last price
+              chart.renderer.path(['M',chart.plotLeft,lineY,'L',chart.plotLeft+chart.plotWidth,lineY])
+                .attr({'stroke-width':1,stroke:'gray',dashstyle:'Dash'}).add();
+
+              chart.renderer.text(lastPrice.toFixed(2),
+                chart.plotLeft+chart.plotWidth+5,lineY+4).css({color:'gray'}).add();
+
               // crosshair
               chart.crosshairLine=chart.renderer.path().attr({
                 'stroke-width':1,stroke:'black',dashstyle:'Solid'
               }).add();
               chart.crosshairLabel=chart.renderer.text('',chart.plotLeft+chart.plotWidth+5,chart.plotTop)
                 .css({color:'black'}).add();
-  
+
               Highcharts.addEvent(chart.container,'mousemove',e=>{
                 const ev=chart.pointer.normalize(e),
                       yVal=chart.yAxis[0].toValue(ev.chartY,false),
@@ -528,9 +582,9 @@
         tooltip:{split:false,shared:true,xDateFormat:'%Y-%m-%d %H:%M:%S',followTouchMove:true},
         series:[
           {
-            name:symbol.toUpperCase(),
-            data:seriesData,
-            type:chartType,
+            name: symbol.toUpperCase(),
+            data: seriesData,
+            type: chartType,
             tooltip:{valueDecimals:2},
             ...seriesOptions
           },
@@ -562,84 +616,83 @@
         credits:{enabled:false}
       });
     }
-  
+
     /***************************************
-     * 7) MAIN LOAD
+     * 7) MAIN LOAD FUNCTION
      ***************************************/
     let currentRange="1D";
     async function loadChart() {
       const symbol=document.getElementById('ticker').value.trim()||"SPY";
       document.getElementById('loading').style.display='block';
       try {
-        let raw, pts;
+        let rawData, points;
         if (currentRange==="1D") {
-          raw=await fetchIntradayData(symbol,'1min','full');
-          pts=parseIntradayData(raw,'1min');
+          rawData=await fetchIntradayData(symbol,'1min','full');
+          points=parseIntradayData(rawData,'1min');
         } else if (currentRange==="5D") {
-          raw=await fetchIntradayData(symbol,'5min','full');
-          pts=parseIntradayData(raw,'5min');
+          rawData=await fetchIntradayData(symbol,'5min','full');
+          points=parseIntradayData(rawData,'5min');
         } else if (currentRange==="1M") {
-          raw=await fetchIntradayData(symbol,'60min','full');
-          pts=parseIntradayData(raw,'60min');
+          rawData=await fetchIntradayData(symbol,'60min','full');
+          points=parseIntradayData(rawData,'60min');
         } else {
-          raw=await fetchHistoricalData(symbol);
-          pts=parseHistoricalData(raw);
+          rawData=await fetchHistoricalData(symbol);
+          points=parseHistoricalData(rawData);
         }
-        pts=filterDataForRange(pts,currentRange);
-        if (!pts.length) {
+        points=filterDataForRange(points,currentRange);
+        if (!points.length) {
           document.getElementById('noDataMsg').style.display='block';
           document.getElementById('chart').innerHTML='';
           return;
         } else {
           document.getElementById('noDataMsg').style.display='none';
         }
-        plotChart(pts,symbol,currentRange);
-        updateTopBar(pts,symbol);
-      } catch(e) {
-        console.error("Load chart error:",e);
+        plotChart(points,symbol,currentRange);
+        updateTopBar(points,symbol);
+      } catch (e) {
+        console.error("Error loading data:",e);
         alert("Failed to load data.");
       } finally {
         document.getElementById('loading').style.display='none';
       }
     }
-  
+
     /***************************************
-     * 8) RANGE TABS & INIT
+     * 8) RANGE TABS & AUTO UPDATE
      ***************************************/
-    document.querySelectorAll('.rangeTab').forEach(tab=>{
-      tab.addEventListener('click',()=>{
-        document.querySelectorAll('.rangeTab').forEach(t=>t.classList.remove('active'));
-        tab.classList.add('active');
-        currentRange=tab.getAttribute('data-range');
+    document.querySelectorAll(".rangeTab").forEach(tab=>{
+      tab.addEventListener("click",()=>{
+        document.querySelectorAll(".rangeTab").forEach(t=>t.classList.remove("active"));
+        tab.classList.add("active");
+        currentRange=tab.getAttribute("data-range");
         loadChart();
       });
     });
     document.getElementById('loadBtn').addEventListener('click',loadChart);
     document.addEventListener('DOMContentLoaded',()=>{
-      const p=new URLSearchParams(window.location.search), t=p.get('ticker');
+      const params=new URLSearchParams(window.location.search);
+      const t=params.get('ticker');
       if (t) document.getElementById('ticker').value=t;
       loadChart();
       setInterval(loadChart,60000);
     });
-  
+
     /***************************************
      * 9) AUTOCOMPLETE INIT
      ***************************************/
     document.addEventListener('DOMContentLoaded',()=>{
       const inp=document.getElementById('ticker');
       inp.addEventListener('input',()=>{
-        const v=inp.value.trim();
-        if (v.length<2) return clearSuggestions();
+        const q=inp.value.trim();
+        if (q.length<2) return clearSuggestions();
         clearTimeout(debounceTimeout);
         debounceTimeout=setTimeout(async()=>{
-          const s=await fetchTickerSuggestions(v);
+          const s=await fetchTickerSuggestions(q);
           renderTickerSuggestions(s);
         },300);
       });
       clearSuggestions();
     });
   </script>
-  
 </body>
 </html>
-```
