@@ -697,29 +697,7 @@ body.night .background-fixed {
   display: block;        /* Or inline-block if you want it on the same line */
 }
 
-/* Feedback Section */
-#feedback-section {
-  text-align: center;
-  padding: var(--section-padding);
-  background-color: var(--section-bg);
-  margin-top: var(--section-margin-bottom);
-}
-#feedback-section h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-#feedback-section p {
-  margin-bottom: 1.5rem;
-}
-#feedback-section a {
-  padding: 0.75rem 1.5rem;
-  background-color: var(--primary-bg);
-  border-radius: 0.3125rem;
-  transition: background-color var(--transition-speed);
-}
-#feedback-section a:hover {
-  background-color: #555;
-}
+
 
 /* Back Button */
 .back-button {
@@ -745,12 +723,24 @@ body.night .background-fixed {
 }
 
 /* Footer */
-footer {
-  text-align: center;
-  padding: 1rem;
-  background-color: var(--section-bg);
-  margin-top: 2rem;
+.footer-links {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
 }
+.footer-links a {
+  color: #aaa;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.footer-links a:hover {
+  color: #16a34a;
+}
+
 
 /* Responsive Adjustments */
 @media (min-width: 768px) {
@@ -1838,18 +1828,21 @@ footer {
       </div>
     </section>
   
-    <!-- Feedback Section -->
-    <section id="feedback-section">
-      <h2>Your Feedback</h2>
-      <p>Help us improve our site. Share your requests or ideas.</p>
-      <a href="feedback.html">Leave Feedback</a>
-    </section>
-  </main>
 
   <!-- Footer -->
   <footer>
     <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+    <ul class="footer-links">
+      <li><a href="/privacy.html">Privacy Policy</a></li>
+      <li><a href="/terms.html">Terms</a></li>
+      <li><a href="/disclaimer.html">Disclaimer</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+      <li><a href="/feedback.html">Feedback</a></li>
+    </ul>
   </footer>
+  
+  
+  
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
