@@ -253,31 +253,35 @@
       }
 
       btn.addEventListener("click", () => {
-        showLoading();
-        btn.disabled = true;
+  showLoading();
+  btn.disabled = true;
 
-        // Create a new session in RTDB
-        const sessionRef = push(ref(db, `FAKE/PATH/${user.uid}/checkout_sessions`));
-        set(sessionRef, {
-          price:       priceId,
-          success_url: success_url,
-          cancel_url:  cancel_url
-        });
+  const sessionRef = push(ref(db, `FAKE/PATH/${user.uid}/checkout_sessions`));
+  set(sessionRef, {
+    price:       priceId,
+    success_url: success_url,
+    cancel_url:  cancel_url
+  });
 
-        // Listen for Stripe response
-        const unsubscribe = onValue(sessionRef, snap => {
-          const data = snap.val() || {};
-          if (data.error) {
-            unsubscribe();
-            showError(data.error.message || "Internal error");
-          }
-          if (data.url) {
-            unsubscribe();
-            window.location.assign(data.url);
-          }
-        });
-      }, { once: true });
-    });
+  let fallbackTimer = setTimeout(() => {
+    showError("Stripe is taking too long to respond. Try again or use the backup.");
+  }, 15000); // ⏱ 15 seconds fallback
+
+  const unsubscribe = onValue(sessionRef, snap => {
+    const data = snap.val() || {};
+    if (data.error) {
+      clearTimeout(fallbackTimer);
+      unsubscribe();
+      showError(data.error.message || "Internal error");
+    }
+    if (data.url) {
+      clearTimeout(fallbackTimer);
+      unsubscribe();
+      window.location.assign(data.url);
+    }
+  });
+}, { once: true });
+
   </script>
 
   <script>
