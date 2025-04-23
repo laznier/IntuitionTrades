@@ -485,13 +485,29 @@
       const b = (sumY - m * sumX) / n;
       return { m, b };
     }
+/**
+ * Try progressively smaller ZigZag thresholds
+ * until we get at least 3 pivots (enough to fit a line).
+ */
+ function findZigZagWithFallback(points) {
+  const steps = [0.05, 0.03, 0.02, 0.01, 0.005];
+  for (let th of steps) {
+    const piv = computeZigZag(points, th);
+    // require at least 3 pivot points
+    if (piv.length >= 3) {
+      return piv;
+    }
+  }
+  // if absolutely nothing, return empty array
+  return [];
+}
 
     /***************************************
      * 6) PLOT CHART WITH LATEST TRENDLINES
      ***************************************/
     function plotChart(points, symbol, range) {
-      // 1) detect pivots
-      const pivots = computeZigZag(points, 0.05);
+       // 1) pivots (auto-fallback thresholds)
+         const pivots = findZigZagWithFallback(points);
       const { highs, lows } = splitHighsLows(pivots);
 
       // 2) only last N swings
