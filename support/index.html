@@ -3,361 +3,240 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Support &amp; Resistance Scanner</title>
+  <title>Support Scanner - Bounce Detector</title>
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <style>
     :root {
-      --primary-bg: #111;
-      --secondary-bg: #333;
-      --accent-color: #16a34a;
-      --text-color: #fff;
-      --font-family: 'Arial', sans-serif;
-      --transition-speed: 0.3s;
+      --bg: #111;
+      --panel: #1e1e1e;
+      --accent: #16a34a;
+      --danger: #dc2626;
+      --text: #fff;
+      --font: 'Arial', sans-serif;
     }
     body {
-      font-family: var(--font-family);
-      background-color: var(--primary-bg);
-      color: var(--text-color);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
       margin: 0 auto;
-      line-height: 1.6;
-      max-width: 900px;
       padding: 2rem;
+      max-width: 1000px;
     }
-    h1 { text-align: center; margin-bottom: 1rem; font-weight: 600; }
-    .param-section {
-      border: 1px solid #444;
-      background-color: var(--secondary-bg);
-      padding: 1rem;
-      border-radius: 4px;
+    h1 {
+      text-align: center;
       margin-bottom: 1rem;
     }
-    label, select { display: block; margin: 0.3rem 0; font-size: 1rem; }
-    button {
+    select, button {
       font-size: 1rem;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      margin-bottom: 1rem;
-      border: none;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+      background: var(--panel);
+      border: 1px solid #333;
+      color: var(--text);
       border-radius: 4px;
-      background: var(--accent-color);
-      color: var(--text-color);
-      transition: background var(--transition-speed), transform 0.2s ease;
     }
-    button:hover { background: #1e3a8a; transform: scale(1.05); }
-    #status {
-      margin-top: 1rem;
+    button {
+      background-color: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #22c55e;
+    }
+    .chart-container {
+      height: 400px;
+      margin-top: 20px;
+    }
+    #log {
+      background: var(--panel);
+      border: 1px solid #333;
+      padding: 1rem;
+      border-radius: 6px;
       white-space: pre-wrap;
       font-family: monospace;
-      background: var(--secondary-bg);
-      padding: 1rem;
-      border: 1px solid #444;
-      border-radius: 4px;
+      margin-top: 20px;
       max-height: 300px;
       overflow-y: auto;
     }
-    #progressContainer {
-      margin-top: 1rem;
-      display: none;
-      background-color: var(--secondary-bg);
-      padding: 1rem;
-      border-radius: 8px;
-      text-align: center;
-    }
-    .progress-bar-base {
-      width: 100%;
-      background-color: #222;
-      border-radius: 10px;
-      height: 24px;
-      overflow: hidden;
-      position: relative;
-      margin-bottom: 0.5rem;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      width: 0;
-      background-color: var(--accent-color);
-      transition: width var(--transition-speed) ease-in-out;
-    }
-    .progress-bar-text {
-      position: absolute;
-      width: 100%;
-      top: 0;
-      height: 100%;
-      text-align: center;
-      line-height: 24px;
-      font-weight: bold;
-      color: #fff;
-    }
-    .chart-container { margin-top: 20px; width: 100%; height: 400px; }
   </style>
 </head>
 <body>
-  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
-  <h1>Support &amp; Resistance Scanner (Premium)</h1>
 
-  <div class="param-section">
-    <label>Select Index:
-      <select id="indexSelect">
-        <option value="">-- Select an Index --</option>
-        <option value="sp500">SP500</option>
-        <option value="russell3000">Russell 3000</option>
-        <option value="vti">VTI</option>
-      </select>
-    </label>
-    <label>Timeframe:
-      <select id="timeframeSelect">
-        <option value="">-- Select Timeframe --</option>
-        <option value="short">Short Term (4 mo)</option>
-        <option value="medium">Medium Term (12 mo)</option>
-        <option value="long">Long Term (24 mo)</option>
-      </select>
-    </label>
-    <!-- ZigZag threshold is fixed internally at 5% -->
-  </div>
+  <h1>📈 Bounce Scanner (Premium)</h1>
 
+  <label>Choose Index:</label>
+  <select id="indexSelect">
+    <option value="">-- Select --</option>
+    <option value="sp500">S&P 500</option>
+    <option value="russell3000">Russell 3000</option>
+    <option value="vti">VTI</option>
+  </select>
+
+  <label>Choose Timeframe:</label>
+  <select id="timeframeSelect">
+    <option value="">-- Select --</option>
+    <option value="short">Short (4mo)</option>
+    <option value="medium">Medium (12mo)</option>
+    <option value="long">Long (24mo)</option>
+  </select>
+
+  <br/>
   <button id="runBtn">Run Scanner</button>
 
-  <div id="progressContainer">
-    <div class="progress-bar-base">
-      <div id="progressFill" class="progress-bar-fill"></div>
-      <div id="progressText" class="progress-bar-text">0%</div>
-    </div>
-  </div>
-
-  <div id="status"></div>
+  <div id="log"></div>
   <div id="chartHolder"></div>
 
 <script>
-const THRESHOLD_PCT = 5;  // fixed 5% threshold
+const log = msg => {
+  const el = document.getElementById('log');
+  el.innerHTML += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+};
 
-// 1) Load ticker list from your hosted file
-async function loadTickers(index) {
-  const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(resp.statusText);
-  const txt = await resp.text();
-  return txt
-    .replace(/"/g, '')
-    .split(/,|\n/)
-    .map(t=>t.trim())
-    .filter(t=>t);
-}
+const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-// 2) Utility log
-function log(msg){
-  const s = document.getElementById('status');
-  s.innerHTML += msg + '\n';
-  s.scrollTop = s.scrollHeight;
-}
-
-// 3) Pause helper
-function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-
-// 4) Fetch daily close data from your API route
 async function fetchHistoricalData(ticker){
-  const resp = await fetch(`/api/historical?symbol=${ticker}`);
-  const j = await resp.json();
-  const ts = j['Time Series (Daily)'] || {};
-  return Object.entries(ts)
-    .map(([d,v])=>({ date:new Date(d), close:+v['4. close'] }))
-    .sort((a,b)=>a.date - b.date);
+  const res = await fetch(`/api/historical?symbol=${ticker}`);
+  const json = await res.json();
+  const raw = json['Time Series (Daily)'] || {};
+  return Object.entries(raw)
+    .map(([d, v]) => ({ date: new Date(d), close: +v['4. close'] }))
+    .sort((a, b) => a.date - b.date);
 }
 
-// 5) Slice last N months
+async function loadTickers(index){
+  const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(res.statusText);
+  const txt = await res.text();
+  return txt.split(/,|\n/).map(s => s.trim()).filter(Boolean);
+}
+
 function sliceByMonths(data, months){
-  const end = data[data.length-1].date;
+  const end = data[data.length - 1].date;
   const start = new Date(end);
-  start.setMonth(start.getMonth()-months);
-  return data.filter(p=>p.date >= start);
+  start.setMonth(start.getMonth() - months);
+  return data.filter(p => p.date >= start);
 }
 
-// 6) ZigZag pivot detection
-function zigzag(data, pct){
-  const threshold = pct/100;
-  let pivots = [],
-      lastPivotPrice = data[0].close,
-      lastPivotIdx = 0,
-      dir = null;
+function detectSupportZones(data){
+  const bins = new Map();
+  const bucketSize = 0.5; // dollar resolution
+  const tolerance = 0.01;
 
-  for(let i=1; i<data.length; i++){
-    const price = data[i].close,
-          change = (price - lastPivotPrice)/lastPivotPrice;
+  for (let i = 1; i < data.length - 1; i++) {
+    const prev = data[i - 1].close;
+    const curr = data[i].close;
+    const next = data[i + 1].close;
 
-    if(dir===null){
-      if(Math.abs(change) >= threshold){
-        dir = change>0 ? 'up' : 'down';
-        pivots.push({
-          type: dir==='up' ? 'trough' : 'peak',
-          price: lastPivotPrice,
-          idx: lastPivotIdx
-        });
-        pivots.push({
-          type: dir==='up' ? 'peak' : 'trough',
-          price,
-          idx: i
-        });
-        lastPivotPrice = price;
-        lastPivotIdx = i;
-      }
-    }
-    else if(dir==='up'){
-      if(price > lastPivotPrice){
-        lastPivotPrice = price;
-        lastPivotIdx = i;
-      }
-      else if((lastPivotPrice - price)/lastPivotPrice >= threshold){
-        pivots.push({ type:'peak', price:lastPivotPrice, idx:lastPivotIdx });
-        pivots.push({ type:'trough', price, idx:i });
-        dir = 'down';
-        lastPivotPrice = price;
-        lastPivotIdx = i;
-      }
-    }
-    else { // dir==='down'
-      if(price < lastPivotPrice){
-        lastPivotPrice = price;
-        lastPivotIdx = i;
-      }
-      else if((price - lastPivotPrice)/lastPivotPrice >= threshold){
-        pivots.push({ type:'trough', price:lastPivotPrice, idx:lastPivotIdx });
-        pivots.push({ type:'peak', price, idx:i });
-        dir = 'up';
-        lastPivotPrice = price;
-        lastPivotIdx = i;
-      }
+    if (curr < prev && curr < next) {
+      const bucket = Math.round(curr / bucketSize) * bucketSize;
+      if (!bins.has(bucket)) bins.set(bucket, []);
+      bins.get(bucket).push(data[i]);
     }
   }
-  return pivots;
+
+  return Array.from(bins.entries())
+    .filter(([, points]) => points.length >= 2)
+    .map(([price, touches]) => ({
+      price,
+      touches: touches.length,
+      recentDate: touches[touches.length - 1].date
+    }));
 }
 
-// 7) Process one ticker: plot & score
-async function simulateOneTicker(ticker, months){
+function scoreSupportMatch(currentPrice, support, slope){
+  const proximity = Math.abs(currentPrice - support.price) / support.price;
+  const distanceScore = Math.max(0, 1 - proximity / 0.05); // within 5%
+  const touchScore = Math.min(1, support.touches / 4);     // 2–4 touches
+  const recentBonus = (new Date() - support.recentDate < 90 * 86400000) ? 1 : 0; // within 3 months
+  const directionBonus = slope < 0 ? 1 : 0; // falling into support
+
+  const raw = 0.6 * distanceScore + 0.2 * touchScore + 0.1 * recentBonus + 0.1 * directionBonus;
+  return Math.round(100 * Math.max(0.01, Math.min(0.99, raw))); // score between 1–99
+}
+
+async function simulateOne(ticker, months){
   try {
-    const full = await fetchHistoricalData(ticker);
-    const hist = sliceByMonths(full, months);
-    if(hist.length < 10){
-      log(` ${ticker}: insufficient data.`);
+    const raw = await fetchHistoricalData(ticker);
+    const data = sliceByMonths(raw, months);
+    if (data.length < 50) { log(`❌ ${ticker}: Not enough data`); return; }
+
+    const slope = data[data.length-1].close - data[data.length-10].close;
+    const supports = detectSupportZones(data);
+    const currentPrice = data[data.length-1].close;
+
+    const nearby = supports
+      .filter(s => Math.abs(currentPrice - s.price)/s.price <= 0.05)
+      .sort((a,b) => Math.abs(currentPrice - a.price) - Math.abs(currentPrice - b.price));
+
+    if (!nearby.length) {
+      log(`⚪ ${ticker}: No nearby support`);
       return;
     }
 
-    // get all pivots
-    const piv = zigzag(hist, THRESHOLD_PCT);
-    const peaks   = piv.filter(p=>p.type==='peak');
-    const troughs = piv.filter(p=>p.type==='trough');
+    const best = nearby[0];
+    const score = scoreSupportMatch(currentPrice, best, slope);
 
-    // build plotLines for every pivot
-    const plotLines = [
-      ...peaks.map(p=>({
-        value: p.price,
-        color: 'red',
-        width: 1,
-        dashStyle: 'ShortDash',
-        label: { text:'R', style:{ color:'red' } }
-      })),
-      ...troughs.map(p=>({
-        value: p.price,
-        color: 'green',
-        width: 1,
-        dashStyle: 'ShortDash',
-        label: { text:'S', style:{ color:'green' } }
-      }))
-    ];
+    log(`✅ ${ticker}: Score ${score} | Support ~$${best.price.toFixed(2)} (${best.touches} touches)`);
 
-    // latest pivot for score
-    const latestRes = peaks.length ? peaks[peaks.length-1].price : null;
-    const latestSup = troughs.length ? troughs[troughs.length-1].price : null;
-
-    // prepare chart container
     const holder = document.getElementById('chartHolder');
     holder.innerHTML = '';
-    const div = document.createElement('div');
-    div.className = 'chart-container';
-    holder.appendChild(div);
+    const chartEl = document.createElement('div');
+    chartEl.className = 'chart-container';
+    holder.appendChild(chartEl);
 
-    // render chart
-    Highcharts.chart(div, {
-      chart: { type:'line', backgroundColor:'transparent' },
-      title: { text:ticker, style:{ color:'#fff' } },
-      xAxis:{ type:'datetime' },
-      yAxis:{
-        title:{ text:'Price', style:{ color:'#fff' } },
-        plotLines
+    Highcharts.chart(chartEl, {
+      chart: { type: 'line', backgroundColor: 'transparent' },
+      title: { text: `${ticker} | Score: ${score}`, style: { color: '#fff' } },
+      xAxis: { type: 'datetime' },
+      yAxis: {
+        title: { text: 'Price' },
+        plotLines: [{
+          value: best.price,
+          color: '#16a34a',
+          dashStyle: 'ShortDash',
+          width: 2,
+          label: { text: 'Support', style: { color: '#16a34a' } }
+        }]
       },
-      series:[{
-        name:'Close',
-        data: hist.map(p=>[p.date.getTime(), p.close]),
-        marker:{ enabled:false }
+      series: [{
+        name: 'Close',
+        data: data.map(p => [p.date.getTime(), p.close]),
+        color: '#0ea5e9',
+        marker: { enabled: false }
       }],
-      credits:{ enabled:false }
+      credits: { enabled: false }
     });
 
-    // compute support score
-    const P = hist[hist.length-1].close;
-    let raw;
-    if(latestSup && latestRes){
-      const supDiffPct = Math.abs(P - latestSup)/latestSup;
-      // within ±5% of support → map into [0.90,0.99]
-      if(supDiffPct <= THRESHOLD_PCT/100){
-        raw = 0.90 + ((THRESHOLD_PCT/100 - supDiffPct) / (THRESHOLD_PCT/100)) * 0.09;
-      } else {
-        raw = 1 - (P - latestSup)/(latestRes - latestSup);
-      }
-    } else {
-      raw = 0.50;
-    }
-    // clamp so never exactly 0 or 1
-    raw = Math.max(0.01, Math.min(0.99, raw));
-    const score = Math.round(raw * 100);
-
-    log(` ${ticker}: Support Score = ${score}`);
-  }
-  catch(e){
-    log(` ${ticker}: error ${e.message}`);
+  } catch (err) {
+    log(`❌ ${ticker}: Error - ${err.message}`);
   }
 }
 
-// 8) Runner
 async function runScanner(){
-  document.getElementById('status').innerHTML = '';
-  const idx = document.getElementById('indexSelect').value;
-  const tf  = document.getElementById('timeframeSelect').value;
-  if(!idx || !tf){
-    alert('Please select both index and timeframe');
-    return;
-  }
+  const index = document.getElementById('indexSelect').value;
+  const tf = document.getElementById('timeframeSelect').value;
   const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
 
-  // tickers
-  let tks = [];
-  try {
-    tks = await loadTickers(idx);
-    log(`Loaded ${tks.length} tickers`);
-  } catch {
-    alert('Failed to load tickers');
-    return;
+  if (!index || !tf) return alert('Please select both index and timeframe.');
+
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('chartHolder').innerHTML = '';
+  log(`🔎 Running bounce detection on ${index.toUpperCase()} (${months} months)...`);
+
+  const tickers = await loadTickers(index);
+  for (let i = 0; i < tickers.length; i++) {
+    log(`\n➡️ ${tickers[i]}`);
+    await simulateOne(tickers[i], months);
+    await sleep(300); // Reduce load
   }
 
-  // show progress
-  const pc = document.getElementById('progressContainer');
-  const fill = document.getElementById('progressFill');
-  const txt  = document.getElementById('progressText');
-  pc.style.display = 'block';
-
-  for(let i=0; i<tks.length; i++){
-    const pct = Math.round((i+1)/tks.length * 100);
-    fill.style.width = `${pct}%`;
-    txt.textContent = `${pct}%`;
-    log(`\n[${pct}%] Scanning ${tks[i]}...`);
-    await simulateOneTicker(tks[i], months);
-    await sleep(500);
-  }
-
-  log('\nAll done.');
+  log(`\n✅ Scan Complete.`);
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('runBtn').addEventListener('click', runScanner);
-});
+document.getElementById('runBtn').addEventListener('click', runScanner);
 </script>
+
 </body>
 </html>
