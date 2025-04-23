@@ -3,60 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Support Scanner - Bounce Detector</title>
+  <title>📈 Bounce Scanner (Premium)</title>
+
+  <!-- Highcharts for plotting -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
+
   <style>
     :root {
       --bg: #111;
       --panel: #1e1e1e;
       --accent: #16a34a;
-      --danger: #dc2626;
+      --highlight: #0ea5e9;
       --text: #fff;
       --font: 'Arial', sans-serif;
     }
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: var(--bg);
       color: var(--text);
       font-family: var(--font);
-      margin: 0 auto;
-      padding: 2rem;
       max-width: 1000px;
+      margin: auto;
+      padding: 2rem;
     }
     h1 {
       text-align: center;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-size: 1rem;
     }
     select, button {
-      font-size: 1rem;
-      margin: 0.5rem 0;
+      width: 100%;
+      max-width: 300px;
       padding: 0.5rem;
+      margin-top: 0.3rem;
+      font-size: 1rem;
       background: var(--panel);
-      border: 1px solid #333;
       color: var(--text);
+      border: 1px solid #333;
       border-radius: 4px;
     }
     button {
-      background-color: var(--accent);
-      color: #fff;
+      background: var(--accent);
       cursor: pointer;
+      margin-top: 1rem;
     }
     button:hover {
-      background-color: #22c55e;
-    }
-    .chart-container {
-      height: 400px;
-      margin-top: 20px;
+      background: #22c55e;
     }
     #log {
+      margin-top: 2rem;
       background: var(--panel);
       border: 1px solid #333;
       padding: 1rem;
       border-radius: 6px;
-      white-space: pre-wrap;
       font-family: monospace;
-      margin-top: 20px;
+      white-space: pre-wrap;
       max-height: 300px;
       overflow-y: auto;
+    }
+    .chart-container {
+      margin-top: 2rem;
+      height: 400px;
     }
   </style>
 </head>
@@ -64,7 +75,7 @@
 
   <h1>📈 Bounce Scanner (Premium)</h1>
 
-  <label>Choose Index:</label>
+  <label for="indexSelect">Choose Index:</label>
   <select id="indexSelect">
     <option value="">-- Select --</option>
     <option value="sp500">S&P 500</option>
@@ -72,118 +83,202 @@
     <option value="vti">VTI</option>
   </select>
 
-  <label>Choose Timeframe:</label>
+  <label for="timeframeSelect">Choose Timeframe:</label>
   <select id="timeframeSelect">
     <option value="">-- Select --</option>
-    <option value="short">Short (4mo)</option>
-    <option value="medium">Medium (12mo)</option>
-    <option value="long">Long (24mo)</option>
+    <option value="short">Short (4 mo)</option>
+    <option value="medium">Medium (12 mo)</option>
+    <option value="long">Long (24 mo)</option>
   </select>
 
-  <br/>
   <button id="runBtn">Run Scanner</button>
 
   <div id="log"></div>
   <div id="chartHolder"></div>
 
   <script>
+    // --- Utilities ---
+    const ACCENT_COLOR    = '#16a34a';
+const HIGHLIGHT_COLOR = '#0ea5e9';
+
+    // Append a line to the log panel
     const log = msg => {
       const el = document.getElementById('log');
       el.innerHTML += msg + '\n';
       el.scrollTop = el.scrollHeight;
     };
-    
+
+    // Simple sleep/delay
     const sleep = ms => new Promise(res => setTimeout(res, ms));
-    
-    // ... keep fetchHistoricalData, loadTickers, sliceByMonths, detectSupportZones, scoreSupportMatch exactly as before ...
-    
-    async function simulateOne(ticker, months){
+
+    // Fetch daily time-series data from your API route
+    async function fetchHistoricalData(ticker) {
+      const res = await fetch(`/api/historical?symbol=${ticker}`);
+      const json = await res.json();
+      const raw = json['Time Series (Daily)'] || {};
+      return Object.entries(raw)
+        .map(([d, v]) => ({ date: new Date(d), close: +v['4. close'] }))
+        .sort((a, b) => a.date - b.date);
+    }
+
+    // Load list of tickers for the chosen index
+    async function loadTickers(index) {
+      const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.statusText);
+      const text = await res.text();
+      return text
+        .split(/,|\n/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    // Keep only the last N months of data
+    function sliceByMonths(data, months) {
+      const end = data[data.length - 1].date;
+      const start = new Date(end);
+      start.setMonth(start.getMonth() - months);
+      return data.filter(p => p.date >= start);
+    }
+
+    // Detect support zones by finding local minima that occur at least twice
+    function detectSupportZones(data) {
+      const bins = new Map();
+      const bucketSize = 0.5;  // $0.50 resolution
+
+      for (let i = 1; i < data.length - 1; i++) {
+        const prev = data[i - 1].close;
+        const curr = data[i].close;
+        const next = data[i + 1].close;
+        if (curr < prev && curr < next) {
+          const bucket = Math.round(curr / bucketSize) * bucketSize;
+          if (!bins.has(bucket)) bins.set(bucket, []);
+          bins.get(bucket).push(data[i]);
+        }
+      }
+
+      return Array.from(bins.entries())
+        .filter(([, touches]) => touches.length >= 2)  // at least 2 bounces
+        .map(([price, touches]) => ({
+          price,
+          touches: touches.length,
+          recentDate: touches[touches.length - 1].date
+        }));
+    }
+
+    // Compute a bounce likelihood score (1–99)
+    function scoreSupportMatch(currentPrice, support, slope) {
+      const proximity = Math.abs(currentPrice - support.price) / support.price;
+      const distanceScore = Math.max(0, 1 - proximity / 0.05);             // within ±5%
+      const touchScore    = Math.min(1, support.touches / 4);               // up to 4 touches
+      const recentBonus   = (new Date() - support.recentDate < 90 * 864e5)  ? 1 : 0; // 3 months
+      const directionBonus= slope < 0 ? 1 : 0;                              // falling into support
+
+      const raw = 0.6 * distanceScore + 0.2 * touchScore + 0.1 * recentBonus + 0.1 * directionBonus;
+      return Math.round(100 * Math.max(0.01, Math.min(0.99, raw)));
+    }
+
+    // Process a single ticker: detect support, score, render chart
+    async function simulateOne(ticker, months) {
       try {
-        const raw   = await fetchHistoricalData(ticker);
-        const data  = sliceByMonths(raw, months);
-        if (data.length < 50) { log(`❌ ${ticker}: Not enough data`); return; }
-    
-        const slope       = data[data.length-1].close - data[data.length-10].close;
-        const supports    = detectSupportZones(data);
-        const currentPrice= data[data.length-1].close;
-    
+        const fullData = await fetchHistoricalData(ticker);
+        const data = sliceByMonths(fullData, months);
+        if (data.length < 50) {
+          log(`❌ ${ticker}: Insufficient data`);
+          return;
+        }
+
+        const slope = data[data.length - 1].close - data[data.length - 10].close;
+        const supports = detectSupportZones(data);
+        const currentPrice = data[data.length - 1].close;
+
         const nearby = supports
-          .filter(s => Math.abs(currentPrice - s.price)/s.price <= 0.05)
-          .sort((a,b) => Math.abs(currentPrice - a.price) - Math.abs(currentPrice - b.price));
-    
+          .filter(s => Math.abs(currentPrice - s.price) / s.price <= 0.05)
+          .sort((a, b) => Math.abs(currentPrice - a.price) - Math.abs(currentPrice - b.price));
+
         if (!nearby.length) {
           log(`⚪ ${ticker}: No nearby support`);
           return;
         }
-    
-        const best  = nearby[0];
+
+        const best = nearby[0];
         const score = scoreSupportMatch(currentPrice, best, slope);
-    
-        log(`✅ ${ticker}: Score ${score} | Support ~$${best.price.toFixed(2)} (${best.touches} touches)`);
-    
+        log(`✅ ${ticker}: Score ${score} | Support $${best.price.toFixed(2)} (${best.touches} touches)`);
+
+        // Create and append chart container
         const holder = document.getElementById('chartHolder');
-        // ← **do not** clear holder here any more!
-    
-        // give each ticker its own chart div
-        const chartEl = document.createElement('div');
-        chartEl.className = 'chart-container';
-        chartEl.id = `chart-${ticker}`;
-        holder.appendChild(chartEl);
-    
-        Highcharts.chart(chartEl, {
-          chart: { type:'line', backgroundColor:'transparent' },
-          title: { text:`${ticker} | Score: ${score}`, style:{ color:'#fff' } },
-          xAxis: { type:'datetime' },
-          yAxis: {
-            title:{ text:'Price' },
-            plotLines: [{
-              value: best.price,
-              color: '#16a34a',
-              dashStyle: 'ShortDash',
-              width: 2,
-              label:{ text:'Support', style:{ color:'#16a34a' } }
-            }]
-          },
-          series:[{
-            name:'Close',
-            data: data.map(p=>[p.date.getTime(),p.close]),
-            color: '#0ea5e9',
-            marker:{ enabled:false }
-          }],
-          credits:{ enabled:false }
-        });
-    
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'chart-container';
+        holder.appendChild(chartDiv);
+
+        // Render with Highcharts
+        Highcharts.chart(chartDiv, {
+  chart: {
+    type: 'line',
+    backgroundColor: 'transparent'
+  },
+  title: {
+    text: `${ticker} | Score: ${score}`,
+    style: { color: '#fff' }
+  },
+  xAxis: {
+    type: 'datetime'
+  },
+  yAxis: {
+    title: { text: 'Price' },
+    plotLines: [{
+      value: best.price,
+      color: ACCENT_COLOR,          // use the JS constant
+      width: 2,
+      dashStyle: 'ShortDash',
+      label: {
+        text: 'Support',
+        style: { color: ACCENT_COLOR }
+      }
+    }]
+  },
+  series: [{
+    name: 'Close',
+    data: data.map(p => [p.date.getTime(), p.close]),
+    color: HIGHLIGHT_COLOR,        // use the JS constant
+    marker: { enabled: false }
+  }],
+  credits: { enabled: false }
+});
+
+
       } catch (err) {
         log(`❌ ${ticker}: Error - ${err.message}`);
       }
     }
-    
-    async function runScanner(){
+
+    // Kick off the full scan
+    async function runScanner() {
       const index = document.getElementById('indexSelect').value;
-      const tf    = document.getElementById('timeframeSelect').value;
-      if (!index || !tf)
-        return alert('Please select both index and timeframe.');
-    
-      const months = tf==='short'?4: tf==='medium'?12:24;
-    
-      // clear everything just once
+      const tf = document.getElementById('timeframeSelect').value;
+      if (!index || !tf) {
+        return alert('Please select both Index and Timeframe.');
+      }
+      const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
+
+      // Clear prior results
       document.getElementById('log').innerHTML = '';
       document.getElementById('chartHolder').innerHTML = '';
-      log(`🔎 Scanning ${index.toUpperCase()} over last ${months}mo…\n`);
-    
+
+      log(`🔎 Scanning ${index.toUpperCase()} (${months}mo)…\n`);
       const tickers = await loadTickers(index);
-      for (let i=0; i<tickers.length; i++){
+
+      for (let i = 0; i < tickers.length; i++) {
         log(`\n➡️ ${tickers[i]}`);
         await simulateOne(tickers[i], months);
-        await sleep(300);
+        await sleep(300);  // rate-limit
       }
-    
-      log(`\n✅ Scan Complete.`);
-    }
-    
-    document.getElementById('runBtn').addEventListener('click', runScanner);
-    </script>
-    
 
+      log(`\n✅ Scan complete.`);
+    }
+
+    // Wire up the button
+    document.getElementById('runBtn').addEventListener('click', runScanner);
+  </script>
 </body>
 </html>
