@@ -6,220 +6,117 @@
   <title>Upgrade to Premium | Intuition Trades</title>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
-    :root {
-      --font-family: 'Arial', sans-serif;
-      --text-color: #fff;
-      --primary-bg: #333;
-      --section-bg: rgba(0, 0, 0, 0.33);
-      --accent-color: #16a34a;
-      --accent-hover: #22c55e;
-      --border-radius: 12px;
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 2rem;
     }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    .topnav ul li a {
-  text-decoration: none;
-}
-
-    .main-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: calc(100vh - 50px); /* avoid hiding menu bar */
-}
-
-
-    .background-fixed {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-position: center center;
-      z-index: -9999;
-      transform: translateZ(0);
-    }
-
-    body.day .background-fixed {
-      background-image: url('/images/day-background.png');
-    }
-
-    body.night .background-fixed {
-      background-image: url('/images/night-background.png');
-    }
-
-    @media (max-width: 768px) {
-      body.day .background-fixed,
-      body.night .background-fixed {
-        background-size: cover;
-      }
-    }
-
     .plan-box {
       background: #222;
-      border-radius: var(--border-radius);
+      border-radius: 12px;
       padding: 2rem;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 12px rgba(0,0,0,0.3);
       max-width: 400px;
       width: 100%;
     }
-
     h1 {
       font-size: 1.8rem;
       margin-bottom: 1rem;
-      color: var(--accent-color);
     }
-
     p {
       margin-bottom: 0.75rem;
       font-size: 1rem;
       color: #ccc;
     }
-
     .price {
       font-size: 1.5rem;
-      color: var(--accent-color);
+      color: #16a34a;
       margin: 1rem 0;
     }
-
     button {
-      background: var(--accent-color);
+      background: #16a34a;
       color: white;
       padding: 0.75rem 1.5rem;
       font-size: 1rem;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      transition: background 0.3s ease;
     }
-
     button:hover {
-      background: var(--accent-hover);
+      background: #22c55e;
     }
-/* Navigation Styles (Reuse from main site theme) */
-.topnav {
-      background-color: var(--primary-bg);
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-    }
-    .topnav ul {
-      display: flex;
-      list-style: none;
-    }
-    .topnav ul li a {
-      display: block;
-      padding: 0.875rem 1.25rem;
-      color: var(--text-color);
-      transition: background-color var(--transition-speed), color var(--transition-speed);
-    }
-    .topnav ul li a:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-    
   </style>
 </head>
 <body>
-  <div class="background-fixed"></div>
+  <div class="plan-box">
+    <h1>Premium Membership</h1>
+    <p>🚀 Unlimited tools</p>
+    <p>🔒 No ads, no distractions</p>
+    <p>⚡ Cancel anytime</p>
+    <div class="price">$9.99 / month</div>
+    <button id="subscribeBtn">Subscribe Now</button>
+  </div>
 
-  <header>
-    <nav class="topnav">
-      <ul>
-        <li><a href="/">Home</a></li>
-      </ul>
-    </nav>
-  </header>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
 
-  <main class="main-content">
-    <div class="plan-box">
-      <h1>Premium Membership</h1>
-      <p>🚀 Unlimited tools</p>
-      <p>🔒 No ads, no distractions</p>
-      <p>⚡ Cancel anytime</p>
-      <div class="price">$9.99 / month</div>
-      <button id="subscribeBtn">Subscribe Now</button>
-    </div>
-  </main>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId: "persuasive-net-456607-g8"
+    };
 
-  <!-- your scripts below remain unchanged -->
-</body>
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getDatabase(app);
 
+    const priceId = "price_1RGXodFEfvI8pkt9Iy7vN0wU";
+    const btn     = document.getElementById("subscribeBtn");
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        alert("Please sign in first.");
+        window.location.href = "/login.html";
+        return;
+      }
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-    projectId: "persuasive-net-456607-g8"
-  };
+      btn.addEventListener("click", async () => {
+        console.log("Subscribe clicked for", user.uid);
 
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getDatabase(app);
+        // Create a new child reference under checkout_sessions
+        const newSessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
+        // Write session request data
+        await set(newSessionRef, {
+          price:       priceId,
+          success_url: window.location.origin + "/success.html",
+          cancel_url:  window.location.origin + "/cancel.html"
+        });
 
-  const priceId = "price_1RGXodFEfvI8pkt9Iy7vN0wU";
-  const btn     = document.getElementById("subscribeBtn");
-
-  onAuthStateChanged(auth, user => {
-    if (!user) {
-      alert("Please sign in first.");
-      window.location.href = "/login.html";
-      return;
-    }
-
-    btn.addEventListener("click", async () => {
-      console.log("Subscribe clicked for", user.uid);
-
-      // Create a new child reference under checkout_sessions
-      const newSessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
-      // Write session request data
-      await set(newSessionRef, {
-        price:       priceId,
-        success_url: window.location.origin + "/success.html",
-        cancel_url:  window.location.origin + "/cancel.html"
-      });
-
-      // Listen for Stripe to write back the session URL or error
-      const unsubscribe = onValue(newSessionRef, snap => {
-        const data = snap.val();
-        console.log("Session update:", data);
-        if (data?.error) {
-          unsubscribe();
-          alert(`Error: ${data.error.message}`);
-        }
-        if (data?.url) {
-          unsubscribe();
-          window.location.assign(data.url);
-        }
-      }, { onlyOnce: false });
-    }, { once: true });
-  });
-</script>
-  <script>document.addEventListener("DOMContentLoaded", () => {
-    const now = new Date();
-    const hours = now.getHours();
-    const sunrise = 6;
-    const sunset = 19;
-  
-    if (hours >= sunset || hours < sunrise) {
-      document.body.classList.add('night');
-    } else {
-      document.body.classList.add('day');
-    }
-  });
+        // Listen for Stripe to write back the session URL or error
+        const unsubscribe = onValue(newSessionRef, snap => {
+          const data = snap.val();
+          console.log("Session update:", data);
+          if (data?.error) {
+            unsubscribe();
+            alert(`Error: ${data.error.message}`);
+          }
+          if (data?.url) {
+            unsubscribe();
+            window.location.assign(data.url);
+          }
+        }, { onlyOnce: false });
+      }, { once: true });
+    });
   </script>
 </body>
 </html>
