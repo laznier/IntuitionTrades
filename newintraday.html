@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Stock Chart with Support Plotting</title>
+
+  <!-- Highcharts Stock Scripts -->
+  <script src="https://code.highcharts.com/stock/highstock.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
+  <style>
+    :root {
+      --primary-bg: #111;
+      --secondary-bg: #333;
+      --accent-color: #16a34a;
+      --text-color: #fff;
+      --font-family: 'Arial', sans-serif;
+      --transition-speed: 0.3s;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font-family);
+      background-color: var(--primary-bg);
+      color: var(--text-color);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    h1 { text-align: center; margin-bottom: 10px; font-weight: 600; }
+
+    /* Buttons */
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover { background: #1e3a8a; }
+
+    /* Ticker Input */
+    #tickerForm {
+      text-align: center;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    #ticker {
+      padding: 8px;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #555;
+      width: 150px;
+      background-color: var(--secondary-bg);
+      color: var(--text-color);
+      text-align: center;
+    }
+    #ticker-suggestions {
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0;
+      background-color: var(--secondary-bg);
+      border: 1px solid #555;
+      width: calc(100% - 2px);
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      list-style: none;
+      display: none;
+    }
+    #ticker-suggestions li {
+      padding: 8px;
+      cursor: pointer;
+      color: var(--text-color);
+    }
+    #ticker-suggestions li:hover {
+      background-color: var(--accent-color);
+    }
+    #company-full-name {
+      margin-top: 5px;
+      font-size: 0.9rem;
+      color: var(--accent-color);
+      text-align: center;
+    }
+
+    /* Mode Tabs */
+    #modeTabs {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .modeTab {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0 4px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: var(--secondary-bg);
+      cursor: pointer;
+      transition: background var(--transition-speed);
+      color: var(--text-color);
+    }
+    .modeTab.active {
+      background: var(--accent-color);
+      border-color: #1e3a8a;
+    }
+
+    /* Chart Container */
+    .chartContainer {
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: var(--secondary-bg);
+      padding: 10px;
+    }
+    #chart { height: 600px; width: 100%; }
+    #loading { text-align: center; font-style: italic; color: var(--accent-color); display: none; }
+    #noDataMsg { display:none; text-align:center; margin-top:10px; color:#f87171; }
+
+    @media (max-width:600px) {
+      #chart { height:400px; }
+    }
+  </style>
+</head>
+<body>
+
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  <h1>Live Stock Chart with Support</h1>
+
+  <div id="tickerForm">
+    <input type="text" id="ticker" value="SPY" placeholder="Enter Ticker" />
+    <ul id="ticker-suggestions"></ul>
+    <div id="company-full-name"></div>
+    <button id="loadBtn">Load Chart</button>
+    <button id="plotSupportBtn">Plot Support</button>
+  </div>
+
+  <div id="modeTabs">
+    <span class="modeTab active" data-mode="intraday">Intraday (5min)</span>
+    <span class="modeTab" data-mode="daily">Daily (Adjusted)</span>
+  </div>
+
+  <div id="loading">Loading data...</div>
+  <div id="noDataMsg">No data available.</div>
+
+  <div class="chartContainer">
+    <div id="chart"></div>
+  </div>
+
+  <script>
+    // Theme colors
+    const ACCENT_COLOR = '#16a34a';
+
+    // State
+    let currentMode = 'intraday';
+    let chartRef = null;
+
+    // Utility: debounce
+    function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+    // Autocomplete
+    async function fetchTickerSuggestions(q){
+      const res = await fetch(`/api/ticker?query=${encodeURIComponent(q)}`);
+      if(!res.ok)throw'Error';
+      const json = await res.json();
+      return json.bestMatches||[];
+    }
+    function renderSuggestions(list){
+      const ul = document.getElementById('ticker-suggestions');
+      ul.innerHTML='';
+      if(!list.length){ ul.style.display='none'; return; }
+      ul.style.display='block';
+      list.forEach(item=>{
+        const li=document.createElement('li');
+        li.textContent=`${item["1. symbol"]} (${item["2. name"]})`;
+        li.onclick=()=>{
+          document.getElementById('ticker').value=item["1. symbol"];
+          document.getElementById('company-full-name').textContent=item["2. name"];
+          ul.style.display='none';
+        };
+        ul.appendChild(li);
+      });
+    }
+    document.getElementById('ticker').addEventListener('input', debounce(async e=>{
+      const q=e.target.value.trim();
+      if(q.length<2){ document.getElementById('ticker-suggestions').style.display='none'; return; }
+      const list=await fetchTickerSuggestions(q);
+      renderSuggestions(list);
+    },300));
+
+    // Fetch data
+    async function fetchIntraday(symbol){
+      const res=await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
+      if(!res.ok) throw 'Intraday error';
+      return res.json();
+    }
+    async function fetchDaily(symbol){
+      const res=await fetch(`/api/historical?symbol=${symbol}&outputsize=full&adjusted=true`);
+      if(!res.ok) throw 'Daily error';
+      return res.json();
+    }
+
+    // Parse
+    function parseIntraday(raw){
+      const key=`Time Series (5min)`;
+      const ts=raw[key]||{};
+      const pts=Object.entries(ts).map(([dt,d])=>{
+        const date=new Date(dt.replace(' ','T'));
+        return [date.getTime(), +d['4. close']];
+      });
+      return pts.sort((a,b)=>a[0]-b[0]);
+    }
+    function parseDaily(raw){
+      const key=Object.keys(raw).find(k=>k.includes('Time Series'));
+      const ts=raw[key]||{};
+      const pts=Object.entries(ts).map(([dt,d])=>{
+        const date=new Date(dt);
+        return [date.getTime(), +d['4. close']];
+      });
+      return pts.sort((a,b)=>a[0]-b[0]);
+    }
+
+    // Plot
+    function plot(points, symbol){
+      if(chartRef){
+        chartRef.destroy();
+      }
+      chartRef = Highcharts.stockChart('chart', {
+        chart: { backgroundColor:'transparent', zoomType:'x' },
+        title: { text: symbol.toUpperCase() },
+        rangeSelector:{ enabled:true },
+        navigator:{ enabled:true },
+        scrollbar:{ enabled:true },
+        series: [{
+          name: symbol.toUpperCase(),
+          data: points,
+          tooltip:{ valueDecimals:2 }
+        }],
+        credits:{ enabled:false }
+      });
+    }
+
+    // Load Chart
+    async function loadChart(){
+      const sym=document.getElementById('ticker').value.trim().toUpperCase()||'SPY';
+      document.getElementById('loading').style.display='block';
+      document.getElementById('noDataMsg').style.display='none';
+      try {
+        let raw, pts;
+        if(currentMode==='intraday'){
+          raw=await fetchIntraday(sym);
+          pts=parseIntraday(raw);
+        } else {
+          raw=await fetchDaily(sym);
+          pts=parseDaily(raw);
+        }
+        if(!pts.length){
+          document.getElementById('noDataMsg').style.display='block';
+          return;
+        }
+        plot(pts, sym);
+      } catch(err){
+        console.error(err);
+        document.getElementById('noDataMsg').style.display='block';
+      } finally {
+        document.getElementById('loading').style.display='none';
+      }
+    }
+    document.getElementById('loadBtn').addEventListener('click',loadChart);
+
+    // Mode Tabs
+    document.querySelectorAll('.modeTab').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        document.querySelectorAll('.modeTab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        currentMode=tab.getAttribute('data-mode');
+        loadChart();
+      });
+    });
+
+    // Support detection logic
+    function detectSupportZones(data){
+      const bins=new Map(), bucket= (Math.max(...data.map(p=>p[1])) - Math.min(...data.map(p=>p[1])))/100; 
+      for(let i=1;i<data.length-1;i++){
+        const prev=data[i-1][1], curr=data[i][1], next=data[i+1][1];
+        if(curr<prev && curr<next){
+          const b=Math.round(curr/bucket)*bucket;
+          if(!bins.has(b)) bins.set(b,[]);
+          bins.get(b).push(curr);
+        }
+      }
+      return Array.from(bins.entries())
+        .filter(([,arr])=>arr.length>=2)
+        .map(([price,arr])=>({ price, touches:arr.length }));
+    }
+
+    // Plot support lines on current zoom
+    function plotSupport(){
+      if(!chartRef) return;
+      // remove existing plotLines
+      chartRef.yAxis[0].removePlotLine('support-lines');
+      const ext=chartRef.xAxis[0].getExtremes();
+      const pts=chartRef.series[0].data
+        .filter(p=>p.x>=ext.min && p.x<=ext.max)
+        .map(p=>[p.x,p.y]);
+      const supports=detectSupportZones(pts);
+      // draw all lines
+      supports.forEach((s,i)=>{
+        chartRef.yAxis[0].addPlotLine({
+          id: 'support-'+i,
+          value: s.price,
+          color: ACCENT_COLOR,
+          width: 2,
+          dashStyle: 'ShortDash',
+          label:{ text:`Support ${s.price.toFixed(2)} (${s.touches})`, style:{ color:ACCENT_COLOR } }
+        });
+      });
+    }
+    document.getElementById('plotSupportBtn').addEventListener('click', plotSupport);
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadChart);
+  </script>
+</body>
+</html>
