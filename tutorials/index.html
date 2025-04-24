@@ -1,90 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Intuition Trades | Tutorials</title>
-  <meta name="description" content="Tutorials for Intuition Trades—coming soon!" />
+  <meta name="description" content="Tutorials for Intuition Trades—getting started and more!" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Link to your existing stylesheet -->
-  <link rel="stylesheet" href="../style.css" />
-
   <style>
-    /* Back Button Styles (same as previous implementation) */
-    .back-button {
-      display: inline-block;
-      margin: 20px;
-      padding: 10px 20px;
-      background-color: #333;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 5px;
-      transition: background-color 0.3s ease;
+    :root {
+      --font-family: 'Arial', sans-serif;
+      --text-color: #fff;
+      --primary-bg: #333;
+      --secondary-bg: #444;
+      --section-bg: rgba(0, 0, 0, 0.33);
+      --accent-color: #16a34a;
+      --base-font-size: 16px;
+      --line-height: 1.5;
+      --heading-margin-bottom: 1rem;
+      --section-padding: 3rem 1rem;
+      --section-margin-bottom: 2rem;
+      --button-padding: 0.5rem 1rem;
+      --border-radius: 4px;
+      --transition-speed: 0.3s;
     }
-    .back-button:hover {
-      background-color: #555;
-    }
-    
-    /* Navigation Bar */
-    .topnav {
-      background-color: #333;
-      overflow-x: auto;
-      white-space: nowrap;
-      -webkit-overflow-scrolling: touch;
-    }
-    .topnav ul {
-      list-style: none;
+
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: var(--base-font-size);
+    }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-color);
+      background-color: #111;
+      line-height: var(--line-height);
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    h1, h2 {
+      margin-bottom: var(--heading-margin-bottom);
+      font-weight: normal;
+    }
+
+    .background-fixed {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      z-index: -9999;
+      transform: translateZ(0);
+    }
+
+    body.day .background-fixed {
+      background-image: url('/images/day-background.png');
+    }
+
+    body.night .background-fixed {
+      background-image: url('/images/night-background.png');
+    }
+
+    .topnav {
+      background-color: var(--primary-bg);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+    }
+
+    .topnav ul {
       display: flex;
+      list-style: none;
     }
-    .topnav ul li {
-      flex: none;
-      position: relative;
-    }
+
     .topnav ul li a {
       display: block;
-      padding: 14px 20px;
-      color: white;
-      text-decoration: none;
-      transition: background-color 0.3s ease, color 0.3s ease;
+      padding: 0.875rem 1.25rem;
+      color: var(--text-color);
+      transition: background-color var(--transition-speed), color var(--transition-speed);
     }
+
     .topnav ul li a:hover {
       background-color: #ddd;
       color: #333;
     }
-    .dropdown-menu {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      display: none;
-      background-color: #333;
-      min-width: 150px;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      z-index: 9999;
-    }
-    .dropdown-menu li a {
-      display: block;
-      padding: 10px 20px;
-      color: #fff;
-      text-decoration: none;
-      transition: background-color 0.3s ease;
-    }
-    .dropdown-menu li a:hover {
-      background-color: #ddd;
-      color: #333;
-    }
 
-    /* Hero Section */
     .hero {
       position: relative;
-      background: url('../images/hero-background.jpg') center/cover no-repeat;
-      color: #fff;
-      padding: 3rem 1rem;
+      padding: var(--section-padding);
       text-align: center;
     }
+
     .hero::before {
       content: "";
       position: absolute;
@@ -92,27 +108,29 @@
       background: rgba(0, 0, 0, 0.8);
       z-index: 0;
     }
+
     .hero-content {
       position: relative;
       z-index: 1;
     }
 
-    /* Video Grid Layout */
-    .video-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
+    .content-container {
+      max-width: 800px;
+      margin: 2rem auto;
       padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
+      background-color: var(--section-bg);
+      border-radius: var(--border-radius);
+      line-height: 1.6;
+      text-align: center;
     }
 
     .video-container {
       position: relative;
-      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      padding-bottom: 56.25%;
       height: 0;
       overflow: hidden;
       max-width: 100%;
+      margin-top: 1.5rem;
     }
 
     .video-container iframe {
@@ -123,43 +141,61 @@
       height: 100%;
     }
 
-    /* Footer */
     footer {
       text-align: center;
-      padding: 20px;
-      background: #333;
-      color: white;
-      margin-top: 20px;
+      padding: 1rem;
+      background-color: var(--section-bg);
+      margin-top: 2rem;
     }
   </style>
 </head>
 <body>
 
-<!-- Hero Section -->
-<header class="hero">
-  <div class="hero-content">
-    <h1>Tutorials</h1>
-    <p>More tutorials are under development and will be published soon!</p>
-  </div>
-</header>
+  <!-- Fixed Background Element -->
+  <div class="background-fixed"></div>
 
-<!-- Simplified Navigation: Back to Home Button -->
-<nav>
-  <a href="https://intuitiontrades.com" class="back-button">Back to Home</a>
-</nav>
+  <!-- Top Navigation -->
+  <header>
+    <nav class="topnav">
+      <ul>
+        <li><a href="/">Home</a></li>
+      </ul>
+    </nav>
+  </header>
 
-<!-- Main Content: Tutorial Videos -->
-<main>
-  <section style="text-align: center;">
-    <h2>Tutorial Videos</h2>
-    <p>We’re currently working on new tutorial videos to help you get the most out of our tools.</p>
-    <p>Stay tuned for updates!</p>
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-content">
+      <h1>Tutorials</h1>
+      <p>Learn how to get started with Intuition Trades</p>
+    </div>
+  </header>
 
-   
-<!-- Footer -->
-<footer>
-  <p>&copy; 2025 Laznier Mederos Santos. All rights reserved.</p>
-</footer>
+  <!-- Main Content -->
+  <main>
+    <section class="content-container">
+      <h2>Getting Started</h2>
+      <p>This video walks you through how to use the Intuition Trades platform.</p>
+      <div class="video-container">
+        <iframe src="https://www.youtube.com/embed/GTqkC1xmMZI" frameborder="0" allowfullscreen></iframe>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2025 Intuition Trades. All rights reserved.</p>
+  </footer>
+
+  <!-- Day/Night Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const hours = new Date().getHours();
+      const sunrise = 6;
+      const sunset = 19;
+      document.body.classList.add((hours >= sunset || hours < sunrise) ? 'night' : 'day');
+    });
+  </script>
 
 </body>
 </html>
