@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Stock Chart</title>
+  <title>Stock Chart</title>
+
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+
   <style>
     :root {
       --primary-bg: #111;
@@ -16,6 +18,7 @@
       --font-family: 'Arial', sans-serif;
       --transition-speed: 0.3s;
     }
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
       font-family: var(--font-family);
       background-color: var(--primary-bg);
@@ -25,31 +28,27 @@
       padding: 2rem;
       line-height: 1.6;
     }
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: var(--accent-color);
-  color: var(--text-color);
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background var(--transition-speed);
-}
-button:hover {
-  background: #1e3a8a;
-}
+    h1 { text-align: center; margin-bottom: 10px; font-weight: 600; }
 
-    /* Ticker Input Form & Autocomplete */
+    /* Buttons */
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background var(--transition-speed);
+    }
+    button:hover { background: #1e3a8a; }
+
+    /* Ticker Input */
     #tickerForm {
       text-align: center;
       margin-bottom: 10px;
-      position: relative; /* For positioning autocomplete suggestions */
+      position: relative;
     }
     #ticker {
       padding: 8px;
@@ -57,603 +56,273 @@ button:hover {
       border-radius: 4px;
       border: 1px solid #555;
       width: 150px;
-      text-align: center;
       background-color: var(--secondary-bg);
       color: var(--text-color);
+      text-align: center;
     }
     #ticker-suggestions {
       position: absolute;
-      top: 100%;
+      top: calc(100% + 2px);
       left: 0;
       background-color: var(--secondary-bg);
       border: 1px solid #555;
-      width: calc(100% - 4px);
+      width: calc(100% - 2px);
       max-height: 200px;
       overflow-y: auto;
       z-index: 1000;
       list-style: none;
-      padding: 0;
-      margin: 0;
       display: none;
     }
     #ticker-suggestions li {
       padding: 8px;
       cursor: pointer;
+      color: var(--text-color);
     }
     #ticker-suggestions li:hover {
       background-color: var(--accent-color);
-      color: var(--text-color);
     }
     #company-full-name {
       margin-top: 5px;
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: var(--accent-color);
       text-align: center;
     }
-    /* Top Bar */
-    #topBar {
-      text-align: center;
-      margin-bottom: 5px;
-    }
-    #priceInfo {
-      font-size: 1.8rem;
-      font-weight: 600;
-      margin-right: 10px;
-    }
-    #changeInfo {
-      font-size: 1.4rem;
-      margin-right: 10px;
-    }
-    #timeInfo {
-      font-size: 1rem;
-      color: #ccc;
-    }
-    #caution {
-      text-align: center;
-      font-size: 0.9rem;
-      color: #dc2626;
-      margin-bottom: 10px;
-    }
-    /* Range Tabs */
-    #rangeTabs {
+
+    /* Mode Tabs */
+    #modeTabs {
       text-align: center;
       margin-bottom: 20px;
     }
-    .rangeTab {
+    .modeTab {
       display: inline-block;
       padding: 8px 16px;
       margin: 0 4px;
       border: 1px solid #555;
       border-radius: 4px;
-      cursor: pointer;
       background: var(--secondary-bg);
+      cursor: pointer;
       transition: background var(--transition-speed);
-    }
-    .rangeTab.active {
-      background: var(--accent-color);
       color: var(--text-color);
+    }
+    .modeTab.active {
+      background: var(--accent-color);
       border-color: #1e3a8a;
     }
-    
+
     /* Chart Container */
     .chartContainer {
-      padding: 10px;
       border: 1px solid #555;
       border-radius: 4px;
       background: var(--secondary-bg);
+      padding: 10px;
     }
-    #chart {
-      width: 100%;
-      height: 600px;
-    }
-    #loading {
-      text-align: center;
-      margin-top: 10px;
-      font-style: italic;
-      color: var(--accent-color);
-      display: none;
-    }
-    #backHome {
-      margin-bottom: 20px;
-    }
-    @media (max-width: 600px) {
-      #chart {
-        height: 400px;
-      }
-      #priceInfo {
-        font-size: 1.4rem;
-      }
-      #changeInfo {
-        font-size: 1.2rem;
-      }
-    
-    }
-    @media (max-width: 600px) {
-  #chart {
-    height: 400px;
-    padding: 0; /* remove internal padding if any */
-  }
-  .chartContainer {
-    padding: 0;
-    border: none;
-  }
-}
+    #chart { height: 600px; width: 100%; }
+    #loading { text-align: center; font-style: italic; color: var(--accent-color); display: none; }
+    #noDataMsg { display:none; text-align:center; margin-top:10px; color:#f87171; }
 
+    @media (max-width:600px) {
+      #chart { height:400px; }
+    }
   </style>
 </head>
 <body>
-  <!-- Back to Home Button -->
-  <button id="backHome" onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
-  
-  <h1>Live Stock Chart</h1>
-  
-  <!-- Ticker Input Form with Autocomplete -->
+
+  <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Home</button>
+  <h1>Stock Chart</h1>
+
   <div id="tickerForm">
     <input type="text" id="ticker" value="SPY" placeholder="Enter Ticker" />
     <ul id="ticker-suggestions"></ul>
     <div id="company-full-name"></div>
     <button id="loadBtn">Load Chart</button>
+    <button id="plotSupportBtn">Plot Support</button>
   </div>
 
-  <!-- Top Bar: Price, Change, Time -->
-  <div id="topBar">
-    <span id="priceInfo"></span>
-    <span id="changeInfo"></span>
-    <span id="timeInfo"></span>
-  </div>
-  
-  <!-- Caution Note -->
-  <div id="caution">
-    Data from Alpha Vantage can be delayed by 15 minutes (Do not use for trading).
+  <div id="modeTabs">
+    <span class="modeTab active" data-mode="intraday">Intraday (5min)</span>
+    <span class="modeTab" data-mode="daily">Daily (Adjusted)</span>
   </div>
 
-  <!-- Range Tabs -->
-  <div id="rangeTabs">
-    <div class="rangeTab active" data-range="1D">1D</div>
-    <div class="rangeTab" data-range="5D">5D</div>
-    <div class="rangeTab" data-range="1M">1M</div>
-    <div class="rangeTab" data-range="6M">6M</div>
-    <div class="rangeTab" data-range="YTD">YTD</div>
-    <div class="rangeTab" data-range="1Y">1Y</div>
-    <div class="rangeTab" data-range="5Y">5Y</div>
-  </div>
+  <div id="loading">Loading data...</div>
+  <div id="noDataMsg">No data available.</div>
 
-  <!-- Chart Container -->
   <div class="chartContainer">
     <div id="chart"></div>
-    <div id="loading" style="display:none;">Loading data...</div>
   </div>
 
-  <div id="noDataMsg" style="display: none; text-align: center; margin-top: 1rem; color: #f87171;">
-    No chart data available for this time range (often happens after market hours).
-  </div>
-  
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-    // ← your web config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-  
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-  
-    (async () => {
-      // wait for Firebase to restore the session (or tell us there is none)
-      const user = await new Promise(resolve =>
-        onAuthStateChanged(auth, resolve)
-      );
-  
-      if (!user) {
-        alert("Please sign in to use this tool.");
-        window.location.href = "/login.html";
-        return;
-      }
-  
-      // at this point we know the user is signed in (basic *or* premium)
-      // you can now initialize your page‑specific JS below:
-      // initMacdTool();  or whatever your page needs
-      console.log("User is signed in, proceeding with basic tool.");
-    })();
-  </script>
-  
   <script>
-    /***************************************
-     * AUTOCOMPLETE FUNCTIONS
-     ***************************************/
-     let debounceTimeout;
-    function clearSuggestions() {
-      const list = document.getElementById('ticker-suggestions');
-      if (list) {
-        list.innerHTML = '';
-        list.style.display = 'none';
-      }
-      const fullNameElem = document.getElementById('company-full-name');
-      if (fullNameElem) {
-        fullNameElem.innerText = '';
-      }
+    // Theme colors
+    const ACCENT_COLOR = '#16a34a';
+
+    // State
+    let currentMode = 'intraday';
+    let chartRef = null;
+
+    // Utility: debounce
+    function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+
+    // Autocomplete
+    async function fetchTickerSuggestions(q){
+      const res = await fetch(`/api/ticker?query=${encodeURIComponent(q)}`);
+      if(!res.ok)throw'Error';
+      const json = await res.json();
+      return json.bestMatches||[];
     }
-    async function fetchTickerSuggestions(searchQuery) {
-      try {
-        const response = await fetch(`/api/ticker?query=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
-        }
-        const data = await response.json();
-        return data.bestMatches || [];
-      } catch (error) {
-        console.error("Error fetching ticker suggestions:", error);
-        return [];
-      }
-    }
-    function renderTickerSuggestions(suggestions) {
-      const list = document.getElementById('ticker-suggestions');
-      list.innerHTML = '';
-      if (!suggestions || suggestions.length === 0) {
-        list.style.display = 'none';
-        return;
-      }
-      list.style.display = 'block';
-      suggestions.forEach(item => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="ticker-symbol">${item["1. symbol"]}</span> <span class="company-name">(${item["2. name"]})</span>`;
-        li.addEventListener('click', () => {
-          document.getElementById('ticker').value = item["1. symbol"];
-          const fullNameElem = document.getElementById('company-full-name');
-          if (fullNameElem) {
-            fullNameElem.innerText = item["2. name"];
-          }
-          clearSuggestions();
-        });
-        list.appendChild(li);
+    function renderSuggestions(list){
+      const ul = document.getElementById('ticker-suggestions');
+      ul.innerHTML='';
+      if(!list.length){ ul.style.display='none'; return; }
+      ul.style.display='block';
+      list.forEach(item=>{
+        const li=document.createElement('li');
+        li.textContent=`${item["1. symbol"]} (${item["2. name"]})`;
+        li.onclick=()=>{
+          document.getElementById('ticker').value=item["1. symbol"];
+          document.getElementById('company-full-name').textContent=item["2. name"];
+          ul.style.display='none';
+        };
+        ul.appendChild(li);
       });
     }
-    /***************************************
-     * 1) DATA FETCH FUNCTIONS
-     ***************************************/
-    async function fetchIntradayData(symbol, interval, outputsize = "compact") {
-      const response = await fetch(`/api/intraday?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}`);
-      return response.json();
+    document.getElementById('ticker').addEventListener('input', debounce(async e=>{
+      const q=e.target.value.trim();
+      if(q.length<2){ document.getElementById('ticker-suggestions').style.display='none'; return; }
+      const list=await fetchTickerSuggestions(q);
+      renderSuggestions(list);
+    },300));
+
+    // Fetch data
+    async function fetchIntraday(symbol){
+      const res=await fetch(`/api/intraday?symbol=${symbol}&interval=5min&outputsize=full`);
+      if(!res.ok) throw 'Intraday error';
+      return res.json();
     }
-    async function fetchHistoricalData(symbol) {
-      const response = await fetch(`/api/historical?symbol=${symbol}&outputsize=full`);
-      return response.json();
+    async function fetchDaily(symbol){
+      const res=await fetch(`/api/historical?symbol=${symbol}&outputsize=full&adjusted=true`);
+      if(!res.ok) throw 'Daily error';
+      return res.json();
     }
 
-    /***************************************
-     * 2) DATA PARSE FUNCTIONS
-     ***************************************/
-    // For intraday data, we store both the parsed Date and the original API timestamp.
-    function parseIntradayData(data, interval) {
-      const seriesKey = `Time Series (${interval})`;
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const timestamp in raw) {
-        const rec = raw[timestamp];
-        const date = new Date(timestamp.replace(" ", "T"));
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["5. volume"], 10),
-          original: timestamp
-        });
+    // Parse
+    function parseIntraday(raw){
+      const key=`Time Series (5min)`;
+      const ts=raw[key]||{};
+      const pts=Object.entries(ts).map(([dt,d])=>{
+        const date=new Date(dt.replace(' ','T'));
+        return [date.getTime(), +d['4. close']];
+      });
+      return pts.sort((a,b)=>a[0]-b[0]);
+    }
+    function parseDaily(raw){
+      const key=Object.keys(raw).find(k=>k.includes('Time Series'));
+      const ts=raw[key]||{};
+      const pts=Object.entries(ts).map(([dt,d])=>{
+        const date=new Date(dt);
+        return [date.getTime(), +d['4. close']];
+      });
+      return pts.sort((a,b)=>a[0]-b[0]);
+    }
+
+    // Plot
+    function plot(points, symbol){
+      if(chartRef){
+        chartRef.destroy();
       }
-      points.sort((a, b) => a.x - b.x);
-      return points;
-    }
-    // For historical data.
-    function parseHistoricalData(data) {
-      const seriesKey = Object.keys(data).find(key => key.startsWith("Time Series"));
-      const raw = data[seriesKey];
-      if (!raw) return [];
-      let points = [];
-      for (const dateStr in raw) {
-        const rec = raw[dateStr];
-        const date = new Date(dateStr);
-        points.push({
-          x: date.getTime(),
-          y: parseFloat(rec["4. close"]),
-          open: parseFloat(rec["1. open"]),
-          high: parseFloat(rec["2. high"]),
-          low: parseFloat(rec["3. low"]),
-          close: parseFloat(rec["4. close"]),
-          volume: parseInt(rec["6. volume"] || rec["5. volume"], 10),
-          original: dateStr
-        });
-      }
-      points.sort((a, b) => a.x - b.x);
-      return points;
+      chartRef = Highcharts.stockChart('chart', {
+        chart: { backgroundColor:'transparent', zoomType:'x' },
+        title: { text: symbol.toUpperCase() },
+        rangeSelector:{ enabled:true },
+        navigator:{ enabled:true },
+        scrollbar:{ enabled:true },
+        series: [{
+          name: symbol.toUpperCase(),
+          data: points,
+          tooltip:{ valueDecimals:2 }
+        }],
+        credits:{ enabled:false }
+      });
     }
 
-    /***************************************
-     * 3) FILTERING DATA BY RANGE
-     ***************************************/
-     function filterDataForRange(points, range) {
-  const now = new Date();
-  let fromDate;
-  switch (range) {
-    case "1D":
-      // Use a rolling 24-hour window.
-      fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      break;
-    case "5D":
-      fromDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-      break;
-    case "1M":
-      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case "6M":
-      fromDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-      break;
-    case "YTD":
-      fromDate = new Date(now.getFullYear(), 0, 1);
-      break;
-    case "1Y":
-      fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      break;
-    case "5Y":
-      fromDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      fromDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
-  }
-  return points.filter(p => p.x >= fromDate.getTime());
-}
-
-
-    /***************************************
-     * 4) TOP BAR UPDATE
-     ***************************************/
-    function updateTopBar(points, symbol) {
-      if (points.length < 2) return;
-      const first = points[0];
-      const last = points[points.length - 1];
-      const diff = last.close - first.close;
-      const pct = (diff / first.close) * 100;
-
-      document.getElementById('priceInfo').textContent = `${symbol.toUpperCase()} ${last.close.toFixed(2)}`;
-      const changeEl = document.getElementById('changeInfo');
-      if (diff >= 0) {
-        changeEl.textContent = `+${diff.toFixed(2)} (+${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#16a34a";
-      } else {
-        changeEl.textContent = `${diff.toFixed(2)} (${pct.toFixed(2)}%)`;
-        changeEl.style.color = "#dc2626";
-      }
-      // Use the API's original timestamp and append " US/Eastern"
-      document.getElementById('timeInfo').textContent = `As of ${last.original} US/Eastern`;
-    }
-
-    /***************************************
-     * 5) CHART PLOTTING FUNCTION
-     ***************************************/
-    /***************************************
- * 5) CHART PLOTTING FUNCTION (Optimized for Mobile)
- ***************************************/
-function plotChart(points, symbol, range) {
-  let seriesData, chartType, seriesOptions = {};
-
-  if (["1D", "5D", "1M", "YTD"].includes(range)) {
-    seriesData = points.map(p => [p.x, p.y]);
-    chartType = 'line';
-    const firstClose = points[0].close;
-    const lastClose = points[points.length - 1].close;
-    const color = lastClose > firstClose ? 'green' : (lastClose < firstClose ? 'red' : 'blue');
-    seriesOptions = {
-      color,
-      fillColor: Highcharts.color(color).setOpacity(0.15).get()
-    };
-  } else {
-    seriesData = points.map(p => [p.x, p.open, p.high, p.low, p.close]);
-    chartType = 'candlestick';
-    seriesOptions = {
-      color: 'red',
-      upColor: 'green'
-    };
-  }
-
-  Highcharts.stockChart('chart', {
-    chart: {
-      backgroundColor: 'transparent',
-      marginRight: 0,
-      marginLeft: 0,
-      spacingRight: 0,
-      spacingLeft: 0,
-      pinchType: 'x',
-      panning: { enabled: true, type: 'x' },
-      zooming: { type: 'x' },
-      events: {
-        load: function () {
-          const chart = this;
-          const series = chart.series[0];
-          const pts = series.points;
-          if (!pts || pts.length === 0) return;
-
-          const lastPoint = pts[pts.length - 1];
-          const lastPrice = (series.type === 'candlestick') ? lastPoint.close : lastPoint.y;
-          const lineY = (series.type === 'candlestick')
-            ? chart.plotTop + lastPoint.plotClose
-            : chart.plotTop + lastPoint.plotY;
-
-          // Static last price line
-          chart.lastPriceLine = chart.renderer.path([
-            'M', chart.plotLeft, lineY,
-            'L', chart.plotLeft + chart.plotWidth, lineY
-          ]).attr({
-            'stroke-width': 1,
-            stroke: 'gray',
-            dashstyle: 'Dash'
-          }).add();
-
-          // Last price label
-          chart.lastPriceLabel = chart.renderer.text(
-            lastPrice.toFixed(2),
-            chart.plotLeft + chart.plotWidth + 5,
-            lineY + 4
-          ).css({ color: 'gray' }).add();
-
-          // Crosshair setup
-          chart.crosshairLine = chart.renderer.path().attr({
-            'stroke-width': 1,
-            stroke: 'black',
-            dashstyle: 'Solid'
-          }).add();
-
-          chart.crosshairLabel = chart.renderer.text('', chart.plotLeft + chart.plotWidth + 5, chart.plotTop)
-            .css({ color: 'black' }).add();
-
-          // Mouse move crosshair update
-          Highcharts.addEvent(chart.container, 'mousemove', function (e) {
-            const event = chart.pointer.normalize(e);
-            const yVal = chart.yAxis[0].toValue(event.chartY, false);
-            const yPix = chart.yAxis[0].toPixels(yVal, true);
-
-            chart.crosshairLine.attr({
-              d: ['M', chart.plotLeft, yPix, 'L', chart.plotLeft + chart.plotWidth, yPix]
-            });
-
-            chart.crosshairLabel.attr({
-              text: yVal.toFixed(2),
-              x: chart.plotLeft + chart.plotWidth + 5,
-              y: yPix + 4
-            });
-          });
-
-          Highcharts.addEvent(chart.container, 'mouseleave', function () {
-            chart.crosshairLine.attr({ d: [] });
-            chart.crosshairLabel.attr({ text: '' });
-          });
-        }
-      }
-    },
-    time: { useUTC: false },
-    accessibility: { enabled: false },
-    rangeSelector: { enabled: false },
-    title: { text: `${symbol.toUpperCase()} Price` },
-    xAxis: {
-      type: 'datetime',
-      maxPadding: 0
-    },
-    yAxis: {
-      title: { text: 'Price' }
-    },
-    tooltip: {
-      split: false,
-      shared: true,
-      xDateFormat: '%Y-%m-%d %H:%M:%S',
-      followTouchMove: true
-    },
-    series: [{
-      name: symbol.toUpperCase(),
-      data: seriesData,
-      type: chartType,
-      tooltip: { valueDecimals: 2 },
-      ...seriesOptions
-    }],
-    navigator: { enabled: true, margin: 0 },
-    scrollbar: { enabled: true, height: 14 },
-    credits: { enabled: false }
-  });
-}
-
-    /***************************************
-     * 6) MAIN LOAD FUNCTION
-     ***************************************/
-    async function loadChart() {
-      const symbol = document.getElementById('ticker').value.trim() || "SPY";
-      const range = currentRange;
-      document.getElementById('loading').style.display = 'block';
+    // Load Chart
+    async function loadChart(){
+      const sym=document.getElementById('ticker').value.trim().toUpperCase()||'SPY';
+      document.getElementById('loading').style.display='block';
+      document.getElementById('noDataMsg').style.display='none';
       try {
-        let rawData, points;
-        if (range === "1D") {
-  rawData = await fetchIntradayData(symbol, "1min", "full");
-  points = parseIntradayData(rawData, "1min");
-} else if (range === "5D") {
-  rawData = await fetchIntradayData(symbol, "5min", "full");
-  points = parseIntradayData(rawData, "5min");
-} else if (range === "1M") {
-  rawData = await fetchIntradayData(symbol, "60min", "full");
-  points = parseIntradayData(rawData, "60min");
-} else {
-  rawData = await fetchHistoricalData(symbol);
-  points = parseHistoricalData(rawData);
-}
-
-// ✅ Trim points BEFORE plotting and topBar
-points = filterDataForRange(points, range);
-
-        if (points.length === 0) {
-  document.getElementById('noDataMsg').style.display = 'block';
-  document.getElementById('chart').innerHTML = ''; // clear old chart
-  return;
-} else {
-  document.getElementById('noDataMsg').style.display = 'none';
-}
-
-        plotChart(points, symbol, range);
-        updateTopBar(points, symbol);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        alert("Failed to load data.");
+        let raw, pts;
+        if(currentMode==='intraday'){
+          raw=await fetchIntraday(sym);
+          pts=parseIntraday(raw);
+        } else {
+          raw=await fetchDaily(sym);
+          pts=parseDaily(raw);
+        }
+        if(!pts.length){
+          document.getElementById('noDataMsg').style.display='block';
+          return;
+        }
+        plot(pts, sym);
+      } catch(err){
+        console.error(err);
+        document.getElementById('noDataMsg').style.display='block';
       } finally {
-        document.getElementById('loading').style.display = 'none';
+        document.getElementById('loading').style.display='none';
       }
     }
+    document.getElementById('loadBtn').addEventListener('click',loadChart);
 
-    /***************************************
-     * 7) RANGE TABS & AUTO UPDATE
-     ***************************************/
-    let currentRange = "1D";
-    document.querySelectorAll(".rangeTab").forEach(tab => {
-      tab.addEventListener("click", () => {
-        document.querySelectorAll(".rangeTab").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        currentRange = tab.getAttribute("data-range");
+    // Mode Tabs
+    document.querySelectorAll('.modeTab').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        document.querySelectorAll('.modeTab').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        currentMode=tab.getAttribute('data-mode');
         loadChart();
       });
     });
-    document.getElementById('loadBtn').addEventListener('click', loadChart);
-    document.addEventListener("DOMContentLoaded", () => {
-      const params = new URLSearchParams(window.location.search);
-      const ticker = params.get('ticker');
-      if (ticker) {
-        document.getElementById('ticker').value = ticker;
-      }
-      loadChart();
-      setInterval(loadChart, 60000);
-    });
-    /***************************************
-     * TICKER AUTOCOMPLETE INTEGRATION
-     ***************************************/
-     document.addEventListener("DOMContentLoaded", () => {
-      const tickerInput = document.getElementById('ticker');
-      tickerInput.addEventListener('input', () => {
-        const query = tickerInput.value.trim();
-        if (query.length < 2) {
-          clearSuggestions();
-          return;
+
+    // Support detection logic
+    function detectSupportZones(data){
+      const bins=new Map(), bucket= (Math.max(...data.map(p=>p[1])) - Math.min(...data.map(p=>p[1])))/100; 
+      for(let i=1;i<data.length-1;i++){
+        const prev=data[i-1][1], curr=data[i][1], next=data[i+1][1];
+        if(curr<prev && curr<next){
+          const b=Math.round(curr/bucket)*bucket;
+          if(!bins.has(b)) bins.set(b,[]);
+          bins.get(b).push(curr);
         }
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(async () => {
-          const suggestions = await fetchTickerSuggestions(query);
-          renderTickerSuggestions(suggestions);
-        }, 300);
+      }
+      return Array.from(bins.entries())
+        .filter(([,arr])=>arr.length>=2)
+        .map(([price,arr])=>({ price, touches:arr.length }));
+    }
+
+    // Plot support lines on current zoom
+    function plotSupport(){
+      if(!chartRef) return;
+      // remove existing plotLines
+      chartRef.yAxis[0].removePlotLine('support-lines');
+      const ext=chartRef.xAxis[0].getExtremes();
+      const pts=chartRef.series[0].data
+        .filter(p=>p.x>=ext.min && p.x<=ext.max)
+        .map(p=>[p.x,p.y]);
+      const supports=detectSupportZones(pts);
+      // draw all lines
+      supports.forEach((s,i)=>{
+        chartRef.yAxis[0].addPlotLine({
+          id: 'support-'+i,
+          value: s.price,
+          color: ACCENT_COLOR,
+          width: 2,
+          dashStyle: 'ShortDash',
+          label:{ text:`Support ${s.price.toFixed(2)} (${s.touches})`, style:{ color:ACCENT_COLOR } }
+        });
       });
-      clearSuggestions();
-    });
+    }
+    document.getElementById('plotSupportBtn').addEventListener('click', plotSupport);
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadChart);
   </script>
 </body>
 </html>
