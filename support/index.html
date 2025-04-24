@@ -99,7 +99,7 @@
 </head>
 <body>
 
-  <h1>📈 Bounce Scanner (Premium)</h1>
+  <h1>Bounce Scanner (Premium)</h1>
 
   <label for="indexSelect">Choose Index:</label>
   <select id="indexSelect">
@@ -262,16 +262,6 @@ const holder = document.getElementById('chartHolder');
   const chartDiv = document.createElement('div');
   chartDiv.className = 'chart-container';
   holder.appendChild(chartDiv);
-
-  // after clearing...
-document.getElementById('log').innerHTML = '';
-document.getElementById('chartHolder').innerHTML = '';
-
-// show progress bar
-const pc   = document.getElementById('progressContainer');
-const fill = document.getElementById('progressFill');
-const txt  = document.getElementById('progressText');
-pc.style.display = 'block';
 
 
      // Inside simulateOne(), replace your render-await block with this:
