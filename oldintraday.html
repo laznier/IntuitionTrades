@@ -1,4 +1,4 @@
-```html
+html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -292,6 +292,14 @@
         rangeSelector: { enabled: true },
         navigator: { enabled: true },
         scrollbar: { enabled: true },
+        plotOptions: {
+    candlestick: {
+      upColor: '#16a34a',
+      color: '#dc2626',
+      upLineColor: '#16a34a',
+      lineColor: '#dc2626'
+    }
+  },
         series: [{
           name: symbol.toUpperCase(),
           data: seriesData,
@@ -364,32 +372,39 @@
         .map(([price, arr]) => ({ price, touches: arr.length }));
     }
     function plotSupport() {
-      if (!chartRef) return;
-      const yAxis = chartRef.yAxis[0];
-      // remove old lines
-      chartRef.series[0].chart.plotLinesAndBands.forEach(pl => {
-        if (pl.id && pl.id.startsWith('support-')) yAxis.removePlotLine(pl.id);
-      });
-      const ext = chartRef.xAxis[0].getExtremes();
-      // extract points within zoom
-      const pts = chartRef.series[0].points
-        .filter(p => p.x >= ext.min && p.x <= ext.max)
-        .map(p => [p.x, p.y]);
-      const supports = detectSupportZones(pts);
-      supports.forEach((s, i) => {
-        yAxis.addPlotLine({
-          id: `support-${i}`,
-          value: s.price,
-          color: ACCENT_COLOR,
-          width: 2,
-          dashStyle: 'ShortDash',
-          label: {
-            text: `Support ${s.price.toFixed(2)} (${s.touches})`,
-            style: { color: ACCENT_COLOR }
-          }
-        });
-      });
-    }
+  if (!chartRef) return;
+
+  // 1) Clear any old "support-..." lines from the Y-axis:
+  const axis = chartRef.yAxis[0];
+  axis.plotLinesAndBands
+    .filter(b => b.id && b.id.startsWith('support-'))
+    .forEach(b => axis.removePlotLine(b.id));
+
+  // 2) Grab the current zoomed‐in points:
+  const ext = chartRef.xAxis[0].getExtremes();
+  const pts = chartRef.series[0].points
+    .filter(p => p.x >= ext.min && p.x <= ext.max)
+    .map(p => [p.x, p.y]);
+
+  // 3) Detect the support levels:
+  const supports = detectSupportZones(pts);
+
+  // 4) Draw each support line:
+  supports.forEach((s, i) => {
+    axis.addPlotLine({
+      id: `support-${i}`,
+      value: s.price,
+      color: ACCENT_COLOR,
+      width: 2,
+      dashStyle: 'ShortDash',
+      label: {
+        text: `Support ${s.price.toFixed(2)} (${s.touches})`,
+        style: { color: ACCENT_COLOR }
+      }
+    });
+  });
+}
+
     document.getElementById('plotSupportBtn').addEventListener('click', plotSupport);
 
     // Initial load
@@ -397,4 +412,3 @@
   </script>
 </body>
 </html>
-```
