@@ -69,6 +69,32 @@
       margin-top: 2rem;
       height: 400px;
     }
+    .progress-bar-base {
+  width: 100%;
+  background-color: #222;
+  border-radius: 10px;
+  height: 24px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background-color: var(--accent);
+  transition: width 0.3s ease-in-out;
+}
+.progress-bar-text {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: 100%;
+  text-align: center;
+  line-height: 24px;
+  font-weight: bold;
+  color: #fff;
+}
+
   </style>
 </head>
 <body>
@@ -91,8 +117,15 @@
     <option value="long">Long (24 mo)</option>
   </select>
 
-  <button id="runBtn">Run Scanner</button>
+  <div><button id="runBtn">Run Scanner</button></div>
 
+  <div id="progressContainer" style="display:none; margin-top:1rem;">
+    <div class="progress-bar-base">
+      <div id="progressFill" class="progress-bar-fill"></div>
+      <div id="progressText"  class="progress-bar-text">0%</div>
+    </div>
+  </div>
+  
   <div id="log"></div>
   <div id="chartHolder"></div>
 
@@ -230,6 +263,16 @@ const holder = document.getElementById('chartHolder');
   chartDiv.className = 'chart-container';
   holder.appendChild(chartDiv);
 
+  // after clearing...
+document.getElementById('log').innerHTML = '';
+document.getElementById('chartHolder').innerHTML = '';
+
+// show progress bar
+const pc   = document.getElementById('progressContainer');
+const fill = document.getElementById('progressFill');
+const txt  = document.getElementById('progressText');
+pc.style.display = 'block';
+
 
      // Inside simulateOne(), replace your render-await block with this:
 
@@ -287,30 +330,50 @@ await new Promise(resolve => {
       }
     }
 
-    // Kick off the full scan
-    async function runScanner() {
-      const index = document.getElementById('indexSelect').value;
-      const tf = document.getElementById('timeframeSelect').value;
-      if (!index || !tf) {
-        return alert('Please select both Index and Timeframe.');
-      }
-      const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
+  
+// …other functions above…
 
-      // Clear prior results
-      document.getElementById('log').innerHTML = '';
-      document.getElementById('chartHolder').innerHTML = '';
+async function runScanner() {
+  const index = document.getElementById('indexSelect').value;
+  const tf    = document.getElementById('timeframeSelect').value;
+  if (!index || !tf) {
+    return alert('Please select both Index and Timeframe.');
+  }
+  const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
 
-      log(`🔎 Scanning ${index.toUpperCase()} (${months}mo)…\n`);
-      const tickers = await loadTickers(index);
+  // Clear prior results
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('chartHolder').innerHTML = '';
 
-      for (let i = 0; i < tickers.length; i++) {
-        log(`\n➡️ ${tickers[i]}`);
-        await simulateOne(tickers[i], months);
-        await sleep(300);  // rate-limit
-      }
+  // **Show progress bar**
+  const pc   = document.getElementById('progressContainer');
+  const fill = document.getElementById('progressFill');
+  const txt  = document.getElementById('progressText');
+  pc.style.display = 'block';
 
-      log(`\n✅ Scan complete.`);
-    }
+  log(`🔎 Scanning ${index.toUpperCase()} (${months}mo)…\n`);
+
+  const tickers = await loadTickers(index);
+
+  // → Here’s the updated loop:
+  for (let i = 0; i < tickers.length; i++) {
+    // 1) Compute percentage
+    const pct = Math.round((i + 1) / tickers.length * 100);
+
+    // 2) Update the bar
+    fill.style.width    = `${pct}%`;
+    txt.textContent     = `${pct}%`;
+
+    // 3) Run your scan
+    log(`\n➡️ ${tickers[i]}`);
+    await simulateOne(tickers[i], months);
+    await sleep(300);  // rate-limit
+}
+
+  log(`\n✅ Scan complete.`);
+}
+
+
 
     // Wire up the button
     document.getElementById('runBtn').addEventListener('click', runScanner);
