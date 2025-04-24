@@ -5,10 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Bounce Scanner (Premium)</title>
 
-  <!-- Highcharts for plotting -->
+  <!-- Highcharts library for interactive charting -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
 
+  <!--
+    -----------------------------------------------------------------------
+    Bounce Scanner (Premium)
+    Version: 1.0.0
+    Description: Scans an index’s tickers for stocks approaching strong
+                 support levels, scores them, shows live progress,
+                 then displays top 10 results with charts.
+    Author: Intuition Trades
+    -----------------------------------------------------------------------
+  -->
+
   <style>
+    /* Root theme variables */
     :root {
       --bg: #111;
       --panel: #1e1e1e;
@@ -17,7 +29,15 @@
       --text: #fff;
       --font: 'Arial', sans-serif;
     }
-    * { margin:0; padding:0; box-sizing:border-box; }
+
+    /* Global reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Body styling */
     body {
       background: var(--bg);
       color: var(--text);
@@ -26,16 +46,23 @@
       margin: auto;
       padding: 2rem;
     }
+
+    /* Header */
     h1 {
       text-align: center;
       margin-bottom: 1.5rem;
+      font-size: 2rem;
+      font-weight: 600;
     }
+
+    /* Form controls */
     label {
       display: block;
       margin-top: 1rem;
       font-size: 1rem;
     }
-    select, button {
+    select,
+    button {
       width: 100%;
       max-width: 300px;
       padding: 0.5rem;
@@ -50,10 +77,13 @@
       background: var(--accent);
       cursor: pointer;
       margin-top: 1rem;
+      transition: background 0.3s ease;
     }
     button:hover {
       background: #22c55e;
     }
+
+    /* Log panel */
     #log {
       margin-top: 2rem;
       background: var(--panel);
@@ -65,42 +95,47 @@
       max-height: 300px;
       overflow-y: auto;
     }
+
+    /* Chart container */
     .chart-container {
       margin-top: 2rem;
       height: 400px;
     }
-    .progress-bar-base {
-  width: 100%;
-  background-color: #222;
-  border-radius: 10px;
-  height: 24px;
-  overflow: hidden;
-  position: relative;
-  margin-bottom: 0.5rem;
-}
-.progress-bar-fill {
-  height: 100%;
-  width: 0%;
-  background-color: var(--accent);
-  transition: width 0.3s ease-in-out;
-}
-.progress-bar-text {
-  position: absolute;
-  width: 100%;
-  top: 0;
-  height: 100%;
-  text-align: center;
-  line-height: 24px;
-  font-weight: bold;
-  color: #fff;
-}
 
+    /* Progress bar styling */
+    .progress-bar-base {
+      width: 100%;
+      background-color: #222;
+      border-radius: 10px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--accent);
+      transition: width 0.3s ease-in-out;
+    }
+    .progress-bar-text {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      text-align: center;
+      line-height: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
 
+  <!-- Main title -->
   <h1>Bounce Scanner (Premium)</h1>
 
+  <!-- Index selector -->
   <label for="indexSelect">Choose Index:</label>
   <select id="indexSelect">
     <option value="">-- Select --</option>
@@ -109,6 +144,7 @@
     <option value="vti">VTI</option>
   </select>
 
+  <!-- Timeframe selector -->
   <label for="timeframeSelect">Choose Timeframe:</label>
   <select id="timeframeSelect">
     <option value="">-- Select --</option>
@@ -117,74 +153,87 @@
     <option value="long">Long (24 mo)</option>
   </select>
 
-  <div><button id="runBtn">Run Scanner</button></div>
+  <!-- Run button -->
+  <div>
+    <button id="runBtn">Run Scanner</button>
+  </div>
 
+  <!-- Progress bar -->
   <div id="progressContainer" style="display:none; margin-top:1rem;">
     <div class="progress-bar-base">
       <div id="progressFill" class="progress-bar-fill"></div>
-      <div id="progressText"  class="progress-bar-text">0%</div>
+      <div id="progressText" class="progress-bar-text">0%</div>
     </div>
   </div>
-  
+
+  <!-- Live log -->
   <div id="log"></div>
+
+  <!-- Chart placeholder -->
   <div id="chartHolder"></div>
 
   <script>
-    // --- Utilities ---
+    // ------------------------------------------------------------
+    // Constants for theme colors used in JS (cannot use CSS vars)
+    // ------------------------------------------------------------
     const ACCENT_COLOR    = '#16a34a';
-const HIGHLIGHT_COLOR = '#0ea5e9';
+    const HIGHLIGHT_COLOR = '#0ea5e9';
 
-    // Append a line to the log panel
+    // ------------------------------------------------------------
+    // Utility: append a line to the log panel and auto-scroll
+    // ------------------------------------------------------------
     const log = msg => {
       const el = document.getElementById('log');
       el.innerHTML += msg + '\n';
       el.scrollTop = el.scrollHeight;
     };
 
-    // Simple sleep/delay
+    // ------------------------------------------------------------
+    // Utility: pause execution for given milliseconds
+    // ------------------------------------------------------------
     const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-   // Fetch daily time-series data from your API route
-async function fetchHistoricalData(ticker) {
-  // 1. Remove stray quotes (and whitespace), then URL-encode
-  const symbol = encodeURIComponent(ticker.replace(/"/g, '').trim());
+    // ------------------------------------------------------------
+    // Fetch and parse daily time-series data for a ticker
+    // ------------------------------------------------------------
+    async function fetchHistoricalData(ticker) {
+      // Sanitize ticker string: remove quotes and trim
+      const symbol = encodeURIComponent(ticker.replace(/"/g, '').trim());
+      // Fetch from API
+      const res = await fetch(`/api/historical?symbol=${symbol}`);
+      if (!res.ok) {
+        throw new Error(`Historical fetch failed: HTTP ${res.status}`);
+      }
+      // Parse JSON
+      const json = await res.json();
+      const raw = json['Time Series (Daily)'] || {};
+      // Transform to array of { date, close }
+      const data = Object.entries(raw)
+        .map(([dateStr, d]) => ({
+          date: new Date(dateStr),
+          close: +d['4. close']
+        }))
+        .sort((a, b) => a.date - b.date);
+      return data;
+    }
 
-  // 2. Call your API
-  const res = await fetch(`/api/historical?symbol=${symbol}`);
-  if (!res.ok) {
-    throw new Error(`Historical fetch failed: HTTP ${res.status}`);
-  }
-
-  // 3. Parse JSON
-  const json = await res.json();
-  const rawTimeSeries = json['Time Series (Daily)'] || {};
-
-  // 4. Transform into sorted array of {date, close}
-  const data = Object.entries(rawTimeSeries)
-    .map(([dateStr, daily]) => ({
-      date: new Date(dateStr),
-      close: +daily['4. close']
-    }))
-    .sort((a, b) => a.date - b.date);
-
-  return data;
-}
-
-
-    // Load list of tickers for the chosen index
+    // ------------------------------------------------------------
+    // Load ticker list for selected index
+    // ------------------------------------------------------------
     async function loadTickers(index) {
-  const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(res.statusText);
-  const text = await res.text();
-  return text
-    .split(/,|\n/)
-    .map(s => s.replace(/"/g, '').trim())  // ← strip all " then trim
-    .filter(Boolean);
-}
+      const url = `https://intuition-trades.vercel.app/tickers/${index}-tickers.txt`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.statusText);
+      const text = await res.text();
+      return text
+        .split(/,|\n/)
+        .map(s => s.replace(/"/g, '').trim())
+        .filter(Boolean);
+    }
 
-
+    // ------------------------------------------------------------
     // Keep only the last N months of data
+    // ------------------------------------------------------------
     function sliceByMonths(data, months) {
       const end = data[data.length - 1].date;
       const start = new Date(end);
@@ -192,11 +241,14 @@ async function fetchHistoricalData(ticker) {
       return data.filter(p => p.date >= start);
     }
 
-    // Detect support zones by finding local minima that occur at least twice
+    // ------------------------------------------------------------
+    // Detect support zones via clustering local minima
+    // ------------------------------------------------------------
     function detectSupportZones(data) {
       const bins = new Map();
-      const bucketSize = 0.5;  // $0.50 resolution
+      const bucketSize = 0.5; // $0.50 bins
 
+      // Identify local minima
       for (let i = 1; i < data.length - 1; i++) {
         const prev = data[i - 1].close;
         const curr = data[i].close;
@@ -208,8 +260,9 @@ async function fetchHistoricalData(ticker) {
         }
       }
 
+      // Keep only buckets with 2+ touches
       return Array.from(bins.entries())
-        .filter(([, touches]) => touches.length >= 2)  // at least 2 bounces
+        .filter(([, touches]) => touches.length >= 2)
         .map(([price, touches]) => ({
           price,
           touches: touches.length,
@@ -217,155 +270,226 @@ async function fetchHistoricalData(ticker) {
         }));
     }
 
-    // Compute a bounce likelihood score (1–99)
+    // ------------------------------------------------------------
+    // Compute bounce-likelihood score from support proximity, touches, etc.
+    // ------------------------------------------------------------
     function scoreSupportMatch(currentPrice, support, slope) {
       const proximity = Math.abs(currentPrice - support.price) / support.price;
-      const distanceScore = Math.max(0, 1 - proximity / 0.05);             // within ±5%
-      const touchScore    = Math.min(1, support.touches / 4);               // up to 4 touches
-      const recentBonus   = (new Date() - support.recentDate < 90 * 864e5)  ? 1 : 0; // 3 months
-      const directionBonus= slope < 0 ? 1 : 0;                              // falling into support
+      const distanceScore = Math.max(0, 1 - proximity / 0.05);       // within ±5%
+      const touchScore = Math.min(1, support.touches / 4);           // up to 4 touches
+      const recentBonus = (new Date() - support.recentDate < 90 * 864e5) ? 1 : 0; // 3mo
+      const directionBonus = slope < 0 ? 1 : 0;                      // falling
 
-      const raw = 0.6 * distanceScore + 0.2 * touchScore + 0.1 * recentBonus + 0.1 * directionBonus;
+      const raw = 0.6 * distanceScore +
+                  0.2 * touchScore +
+                  0.1 * recentBonus +
+                  0.1 * directionBonus;
       return Math.round(100 * Math.max(0.01, Math.min(0.99, raw)));
     }
 
-    // Process a single ticker: detect support, score, render chart
+    // ------------------------------------------------------------
+    // Process one ticker:
+    //  - fetch & slice data
+    //  - detect support
+    //  - score
+    //  - render chart and await animation completion
+    //  - return result object
+    // ------------------------------------------------------------
     async function simulateOne(ticker, months) {
       try {
+        // 1) Data fetch & slice
         const fullData = await fetchHistoricalData(ticker);
         const data = sliceByMonths(fullData, months);
         if (data.length < 50) {
           log(`❌ ${ticker}: Insufficient data`);
-          return;
+          return null;
         }
 
+        // 2) Compute slope for directional bias
         const slope = data[data.length - 1].close - data[data.length - 10].close;
+
+        // 3) Detect support zones
         const supports = detectSupportZones(data);
         const currentPrice = data[data.length - 1].close;
 
+        // 4) Filter zones within ±5% of current price
         const nearby = supports
           .filter(s => Math.abs(currentPrice - s.price) / s.price <= 0.05)
           .sort((a, b) => Math.abs(currentPrice - a.price) - Math.abs(currentPrice - b.price));
 
         if (!nearby.length) {
           log(`⚪ ${ticker}: No nearby support`);
-          return;
+          return { ticker, score: 0, data, best: null };
         }
 
+        // 5) Choose best zone & score
         const best = nearby[0];
         const score = scoreSupportMatch(currentPrice, best, slope);
         log(`✅ ${ticker}: Score ${score} | Support $${best.price.toFixed(2)} (${best.touches} touches)`);
 
-// Clear and create the container:
-const holder = document.getElementById('chartHolder');
-  holder.innerHTML = '';
-  const chartDiv = document.createElement('div');
-  chartDiv.className = 'chart-container';
-  holder.appendChild(chartDiv);
+        // 6) Clear previous chart container
+        const holder = document.getElementById('chartHolder');
+        holder.innerHTML = '';
 
+        // 7) Create new chart div
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'chart-container';
+        holder.appendChild(chartDiv);
 
-     // Inside simulateOne(), replace your render-await block with this:
+        // 8) Render chart and await series animation completion
+        await new Promise(resolve => {
+          Highcharts.chart(chartDiv, {
+            chart: {
+              type: 'line',
+              backgroundColor: 'transparent'
+            },
+            title: {
+              text: `${ticker} | Score: ${score}`,
+              style: { color: '#fff' }
+            },
+            xAxis: {
+              type: 'datetime'
+            },
+            yAxis: {
+              title: { text: 'Price' },
+              plotLines: [{
+                value: best.price,
+                color: ACCENT_COLOR,
+                width: 2,
+                dashStyle: 'ShortDash',
+                label: {
+                  text: 'Support',
+                  style: { color: ACCENT_COLOR }
+                }
+              }]
+            },
+            plotOptions: {
+              series: {
+                animation: { duration: 800 },
+                events: {
+                  afterAnimate: resolve
+                }
+              }
+            },
+            series: [{
+              name: 'Close',
+              data: data.map(p => [p.date.getTime(), p.close]),
+              color: HIGHLIGHT_COLOR,
+              marker: { enabled: false }
+            }],
+            credits: { enabled: false }
+          });
+        });
 
-await new Promise(resolve => {
-  Highcharts.chart(chartDiv, {
-    chart: {
-      type: 'line',
-      backgroundColor: 'transparent'
-    },
-    title: {
-      text: `${ticker} | Score: ${score}`,
-      style: { color: '#fff' }
-    },
-    xAxis: {
-      type: 'datetime'
-    },
-    yAxis: {
-      title: { text: 'Price' },
-      plotLines: [{
-        value: best.price,
-        color: ACCENT_COLOR,
-        width: 2,
-        dashStyle: 'ShortDash',
-        label: {
-          text: 'Support',
-          style: { color: ACCENT_COLOR }
-        }
-      }]
-    },
-    plotOptions: {
-      series: {
-        animation: {
-          duration: 800  // or whatever you like
-        },
-        events: {
-          // fires when the series animation is complete
-          afterAnimate: resolve
-        }
-      }
-    },
-    series: [{
-      name: 'Close',
-      data: data.map(p => [p.date.getTime(), p.close]),
-      color: HIGHLIGHT_COLOR,
-      marker: { enabled: false }
-    }],
-    credits: { enabled: false }
-  });
-});
-
-
-
+        // 9) Return structured result for later top-10 rendering
+        return { ticker, score, data, best };
       } catch (err) {
         log(`❌ ${ticker}: Error - ${err.message}`);
+        return null;
       }
     }
 
-  
-// …other functions above…
+    // ------------------------------------------------------------
+    // Main runner: scans all tickers, updates progress bar,
+    // collects results, then displays top 10 charts.
+    // ------------------------------------------------------------
+    async function runScanner() {
+      // 1) Read inputs
+      const index = document.getElementById('indexSelect').value;
+      const tf = document.getElementById('timeframeSelect').value;
+      if (!index || !tf) {
+        alert('Please select both Index and Timeframe.');
+        return;
+      }
+      const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
 
-async function runScanner() {
-  const index = document.getElementById('indexSelect').value;
-  const tf    = document.getElementById('timeframeSelect').value;
-  if (!index || !tf) {
-    return alert('Please select both Index and Timeframe.');
-  }
-  const months = tf === 'short' ? 4 : tf === 'medium' ? 12 : 24;
+      // 2) Clear UI & show progress bar
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('chartHolder').innerHTML = '';
+      const pc = document.getElementById('progressContainer');
+      const fill = document.getElementById('progressFill');
+      const txt = document.getElementById('progressText');
+      pc.style.display = 'block';
 
-  // Clear prior results
-  document.getElementById('log').innerHTML = '';
-  document.getElementById('chartHolder').innerHTML = '';
+      log(`🔎 Scanning ${index.toUpperCase()} (${months} months)…\n`);
 
-  // **Show progress bar**
-  const pc   = document.getElementById('progressContainer');
-  const fill = document.getElementById('progressFill');
-  const txt  = document.getElementById('progressText');
-  pc.style.display = 'block';
+      // 3) Load tickers and prepare results array
+      const tickers = await loadTickers(index);
+      const results = [];
 
-  log(`🔎 Scanning ${index.toUpperCase()} (${months}mo)…\n`);
+      // 4) Loop through tickers with progress bar updates
+      for (let i = 0; i < tickers.length; i++) {
+        const pct = Math.round((i + 1) / tickers.length * 100);
+        fill.style.width = `${pct}%`;
+        txt.textContent = `${pct}%`;
 
-  const tickers = await loadTickers(index);
+        log(`\n➡️ ${tickers[i]}`);
+        const res = await simulateOne(tickers[i], months);
+        if (res) results.push(res);
+        await sleep(300);
+      }
 
-  // → Here’s the updated loop:
-  for (let i = 0; i < tickers.length; i++) {
-    // 1) Compute percentage
-    const pct = Math.round((i + 1) / tickers.length * 100);
+      // 5) After full scan, sort and extract top 10
+      results.sort((a, b) => b.score - a.score);
+      const top10 = results.slice(0, 10);
 
-    // 2) Update the bar
-    fill.style.width    = `${pct}%`;
-    txt.textContent     = `${pct}%`;
+      // 6) Clear chart area for top 10 review
+      document.getElementById('chartHolder').innerHTML = '';
+      log('\n🔝 Top 10 Bounce Candidates:\n');
 
-    // 3) Run your scan
-    log(`\n➡️ ${tickers[i]}`);
-    await simulateOne(tickers[i], months);
-    await sleep(300);  // rate-limit
-}
+      // 7) Render each top-10 chart in sequence
+      for (const r of top10) {
+        log(`• ${r.ticker}: ${r.score}`);
+        const div = document.createElement('div');
+        div.className = 'chart-container';
+        document.getElementById('chartHolder').appendChild(div);
 
-  log(`\n✅ Scan complete.`);
-}
+        Highcharts.chart(div, {
+          chart: {
+            type: 'line',
+            backgroundColor: 'transparent'
+          },
+          title: {
+            text: `${r.ticker} | Score: ${r.score}`,
+            style: { color: '#fff' }
+          },
+          xAxis: {
+            type: 'datetime'
+          },
+          yAxis: {
+            title: { text: 'Price' },
+            plotLines: [{
+              value: r.best.price,
+              color: ACCENT_COLOR,
+              width: 2,
+              dashStyle: 'ShortDash',
+              label: {
+                text: 'Support',
+                style: { color: ACCENT_COLOR }
+              }
+            }]
+          },
+          series: [{
+            name: 'Close',
+            data: r.data.map(p => [p.date.getTime(), p.close]),
+            color: HIGHLIGHT_COLOR,
+            marker: { enabled: false }
+          }],
+          credits: { enabled: false }
+        });
 
+        // give a small pause so each top chart animates
+        await sleep(200);
+      }
 
+      // 8) Final log and optionally hide progress bar
+      log('\n✅ Scan complete. Top 10 displayed.');
+      // pc.style.display = 'none';
+    }
 
-    // Wire up the button
+    // ------------------------------------------------------------
+    // Wire up Run Scanner button
+    // ------------------------------------------------------------
     document.getElementById('runBtn').addEventListener('click', runScanner);
   </script>
 </body>
