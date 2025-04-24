@@ -128,6 +128,15 @@
       font-weight: bold;
       color: #fff;
     }
+    @media (max-width: 600px) {
+  .chart-container {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0 0.5rem;   /* give just a little breathing room */
+    width: calc(100% + 1rem);  /* extend full width */
+  }
+}
+
   </style>
 </head>
 <body>
@@ -377,9 +386,25 @@
               color: HIGHLIGHT_COLOR,
               marker: { enabled: false }
             }],
-            credits: { enabled: false }
-          });
-        });
+            credits: { enabled: false },
+
+            responsive: {
+      rules: [{
+        condition: { maxWidth: 600 },
+        chartOptions: {
+          chart: {
+            spacingLeft: 5,
+            spacingRight: 5
+          },
+          yAxis: {
+            title: { text: null }
+          }
+        }
+      }]
+    }
+
+  });
+});
 
         // 9) Return structured result for later top-10 rendering
         return { ticker, score, data, best };
@@ -475,8 +500,23 @@
             color: HIGHLIGHT_COLOR,
             marker: { enabled: false }
           }],
-          credits: { enabled: false }
-        });
+          credits: { enabled: false },
+          responsive: {
+    rules: [{
+      condition: { maxWidth: 600 },
+      chartOptions: {
+        chart: {
+          spacingLeft: 5,
+          spacingRight: 5
+        },
+        yAxis: {
+          title: { text: null }
+        }
+      }
+    }]
+  }
+});
+     
 
         // give a small pause so each top chart animates
         await sleep(200);

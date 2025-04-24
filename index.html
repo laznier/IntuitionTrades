@@ -1635,56 +1635,6 @@ footer {
     </div>
   </section>  
 
-
-  <!-- ==========================
-     Live News Section
-========================== -->
-<section id="live-news" class="live-news">
-  <h2 class="live-news-header">
-    Live News
-
-    <!-- NEW: Ticker Search Box -->
-    <div class="ticker-search-container">
-        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
-        <ul id="ticker-suggestions" style="display:none;"></ul>
-        <button id="tickerSearchButton" class="dark-input">Search</button>
-      </div>
-      
-  
-    <!-- Controls: minimize, maximize, close -->
-    <div class="live-news-controls">
-      <span id="liveNewsMinimize" title="Minimize">-</span>
-      <span id="liveNewsMaximize" title="Maximize">▢</span>
-      <span id="liveNewsClose" title="Close">X</span>
-    </div>
-  </h2>
-  <!-- News Topics for Desktop and Mobile -->
-<div class="live-news-topics">
-  <div class="news-hamburger" id="newsHamburger">
-    &#9776; <!-- Unicode hamburger icon -->
-  </div>
-  <div class="live-news-menu" id="liveNewsMenu">
-    <button data-topic="">All News</button>
-    <button data-topic="financial_markets">Financial Markets</button>
-    <button data-topic="economy">Economy</button>
-    <button data-topic="finance">Finance</button>
-    <button data-topic="technology">Technology</button>
-    <button data-topic="earnings">Earnings</button>
-    <button data-topic="mergers_and_acquisitions">M&A</button>
-    <button data-topic="blockchain">Blockchain</button>
-    <button data-topic="real_estate">Real Estate</button>
-    <button data-topic="retail_wholesale">Retail & Wholesale</button>
-    <button data-topic="energy_transportation">Energy & Transport</button>
-    <button data-topic="life_sciences">Life Sciences</button>
-    <button data-topic="manufacturing">Manufacturing</button>
-    <button data-topic="ipo">IPO</button>
-  </div>
-
-  <div class="live-news-feed" id="liveNewsFeed">
-    <!-- Dynamically populated -->
-  </div>
-  
-</section>
 <script>document.addEventListener("DOMContentLoaded", () => {
   const now = new Date();
   const hours = now.getHours();
@@ -1699,21 +1649,6 @@ footer {
 });
 </script>
 
-
-
-<!-- Newsletter Signup Section -->
-<section id="newsletter-signup">
-
-  <!-- MailerLite Universal Embed Code -->
-  <script>
-    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
-    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
-    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-    ml('account', '1422635');
-  </script>
-  <div class="ml-embedded" data-form="N78gvr"></div>
-</section>
 
   <main>
     <!-- Tools Section -->
@@ -1836,6 +1771,67 @@ footer {
       </div>
     </section>
   
+<!-- ==========================
+     Live News Section
+========================== -->
+<section id="live-news" class="live-news">
+  <h2 class="live-news-header">
+    Live News
+
+    <!-- NEW: Ticker Search Box -->
+    <div class="ticker-search-container">
+        <input type="text" id="tickerSearchInput" class="dark-input" placeholder="Ticker" />
+        <ul id="ticker-suggestions" style="display:none;"></ul>
+        <button id="tickerSearchButton" class="dark-input">Search</button>
+      </div>
+      
+  
+    <!-- Controls: minimize, maximize, close -->
+    <div class="live-news-controls">
+      <span id="liveNewsMinimize" title="Minimize">-</span>
+      <span id="liveNewsMaximize" title="Maximize">▢</span>
+      <span id="liveNewsClose" title="Close">X</span>
+    </div>
+  </h2>
+  <!-- News Topics for Desktop and Mobile -->
+<div class="live-news-topics">
+  <div class="news-hamburger" id="newsHamburger">
+    &#9776; <!-- Unicode hamburger icon -->
+  </div>
+  <div class="live-news-menu" id="liveNewsMenu">
+    <button data-topic="">All News</button>
+    <button data-topic="financial_markets">Financial Markets</button>
+    <button data-topic="economy">Economy</button>
+    <button data-topic="finance">Finance</button>
+    <button data-topic="technology">Technology</button>
+    <button data-topic="earnings">Earnings</button>
+    <button data-topic="mergers_and_acquisitions">M&A</button>
+    <button data-topic="blockchain">Blockchain</button>
+    <button data-topic="real_estate">Real Estate</button>
+    <button data-topic="retail_wholesale">Retail & Wholesale</button>
+    <button data-topic="energy_transportation">Energy & Transport</button>
+    <button data-topic="life_sciences">Life Sciences</button>
+    <button data-topic="manufacturing">Manufacturing</button>
+    <button data-topic="ipo">IPO</button>
+  </div>
+
+  <div class="live-news-feed" id="liveNewsFeed">
+    <!-- Dynamically populated -->
+  </div>
+</section>
+<!-- Newsletter Signup Section -->
+<section id="newsletter-signup">
+
+  <!-- MailerLite Universal Embed Code -->
+  <script>
+    (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[])
+    .push(arguments);},l=d.createElement(e),l.async=1,l.src=u,
+    n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
+    (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
+    ml('account', '1422635');
+  </script>
+  <div class="ml-embedded" data-form="N78gvr"></div>
+</section>
 
   <!-- Footer -->
   <footer>
