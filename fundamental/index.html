@@ -524,8 +524,13 @@
 
         // Show aggregated meter
         document.getElementById('aggregateSection').style.display = 'block';
-        document.getElementById('aggregateScoreText').innerText = `${aggregatedScore.toFixed(1)}%`;
-        document.getElementById('aggregateMarker').style.left = `${aggregatedScore}%`;
+        const marker    = document.getElementById('aggregateMarker');
+const scoreText = document.getElementById('aggregateScoreText');
+
+marker.style.left    = `${aggregatedScore}%`;
+scoreText.innerText  = `${aggregatedScore.toFixed(1)}%`;
+scoreText.style.left = `${aggregatedScore}%`;
+
 
         // Plot each category if defined
         if (profitability >= 0) {
