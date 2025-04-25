@@ -372,17 +372,19 @@ for (let i = 0; i < signalLine.length; i++) {
     // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
     function computeMomentumScoreUsingRegression(histValues) {
   if (histValues.length < 6) return null;
+
   const recentHist = histValues.slice(-6);
+  console.log("Momentum histogram values:", recentHist);
+
   const x = [1, 2, 3, 4, 5, 6];
-  // Change the degree from 3 to 1 here:
-  const coeffs = polynomialRegression(x, recentHist, 1);
-  const predicted = predictValue(coeffs, 7);
-  const lastValue = recentHist[recentHist.length - 1];
-  const delta = lastValue - predicted;
-  const k = 5; // sensitivity factor
-  const score = 100 / (1 + Math.exp(-k * delta));
+  const coeffs = polynomialRegression(x, recentHist, 1); // degree 1 = linear fit
+  const slope = coeffs[1]; // coeff[0] = intercept, coeff[1] = slope
+
+  const k = 5;
+  const score = 100 / (1 + Math.exp(-k * slope)); // logistic map of slope
   return score;
 }
+
 
     
     // Compute the gap trend score using regression on both MACD and Signal lines.
