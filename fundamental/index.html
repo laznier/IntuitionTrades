@@ -126,6 +126,35 @@
     #rawDataTable {
       width: 100%;
       border-collapse: collapse;
+      /* make the Weak–Strong meter visible again */
+#aggregateBar {
+  position: relative;
+  height: 12px;                     /* give it some height */
+  background-color: #444;           /* dark track color */
+  border-radius: 6px;               /* rounded ends */
+  overflow: visible;                /* so the marker can sit outside if you like */
+}
+
+#aggregateMarker {
+  position: absolute;
+  top: -2px;                        /* nudge it up a bit */
+  left: 0;                          /* will be overridden inline by JS */
+  width: 4px;                       /* thin marker line */
+  height: 16px;                     /* slightly taller than the track */
+  background-color: var(--accent-color);
+  border-radius: 2px;
+}
+
+#aggregateScoreText {
+  position: absolute;
+  top: -1.6rem;                     /* place the text above the marker */
+  left: 0;                          /* will be placed by JS */
+  transform: translateX(-50%);      /* center it on the marker */
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--accent-color);
+}
+
     }
     #rawDataTable th,
     #rawDataTable td {
