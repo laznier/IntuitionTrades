@@ -369,23 +369,29 @@ for (let i = 0; i < signalLine.length; i++) {
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
     function computeMomentumScoreUsingRegression(histValues) {
   if (histValues.length < 6) return null;
 
   const recentHist = histValues.slice(-6);
-  console.log("Momentum histogram values:", recentHist);
+  console.log("recentHist:", recentHist);
 
   const x = [1, 2, 3, 4, 5, 6];
   const coeffs = polynomialRegression(x, recentHist, 1);
-  const slope = coeffs[1]; // 1st-degree slope
+  console.log("Regression coeffs [intercept, slope]:", coeffs);
+
+  const slope = coeffs[1];
+  console.log("Slope:", slope);
 
   const k = 10;
-  const score = 100 / (1 + Math.exp(-k * slope)); // scale to 0–100
+  const rawScore = 1 / (1 + Math.exp(-k * slope));
+  console.log("Raw logistic (0–1):", rawScore);
 
-  console.log("Slope:", slope, "Momentum Score:", score);
-  return score;
+  const percentScore = rawScore * 100;
+  console.log("Momentum score %:", percentScore);
+
+  return percentScore;
 }
+
 
 
 
