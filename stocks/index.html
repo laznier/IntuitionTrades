@@ -715,7 +715,7 @@
       const predicted = predictValue(coeffs, 7);
       const lastValue = recent[recent.length - 1];
       const delta = predicted - lastValue;
-      const k = 5;
+      const k = 10;
       const score = 100 / (1 + Math.exp(-k * delta));
       return score;
     }
@@ -745,11 +745,12 @@
       const positionScore = 100 / (1 + Math.exp(latestMACD));
       const gapData = computeGapTrendScore(macdLine, signalLine);
       const gapScore = gapData ? gapData.gapScore : 50;
-      let histValues = [];
-      for(let i = 0; i < len; i++){
-        histValues.push(macdLine[i].macd - signalLine[i].signal);
-      }
-      const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
+      // 3. Momentum Score: zip macdLine & signalLine, take last 6
+const offset     = macdLine.length - signalLine.length;
+const histValues = signalLine
+  .map((s, i) => macdLine[i + offset].macd - s.signal)
+  .slice(-6);
+const momentumScore = computeMomentumScoreUsingRegression(histValues) || 50;
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       return finalScore;
     }
