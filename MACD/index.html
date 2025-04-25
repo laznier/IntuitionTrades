@@ -377,13 +377,16 @@ for (let i = 0; i < signalLine.length; i++) {
   console.log("Momentum histogram values:", recentHist);
 
   const x = [1, 2, 3, 4, 5, 6];
-  const coeffs = polynomialRegression(x, recentHist, 1); // degree 1 = linear fit
-  const slope = coeffs[1]; // coeff[0] = intercept, coeff[1] = slope
+  const coeffs = polynomialRegression(x, recentHist, 1);
+  const slope = coeffs[1]; // 1st-degree slope
 
-  const k = 5;
-  const score = 100 / (1 + Math.exp(-k * slope)); // logistic map of slope
+  const k = 10;
+  const score = 100 / (1 + Math.exp(-k * slope)); // scale to 0–100
+
+  console.log("Slope:", slope, "Momentum Score:", score);
   return score;
 }
+
 
 
     
