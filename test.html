@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Multi-Indicator Bounce Scanner (Premium)</title>
+
+  <!-- Highcharts for interactive charting -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+
+  <style>
+    :root {
+      --bg: #111;
+      --panel: #1e1e1e;
+      --accent: #16a34a;
+      --highlight: #0ea5e9;
+      --text: #fff;
+      --font: 'Arial', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    select, button {
+      width: 100%;
+      max-width: 300px;
+      padding: 0.5rem;
+      margin-top: 0.3rem;
+      font-size: 1rem;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
+    select[multiple] { height: auto; }
+    button {
+      background: var(--accent);
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background 0.3s ease;
+    }
+    button:hover { background: #22c55e; }
+
+    #log {
+      margin-top: 2rem;
+      background: var(--panel);
+      border: 1px solid #333;
+      padding: 1rem;
+      border-radius: 6px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .chart-container {
+      margin-top: 2rem;
+      height: 400px;
+    }
+
+    .progress-bar-base {
+      width: 100%;
+      background: #222;
+      border-radius: 10px;
+      height: 24px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.3s ease-in-out;
+    }
+    .progress-bar-text {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      text-align: center;
+      line-height: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    button.backBtn {
+      background: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .chart-container {
+        width: calc(100% + 1rem);
+        margin: 0 -0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="backBtn" onclick="window.location.href='https://www.intuitiontrades.com'">
+    ← Back to Main Page
+  </button>
+
+  <h1>Multi-Indicator Bounce Scanner (Premium)</h1>
+
+  <label for="indicatorSelect">Choose Indicator(s):</label>
+  <select id="indicatorSelect" multiple size="3">
+    <option value="bounce" selected>Support Bounce</option>
+    <option value="macd">MACD Signal</option>
+    <option value="ichimoku">Ichimoku Signal</option>
+  </select>
+
+  <label for="indexSelect">Choose Index:</label>
+  <select id="indexSelect">
+    <option value="">-- Select --</option>
+    <option value="sp500">S&P 500</option>
+    <option value="russell3000">Russell 3000</option>
+    <option value="vti">VTI</option>
+  </select>
+
+  <label for="timeframeSelect">Choose Timeframe:</label>
+  <select id="timeframeSelect">
+    <option value="">-- Select --</option>
+    <option value="short">Short (4 mo)</option>
+    <option value="medium">Medium (12 mo)</option>
+    <option value="long">Long (24 mo)</option>
+  </select>
+
+  <button id="runBtn">Run Scanner</button>
+
+  <div id="progressContainer" style="display:none; margin-top:1rem;">
+    <div class="progress-bar-base">
+      <div id="progressFill" class="progress-bar-fill"></div>
+      <div id="progressText" class="progress-bar-text">0%</div>
+    </div>
+  </div>
+
+  <div id="log"></div>
+  <div id="chartHolder"></div>
+
+
+  <!-- Firebase Premium Check -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
+      projectId: "persuasive-net-456607-g8",
+      storageBucket: "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId: "1019332250475",
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // hide everything until premium verified
+    document.body.style.visibility = "hidden";
+
+    const unsub = onAuthStateChanged(auth, async user => {
+      unsub();
+      if (!user) return window.location.replace("/login.html");
+      try {
+        const roleSnap = await get(ref(db, `users/${user.uid}/role`));
+        const role = roleSnap.exists() ? roleSnap.val() : null;
+        if (role === "premium") {
+          document.body.style.visibility = "visible";
+        } else {
+          window.location.replace("/checkout.html");
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Error verifying account.");
+        window.location.replace("/login.html");
+      }
+    });
+  </script>
+
+  <script>
+    // Grab CSS vars into JS
+    const ACCENT_COLOR    = getComputedStyle(document.documentElement)
+                              .getPropertyValue('--accent').trim();
+    const HIGHLIGHT_COLOR = getComputedStyle(document.documentElement)
+                              .getPropertyValue('--highlight').trim();
+
+    // Utilities
+    const log = msg => {
+      const el = document.getElementById('log');
+      el.innerHTML += msg + "\n";
+      el.scrollTop = el.scrollHeight;
+    };
+    const sleep = ms => new Promise(res=>setTimeout(res,ms));
+
+    // Fetch full OHLC for MACD & Ichimoku
+    async function fetchHistoricalDataFull(ticker) {
+      const symbol = encodeURIComponent(ticker.replace(/"/g,'').trim());
+      const res = await fetch(`/api/historical?symbol=${symbol}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }
+
+    // Fetch close-only for Bounce Scanner
+    async function fetchHistoricalDataClose(ticker) {
+      const json = await fetchHistoricalDataFull(ticker);
+      const raw = json['Time Series (Daily)']||{};
+      return Object.entries(raw)
+        .map(([d,v])=>({ date:new Date(d), close:+v['4. close'] }))
+        .sort((a,b)=>a.date-b.date);
+    }
+
+    // Slice last N months
+    function sliceByMonths(data, months){
+      const end = data[data.length-1].date;
+      const start = new Date(end);
+      start.setMonth(start.getMonth()-months);
+      return data.filter(p=>p.date>=start);
+    }
+
+    // Load tickers list
+    async function loadTickers(idx) {
+      const res = await fetch(`https://intuition-trades.vercel.app/tickers/${idx}-tickers.txt`);
+      if (!res.ok) throw new Error(res.statusText);
+      const txt = await res.text();
+      return txt.split(/,|\n/).map(s=>s.replace(/"/g,'').trim()).filter(Boolean);
+    }
+
+    // ——————————————
+    // Support Bounce logic
+    // ——————————————
+    function detectSupportZones(data){
+      const bins = new Map(), size=0.5;
+      for(let i=1;i<data.length-1;i++){
+        const prev=data[i-1].close, cur=data[i].close, nxt=data[i+1].close;
+        if(cur<prev && cur<nxt){
+          const b = Math.round(cur/size)*size;
+          if(!bins.has(b)) bins.set(b,[]);
+          bins.get(b).push(data[i]);
+        }
+      }
+      return Array.from(bins.entries())
+        .filter(([,t])=>t.length>=2)
+        .map(([price,t])=>({
+          price,
+          touches: t.length,
+          recentDate: t[t.length-1].date
+        }));
+    }
+
+    function scoreSupportMatch(current, sup, slope){
+      const proximity = Math.abs(current - sup.price)/sup.price;
+      const distanceScore = Math.max(0,1 - proximity/0.05);
+      const touchScore    = Math.min(1, sup.touches/4);
+      const recentBonus   = (new Date() - sup.recentDate < 90*864e5)?1:0;
+      const dirBonus      = slope<0?1:0;
+      const raw = 0.6*distanceScore + 0.2*touchScore + 0.1*recentBonus + 0.1*dirBonus;
+      return Math.round(100 * Math.max(0.01,Math.min(0.99,raw)));
+    }
+
+    async function simulateOneBounce(ticker,months){
+      try {
+        const full = await fetchHistoricalDataClose(ticker);
+        const data = sliceByMonths(full,months);
+        if(data.length<50){ log(`❌ ${ticker}: Insufficient data`); return null; }
+        const slope = data[data.length-1].close - data[data.length-10].close;
+        const zones = detectSupportZones(data),
+              current = data[data.length-1].close;
+        const nearby = zones.filter(s=>Math.abs(current-s.price)/s.price<=0.05)
+                            .sort((a,b)=>
+                              Math.abs(current-a.price)-Math.abs(current-b.price)
+                            );
+        if(!nearby.length){
+          log(`⚪ ${ticker}: No support`);
+          return { ticker, score:0, data, best:null };
+        }
+        const best = nearby[0],
+              score = scoreSupportMatch(current,best,slope);
+        log(`✅ ${ticker}: Bounce ${score}`);
+        return { ticker, score, data, best };
+      } catch(e){
+        log(`❌ ${ticker}: Bounce err ${e.message}`);
+        return null;
+      }
+    }
+
+    // ——————————————
+    // MACD logic
+    // ——————————————
+    function processHistoricalDataMACD(ts, months){
+      const dates = Object.keys(ts).sort((a,b)=>new Date(a)-new Date(b));
+      const end = new Date(dates[dates.length-1]);
+      const start= new Date(end);
+      start.setMonth(start.getMonth()-months);
+      let prices=[];
+      for(let d of dates){
+        const dt=new Date(d);
+        if(dt<start||dt>end) continue;
+        const o=ts[d]["1. open"], h=ts[d]["2. high"],
+              l=ts[d]["3. low"], c=ts[d]["5. adjusted close"];
+        prices.push({
+          date:dt,
+          open: parseFloat(o||c),
+          high: parseFloat(h),
+          low:  parseFloat(l),
+          close: parseFloat(c)
+        });
+      }
+      return prices.sort((a,b)=>a.date-b.date);
+    }
+
+    function computeEMA(prices,period){
+      const m=2/(period+1);
+      let ema=[], sum=0;
+      for(let i=0;i<period;i++) sum+=prices[i].close;
+      let prev=sum/period;
+      ema[period-1]={date:prices[period-1].date,ema:prev};
+      for(let i=period;i<prices.length;i++){
+        prev=(prices[i].close - prev)*m + prev;
+        ema[i]={date:prices[i].date, ema:prev};
+      }
+      return ema.filter(x=>x);
+    }
+
+    function computeMACDLines(prices,fast=12,slow=26,signal=9){
+      const f=computeEMA(prices,fast),
+            s=computeEMA(prices,slow),
+            macdLine=[];
+      for(let i=0;i<s.length;i++){
+        const d=s[i].date,
+              m=f.find(x=>x.date.getTime()===d.getTime());
+        if(m) macdLine.push({date:d, macd:m.ema-s[i].ema});
+      }
+      if(macdLine.length<signal) return {macdLine,signalLine:[]};
+      const m=2/(signal+1);
+      let signalLine=[], sum=0;
+      for(let i=0;i<signal;i++) sum+=macdLine[i].macd;
+      let prev=sum/signal;
+      signalLine[signal-1]={date:macdLine[signal-1].date, signal:prev};
+      for(let i=signal;i<macdLine.length;i++){
+        prev=(macdLine[i].macd - prev)*m + prev;
+        signalLine[i]={date:macdLine[i].date, signal:prev};
+      }
+      return { macdLine, signalLine:signalLine.filter(x=>x) };
+    }
+
+    function polynomialRegression(x,y,deg){
+      const X = x.map(xi=>Array.from({length:deg+1},(_,j)=>Math.pow(xi,j)));
+      const XT = math.transpose(X),
+            XTX= math.multiply(XT,X),
+            XTy= math.multiply(XT,y),
+            coeffs= math.lusolve(XTX,XTy);
+      return coeffs.map(v=>v[0]);
+    }
+
+    function predictValue(coeffs,x){
+      return coeffs.reduce((sum,c,i)=>sum + c*Math.pow(x,i),0);
+    }
+
+    function computeMomentumScoreUsingRegression(hist){
+      if(hist.length<6) return 50;
+      const recent = hist.slice(-6),
+            x=[1,2,3,4,5,6],
+            coeffs=polynomialRegression(x,recent,1),
+            pred=predictValue(coeffs,7),
+            last=recent[recent.length-1],
+            delta=pred-last,
+            k=10,
+            sc=100/(1+Math.exp(-k*delta));
+      return isNaN(sc)?50:sc;
+    }
+
+    function computeGapTrendScoreMACD(macdLine,signalLine){
+      if(macdLine.length<6||signalLine.length<6) return {gapScore:50};
+      const recM=macdLine.slice(-6).map(i=>i.macd),
+            recS=signalLine.slice(-6).map(i=>i.signal),
+            x=[1,2,3,4,5,6],
+            cM=polynomialRegression(x,recM,3),
+            cS=polynomialRegression(x,recS,3),
+            pM=predictValue(cM,7),
+            pS=predictValue(cS,7),
+            pGap=pM-pS,
+            curGap=macdLine[macdLine.length-1].macd - signalLine[signalLine.length-1].signal,
+            delta=pGap-curGap,
+            k=5,
+            gapScore=100/(1+Math.exp(-k*delta));
+      return {gapScore};
+    }
+
+    function computeNewMACDScore(prices){
+      const {macdLine,signalLine}=computeMACDLines(prices),
+            len=Math.min(macdLine.length,signalLine.length);
+      if(len<2) return null;
+      const latest=macdLine[len-1].macd,
+            positionScore=100/(1+Math.exp(latest)),
+            gapData=computeGapTrendScoreMACD(macdLine,signalLine),
+            gapScore=gapData.gapScore,
+            offset=macdLine.length - signalLine.length,
+            hist=signalLine.map((s,i)=>macdLine[i+offset].macd - s.signal).slice(-6),
+            momentumScore=computeMomentumScoreUsingRegression(hist),
+            finalScore=(positionScore + gapScore + momentumScore)/3;
+      return finalScore;
+    }
+
+    async function computeMACDScore(tick,mo){
+      try{
+        const json=await fetchHistoricalDataFull(tick),
+              ts=json["Time Series (Daily)"],
+              prices=processHistoricalDataMACD(ts,mo),
+              sc=computeNewMACDScore(prices);
+        return { ticker: tick, score: Math.round(sc), data: prices, best: null };
+      }catch(e){
+        log(`❌ ${tick}: MACD err ${e.message}`);
+        return null;
+      }
+    }
+
+    // ——————————————
+    // Ichimoku logic
+    // ——————————————
+    function computeIchimokuLines(prices){
+      let tenkan=[], kijun=[], senA=[], senB=[], chikou=[];
+      for(let i=8;i<prices.length;i++){
+        const sl=prices.slice(i-8,i+1),
+              h9=Math.max(...sl.map(p=>p.high)),
+              l9=Math.min(...sl.map(p=>p.low));
+        tenkan.push({date:prices[i].date, value:(h9+l9)/2});
+      }
+      for(let i=25;i<prices.length;i++){
+        const sl=prices.slice(i-25,i+1),
+              h26=Math.max(...sl.map(p=>p.high)),
+              l26=Math.min(...sl.map(p=>p.low));
+        kijun.push({date:prices[i].date, value:(h26+l26)/2});
+      }
+      const mlen=Math.min(tenkan.length,kijun.length);
+      for(let i=0;i<mlen;i++){
+        const base=kijun[i].date,
+              future=new Date(base);
+        future.setDate(future.getDate()+26);
+        senA.push({date:future, value:(tenkan[i].value + kijun[i].value)/2});
+      }
+      for(let i=51;i<prices.length;i++){
+        const sl=prices.slice(i-51,i+1),
+              h52=Math.max(...sl.map(p=>p.high)),
+              l52=Math.min(...sl.map(p=>p.low)),
+              future=new Date(prices[i].date);
+        future.setDate(future.getDate()+26);
+        senB.push({date:future, value:(h52+l52)/2});
+      }
+      for(let i=26;i<prices.length;i++){
+        chikou.push({date:prices[i-26].date, value:prices[i].close});
+      }
+      return { tenkan, kijun, senkouA:senA, senkouB:senB, chikou };
+    }
+
+    function scoreCloud(current,a,b){
+      const top=Math.max(a,b), bot=Math.min(a,b),
+            mid=(top+bot)/2, half=(top-bot)/2||1,
+            norm=(current-mid)/half, C=1;
+      return 100/(1+Math.exp(-C*norm));
+    }
+    function scoreTenkan(ten,kij){
+      const diff=ten-kij, D=0.2;
+      return 100/(1+Math.exp(-D*diff));
+    }
+    function scoreChikou(cur,past){
+      const diff=cur-past, E=0.1;
+      return 100/(1+Math.exp(-E*diff));
+    }
+    function scoreSenkou(a,b){
+      const diff=a-b, avg=(a+b)/2||1, F=3, norm=diff/avg;
+      return 100/(1+Math.exp(-F*norm));
+    }
+    function overallIch(score1,score2,score3,score4){
+      return (score1+score2+score3+score4)/4;
+    }
+
+    function processHistoricalDataIQ(ts,mo){
+      const dates=Object.keys(ts).sort((a,b)=>new Date(a)-new Date(b)),
+            end=new Date(dates[dates.length-1]),
+            start=new Date(end);
+      start.setMonth(start.getMonth()-mo);
+      let prices=[];
+      for(let d of dates){
+        const dt=new Date(d);
+        if(dt<start||dt>end) continue;
+        const o=+ts[d]["1. open"],
+              h=+ts[d]["2. high"],
+              l=+ts[d]["3. low"],
+              c=+ts[d]["5. adjusted close"];
+        prices.push({date:dt, open:o, high:h, low:l, close:c});
+      }
+      return prices.sort((a,b)=>a.date-b.date);
+    }
+
+    async function computeIchimokuScore(tick,mo){
+      try{
+        const json=await fetchHistoricalDataFull(tick),
+              ts=json["Time Series (Daily)"],
+              prices=processHistoricalDataIQ(ts,mo),
+              ich=computeIchimokuLines(prices),
+              current=prices[prices.length-1].close,
+              a=ich.senkouA[ich.senkouA.length-1].value,
+              b=ich.senkouB[ich.senkouB.length-1].value,
+              cloudScore=scoreCloud(current,a,b),
+              tenkanScore=scoreTenkan(
+                ich.tenkan[ich.tenkan.length-1].value,
+                ich.kijun[ich.kijun.length-1].value
+              ),
+              chikouScore=scoreChikou(
+                current,
+                prices[prices.length-26].close
+              ),
+              senkouScore=scoreSenkou(a,b),
+              overall=overallIch(cloudScore,tenkanScore,chikouScore,senkouScore);
+        return { ticker: tick, score: Math.round(overall), data: prices, best: null };
+      }catch(e){
+        log(`❌ ${tick}: Ich err ${e.message}`);
+        return null;
+      }
+    }
+
+    // Main runner
+    async function runScanner(){
+      const idx=document.getElementById('indexSelect').value,
+            tf =document.getElementById('timeframeSelect').value;
+      if(!idx||!tf){ alert('Select both Index & Timeframe'); return; }
+      const months = tf==='short'?4:tf==='medium'?12:24;
+
+      document.getElementById('log').innerHTML='';
+      document.getElementById('chartHolder').innerHTML='';
+      const pc=document.getElementById('progressContainer'),
+            fill=document.getElementById('progressFill'),
+            txt =document.getElementById('progressText');
+      pc.style.display='block';
+      log(`🔎 Scanning ${idx.toUpperCase()} (${months}mo)\n`);
+
+      const tickers=await loadTickers(idx),
+            selArr=Array.from(
+              document.getElementById('indicatorSelect').selectedOptions,
+              o=>o.value
+            ),
+            results=[];
+
+      for(let i=0;i<tickers.length;i++){
+        const pct=Math.round((i+1)/tickers.length*100);
+        fill.style.width=`${pct}%`;
+        txt.textContent=`${pct}%`;
+        log(`\n➡️ ${tickers[i]}`);
+
+        const parts=[];
+        if(selArr.includes('bounce')){
+          const b=await simulateOneBounce(tickers[i],months);
+          if(b) parts.push(b.score);
+        }
+        if(selArr.includes('macd')){
+          const m=await computeMACDScore(tickers[i],months);
+          if(m) parts.push(m.score);
+        }
+        if(selArr.includes('ichimoku')){
+          const ic=await computeIchimokuScore(tickers[i],months);
+          if(ic) parts.push(ic.score);
+        }
+
+        if(!parts.length){
+          log(`⚪ ${tickers[i]}: no data`);
+          continue;
+        }
+
+        const composite=Math.round(parts.reduce((a,b)=>a+b,0)/parts.length);
+        log(`✅ ${tickers[i]}: Composite ${composite}`);
+
+        // pick sample data for chart (bounce preferred)
+        let sample=null;
+        if(selArr.includes('bounce')){
+          sample=await simulateOneBounce(tickers[i],months);
+        } else if(selArr.includes('macd')){
+          sample=await computeMACDScore(tickers[i],months);
+        } else {
+          sample=await computeIchimokuScore(tickers[i],months);
+        }
+
+        results.push({
+          ticker: tickers[i],
+          score: composite,
+          data: sample.data,
+          best: sample.best
+        });
+
+        await sleep(300);
+      }
+
+      results.sort((a,b)=>b.score - a.score);
+      const top10 = results.slice(0,10);
+
+      document.getElementById('chartHolder').innerHTML='';
+      log('\n🔝 Top 10:\n');
+
+      for(const r of top10){
+        log(`• ${r.ticker}: ${r.score}`);
+        const div=document.createElement('div');
+        div.className='chart-container';
+        document.getElementById('chartHolder').appendChild(div);
+
+        Highcharts.chart(div, {
+          chart:{ type:'line', backgroundColor:'transparent' },
+          title:{ text:`${r.ticker} | Score: ${r.score}`, style:{ color:'#fff' } },
+          xAxis:{ type:'datetime' },
+          yAxis:{
+            title:{ text:'Price' },
+            plotLines: r.best ? [{
+              value: r.best.price,
+              color: ACCENT_COLOR,
+              width: 2,
+              dashStyle:'ShortDash',
+              label:{ text:'Support', style:{ color:ACCENT_COLOR } }
+            }] : []
+          },
+          plotOptions:{ series:{ marker:{ enabled:false }}},
+          series:[{
+            name:'Close',
+            data: r.data.map(p=>[p.date.getTime(), p.close]),
+            color: HIGHLIGHT_COLOR
+          }],
+          credits:{ enabled:false },
+          responsive:{
+            rules:[{
+              condition:{ maxWidth:600 },
+              chartOptions:{
+                chart:{ spacingLeft:5, spacingRight:5 },
+                yAxis:{ title:{ text:null }}
+              }
+            }]
+          }
+        });
+
+        await sleep(200);
+      }
+
+      log('\n✅ Scan complete.');
+      // pc.style.display='none';
+    }
+
+    document.getElementById('runBtn').addEventListener('click', runScanner);
+  </script>
+
+</body>
+</html>
