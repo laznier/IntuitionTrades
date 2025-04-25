@@ -369,27 +369,13 @@ for (let i = 0; i < signalLine.length; i++) {
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    function computeMomentumScoreUsingRegression(histValues) {
-  if (histValues.length < 6) return null;
-
-  const recentHist = histValues.slice(-6);
-  console.log("recentHist:", recentHist);
-
-  const x = [1, 2, 3, 4, 5, 6];
-  const coeffs = polynomialRegression(x, recentHist, 1);
-  console.log("Regression coeffs [intercept, slope]:", coeffs);
-
-  const slope = coeffs[1];
-  console.log("Slope:", slope);
-
-  const k = 10;
-  const rawScore = 1 / (1 + Math.exp(-k * slope));
-  console.log("Raw logistic (0–1):", rawScore);
-
-  const percentScore = rawScore * 100;
-  console.log("Momentum score %:", percentScore);
-
-  return percentScore;
+    function computeMomentumScoreSimple(hist, k = 0.5) {
+  if (hist.length < 2) return 50;          // no data → neutral
+  const velocity = averageVelocity(hist);
+  // wrap tanh from JS Math:
+  const raw = Math.tanh(k * velocity);
+  const score = ((raw + 1) / 2) * 100;
+  return score;
 }
 
 
