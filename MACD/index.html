@@ -369,14 +369,26 @@ for (let i = 0; i < signalLine.length; i++) {
       return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
     }
     
-    function computeMomentumScoreSimple(hist, k = 0.5) {
-  if (hist.length < 2) return 50;          // no data → neutral
+    // 1. Compute average per-step change
+function averageVelocity(hist) {
+  let sumDelta = 0;
+  for (let i = 0; i < hist.length - 1; i++) {
+    sumDelta += (hist[i + 1] - hist[i]);
+  }
+  return sumDelta / (hist.length - 1);
+}
+
+// 2. Simple momentum → 0–100 via tanh
+function computeMomentumScoreSimple(hist, k = 0.5) {
+  if (!hist || hist.length < 2) return 50;             // neutral if no data
   const velocity = averageVelocity(hist);
-  // wrap tanh from JS Math:
+  console.log("Average velocity:", velocity);
   const raw = Math.tanh(k * velocity);
   const score = ((raw + 1) / 2) * 100;
+  console.log("Momentum score %:", score);
   return score;
 }
+
 
 
 
