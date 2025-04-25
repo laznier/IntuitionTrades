@@ -7,6 +7,7 @@
   <!-- Include Highcharts for Charting (Stock) -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <!-- Include Math.js for regression calculations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <style>
     :root {
       --primary-bg: #111;
@@ -96,7 +97,7 @@
     }
     #output, #macdChart {
       margin-top: 20px;
-      padding: 1px;
+      padding: 15px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: var(--secondary-bg);
@@ -319,9 +320,9 @@ for (let i = 0; i < signalLine.length; i++) {
       
       Highcharts.chart('macdChart', {
         chart: { backgroundColor: 'transparent' },
-        //title: { text: 'MACD Chart' },
+        title: { text: 'MACD Chart' },
         xAxis: { type: 'datetime' },
-        yAxis: { title: { text: null } },
+        yAxis: { title: { text: 'MACD' } },
         series: [{
           type: 'column',
           name: 'Histogram',
@@ -345,18 +346,43 @@ for (let i = 0; i < signalLine.length; i++) {
       return { macdLine, signalLine, histData };
     }
     
-  
-    // 1) Calculate average per-step change (velocity)
-function averageVelocity(hist) {
-  let sumDelta = 0;
-  for (let i = 0; i < hist.length - 1; i++) {
-    sumDelta += hist[i + 1] - hist[i];
-  }
-  return sumDelta / (hist.length - 1);
+    // Polynomial regression using a Vandermonde matrix (3rd degree).
+    function polynomialRegression(x, y, degree) {
+      let X = [];
+      for (let i = 0; i < x.length; i++) {
+        let row = [];
+        for (let j = 0; j <= degree; j++) {
+          row.push(Math.pow(x[i], j));
+        }
+        X.push(row);
+      }
+      const XT = math.transpose(X);
+      const XTX = math.multiply(XT, X);
+      const XTy = math.multiply(XT, y);
+      const coeffsMatrix = math.lusolve(XTX, XTy);
+      const coeffs = coeffsMatrix.map(val => val[0]);
+      return coeffs;
+    }
+    
+    // Evaluate a polynomial at a given x.
+    function predictValue(coeffs, x) {
+      return coeffs.reduce((sum, coeff, i) => sum + coeff * Math.pow(x, i), 0);
+    }
+    
+    // Compute momentum score using 1rd-degree polynomial regression on the last 6 histogram values.
+    function computeMomentumScoreUsingRegression(histValues) {
+  if (histValues.length < 6) return null;
+  const recentHist = histValues.slice(-6);
+  const x = [1, 2, 3, 4, 5, 6];
+  // Change the degree from 3 to 1 here:
+  const coeffs = polynomialRegression(x, recentHist, 1);
+  const predicted = predictValue(coeffs, 7);
+  const lastValue = recentHist[recentHist.length - 1];
+  const delta = predicted - lastValue;
+  const k = 5; // sensitivity factor
+  const score = 100 / (1 + Math.exp(-k * delta));
+  return score;
 }
-
-
-
 
     
     // Compute the gap trend score using regression on both MACD and Signal lines.
@@ -376,28 +402,7 @@ function averageVelocity(hist) {
       const gapScore = 100 / (1 + Math.exp(-k * delta));
       return { gapScore, delta, currentGap, predictedGap };
     }
-    // 1a) Compute the average per-bar change (velocity)
-function averageVelocity(hist) {
-  let sumDelta = 0;
-  for (let i = 0; i < hist.length - 1; i++) {
-    sumDelta += hist[i + 1] - hist[i];
-  }
-  return sumDelta / (hist.length - 1);
-}
-
-// 1b) Simple momentum: map velocity → 0–100
-function computeMomentumScoreUsingRegression(histValues) {
-  // we keep the old name so computeNewMACDScore doesn't break
-  if (!histValues || histValues.length < 2) return 50;
-  const velocity = averageVelocity(histValues);
-  console.log("Avg velocity:", velocity);
-  const k = 0.5;  // ↑ tweak sensitivity here
-  const raw = Math.tanh(k * velocity);
-  const score = ((raw + 1) / 2) * 100;
-  console.log("Momentum score %:", score);
-  return score;
-}
-
+    
     // Compute the overall MACD score using Position Score, Gap Trend Score, and Momentum Score.
     function computeNewMACDScore(prices) {
       const macdData = computeMACD(prices);
@@ -443,7 +448,7 @@ function computeMomentumScoreUsingRegression(histValues) {
       }
       
       try {
-        const histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
+        const histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
         const resp = await fetch(histUrl);
         const data = await resp.json();
         if (!data["Time Series (Daily)"]) {
