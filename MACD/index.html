@@ -432,7 +432,7 @@ for (let i = 0; i < signalLine.length; i++) {
       const gapScore = gapData ? gapData.gapScore : null;
       
       
-// 3. Build full list of {date, histValue}
+      // 3. Build full list of {date, histValue}
 const histEntries = macdLine.map((m, i) => ({
   date: m.date,
   hist: m.macd - signalLine[i].signal
@@ -447,7 +447,8 @@ console.log("Last 6 histogram entries (oldest→newest):",
 const histValues = histEntries.slice(-6).map(e => e.hist);
 
 const momentumScore = computeMomentumScoreUsingRegression(histValues);
-    };
+
+    }
     
     // Main analysis: fetch historical data, compute scores, and plot the MACD chart.
     document.getElementById("runAnalysis").addEventListener("click", async () => {
