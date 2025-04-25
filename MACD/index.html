@@ -319,8 +319,7 @@ for (let i = 0; i < signalLine.length; i++) {
 
       
       Highcharts.chart('macdChart', {
-        chart: { backgroundColor: 'transparent', spacingleft: 1},
-
+        chart: { backgroundColor: 'transparent' },
         //title: { text: 'MACD Chart' },
         xAxis: { type: 'datetime' },
         yAxis: { title: { text: null } },
@@ -379,7 +378,7 @@ for (let i = 0; i < signalLine.length; i++) {
   const coeffs = polynomialRegression(x, recentHist, 1);
   const predicted = predictValue(coeffs, 7);
   const lastValue = recentHist[recentHist.length - 1];
-  const delta = predicted - lastValue;
+  const delta = lastValue - predicted;
   const k = 5; // sensitivity factor
   const score = 100 / (1 + Math.exp(-k * delta));
   return score;
