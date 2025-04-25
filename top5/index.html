@@ -643,21 +643,26 @@ function computeGapTrendScore(macdLine, signalLine){
   let gapScore= 100/(1+Math.exp(-k*delta));
   return { gapScore, delta, currentGap:curGap, predictedGap:pGap };
 }
-function computeNewMACDScore(prices){
-  let d= computeMACD(prices);
-  let ml= d.macdLine, sl= d.signalLine;
-  if(ml.length<2 || sl.length<2) return 50;
-  let len= Math.min(ml.length, sl.length);
-  let latestM= ml[len-1].macd;
-  let positionScore= 100/(1+Math.exp(latestM)); // slight tweak
-  let gapData= computeGapTrendScore(ml, sl);
-  let gapScore= gapData? gapData.gapScore: 50;
+// 5) Your main scorer, now using only the last 6 deltas for momentum
+function computeNewMACDScore(prices) {
+  const { macdLine: ml, signalLine: sl } = computeMACD(prices);
+  if (ml.length < 2 || sl.length < 2) return 50;
+
+  // 1) Position Score
+  const latestM       = ml[ml.length - 1].macd;
+  const positionScore = 100 / (1 + Math.exp(latestM));
+
+  // 2) Gap Trend Score
+  const gapData = computeGapTrendScore(ml, sl);
+  const gapScore = gapData ? gapData.gapScore : 50;
+
+  // 3) Momentum: zip them and take only the last 6 bars
   const offset = ml.length - sl.length;
-  let hist = sl
-    .map((s, i) => ml[i + offset].macd - s.signal)
-    .slice(-6);
-  let mom = computeMomentumScoreUsingRegression(hist) || 50;
-  return (positionScore+ gapScore+ mom)/3;
+  const hist   = sl.map((s, i) => ml[i + offset].macd - s.signal).slice(-6);
+  const mom    = computeMomentumScoreUsingRegression(hist);
+
+  // 4) Final average
+  return (positionScore + gapScore + mom) / 3;
 }
 function scoreRSI(latestRSI, prevRSI){
   let rel= 50- latestRSI;
