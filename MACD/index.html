@@ -319,7 +319,8 @@ for (let i = 0; i < signalLine.length; i++) {
 
       
       Highcharts.chart('macdChart', {
-        chart: { backgroundColor: 'transparent' },
+        chart: { backgroundColor: 'transparent', spacingleft: 1},
+
         //title: { text: 'MACD Chart' },
         xAxis: { type: 'datetime' },
         yAxis: { title: { text: null } },
