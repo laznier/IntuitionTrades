@@ -288,7 +288,7 @@
     // Fetch the full sentiment data feed for a ticker
     async function fetchAllSentimentData(ticker) {
       const periodMonths = 9999; // Large enough to cover all available data
-      const url = `https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      const url = `https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       const resp = await fetch(url);
       const data = await resp.json();
       if (!data.feed) throw new Error("No sentiment data from server.");

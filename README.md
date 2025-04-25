@@ -50,4 +50,4 @@ You are free to **use** this software in its original, unmodified form for perso
 This project is covered under a **Proprietary** license.  
 See [LICENSE.md](LICENSE.md) for full details.
 
-For permission requests or questions, please contact Laznier Mederos Santos at laznier@projectmanagerhelper.com
+For permission requests or questions, please contact us at admin@intuitiontrades.com

@@ -503,7 +503,7 @@
      * Sentiment
      *********************************************************/
      async function fetchSentimentData(ticker, periodMonths, simDate){
-      let url=`https://www.projectmanagerhelper.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
+      let url=`https://www.intuitiontrades.com/api/sentiment?symbol=${ticker}&periodMonths=${periodMonths}`;
       let r=await fetch(url);
       let j=await r.json();
       if(!j.feed) throw new Error("No sentiment data from server.");
@@ -557,7 +557,7 @@
      *********************************************************/
     // Fetch insider transaction data (buys/sells)
     async function fetchInsiderData(ticker, periodMonths, simDate, currPrice){
-      let url=`https://www.projectmanagerhelper.com/api/insider?symbol=${ticker}`;
+      let url=`https://www.intuitiontrades.com/api/insider?symbol=${ticker}`;
       let r=await fetch(url);
       let j=await r.json();
       if(!j.data|| !Array.isArray(j.data)) throw new Error("No insider data array found.");
@@ -713,7 +713,7 @@
       return { profitability, valuation, growth, dividends, financial };
     }
     async function fetchFundamentalData(ticker){
-      let url=`https://www.projectmanagerhelper.com/api/fundamental?symbol=${ticker}`;
+      let url=`https://www.intuitiontrades.com/api/fundamental?symbol=${ticker}`;
       let r=await fetch(url);
       let data=await r.json();
       if(!data.Symbol) return 50;
@@ -796,7 +796,7 @@
      async function runSimulationForTicker(ticker, simDate, futDate, histPeriod, regime){
       try{
         log(`Processing ${ticker}...`);
-        let hUrl=`https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let hUrl=`https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         let r=await fetch(hUrl);
         let j=await r.json();
         if(!j["Time Series (Daily)"]) throw new Error("No timeseries daily");

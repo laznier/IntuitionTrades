@@ -978,7 +978,7 @@ function plotWMA(prices, wmas) {
       
       try {
         // Fetch historical data from your API endpoint.
-        let histUrl = `https://www.projectmanagerhelper.com/api/historical?symbol=${ticker}`;
+        let histUrl = `https://www.intuitiontrades.com/api/historical?symbol=${ticker}`;
         let resp = await fetch(histUrl);
         let data = await resp.json();
         if (!data["Time Series (Daily)"]) {
