@@ -122,79 +122,69 @@
       display: none;
       text-align: center;
     }
-    /* Table styling for raw data */
+  
+    /* Raw Data Table & Responsive Fix */
+    #rawDataSection {
+      overflow-x: auto;
+    }
     #rawDataTable {
       width: 100%;
       border-collapse: collapse;
-      /* make the Weak–Strong meter visible again */
-#aggregateBar {
-  position: relative;
-  height: 12px;                     /* give it some height */
-  background-color: #444;           /* dark track color */
-  border-radius: 6px;               /* rounded ends */
-  overflow: visible;                /* so the marker can sit outside if you like */
-}
-
-#aggregateMarker {
-  position: absolute;
-  top: -2px;                        /* nudge it up a bit */
-  left: 0;                          /* will be overridden inline by JS */
-  width: 4px;                       /* thin marker line */
-  height: 16px;                     /* slightly taller than the track */
-  background-color: var(--accent-color);
-  border-radius: 2px;
-}
-
-#aggregateScoreText {
-  position: absolute;
-  top: -1.6rem;                     /* place the text above the marker */
-  left: 0;                          /* will be placed by JS */
-  transform: translateX(-50%);      /* center it on the marker */
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: var(--accent-color);
-}
-
+      table-layout: fixed;
     }
     #rawDataTable th,
     #rawDataTable td {
       border: 1px solid #444;
       padding: 8px;
       text-align: left;
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     #rawDataTable th {
       background-color: var(--secondary-bg);
     }
-/* 1) Allow horizontal scroll if it still overflows */
-#rawDataSection {
-  overflow-x: auto;
-}
-
-/* 2) Make the table fill its container and use a fixed layout */
-#rawDataTable {
-  width: 100%;
-  table-layout: fixed;
-}
-
-/* 3) Let both columns wrap their text instead of overflowing */
-#rawDataTable th,
-#rawDataTable td {
-  white-space: normal;
-  word-wrap: break-word;      /* legacy name */
-  overflow-wrap: break-word;  /* modern name */
-}
-
-/* 4) (Optional) Give the first column a slightly smaller share */
-#rawDataTable th:first-child,
-#rawDataTable td:first-child {
-  width: 30%;   /* or whatever ratio you prefer */
-}
-#rawDataTable th:nth-child(2),
-#rawDataTable td:nth-child(2) {
-  width: 70%;
-}
-
+    #rawDataTable th:first-child,
+    #rawDataTable td:first-child {
+      width: 30%;
+    }
+    #rawDataTable th:nth-child(2),
+    #rawDataTable td:nth-child(2) {
+      width: 70%;
+    }
+  
+    /* Aggregate Meter Styling */
+    #aggregateSection {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #aggregateBar {
+      position: relative;
+      flex-grow: 1;
+      height: 8px;
+      background-color: #444;
+      border-radius: 4px;
+      margin: 0 10px;
+    }
+    #aggregateMarker {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 16px;
+      background-color: var(--accent-color);
+      border-radius: 2px;
+    }
+    #aggregateScoreText {
+      position: absolute;
+      top: -1.2rem;
+      transform: translateX(-50%);
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--accent-color);
+    }
   </style>
+  
 </head>
 <body>
   <!-- Back to Home Button -->
