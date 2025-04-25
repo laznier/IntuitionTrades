@@ -432,22 +432,15 @@ for (let i = 0; i < signalLine.length; i++) {
       const gapScore = gapData ? gapData.gapScore : null;
       
       
-      // 3. Build full list of {date, histValue}
-const histEntries = macdLine.map((m, i) => ({
-  date: m.date,
-  hist: m.macd - signalLine[i].signal
-}));
-
-// 🔍 Log the last 6 entries so you can see exact order and values:
-console.log("Last 6 histogram entries (oldest→newest):", 
-  histEntries.slice(-6).map(e => `${e.date.toISOString().slice(0,10)} → ${e.hist.toFixed(4)}`)
-);
-
-// Then pull just the numbers (in that same order) for your momentum calc:
-const histValues = histEntries.slice(-6).map(e => e.hist);
-
-const momentumScore = computeMomentumScoreUsingRegression(histValues);
-
+      // 3. Momentum Score: Use histogram regression.
+      let histValues = [];
+      for (let i = 0; i < len; i++) {
+        histValues.push(macdLine[i].macd - signalLine[i].signal);
+      }
+      const momentumScore = computeMomentumScoreUsingRegression(histValues);
+      
+      const finalScore = (positionScore + gapScore + momentumScore) / 3;
+      return { positionScore, gapScore, momentumScore, finalScore };
     }
     
     // Main analysis: fetch historical data, compute scores, and plot the MACD chart.
