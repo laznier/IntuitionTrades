@@ -97,7 +97,7 @@
     }
     #output, #macdChart {
       margin-top: 20px;
-      padding: 5px;
+      padding: 1px;
       border: 1px solid #444;
       border-radius: 4px;
       background-color: var(--secondary-bg);
@@ -320,9 +320,9 @@ for (let i = 0; i < signalLine.length; i++) {
       
       Highcharts.chart('macdChart', {
         chart: { backgroundColor: 'transparent' },
-        title: { text: 'MACD Chart' },
+        //title: { text: 'MACD Chart' },
         xAxis: { type: 'datetime' },
-       // yAxis: { title: { text: 'MACD' } },
+        yAxis: { title: { text: null } },
         series: [{
           type: 'column',
           name: 'Histogram',
