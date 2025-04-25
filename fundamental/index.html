@@ -136,6 +136,35 @@
     #rawDataTable th {
       background-color: var(--secondary-bg);
     }
+/* 1) Allow horizontal scroll if it still overflows */
+#rawDataSection {
+  overflow-x: auto;
+}
+
+/* 2) Make the table fill its container and use a fixed layout */
+#rawDataTable {
+  width: 100%;
+  table-layout: fixed;
+}
+
+/* 3) Let both columns wrap their text instead of overflowing */
+#rawDataTable th,
+#rawDataTable td {
+  white-space: normal;
+  word-wrap: break-word;      /* legacy name */
+  overflow-wrap: break-word;  /* modern name */
+}
+
+/* 4) (Optional) Give the first column a slightly smaller share */
+#rawDataTable th:first-child,
+#rawDataTable td:first-child {
+  width: 30%;   /* or whatever ratio you prefer */
+}
+#rawDataTable th:nth-child(2),
+#rawDataTable td:nth-child(2) {
+  width: 70%;
+}
+
   </style>
 </head>
 <body>
