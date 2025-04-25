@@ -623,7 +623,7 @@ function computeMomentumScoreUsingRegression(histVals){
   let predicted= predictValue(coeffs,7);
   let lastVal= recent[recent.length-1];
   let delta= predicted-lastVal;
-  let k=5;
+  let k=10;
   let sc= 100/(1+Math.exp(-k*delta));
   return isNaN(sc)?50:sc;
 }
@@ -652,11 +652,11 @@ function computeNewMACDScore(prices){
   let positionScore= 100/(1+Math.exp(latestM)); // slight tweak
   let gapData= computeGapTrendScore(ml, sl);
   let gapScore= gapData? gapData.gapScore: 50;
-  let hist=[];
-  for(let i=0; i<len; i++){
-    hist.push(ml[i].macd - sl[i].signal);
-  }
-  let mom= computeMomentumScoreUsingRegression(hist) || 50;
+  const offset = ml.length - sl.length;
+  let hist = sl
+    .map((s, i) => ml[i + offset].macd - s.signal)
+    .slice(-6);
+  let mom = computeMomentumScoreUsingRegression(hist) || 50;
   return (positionScore+ gapScore+ mom)/3;
 }
 function scoreRSI(latestRSI, prevRSI){
