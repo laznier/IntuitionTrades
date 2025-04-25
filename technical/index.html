@@ -590,7 +590,7 @@
       const predictedGap = predictedMACD - predictedSignal;
       const currentGap = macdLine[macdLine.length - 1].macd - signalLine[signalLine.length - 1].signal;
       const delta = predictedGap - currentGap;
-      const k = 5;
+      const k = 10;
       const gapScore = 100 / (1 + Math.exp(-k * delta));
       return { gapScore, delta, currentGap, predictedGap };
     }
@@ -604,11 +604,13 @@
       const positionScore = 100 / (1 + Math.exp(latestMACD));
       const gapData = computeGapTrendScore(macdLine, signalLine);
       const gapScore = gapData ? gapData.gapScore : null;
-      let histValues = [];
-      for (let i = 0; i < len; i++) {
-        histValues.push(macdLine[i].macd - signalLine[i].signal);
-      }
-      const momentumScore = computeMomentumScoreUsingRegression(histValues);
+      // 3. Momentum Score: Use histogram regression.
+let histValues = [];
+for (let i = 0; i < len; i++) {
+  histValues.push(macdLine[i].macd - signalLine[i].signal);
+}
+const momentumScore = computeMomentumScoreUsingRegression(histValues);
+
       const finalScore = (positionScore + gapScore + momentumScore) / 3;
       console.log("New MACD Scores -> Position:", positionScore.toFixed(2),
                   "Gap:", gapScore.toFixed(2),
