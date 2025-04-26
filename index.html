@@ -1,6 +1,16 @@
 <!DOCTYPE html> 
 <html lang="en">
 <head>
+  <!-- define the global callback queue -->
+<script>
+  window.va = window.va || function () {
+    (window.vaq = window.vaq || []).push(arguments);
+  };
+</script>
+
+<!-- load the Vercel Insights script -->
+<script defer src="/_vercel/insights/script.js"></script>
+
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
 <script>
