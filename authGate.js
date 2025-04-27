@@ -43,26 +43,29 @@ async function recordUsage(uid) {
                        current => (current || 0) + 1);
 }
 
-// Gate: if anon and over 5 runs, kick to login
-onAuthStateChanged(auth, async user => {
-  if (!user) {
-    alert("Please sign in to use this tool.");
-    return location.href = "/login.html";
-  }
-  if (user.isAnonymous) {
-    const used = await getUsageCount(user.uid);
-    if (used >= 5) {
-      alert(
-        "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
-      );
-      return location.href =
-        "/login.html?next=" + encodeURIComponent(location.pathname);
-    }
-    await recordUsage(user.uid);
-  }
-  // if we get here, access is granted — page-specific code runs normally
-});
-// after your existing init + gate logic in authGate.js…
+
+
+// 1) First, sign in anonymously
+signInAnonymously(auth)
+  .then(() => {
+    // 2) Only after anon-auth succeeds, subscribe to state changes
+    onAuthStateChanged(auth, async user => {
+      // Now user is never null here—either anon or real
+      if (user.isAnonymous) {
+        const used = await getUsageCount(user.uid);
+        if (used >= 5) {
+          alert("You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access.");
+          return location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+        }
+        await recordUsage(user.uid);
+      }
+      // access granted from here onward…
+    });
+  })
+  .catch(err => {
+    // if anon auth is disabled, fall back or log the error
+    console.error("Anonymous sign-in failed:", err);
+  });
 
 // 8) Expose to global scope so your un-modified pages can use them:
 window.app                  = app;
