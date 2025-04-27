@@ -535,12 +535,18 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // 1) Block unverified emails
-  if (!user.emailVerified) {
-    showError("Your email is not verified. Please check your inbox.");
-    await auth.signOut();
-    return;
-  }
+  // Skip checks for anonymous users (used by gating)
+if (user.isAnonymous) {
+  return;  // Don't check email verification for anon accounts
+}
+
+// 1) Block unverified emails for regular (non-anonymous) accounts
+if (!user.emailVerified) {
+  showError("Your email is not verified. Please check your inbox.");
+  await auth.signOut();
+  return;
+}
+
 
   // 2) Load user record
   const userRef = ref(db, `users/${user.uid}`);
