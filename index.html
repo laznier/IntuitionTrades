@@ -1930,47 +1930,50 @@ footer {
     const auth = getAuth(app);
     const db   = getDatabase(app);
     
-    // 3) Watch auth & update UI
-    onAuthStateChanged(auth, async user => {
+   // 3) Watch auth & update UI
+onAuthStateChanged(auth, async user => {
   const indicator   = document.getElementById("user-type-indicator");
   const googleBtn   = document.getElementById("googleSignInBtn");
   const emailBtn    = document.getElementById("emailSignInBtn");
   const signOutBtn  = document.getElementById("signOutBtn");
 
-  if (!user) {
-    // not signed in
-    indicator.textContent  = "Not signed in";
-    googleBtn.style.display   = "";      // show
-    emailBtn.style.display    = "";
-    signOutBtn.style.display  = "none";  // hide
-  } else {
-    // signed in → fetch name & role
-    const snap = await get(ref(db, "users/" + user.uid));
-    let role = "basic", name = "";
-    if (snap.exists()) ({ role, name } = snap.val());
-    indicator.textContent = role === "premium"
-      ? `Welcome ${name} (Premium)`
-      : `Welcome ${name} (Basic)`;
-
-    // toggle buttons
-    googleBtn.style.display   = "none";
-    emailBtn.style.display    = "none";
-    signOutBtn.style.display  = "";      // show
+  if (!user || user.isAnonymous) { // ← explicitly handle anonymous or not signed in
+    indicator.textContent = "Welcome Guest";
+    googleBtn.style.display  = "";
+    emailBtn.style.display   = "";
+    signOutBtn.style.display = "none";
+    
+    // Re-run premium UI adjustments to lock everything correctly
+    adjustPremiumUI();
+    return;
   }
-signOutBtn.addEventListener("click", e => {
-  e.preventDefault();
-  auth.signOut()
-    .then(() => {
-      // successful sign‑out → reload the page
-      window.location.reload();
-    })
-    .catch(err => console.error("Error signing out:", err));
-});
 
+  // At this point, user is explicitly NOT anonymous
+  const snap = await get(ref(db, "users/" + user.uid));
+  
+  let role = "basic", name = "User";
+  if (snap.exists()) {
+    ({ role, name } = snap.val());
+  }
 
-  // re–apply your premium/unlock logic now that indicator is updated
+  indicator.textContent = role === "premium"
+    ? `Welcome ${name} (Premium)`
+    : `Welcome ${name} (Basic)`;
+
+  googleBtn.style.display   = "none";
+  emailBtn.style.display    = "none";
+  signOutBtn.style.display  = "";
+
+  signOutBtn.onclick = async e => {
+    e.preventDefault();
+    await auth.signOut();
+    window.location.reload();
+  };
+
+  // Re-run premium UI adjustments
   adjustPremiumUI();
 });
+
 
     </script>
     

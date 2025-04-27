@@ -171,42 +171,6 @@
   <div class="chartContainer">
     <div id="chart"></div>
   </div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-    // ← your web config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-  
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-  
-    (async () => {
-      // wait for Firebase to restore the session (or tell us there is none)
-      const user = await new Promise(resolve =>
-        onAuthStateChanged(auth, resolve)
-      );
-  
-      if (!user) {
-        alert("Please sign in to use this tool.");
-        window.location.href = "/login.html";
-        return;
-      }
-  
-      // at this point we know the user is signed in (basic *or* premium)
-      // you can now initialize your page‑specific JS below:
-      // initMacdTool();  or whatever your page needs
-      console.log("User is signed in, proceeding with basic tool.");
-    })();
-  </script>
   
   <script>
     // Theme color
