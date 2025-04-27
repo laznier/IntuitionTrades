@@ -112,8 +112,24 @@
     margin-right: 10px; /* keep it centered in its parent */
   }
 }
-
   </style>
+
+    <!-- … your meta, styles, etc … -->
+  
+    <!-- Gate anonymous users after 5 free runs -->
+    <script type="module" src="/authGate.js"></script>
+  
+    <!-- THEN load the rest of your page-specific scripts as before -->
+    <script type="module">
+      // your existing tool code runs unmodified
+      const auth = getAuth(app);
+      onAuthStateChanged(auth, user => {
+        console.log("User signed in, proceeding with the MACD tool…");
+        // …all your normal initialization…
+      });
+    </script>
+  
+  
 </head>
 <body>
   <!-- Back to Home Button -->

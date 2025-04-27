@@ -13,7 +13,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
 // ← your existing web config
-const firebaseConfig = { /* … */ };
+const firebaseConfig = {
+    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+    projectId: "persuasive-net-456607-g8",
+    storageBucket: "persuasive-net-456607-g8.appspot.com",
+    messagingSenderId: "1019332250475",
+    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+  };
 
 // Init Firebase
 const app  = initializeApp(firebaseConfig);
@@ -54,3 +62,9 @@ onAuthStateChanged(auth, async user => {
   }
   // if we get here, access is granted — page-specific code runs normally
 });
+// after your existing init + gate logic in authGate.js…
+
+// 8) Expose to global scope so your un-modified pages can use them:
+window.app                  = app;
+window.getAuth              = getAuth;
+window.onAuthStateChanged   = onAuthStateChanged;
