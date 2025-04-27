@@ -59,10 +59,11 @@ document.addEventListener("click", async e => {
   const btn = e.target.closest(".tool-free-run");
   if (!btn) return; // not a tool trigger
 
-  if (!currentUser) {
-    alert("Please sign in to use this tool.");
-    return window.location.href = "/login.html";
-  }
+
+ // if (!currentUser) {
+  //  alert("Please sign in to use this tool.");
+   // return window.location.href = "/login.html";
+  //}
 
   // Fetch user role if not anonymous
   if (!currentUser.isAnonymous) {
