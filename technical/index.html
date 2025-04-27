@@ -15,6 +15,8 @@
 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
+
   <style>
     :root {
       --primary-bg: #111;
@@ -189,7 +191,7 @@
   <label for="period">Historical Period (months):</label>
   <input type="number" id="period" value="12" min="1">
 
-  <button id="runAnalysis">Run Analysis</button>
+  <button id="runAnalysis" class="tool-free-run">Run Analysis</button>
   <div id="loading">Loading data and running analysis...</div>
 
   <!-- Aggregated Signal Meter -->
@@ -245,42 +247,6 @@
     <button id="explanationButton">View Detailed Explanation</button>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-  
-    // ← your web config
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-  
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-  
-    (async () => {
-      // wait for Firebase to restore the session (or tell us there is none)
-      const user = await new Promise(resolve =>
-        onAuthStateChanged(auth, resolve)
-      );
-  
-      if (!user) {
-        alert("Please sign in to use this tool.");
-        window.location.href = "/login.html";
-        return;
-      }
-  
-      // at this point we know the user is signed in (basic *or* premium)
-      // you can now initialize your page‑specific JS below:
-      // initMacdTool();  or whatever your page needs
-      console.log("User is signed in, proceeding with basic tool.");
-    })();
-  </script>
   
   <script>
     // Global variable to store analysis details for the explanation page.
