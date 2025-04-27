@@ -29,7 +29,7 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-// 🔥 NEW: Ensure anonymous session persists across refreshes
+// Ensure anonymous session persists
 setPersistence(auth, browserLocalPersistence);
 
 // Helpers
@@ -42,22 +42,40 @@ async function recordUsage(uid) {
   await runTransaction(ref(db, `usageCounts/${uid}/count`), current => (current || 0) + 1);
 }
 
-// Anonymous sign-in (reuses persisted sessions automatically)
-signInAnonymously(auth).catch(err => {
-  if (err.code !== 'auth/operation-not-allowed') console.error(err);
+let currentUser = null;
+
+// Handle user state changes properly
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+
+  if (!user) {
+    // fallback in rare case no user exists
+    signInAnonymously(auth).catch(err => console.error(err));
+  }
 });
 
-// Click gating logic
-onAuthStateChanged(auth, user => {
-  if (!user) return; // Shouldn't happen with anonymous auth enabled
-  
-  document.addEventListener("click", async e => {
-    const btn = e.target.closest(".tool-free-run");
-    if (!btn) return; // not a tool trigger
+// Click gating logic, always using fresh user state
+document.addEventListener("click", async e => {
+  const btn = e.target.closest(".tool-free-run");
+  if (!btn) return; // not a tool trigger
 
-    if (!user.isAnonymous) return; // unlimited for logged-in users
+  if (!currentUser) {
+    alert("Please sign in to use this tool.");
+    return window.location.href = "/login.html";
+  }
 
-    const used = await getUsageCount(user.uid);
+  // Fetch user role if not anonymous
+  if (!currentUser.isAnonymous) {
+    const snap = await get(ref(db, `users/${currentUser.uid}/role`));
+    const role = snap.exists() ? snap.val() : "basic";
+    if (role === "basic" || role === "premium") {
+      return; // unlimited access
+    }
+  }
+
+  // If anonymous, enforce 5-use limit
+  if (currentUser.isAnonymous) {
+    const used = await getUsageCount(currentUser.uid);
     if (used >= 5) {
       alert(
         "You've reached your guest use limit. To prevent spam and ensure the best experience, please sign up or confirm your account for free unlimited access to this tool."
@@ -65,12 +83,11 @@ onAuthStateChanged(auth, user => {
       window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
       return;
     }
-
-    await recordUsage(user.uid);
-  });
+    await recordUsage(currentUser.uid);
+  }
 });
 
-// Expose globals
+// Expose globals for other scripts
 window.app = app;
 window.getAuth = getAuth;
 window.onAuthStateChanged = onAuthStateChanged;
