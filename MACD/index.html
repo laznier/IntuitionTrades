@@ -8,6 +8,8 @@
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <!-- Include Math.js for regression calculations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
+  <script type="module" src="/authGate.js"></script>
+
   <style>
     :root {
       --primary-bg: #111;
@@ -114,21 +116,6 @@
 }
   </style>
 
-    <!-- … your meta, styles, etc … -->
-  
-    <!-- Gate anonymous users after 5 free runs -->
-    <script type="module" src="/authGate.js"></script>
-  
-    <!-- THEN load the rest of your page-specific scripts as before -->
-    <script type="module">
-      // your existing tool code runs unmodified
-      const auth = getAuth(app);
-      onAuthStateChanged(auth, user => {
-        console.log("User signed in, proceeding with the MACD tool…");
-        // …all your normal initialization…
-      });
-    </script>
-  
   
 </head>
 <body>
@@ -146,7 +133,7 @@
   <label for="period">Historical Period (months):</label>
   <input type="number" id="period" value="12" min="1">
   
-  <button id="runAnalysis">Run MACD Calculation</button>
+  <button id="runAnalysis" class="tool-free-run">Run MACD Calculation</button>
   <div id="loading">Loading data and running MACD analysis...</div>
   
   <!-- Output container for scores -->

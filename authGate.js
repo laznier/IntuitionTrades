@@ -1,5 +1,5 @@
 // /public/authGate.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
   getAuth,
   signInAnonymously,
@@ -14,16 +14,16 @@ import {
 
 // ← your existing web config
 const firebaseConfig = {
-  apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-  authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-  projectId: "persuasive-net-456607-g8",
-  storageBucket: "persuasive-net-456607-g8.appspot.com",
-  messagingSenderId: "1019332250475",
-  appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-  databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-};
+    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+    projectId: "persuasive-net-456607-g8",
+    storageBucket: "persuasive-net-456607-g8.appspot.com",
+    messagingSenderId: "1019332250475",
+    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+  };
+  
 
-// Init Firebase
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
@@ -36,35 +36,46 @@ async function getUsageCount(uid) {
 async function recordUsage(uid) {
   await runTransaction(
     ref(db, `usageCounts/${uid}/count`),
-    current => (current || 0) + 1
+    cur => (cur || 0) + 1
   );
 }
 
-// 1) Sign in anonymously, then …
-signInAnonymously(auth)
-  .then(() => {
-    // 2) … only after anon-auth succeeds, subscribe to state changes
-    onAuthStateChanged(auth, async user => {
-      // user is always non-null here
-      if (user.isAnonymous) {
-        const used = await getUsageCount(user.uid);
-        if (used >= 5) {
-          alert(
-            "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
-          );
-          return location.href =
-            "/login.html?next=" + encodeURIComponent(location.pathname);
-        }
-        await recordUsage(user.uid);
-      }
-      // access granted — your page scripts can now run
-    });
-  })
-  .catch(err => {
-    console.error("Anonymous sign-in failed:", err);
-  });
+// 1) Sign in anonymously (or reuse existing anon session)
+signInAnonymously(auth).catch(err => {
+  if (err.code !== "auth/operation-not-allowed") console.error(err);
+});
 
-// Expose to global scope for unmodified pages
-window.app                = app;
-window.getAuth            = getAuth;
-window.onAuthStateChanged = onAuthStateChanged;
+// 2) When auth state settles, wire up the click-gate
+onAuthStateChanged(auth, user => {
+  // no more “null” → either anon or real
+  document.addEventListener("click", async e => {
+    const btn = e.target.closest(".tool-free-run");
+    if (!btn) return;             // not a tool trigger
+
+    // if they’re fully signed in → no cap
+    if (user && !user.isAnonymous) {
+      return;  // unlimited for basic/premium
+    }
+
+    // they must be anonymous if we get here
+    const used = await getUsageCount(user.uid);
+    if (used >= 5) {
+      alert(
+        "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
+      );
+      return window.location.href =
+        "/login.html?next=" + encodeURIComponent(location.pathname);
+    }
+
+    // count this click and let the button’s default action proceed
+    await recordUsage(user.uid);
+  });
+});
+
+// expose globals so your pages can still do:
+//   const auth = getAuth(app);
+//   onAuthStateChanged(auth, user => { … init your tool … });
+window.app                  = app;
+window.getAuth              = getAuth;
+window.onAuthStateChanged   = onAuthStateChanged;
+
