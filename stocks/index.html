@@ -12,7 +12,7 @@
     <!-- Include Math.js so that 'math' is defined -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
     <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
-  </head>
+  
   
   <style>
     /* Updated dark, modern styling similar to main page */
@@ -192,6 +192,7 @@
       color: #fff;
     }
   </style>
+  </head>
 <body>
   <!-- Back to Main Page button -->
   <button onclick="window.location.href='https://www.intuitiontrades.com'">Back to Main Page</button>
@@ -2535,33 +2536,38 @@ Weighted Score = ( w_RRI × RRI
       list.appendChild(li);
     });
   }
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
   const urlParams = new URLSearchParams(window.location.search);
-  
-  // Check for ticker parameter and update ticker input
+
   if (urlParams.has('ticker')) {
     const tickerInput = document.getElementById('ticker');
     if (tickerInput) {
       tickerInput.value = urlParams.get('ticker');
       updateLinkButtonTexts();
     }
-    
-    // Check for timeframe parameter; if not found, set to "short"
+
     const timeframeSelect = document.getElementById('investmentTimeframe');
     if (timeframeSelect) {
       if (urlParams.has('timeframe')) {
         timeframeSelect.value = urlParams.get('timeframe');
       } else {
-        timeframeSelect.value = "short"; // Default to short timeframe if not specified
+        timeframeSelect.value = "short"; // Default
       }
     }
-    
-    // Trigger simulation button click after a brief delay
+
     const simulateBtn = document.getElementById('simulateButton');
+
     if (simulateBtn) {
-      setTimeout(() => { simulateBtn.click(); }, 100);
+      // 👇 NEW: Race Fireband fetch vs timeout
+      await Promise.race([
+        fetchTickerSuggestions(tickerInput.value),  // your Fireband API call
+        new Promise(resolve => setTimeout(resolve, 5000))  // 5 second max wait
+      ]);
+
+      simulateBtn.click();  // then run simulation
     }
   }
+
   
   // Ticker autocomplete and other initialization code
   const tickerInput = document.getElementById('ticker');
