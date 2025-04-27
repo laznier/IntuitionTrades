@@ -1,10 +1,11 @@
-
- // /public/authGate.js
-import { initializeApp }  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+// /public/authGate.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
   getAuth,
   signInAnonymously,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 import {
   getDatabase,
@@ -13,76 +14,63 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
-
-// ← your existing web config
+// Firebase config
 const firebaseConfig = {
-    apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-    authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-    projectId: "persuasive-net-456607-g8",
-    storageBucket: "persuasive-net-456607-g8.appspot.com",
-    messagingSenderId: "1019332250475",
-    appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-    databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-  };
+  apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+  authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+  projectId: "persuasive-net-456607-g8",
+  storageBucket: "persuasive-net-456607-g8.appspot.com",
+  messagingSenderId: "1019332250475",
+  appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+  databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+};
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
+
+// 🔥 NEW: Ensure anonymous session persists across refreshes
+setPersistence(auth, browserLocalPersistence);
 
 // Helpers
 async function getUsageCount(uid) {
   const snap = await get(ref(db, `usageCounts/${uid}/count`));
   return snap.exists() ? snap.val() : 0;
 }
+
 async function recordUsage(uid) {
-  await runTransaction(
-    ref(db, `usageCounts/${uid}/count`),
-    cur => (cur || 0) + 1
-  );
+  await runTransaction(ref(db, `usageCounts/${uid}/count`), current => (current || 0) + 1);
 }
 
-// 1) Sign in anonymously (or reuse existing)
-// 2) Only after that, wire up the click‐gate in capture‐phase
-signInAnonymously(auth)
-  .then(() => {
-    onAuthStateChanged(auth, user => {
-      // user is never null here (anon or real)
-      document.addEventListener("click", async e => {
-        const btn = e.target.closest(".tool-free-run");
-        if (!btn) return;             // only care about our tagged buttons
+// Anonymous sign-in (reuses persisted sessions automatically)
+signInAnonymously(auth).catch(err => {
+  if (err.code !== 'auth/operation-not-allowed') console.error(err);
+});
 
-        // fully signed‐in users are unlimited
-        if (user && !user.isAnonymous) {
-          return;
-        }
+// Click gating logic
+onAuthStateChanged(auth, user => {
+  if (!user) return; // Shouldn't happen with anonymous auth enabled
+  
+  document.addEventListener("click", async e => {
+    const btn = e.target.closest(".tool-free-run");
+    if (!btn) return; // not a tool trigger
 
-        // anonymous users get 5 total
-        const used = await getUsageCount(user.uid);
-        if (used >= 5) {
-          // block the normal click handler from ever firing
-          e.preventDefault();
-          e.stopImmediatePropagation();
+    if (!user.isAnonymous) return; // unlimited for logged-in users
 
-          alert(
-            "You've reached your 5-use limit. To prevent spam and ensure the best experience, please sign up or confirm your account for free unlimited access."
-          );
-          return window.location.href =
-            "/login.html?next=" + encodeURIComponent(location.pathname);
-        }
+    const used = await getUsageCount(user.uid);
+    if (used >= 5) {
+      alert(
+        "You've reached your guest use limit. To prevent spam and ensure the best experience, please sign up or confirm your account for free unlimited access to this tool."
+      );
+      window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+      return;
+    }
 
-        // otherwise count this click and allow the tool to run
-        await recordUsage(user.uid);
-      }, /* <- capture phase: */ true);
-    });
-  })
-  .catch(err => {
-    // if anon auth is disabled, you can fallback or just log
-    console.error("Anonymous sign-in failed:", err);
+    await recordUsage(user.uid);
   });
+});
 
-// expose these so your existing tool code can still do:
-//   const auth = getAuth(app);
-//   onAuthStateChanged(auth, user => { /* init tool… */ });
-window.app                  = app;
-window.getAuth              = getAuth;
-window.onAuthStateChanged   = onAuthStateChanged;
+// Expose globals
+window.app = app;
+window.getAuth = getAuth;
+window.onAuthStateChanged = onAuthStateChanged;
