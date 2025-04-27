@@ -64,7 +64,7 @@ signInAnonymously(auth)
           e.stopImmediatePropagation();
 
           alert(
-            "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
+            "You've reached your 5-use limit. To prevent spam and ensure the best experience, please sign up or confirm your account for free unlimited access."
           );
           return window.location.href =
             "/login.html?next=" + encodeURIComponent(location.pathname);
