@@ -8,6 +8,7 @@
   <!-- Highcharts Stock Scripts -->
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+  <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
 
   <style>
     :root {
@@ -151,8 +152,8 @@
     <input type="text" id="ticker" value="SPY" placeholder="Enter Ticker" />
     <ul id="ticker-suggestions"></ul>
     <div id="company-full-name"></div>
-    <button id="loadBtn">Load Chart</button>
-    <button id="plotSupportBtn">Plot Support</button>
+    <button id="loadBtn" class="tool-free-run">Load Chart</button>
+    <button id="plotSupportBtn" class="tool-free-run">Plot Support</button>
   </div>
 
   <div id="modeTabs">
