@@ -1,4 +1,5 @@
-// /public/authGate.js
+
+ // /public/authGate.js
 import { initializeApp }  from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
 import {
   getAuth,
@@ -12,6 +13,7 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
+
 // ← your existing web config
 const firebaseConfig = {
     apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
@@ -22,7 +24,6 @@ const firebaseConfig = {
     appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
     databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
   };
-  
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -40,42 +41,48 @@ async function recordUsage(uid) {
   );
 }
 
-// 1) Sign in anonymously (or reuse existing anon session)
-signInAnonymously(auth).catch(err => {
-  if (err.code !== "auth/operation-not-allowed") console.error(err);
-});
+// 1) Sign in anonymously (or reuse existing)
+// 2) Only after that, wire up the click‐gate in capture‐phase
+signInAnonymously(auth)
+  .then(() => {
+    onAuthStateChanged(auth, user => {
+      // user is never null here (anon or real)
+      document.addEventListener("click", async e => {
+        const btn = e.target.closest(".tool-free-run");
+        if (!btn) return;             // only care about our tagged buttons
 
-// 2) When auth state settles, wire up the click-gate
-onAuthStateChanged(auth, user => {
-  // no more “null” → either anon or real
-  document.addEventListener("click", async e => {
-    const btn = e.target.closest(".tool-free-run");
-    if (!btn) return;             // not a tool trigger
+        // fully signed‐in users are unlimited
+        if (user && !user.isAnonymous) {
+          return;
+        }
 
-    // if they’re fully signed in → no cap
-    if (user && !user.isAnonymous) {
-      return;  // unlimited for basic/premium
-    }
+        // anonymous users get 5 total
+        const used = await getUsageCount(user.uid);
+        if (used >= 5) {
+          // block the normal click handler from ever firing
+          e.preventDefault();
+          e.stopImmediatePropagation();
 
-    // they must be anonymous if we get here
-    const used = await getUsageCount(user.uid);
-    if (used >= 5) {
-      alert(
-        "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
-      );
-      return window.location.href =
-        "/login.html?next=" + encodeURIComponent(location.pathname);
-    }
+          alert(
+            "You’ve hit your 5-free-use limit. Please sign in or sign up for unlimited access."
+          );
+          return window.location.href =
+            "/login.html?next=" + encodeURIComponent(location.pathname);
+        }
 
-    // count this click and let the button’s default action proceed
-    await recordUsage(user.uid);
+        // otherwise count this click and allow the tool to run
+        await recordUsage(user.uid);
+      }, /* <- capture phase: */ true);
+    });
+  })
+  .catch(err => {
+    // if anon auth is disabled, you can fallback or just log
+    console.error("Anonymous sign-in failed:", err);
   });
-});
 
-// expose globals so your pages can still do:
+// expose these so your existing tool code can still do:
 //   const auth = getAuth(app);
-//   onAuthStateChanged(auth, user => { … init your tool … });
+//   onAuthStateChanged(auth, user => { /* init tool… */ });
 window.app                  = app;
 window.getAuth              = getAuth;
 window.onAuthStateChanged   = onAuthStateChanged;
-
