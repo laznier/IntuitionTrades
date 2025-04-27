@@ -142,82 +142,41 @@
   <button id="explanationButton" style="display:none;">View Detailed Explanation</button>
   
   <script type="module">
-    // 1) Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      signInAnonymously,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import {
-      getDatabase,
-      ref,
-      get,
-      runTransaction
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
   
-    // ← your existing web config
-    const firebaseConfig = { /* … */ };
+    // ← your web config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
+      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
+      projectId: "persuasive-net-456607-g8",
+      storageBucket: "persuasive-net-456607-g8.appspot.com",
+      messagingSenderId: "1019332250475",
+      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
+      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
+    };
   
-    // 2) Initialize
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db   = getDatabase(app);
   
-    // 3) Give everyone an anonymous session (if they’re not already signed in)
-    signInAnonymously(auth).catch(err => {
-      if (err.code !== 'auth/operation-not-allowed') {
-        console.error("Anonymous sign-in failed:", err);
-      }
-    });
-  
-    // 4) Helper: read current usage count
-    async function getUsageCount(uid) {
-      const snap = await get(ref(db, `usageCounts/${uid}/count`));
-      return snap.exists() ? snap.val() : 0;
-    }
-  
-    // 5) Helper: atomically increment usage
-    async function recordUsage(uid) {
-      const usageRef = ref(db, `usageCounts/${uid}/count`);
-      await runTransaction(usageRef, current => (current || 0) + 1);
-    }
-  
-    // 6) Gate logic
     (async () => {
+      // wait for Firebase to restore the session (or tell us there is none)
       const user = await new Promise(resolve =>
         onAuthStateChanged(auth, resolve)
       );
   
       if (!user) {
-        // shouldn’t happen once anon auth is enabled, but as a fallback:
         alert("Please sign in to use this tool.");
-        return window.location.href = "/login.html";
+        window.location.href = "/login.html";
+        return;
       }
   
-      if (user.isAnonymous) {
-        // Anonymous users get 5 free runs total
-        const used = await getUsageCount(user.uid);
-        if (used >= 5) {
-          alert("You’ve hit your 5-free-use limit. Please sign in or sign up to continue.");
-          return window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
-        }
-        // consume one free run:
-        await recordUsage(user.uid);
-      }
-      // if we reach here, either:
-      //  • user.isAnonymous and used < 5  → free pass
-      //  • user is a full account         → unlimited
-  
-      console.log("Access granted. Initializing tool…");
-      initYourTool();  // ← replace with your real init function
+      // at this point we know the user is signed in (basic *or* premium)
+      // you can now initialize your page‑specific JS below:
+      // initMacdTool();  or whatever your page needs
+      console.log("User is signed in, proceeding with basic tool.");
     })();
-  
-    // 7) Your page-specific startup
-    function initYourTool() {
-      // …whatever code you had after “User is signed in, proceeding…”
-    }
-  </script>
+
   
   
 
