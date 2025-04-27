@@ -49,44 +49,42 @@ onAuthStateChanged(auth, user => {
   currentUser = user;
 
   if (!user) {
-    // fallback in rare case no user exists
     signInAnonymously(auth).catch(err => console.error(err));
   }
+
+  // Now that we know user is ready → set up the click listeners
+  setupToolClicks();
 });
 
-// Click gating logic, always using fresh user state
-document.addEventListener("click", async e => {
-  const btn = e.target.closest(".tool-free-run");
-  if (!btn) return; // not a tool trigger
+function setupToolClicks() {
+  document.addEventListener("click", async e => {
+    const btn = e.target.closest(".tool-free-run");
+    if (!btn) return; // not a tool trigger
 
-
- // if (!currentUser) {
-  //  alert("Please sign in to use this tool.");
-   // return window.location.href = "/login.html";
-  //}
-
-  // Fetch user role if not anonymous
-  if (!currentUser.isAnonymous) {
-    const snap = await get(ref(db, `users/${currentUser.uid}/role`));
-    const role = snap.exists() ? snap.val() : "basic";
-    if (role === "basic" || role === "premium") {
-      return; // unlimited access
+    // Now you can assume `currentUser` exists
+    if (!currentUser.isAnonymous) {
+      const snap = await get(ref(db, `users/${currentUser.uid}/role`));
+      const role = snap.exists() ? snap.val() : "basic";
+      if (role === "basic" || role === "premium") {
+        return; // unlimited access
+      }
     }
-  }
 
-  // If anonymous, enforce 5-use limit
-  if (currentUser.isAnonymous) {
-    const used = await getUsageCount(currentUser.uid);
-    if (used >= 5) {
-      alert(
-        "You've reached your guest use limit. To prevent spam and ensure the best experience, please sign up or confirm your account for free unlimited access to this tool."
-      );
-      window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
-      return;
+    // If anonymous, enforce 5-use limit
+    if (currentUser.isAnonymous) {
+      const used = await getUsageCount(currentUser.uid);
+      if (used >= 5) {
+        alert(
+          "You've reached your guest use limit. To ensure the best experience, please sign up or confirm your account for free unlimited access!"
+        );
+        window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+        return;
+      }
+      await recordUsage(currentUser.uid);
     }
-    await recordUsage(currentUser.uid);
-  }
-});
+  });
+}
+
 
 // Expose globals for other scripts
 window.app = app;
