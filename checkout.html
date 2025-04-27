@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- 1) Vercel Insights -->
+    <script>
+      window.va = window.va || function () {
+        (window.vaq = window.vaq || []).push(arguments);
+      };
+      // record this initial page view
+      window.va('page');
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+  
+    <!-- 2) Google tag (gtag.js) if you also want GA conversions -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){ dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'AW-16923466474'); 
+      // optional: fire a conversion event on load
+      gtag('event', 'conversion', { 'send_to': 'AW-16923466474/8zbcCPz-lL0aEOq13oU_' });
+    </script>
+    
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Upgrade to Premium | Intuition Trades</title>
