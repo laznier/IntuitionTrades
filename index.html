@@ -1489,7 +1489,7 @@ footer {
           <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=ATO">ATO</a>
         </div>
         <div>
-          <span class="score-high">65</span>
+          <span class="score-high">58</span>
         </div>
         <div>
           <button class="performance-button" id="performance-ATO">Loading...</button>
@@ -1501,7 +1501,7 @@ footer {
           <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=VRSN">VRSN</a>
         </div>
         <div>
-          <span class="score-high">63</span>
+          <span class="score-high">57</span>
         </div>
         <div>
           <button class="performance-button" id="performance-VRSN">Loading...</button>
@@ -1510,22 +1510,22 @@ footer {
       <!-- Row 3 -->
       <div class="grid-row">
         <div>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=GL">GL</a>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=NEM">NEM</a>
         </div>
         <div>
-          <span class="score-high">63</span>
+          <span class="score-high">57</span>
         </div>
         <div>
-          <button class="performance-button" id="performance-GL">Loading...</button>
+          <button class="performance-button" id="performance-NEM">Loading...</button>
         </div>
       </div>
       <!-- Row 4 -->
       <div class="grid-row">
         <div>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=NI">NI</a>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=MRK">MRK</a>
         </div>
         <div>
-          <span class="score-high">61</span>
+          <span class="score-high">57</span>
         </div>
         <div>
           <button class="performance-button" id="performance-NI">Loading...</button>
@@ -1534,13 +1534,13 @@ footer {
       <!-- Row 5 -->
       <div class="grid-row">
         <div>
-          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=PPL">PPL</a>
+          <a class="buy-ticker" href="https://www.intuitiontrades.com/stocks/?ticker=CVS">CVS</a>
         </div>
         <div>
-          <span class="score-high">60</span>
+          <span class="score-high">57</span>
         </div>
         <div>
-          <button class="performance-button" id="performance-PPL">Loading...</button>
+          <button class="performance-button" id="performance-CVS">Loading...</button>
         </div>
       </div>
     </div>
@@ -2128,14 +2128,14 @@ const currentPrice = parseFloat(timeSeries[currentTimestamp]["4. close"]);
         .catch(error => console.error("Error fetching intraday data for", ticker, error));
     }
 
-// Update the 10 weekly pick tickers (ATO, VRSN, FL, NI, PPL, ALB, BA, DXCM, AMD, TSLA) and the initial date
+// Update the 10 weekly pick tickers (ATO, NEM, VRSN, MRK, CVS, ALB, BA, DXCM, AMD, TSLA) and the initial date
 document.addEventListener('DOMContentLoaded', () => {
   const initialDate = "2025-04-11";
   document.querySelectorAll('.performance-header').forEach(header => {
     header.textContent = "Performance Since " + initialDate;
   });
 
-  const tickers = ["VRSN", "ATO", "NI", "GL", "PPL", "TSLA", "BA", "DXCM", "ALB", "AMD"];
+  const tickers = ["VRSN", "ATO", "NEM", "MRK", "CVS", "TSLA", "BA", "DXCM", "ALB", "AMD"];
   tickers.forEach(ticker => {
     const perfEl = document.getElementById(`performance-${ticker}`);
     if (perfEl) {
