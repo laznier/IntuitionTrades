@@ -43,7 +43,7 @@ function showSignupVideoPopup() {
   overlay.innerHTML = `
     <div class="video-popup-inner">
       <button class="close-popup">&times;</button>
-      <video src="/signup.mp4" autoplay muted controls playsinline style="max-width:90%; border-radius:12px;"></video>
+      <video src="/videos/signup.mp4" autoplay muted controls playsinline style="max-width:90%; border-radius:12px;"></video>
       <div style="margin-top:10px; font-size:1.1rem;">Create your free account to unlock unlimited access!</div>
     </div>
   `;
@@ -139,7 +139,7 @@ function setupToolClicks() {
     if (currentUser.isAnonymous) {
       const used = await getUsageCount(currentUser.uid);
 
-      if (used >= 5) {
+      if (used >= 10) {
         showSignupVideoPopup(); // 👈 show video instead of alert
         return;
       }
