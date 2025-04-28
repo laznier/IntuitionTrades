@@ -35,29 +35,34 @@ let currentUser = null;
 
 // Video popup creation
 function showSignupVideoPopup() {
-  // If it already exists, don't recreate
-  if (document.getElementById("signup-video-popup")) return;
-
-  const overlay = document.createElement("div");
-  overlay.id = "signup-video-popup";
-  overlay.innerHTML = `
-    <div class="video-popup-inner">
-      <button class="close-popup">&times;</button>
-      <video src="/videos/signup.mp4" autoplay muted controls playsinline style="max-width:90%; border-radius:12px;"></video>
-      <div style="margin-top:10px; font-size:1.1rem;">Create your free account to unlock unlimited access!</div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  document.querySelector(".close-popup").addEventListener("click", () => {
-    overlay.remove();
-  });
-
-  // Optional: Clicking outside closes it too
-  overlay.addEventListener("click", e => {
-    if (e.target.id === "signup-video-popup") overlay.remove();
-  });
-}
+    if (document.getElementById("signup-video-popup")) return;
+  
+    const overlay = document.createElement("div");
+    overlay.id = "signup-video-popup";
+    overlay.innerHTML = `
+      <div class="video-popup-inner">
+        <button class="close-popup">&times;</button>
+        <video id="signup-video" src="/videos/signup.mp4" autoplay muted playsinline controls preload="auto" style="max-width:90%; border-radius:12px;"></video>
+        <div style="margin-top:10px; font-size:1.1rem;">Create your free account to unlock unlimited access!</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  
+    document.querySelector(".close-popup").addEventListener("click", () => {
+        overlay.remove();
+        window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+      });
+      
+  
+      overlay.addEventListener("click", e => {
+        if (e.target.id === "signup-video-popup") {
+          overlay.remove();
+          window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
+        }
+      });
+      
+  }
+  
 
 // Create minimal CSS dynamically
 const style = document.createElement("style");
