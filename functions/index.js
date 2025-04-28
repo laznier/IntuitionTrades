@@ -2,7 +2,7 @@
 
 // -------------------- Imports & Initialization --------------------
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onRequest, onCall } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onValueWritten, onValueCreated } = require("firebase-functions/v2/database");
 const functions = require("firebase-functions");
 
@@ -225,7 +225,7 @@ exports.createBackupCheckoutSession = onCall(
     // 1. Require auth
     if (!auth || !auth.uid) {
       // v2 onCall: throw an HttpsError
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         "unauthenticated",
         "You must be signed in to subscribe."
       );
@@ -235,7 +235,7 @@ exports.createBackupCheckoutSession = onCall(
     // 2. Load Stripe
     const stripeSecret = process.env.STRIPE_SECRET;
     if (!stripeSecret) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         "failed-precondition",
         "Stripe secret key not configured."
       );
@@ -258,7 +258,38 @@ exports.createBackupCheckoutSession = onCall(
       return { url: session.url };
     } catch (err) {
       console.error("❌ Backup session error:", err);
-      throw new functions.https.HttpsError("internal", err.message);
+      throw new HttpsError("internal", err.message);
     }
+  }
+);
+// 6️⃣ Check Usage Count and Role (Callable)
+exports.checkUsageLimit = onCall(
+  { region: "us-central1" },
+  async (req) => {
+    const { auth } = req;
+
+    if (!auth || !auth.uid) {
+      throw new HttpsError("unauthenticated", "User must be signed in.");
+    }
+
+    const uid = auth.uid;
+    const userSnap = await db.ref(`users/${uid}/role`).once("value");
+    const role = userSnap.exists() ? userSnap.val() : null;
+
+    // If user is real ("basic" or "premium") → allow unlimited access
+    if (role === "basic" || role === "premium") {
+      return { allowed: true };
+    }
+
+    // Else, anonymous guest → check usage
+    const usageSnap = await db.ref(`usageCounts/${uid}/count`).once("value");
+    const usageCount = usageSnap.exists() ? usageSnap.val() : 0;
+
+    if (usageCount >= 10) {
+      return { allowed: false }; // ❌ Exceeded
+    }
+
+    // Otherwise still allowed
+    return { allowed: true };
   }
 );

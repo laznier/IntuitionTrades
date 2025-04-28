@@ -33,6 +33,11 @@ setPersistence(auth, browserLocalPersistence);
 
 let currentUser = null;
 
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-functions.js";
+const functions = getFunctions(app);
+const checkUsageLimit = httpsCallable(functions, "checkUsageLimit");
+
+
 // Video popup creation
 function showSignupVideoPopup() {
     if (document.getElementById("signup-video-popup")) return;
@@ -129,30 +134,43 @@ onAuthStateChanged(auth, user => {
 });
 
 function setupToolClicks() {
-  document.addEventListener("click", async e => {
-    const btn = e.target.closest(".tool-free-run");
-    if (!btn) return; // not a tool trigger
-
-    if (!currentUser.isAnonymous) {
-      const snap = await get(ref(db, `users/${currentUser.uid}/role`));
-      const role = snap.exists() ? snap.val() : "basic";
-      if (role === "basic" || role === "premium") {
-        return; // unlimited access
-      }
-    }
-
-    if (currentUser.isAnonymous) {
-      const used = await getUsageCount(currentUser.uid);
-
-      if (used >= 10) {
-        showSignupVideoPopup(); // 👈 show video instead of alert
+    document.addEventListener("click", async e => {
+      const btn = e.target.closest(".tool-free-run");
+      if (!btn) return; // not a tool trigger
+  
+      if (!currentUser) {
+        console.error("User not ready yet.");
         return;
       }
-
+  
+      // 1️⃣ If logged in with a real account, allow unlimited
+      if (!currentUser.isAnonymous) {
+        const snap = await get(ref(db, `users/${currentUser.uid}/role`));
+        const role = snap.exists() ? snap.val() : "basic";
+        if (role === "basic" || role === "premium") {
+          return; // unlimited access
+        }
+      }
+  
+      // 2️⃣ Otherwise (anonymous), check usage limit
+      try {
+        const usageCheck = await checkUsageLimit();
+        if (!usageCheck.data.allowed) {
+          showSignupVideoPopup();
+          return; // Block action, don't proceed
+        }
+      } catch (err) {
+        console.error("Usage check failed:", err.message);
+        showSignupVideoPopup(); // Block just in case
+        return;
+      }
+  
+      // 3️⃣ Locally record usage too
       await recordUsage(currentUser.uid);
-    }
-  });
-}
+    });
+  }
+  
+  
 
 // Expose globals if needed
 window.app = app;
