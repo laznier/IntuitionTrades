@@ -53,10 +53,12 @@ function showSignupVideoPopup() {
 `;
     document.body.appendChild(overlay);
   
-    document.querySelector(".close-popup").addEventListener("click", () => {
-        overlay.remove();
+    document.querySelector(".floating-close").addEventListener("click", (e) => {
+        e.stopPropagation(); // prevent weird bubbling
+        document.getElementById("signup-video-popup")?.remove();
         window.location.href = "/login.html?next=" + encodeURIComponent(location.pathname);
       });
+      
       
   
       overlay.addEventListener("click", e => {
