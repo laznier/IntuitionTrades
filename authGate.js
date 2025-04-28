@@ -45,12 +45,12 @@ function showSignupVideoPopup() {
     const overlay = document.createElement("div");
     overlay.id = "signup-video-popup";
     overlay.innerHTML = `
-      <div class="video-popup-inner">
-        <button class="close-popup">&times;</button>
-        <video id="signup-video" src="/videos/signup.mp4" autoplay muted playsinline controls preload="auto" style="max-width:90%; border-radius:12px;"></video>
-        <div style="margin-top:10px; font-size:1.1rem;">Create your free account to unlock unlimited access!</div>
-      </div>
-    `;
+  <div class="floating-close">&times;</div>
+  <div class="video-popup-inner">
+    <video id="signup-video" src="/videos/signup.mp4" autoplay muted playsinline controls preload="auto" style="max-width:90%; border-radius:12px;"></video>
+    <div style="margin-top:10px; font-size:1.1rem;">Create your free account to unlock unlimited access!</div>
+  </div>
+`;
     document.body.appendChild(overlay);
   
     document.querySelector(".close-popup").addEventListener("click", () => {
@@ -91,15 +91,24 @@ style.textContent = `
     width: 90%;
     animation: slideUp 0.4s ease-out forwards;
   }
-  .close-popup {
-    position: absolute;
-    top:15px; right:20px;
-    background: transparent;
-    border: none;
-    font-size: 2rem;
-    color: #fff;
-    cursor: pointer;
-  }
+
+    .floating-close {
+  position: fixed; /* Important: NOT relative to video */
+  top: 10px;
+  right: 10px;
+  font-size: 2rem;
+  color: white;
+  background: rgba(0,0,0,0.6);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  text-align: center;
+  line-height: 40px;
+  cursor: pointer;
+  z-index: 10000;
+}
+
   @keyframes fadeIn {
     from { opacity:0; }
     to   { opacity:1; }
