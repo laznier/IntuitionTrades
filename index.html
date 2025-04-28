@@ -172,8 +172,10 @@ body.night .background-fixed {
 }
 
 /*************** Hide countdown, bottom 5 picks, and performance sections *****************/
-/* .countdown-section, */
+.countdown-section, 
+.countdown-container,
 /* #weekly-stock-picks, */
+#newsletter-signup,
 #weekly-stock-picks .bottom-grid,
 #performance-summary {
   display: none !important;
@@ -1326,6 +1328,9 @@ footer {
       <li>
         <span class="submenu-toggle">Tools &#9662;</span>
         <ul class="submenu">
+           <!-- Basic Tools -->
+          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
+          <li><a href="risk/">Risk Reward Index</a></li>
           <!-- Premium (Locked) Tool 1 -->
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
@@ -1335,8 +1340,6 @@ footer {
           </li>
           <!-- Basic Tools -->
           <li><a href="intraday/">Stock Chart</a></li>
-          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
-          <li><a href="risk/">Risk Reward Index</a></li>
           <!-- Premium (Locked) Tool 1 -->
           <li class="premium-dropdown-item" id="premiumLink3">
             <a href="support/">Support Bounce Scanner</a>
@@ -1386,6 +1389,9 @@ footer {
       <li class="dropdown">
         <a href="#tools" class="parent-link">Tools</a>
         <ul class="dropdown-menu">
+          <!-- Basic Tools -->
+          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
+          <li><a href="risk/">Risk Reward Index</a></li>
           <!-- Premium (Locked) Tool 1 -->
           <li class="premium-dropdown-item" id="premiumLink1">
             <a href="top5/">Top Stocks Scanner</a>
@@ -1395,8 +1401,6 @@ footer {
           </li>
           <!-- Basic Tools -->
           <li><a href="intraday/">Stock Chart</a></li>
-          <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
-          <li><a href="risk/">Risk Reward Index</a></li>
           <!-- Premium (Locked) Tool 1 -->
           <li class="premium-dropdown-item" id="premiumLink3">
             <a href="support/">Support Bounce Scanner</a>
@@ -1695,6 +1699,21 @@ footer {
     <section id="tools">
       <h2>Tools</h2>
       <div class="tool-grid">
+        <div class="tool-card basic">
+          <img src="images/stocks.PNG" alt="Comprehensive Stock Analysis" />
+          <h2>Comprehensive Stock Analysis</h2>
+          <p>
+            Evaluate each stock by integrating Risk vs. Reward, Congress and Insider activity, Market Sentiment, Fundamental, and Technical Analysis.
+          </p>
+          
+          <a href="stocks/" class="tool-button">Open Tool</a>
+        </div>
+        <div class="tool-card basic">
+          <img src="images/risk.PNG" alt="Risk Reward Index" />
+          <h2>Risk Reward Index</h2>
+          <p>Assess risk vs reward using a double Heston stochastic volatility jump‐diffusion (dbHJ) model with realtime calibration.</p>
+          <a href="risk/" class="tool-button">Open Tool</a>
+        </div>
         <!-- Premium Tool (locked by default) -->
         <div class="tool-card premium" id="premiumCard">
           <!-- VIDEO INSTEAD OF IMAGE -->
@@ -1723,21 +1742,7 @@ footer {
           <p>View current stock price and historical charts with support levels plotting.</p>
           <a href="intraday/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card basic">
-          <img src="images/stocks.PNG" alt="Comprehensive Stock Analysis" />
-          <h2>Comprehensive Stock Analysis</h2>
-          <p>
-            Evaluate each stock by integrating Risk vs. Reward, Congress and Insider activity, Market Sentiment, Fundamental, and Technical Analysis.
-          </p>
-          
-          <a href="stocks/" class="tool-button">Open Tool</a>
-        </div>
-        <div class="tool-card basic">
-          <img src="images/risk.PNG" alt="Risk Reward Index" />
-          <h2>Risk Reward Index</h2>
-          <p>Assess risk vs reward using a double Heston stochastic volatility jump‐diffusion (dbHJ) model with realtime calibration.</p>
-          <a href="risk/" class="tool-button">Open Tool</a>
-        </div>
+        
         <!-- Premium Tool (locked by default) -->
         <div class="tool-card premium" id="premiumCard">
           <!-- VIDEO INSTEAD OF IMAGE -->
