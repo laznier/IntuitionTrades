@@ -2776,14 +2776,6 @@ tipFeedback.onclick = () => {
 tipNext.parentElement.insertBefore(tipFeedback, tipNext);
 
 let currentTip = 0;
-let userType = "guest"; // default fallback
-
-function showTipPopup() {
-  if (userType.includes("premium")) return; // new rule: never show for Premium
-  if (localStorage.getItem('dismissedTips')) return;
-  tipPopup.style.display = 'block';
-  updateTip();
-}
 
 function updateTip() {
   tipText.textContent = tips[currentTip];
@@ -2819,27 +2811,36 @@ tipSignup.onclick = () => {
 // Premium Upsell for Basic Users
 // ================================
 function showPremiumPopup() {
-  if (userType.includes("premium")) return; // new rule: never show for Premium
-  if (localStorage.getItem('premiumPopupLastShown')) {
-    const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
-    if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
-  }
   premiumPopup.style.display = 'block';
   setTimeout(() => { premiumPopup.style.display = 'none'; }, 10000); // auto close after 10 sec
   localStorage.setItem('premiumPopupLastShown', Date.now().toString());
 }
 
+function showTipPopup() {
+  if (localStorage.getItem('dismissedTips')) return;
+  tipPopup.style.display = 'block';
+  updateTip();
+}
+
 // ================================
-// Detect User Type
+// Detect User Type and then decide
 // ================================
 document.addEventListener("DOMContentLoaded", () => {
   const indicator = document.getElementById("user-type-indicator");
-  userType = indicator ? indicator.textContent.toLowerCase() : "guest";
+  const userType = indicator ? indicator.textContent.toLowerCase() : "guest";
+
+  if (userType.includes("premium")) {
+    // Premium users should NEVER see any popup
+    return;
+  }
 
   if (userType.includes("guest") || userType.includes("not signed")) {
     setTimeout(showTipPopup, 6000);
   } else if (userType.includes("basic")) {
-    setTimeout(showPremiumPopup, 6000);
+    // Only show if the Premium popup hasn't shown recently
+    if (!localStorage.getItem('premiumPopupLastShown') || (Date.now() - parseInt(localStorage.getItem('premiumPopupLastShown'), 10)) > (24*60*60*1000)) {
+      setTimeout(showPremiumPopup, 6000);
+    }
   }
 });
 </script>
