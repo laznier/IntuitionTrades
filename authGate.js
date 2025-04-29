@@ -208,7 +208,10 @@ function setupToolClicks() {
     });
   }
   
-  
+  // make them available to logger.js without an import-cycle
+window.firebaseAuth      = auth;
+window.signInAnonymously = signInAnonymously;
+
 
 // Expose globals if needed
 window.app = app;

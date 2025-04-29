@@ -1,30 +1,29 @@
-import { firebaseAuth, signInAnonymously } from '/authGate.js';
-
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    const auth = firebaseAuth;
-
+// logger.js  – place this file in /public next to authGate.js
+async function logToolUse() {
+    // 1️⃣ make sure Firebase Auth is ready
+    const auth = window.firebaseAuth || window.getAuth(window.app);
+  
     if (!auth.currentUser) {
-      await signInAnonymously(auth);
-      console.log("Signed in anonymously");
+      // these two helpers are exported / exposed by authGate.js (see step 2)
+      await window.signInAnonymously(auth);
     }
-
-    if (auth.currentUser) {
-      const pageTitle = document.title || "Unknown Tool";
-      const pagePath = window.location.pathname || "Unknown URL";
-
-      await fetch("/api/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: auth.currentUser.uid,
-          message: `Used tool: ${pageTitle} (${pagePath})`
-        })
-      });
-
-      console.log("Logged tool usage successfully.");
-    }
-  } catch (error) {
-    console.error("Auth or log error:", error);
+  
+    const { uid } = auth.currentUser;
+    const pageTitle = document.title || "Unknown tool";
+    const pagePath  = window.location.pathname || "Unknown URL";
+  
+    // 2️⃣ send the log to your Vercel edge-function
+    await fetch("/api/log", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ uid, pageTitle, pagePath })
+    }).catch(err => console.error("log error", err));
   }
-});
+  
+  /* 3️⃣ run once DOM is ready */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", logToolUse);
+  } else {
+    logToolUse();
+  }
+  

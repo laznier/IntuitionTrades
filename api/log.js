@@ -19,7 +19,9 @@ export default async function handler(req, res) {
     }
 
     const db = getDatabase(app);
-    const logRef = db.ref(`/logs/${uid}`).push();
+  
+     const logRef = db.ref(`/usageCounts/${uid}/logs`).push();
+    
 
     await logRef.set({
       message,
