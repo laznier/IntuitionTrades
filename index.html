@@ -2737,7 +2737,118 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
   
-  
+  <script>
+    // ================================
+    // Popup Logic
+    // ================================
+    
+    const tips = [
+      "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
+      "We invite you to sign up for a free account to unlock free unlimited access to all basic tools!",
+      "For guests who choose not to sign in, your usage limit resets daily!",
+      "For savvy investors: Each tool has a detailed explanation section breaking down equations, API data sources, and methods!",
+      "We are a small team dedicated to bringing maximum value to our users. Please consider submitting feedback or tool ideas and earn special access to our tools in development--such as the Social Media Stock Scanner!"
+    ];
+    
+    const tipPopup = document.getElementById('tips-popup');
+    const premiumPopup = document.getElementById('premium-popup');
+    const tipText = document.getElementById('tip-text');
+    const tipCounter = document.getElementById('tip-counter');
+    const tipNext = document.getElementById('tips-next');
+    const tipClose = document.getElementById('tips-close');
+    const tipSignup = document.getElementById('tips-signup');
+    
+    // New: Create Feedback button dynamically
+    const tipFeedback = document.createElement('button');
+    tipFeedback.textContent = "Submit Feedback";
+    tipFeedback.style.padding = "0.5rem 1rem";
+    tipFeedback.style.background = "#16a34a";
+    tipFeedback.style.color = "#fff";
+    tipFeedback.style.border = "none";
+    tipFeedback.style.borderRadius = "5px";
+    tipFeedback.style.cursor = "pointer";
+    tipFeedback.style.marginRight = "auto";
+    tipFeedback.onclick = () => {
+      window.location.href = "/feedback.html";
+    };
+    
+    let currentTip = 0;
+    
+    function showTipPopup() {
+      if (localStorage.getItem('dismissedTips')) return;
+      tipPopup.style.display = 'block';
+      updateTip();
+    }
+    
+    function updateTip() {
+      tipText.textContent = tips[currentTip];
+      tipCounter.textContent = `${currentTip+1}/${tips.length}`;
+    
+      tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
+    
+      // Handle feedback button dynamically
+      if (currentTip === 4) { // 5th tip (index 4)
+        if (!tipPopup.contains(tipFeedback)) {
+          tipPopup.querySelector('div[style*="display:flex"]').prepend(tipFeedback);
+        }
+      } else {
+        if (tipPopup.contains(tipFeedback)) {
+          tipFeedback.remove();
+        }
+      }
+    }
+    
+    tipNext.onclick = () => {
+      currentTip++;
+      if (currentTip >= tips.length) {
+        tipPopup.style.display = 'none';
+        localStorage.setItem('dismissedTips', 'true');
+      } else {
+        updateTip();
+      }
+    };
+    
+    tipClose.onclick = () => {
+      tipPopup.style.display = 'none';
+      localStorage.setItem('dismissedTips', 'true');
+    };
+    
+    tipSignup.onclick = () => {
+      window.location.href = "/login.html";
+    };
+    
+    // ================================
+    // Premium Upsell for Basic Users
+    // ================================
+    function showPremiumPopup() {
+      if (localStorage.getItem('premiumPopupLastShown')) {
+        const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
+        if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
+      }
+      premiumPopup.style.display = 'block';
+      setTimeout(() => { premiumPopup.style.display = 'none'; }, 10000); // auto close after 10 sec
+      localStorage.setItem('premiumPopupLastShown', Date.now().toString());
+    }
+    
+    // ================================
+    // Detect User Type Properly
+    // ================================
+    document.addEventListener("DOMContentLoaded", () => {
+      const indicator = document.getElementById("user-type-indicator");
+      const userType = indicator ? indicator.textContent.toLowerCase() : "guest";
+    
+      if (userType.includes("premium")) {
+        // Premium users see nothing
+        return;
+      } else if (userType.includes("basic")) {
+        setTimeout(showPremiumPopup, 3000);
+      } else {
+        // guests or not signed in
+        setTimeout(showTipPopup, 3000);
+      }
+    });
+    </script>
+    
   
 </body>
 </html>
