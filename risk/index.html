@@ -1,8 +1,13 @@
 <!DOCTYPE html> 
 <html lang="en">
 <head>
-    <!--Log in Vercel from logger.js and api/log.js-->
-    <script type="module" src="/logger.js"></script>
+    <!-- tool.html -->
+<!-- 1️⃣ initialise Firebase / expose globals -->
+<script type="module" src="/authGate.js"></script>
+
+<!-- 2️⃣ now the logger can see window.firebaseAuth, etc. -->
+<script type="module" src="/logger.js"></script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>dbHJ Risk vs Reward Tool</title>
@@ -11,7 +16,6 @@
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <!-- Math.js for additional math functions -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-  <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
 
   <style>
     /* Dark theme styling */
