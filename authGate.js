@@ -129,12 +129,18 @@ async function getUsageCount(uid) {
 }
 
 async function recordUsage(uid) {
-    await runTransaction(ref(db, `usageCounts/${uid}/count`), current => {
-      const newCount = (current || 0) + 1;
-      console.log(`🧮 Recorded free run usage for UID: ${uid}. New count: ${newCount}`);
-      return newCount;
-    });
+    try {
+      await runTransaction(ref(db, `usageCounts/${uid}/count`), current => {
+        const newCount = (current || 0) + 1;
+        console.log(`🧮 Recorded free run usage for UID: ${uid}. New count: ${newCount}`);
+        return newCount;
+      });
+      console.log("✅ Successfully recorded usage for", uid);
+    } catch (error) {
+      console.error("❌ Failed to record usage for", uid, error.message);
+    }
   }
+  
 
 // Handle user state changes properly
 onAuthStateChanged(auth, user => {
