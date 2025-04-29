@@ -1977,13 +1977,8 @@ onAuthStateChanged(auth, async user => {
 
   // Re-run premium UI adjustments
   adjustPremiumUI();
+});
 
-      // ── NEW: inject our popup.html ───────────────
-   fetch('/popup.html')
-      .then(res  => res.text())
-      .then(html => document.body.insertAdjacentHTML('beforeend', html))
-      .catch(err  => console.error('Failed to load popup:', err));
-  });
 
     </script>
     
