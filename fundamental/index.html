@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+      <!-- tool.html -->
+<!-- 1️⃣ initialise Firebase / expose globals -->
+<script type="module" src="/authGate.js"></script>
+
+<!-- 2️⃣ now the logger can see window.firebaseAuth, etc. -->
+<script type="module" src="/logger.js"></script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Combined Fundamental Analysis</title>
   <!-- Include Highcharts for graphs -->
   <script src="https://code.highcharts.com/highcharts.js"></script>
   <!-- (Include any other Highcharts modules if needed) -->
-  <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
+
   <style>
     :root {
       --primary-bg: #111;

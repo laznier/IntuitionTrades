@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!--Log in Vercel from logger.js and api/log.js-->
-    <script type="module" src="/logger.js"></script>
+    <!-- tool.html -->
+<!-- 1️⃣ initialise Firebase / expose globals -->
+<script type="module" src="/authGate.js"></script>
+
+<!-- 2️⃣ now the logger can see window.firebaseAuth, etc. -->
+<script type="module" src="/logger.js"></script>
 
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
@@ -23,7 +27,7 @@
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <!-- Include Math.js so that 'math' is defined -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
-    <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
+
   
   
   <style>

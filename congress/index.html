@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+      <!-- tool.html -->
+<!-- 1️⃣ initialise Firebase / expose globals -->
+<script type="module" src="/authGate.js"></script>
+
+<!-- 2️⃣ now the logger can see window.firebaseAuth, etc. -->
+<script type="module" src="/logger.js"></script>
+
   <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
 <script>
@@ -13,7 +20,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Congress Trading Insights</title>
-  <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
+
   <style>
     :root {
       --primary-bg: #111;
