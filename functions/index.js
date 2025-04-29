@@ -295,63 +295,58 @@ exports.checkUsageLimit = onCall(
 );
 /******************************************************************
  * 7️⃣  Purge anonymous auth-accounts + their usageCounts
+ *     (runs automatically every 10 minutes)
  ******************************************************************/
 
 // -- shared helper -------------------------------------------------
 async function purgeAnonymous() {
-  const auth  = admin.auth();
-  const BATCH = 1000;                               // listUsers page size
-  let   next  = undefined;                          // pageToken cursor
-  let   stats = { scanned: 0, deleted: 0 };
+  const auth   = admin.auth();
+  const BATCH  = 1000;                 // listUsers page size
+  let   cursor = undefined;
+  let   stats  = { scanned: 0, deleted: 0 };
 
   do {
-    /* page through Firebase Auth users */
-    const page = await auth.listUsers(BATCH, next);
-    next       = page.pageToken || undefined;
+    // 1. page through Auth users
+    const page   = await auth.listUsers(BATCH, cursor);
+    cursor       = page.pageToken || undefined;
     stats.scanned += page.users.length;
 
-    /* pick purely-anonymous accounts (providerData === []) */
-    const anonUIDs = page.users
-      .filter(u => u.providerData.length === 0)
-      .map(u => u.uid);
+    const anonUids = page.users
+      .filter(u => u.providerData.length === 0)   // purely anonymous
+      .map(u   => u.uid);
 
-    if (anonUIDs.length === 0) continue;
+    if (anonUids.length === 0) continue;
 
-    /* read all roles once so we can look-up each UID’s role quickly */
-    const rolesSnap = await db.ref("users").once("value");
-    const deletions = [];
+    // 2. fetch all roles once for quick look-ups
+    const rolesSnap = await db.ref("users").get();
+    const tasks     = [];
 
-    for (const uid of anonUIDs) {
+    for (const uid of anonUids) {
       const role = rolesSnap.child(uid).child("role").val();
-      if (role !== "anon") continue;                // keep real users
+      if (role !== "anon") continue;               // keep real users
 
-      deletions.push(
-        auth.deleteUser(uid).catch(() => null),     // ignore 404
+      tasks.push(
+        auth.deleteUser(uid).catch(() => null),    // ignore 404
         db.ref(`users/${uid}`).remove().catch(() => null),
         db.ref(`usageCounts/${uid}`).remove().catch(() => null)
       );
       stats.deleted++;
     }
 
-    await Promise.all(deletions);                   // finish this page
-  } while (next);
+    await Promise.all(tasks);                      // finish this page
+  } while (cursor);
 
-  console.log(
-    `🔄 purge finished – scanned ${stats.scanned}, deleted ${stats.deleted}`
-  );
+  console.log(`🔄 purge finished – scanned ${stats.scanned}, deleted ${stats.deleted}`);
   return stats;
 }
 
-/*---------------------------------------------------------------
-   SINGLE scheduled trigger – runs every 10 minutes
-----------------------------------------------------------------*/
+// -- scheduled trigger every 10 minutes ---------------------------
 exports.purgeAnonymous = onSchedule(
   {
-    schedule : "every 10 minutes",   // ⏱️ cadence
+    schedule : "every 10 minutes",
     timeZone : "Etc/UTC",
     region   : "us-central1",
     memory   : "256MiB",
   },
   () => purgeAnonymous()
 );
-
