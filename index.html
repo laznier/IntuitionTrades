@@ -2737,43 +2737,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
   
-  <!-- =====================================
-      POPUPS for Guest & Basic Users
-====================================== -->
-
-<!-- Tip Popup for Guests -->
-<div id="tips-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999;">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-    <div id="tip-counter">1/5</div>
-    <button id="tips-close" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
-  </div>
-  <div id="tip-text" style="font-size:1rem; margin-bottom:1rem;">Loading tip...</div>
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
-    <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
-  </div>
-</div>
-
-<!-- Premium Upsell Popup for Basic Users -->
-<div id="premium-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999; text-align:center;">
-  <div style="font-size:1rem; margin-bottom:1rem;">
-    Please consider upgrading to Premium to unlock access to all scanners and thousands of stocks!
-  </div>
-  <a href="/checkout.html" style="padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; text-decoration:none;">Upgrade to Premium</a>
-</div>
-
-<script>
+ <script>
 // ================================
 // Popup Logic
 // ================================
 
 const tips = [
-      "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
-      "We invite you to sign up for a free account to unlock unlimited access to all basic tools!",
-      "For guests who choose not to sign in, your usage limit resets daily!",
-      "For savvy investors: Each tool has a detailed explanation breaking down equations, data sources, and methods!",
-      "We are a small team dedicated to maximum value. Submit feedback or tool ideas—and gain early access to new scanners!"
-    ];
+  "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
+  "We invite you to sign up for a free account to unlock unlimited access to all basic tools!",
+  "For guests who choose not to sign in, your usage limit resets daily!",
+  "For savvy investors: Each tool has a detailed explanation breaking down equations, data sources, and methods!",
+  "We are a small team dedicated to maximum value. Submit feedback or tool ideas—and gain early access to new scanners!"
+];
 
 const tipPopup = document.getElementById('tips-popup');
 const premiumPopup = document.getElementById('premium-popup');
@@ -2783,9 +2758,28 @@ const tipNext = document.getElementById('tips-next');
 const tipClose = document.getElementById('tips-close');
 const tipSignup = document.getElementById('tips-signup');
 
+// New: Create Feedback Button
+const tipFeedback = document.createElement('button');
+tipFeedback.id = 'tips-feedback';
+tipFeedback.style.display = 'none';
+tipFeedback.style.padding = '0.5rem 1rem';
+tipFeedback.style.background = '#16a34a';
+tipFeedback.style.color = '#fff';
+tipFeedback.style.border = 'none';
+tipFeedback.style.borderRadius = '5px';
+tipFeedback.style.cursor = 'pointer';
+tipFeedback.textContent = 'Give Feedback';
+tipFeedback.onclick = () => {
+  window.location.href = "/feedback.html";
+};
+// Insert feedback button into popup
+tipNext.parentElement.insertBefore(tipFeedback, tipNext);
+
 let currentTip = 0;
+let userType = "guest"; // default fallback
 
 function showTipPopup() {
+  if (userType.includes("premium")) return; // new rule: never show for Premium
   if (localStorage.getItem('dismissedTips')) return;
   tipPopup.style.display = 'block';
   updateTip();
@@ -2794,7 +2788,12 @@ function showTipPopup() {
 function updateTip() {
   tipText.textContent = tips[currentTip];
   tipCounter.textContent = `${currentTip+1}/${tips.length}`;
+
+  // Show Signup button ONLY for tip 2
   tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
+
+  // Show Feedback button ONLY for tip 5
+  tipFeedback.style.display = (currentTip === 4) ? 'inline-block' : 'none';
 }
 
 tipNext.onclick = () => {
@@ -2820,6 +2819,7 @@ tipSignup.onclick = () => {
 // Premium Upsell for Basic Users
 // ================================
 function showPremiumPopup() {
+  if (userType.includes("premium")) return; // new rule: never show for Premium
   if (localStorage.getItem('premiumPopupLastShown')) {
     const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
     if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
@@ -2834,15 +2834,16 @@ function showPremiumPopup() {
 // ================================
 document.addEventListener("DOMContentLoaded", () => {
   const indicator = document.getElementById("user-type-indicator");
-  const userType = indicator ? indicator.textContent.toLowerCase() : "guest";
+  userType = indicator ? indicator.textContent.toLowerCase() : "guest";
 
   if (userType.includes("guest") || userType.includes("not signed")) {
-    setTimeout(showTipPopup, 3000);
+    setTimeout(showTipPopup, 6000);
   } else if (userType.includes("basic")) {
-    setTimeout(showPremiumPopup, 3000);
+    setTimeout(showPremiumPopup, 6000);
   }
 });
 </script>
+
 
   
 </body>
