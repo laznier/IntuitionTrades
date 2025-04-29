@@ -144,13 +144,16 @@ async function recordUsage(uid) {
 
 // Handle user state changes properly
 onAuthStateChanged(auth, user => {
-  currentUser = user;
-  console.log("👤 Anonymous user signed in:", user.uid);
-
-
-  if (!user) {
-    signInAnonymously(auth).catch(err => console.error(err));
-  } else if (user.isAnonymous) {
+    if (!user) {                       // 🔒 guard against the first null event
+            console.log("🔄 no user yet – signing-in anonymously");
+            signInAnonymously(auth).catch(console.error);
+            return;                          // wait for the next event
+          }
+        
+          currentUser = user;
+          console.log("👤 Firebase user ready:", user.uid);
+        
+          if (user.isAnonymous) {
     // Initialize usage count if not yet set
     const usageRef = ref(db, `usageCounts/${user.uid}/count`);
     get(usageRef).then(snap => {
