@@ -10,7 +10,7 @@
   <!-- Math.js for additional math functions -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.6.4/math.min.js"></script>
   <script type="module" src="/authGate.js"></script> <!-- Insert in Head -->
-  
+
   <style>
     /* Dark theme styling */
     :root {
@@ -779,6 +779,25 @@ document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
   // Run once the DOM is fully loaded.
   document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
 
+
+  //Log usage count on Vercel
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+const auth = getAuth();
+auth.onAuthStateChanged(user => {
+  if (user) {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: user.uid,
+        message: "Ran Risk vs Reward Simulation"
+      })
+    }).catch(err => console.error("Logging failed:", err));
+  }
+});
+
+  
   </script>
 </body>
 </html>

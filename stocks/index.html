@@ -2588,6 +2588,23 @@ Weighted Score = ( w_RRI × RRI
   updateLinkButtonTexts();
 });
 
+//Log usage count on Vercel
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+const auth = getAuth();
+auth.onAuthStateChanged(user => {
+  if (user) {
+    fetch("/api/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: user.uid,
+        message: "Ran Comprehensive Stock Snalysis"
+      })
+    }).catch(err => console.error("Logging failed:", err));
+  }
+});
+
 </script>
 </body>
 </html>
