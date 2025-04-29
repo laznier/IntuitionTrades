@@ -294,59 +294,46 @@ exports.checkUsageLimit = onCall(
   }
 );
 /******************************************************************
- * 7️⃣  Purge anonymous auth-accounts + their usageCounts
- *     (runs automatically every 10 minutes)
+ * 7️⃣  Purge ALL anonymous Auth accounts  +  truncate usageCounts/
  ******************************************************************/
 
-// -- shared helper -------------------------------------------------
-async function purgeAnonymous() {
+/* --------------- helper --------------------------------------- */
+async function purgeAnonymousAndUsage() {
   const auth   = admin.auth();
-  const BATCH  = 1000;                 // listUsers page size
-  let   cursor = undefined;
+  const PAGE   = 1000;          // listUsers page size
+  let   next   = undefined;
   let   stats  = { scanned: 0, deleted: 0 };
 
   do {
-    // 1. page through Auth users
-    const page   = await auth.listUsers(BATCH, cursor);
-    cursor       = page.pageToken || undefined;
+    const page = await auth.listUsers(PAGE, next);
+    next       = page.pageToken || undefined;
     stats.scanned += page.users.length;
 
-    const anonUids = page.users
-      .filter(u => u.providerData.length === 0)   // purely anonymous
-      .map(u   => u.uid);
+    // “(anonymous)” ⇒ providerData = []
+    const anon = page.users.filter(u => u.providerData.length === 0);
+    if (anon.length === 0) continue;
 
-    if (anonUids.length === 0) continue;
+    // delete accounts in parallel (ignore 404 just in case)
+    await Promise.all(
+      anon.map(u => auth.deleteUser(u.uid).catch(() => null))
+    );
+    stats.deleted += anon.length;
+  } while (next);
 
-    // 2. fetch all roles once for quick look-ups
-    const rolesSnap = await db.ref("users").get();
-    const tasks     = [];
+  /* Wipe the whole usageCounts subtree */
+  await db.ref("usageCounts").remove().catch(() => null);
 
-    for (const uid of anonUids) {
-      const role = rolesSnap.child(uid).child("role").val();
-      if (role !== "anon") continue;               // keep real users
-
-      tasks.push(
-        auth.deleteUser(uid).catch(() => null),    // ignore 404
-        db.ref(`users/${uid}`).remove().catch(() => null),
-        db.ref(`usageCounts/${uid}`).remove().catch(() => null)
-      );
-      stats.deleted++;
-    }
-
-    await Promise.all(tasks);                      // finish this page
-  } while (cursor);
-
-  console.log(`🔄 purge finished – scanned ${stats.scanned}, deleted ${stats.deleted}`);
+  console.log(`🧹 purge finished – scanned ${stats.scanned}, deleted ${stats.deleted}, usageCounts branch removed`);
   return stats;
 }
 
-// -- scheduled trigger every 10 minutes ---------------------------
-exports.purgeAnonymous = onSchedule(
+/* --------------- scheduled every 10 minutes ------------------- */
+exports.purgeAnonymousEvery10min = onSchedule(
   {
     schedule : "every 10 minutes",
     timeZone : "Etc/UTC",
     region   : "us-central1",
     memory   : "256MiB",
   },
-  () => purgeAnonymous()
+  () => purgeAnonymousAndUsage()
 );
