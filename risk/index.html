@@ -1,6 +1,8 @@
 <!DOCTYPE html> 
 <html lang="en">
 <head>
+    <!--Log in Vercel from logger.js and api/log.js-->
+    <script type="module" src="/logger.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>dbHJ Risk vs Reward Tool</title>
@@ -780,25 +782,7 @@ document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
   document.addEventListener("DOMContentLoaded", autoInitializeSimulation);
 
 </script>
-<script>
-  //Log usage count on Vercel
-import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-
-const auth = getAuth();
-auth.onAuthStateChanged(user => {
-  if (user) {
-    fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uid: user.uid,
-        message: "Ran Risk vs Reward Simulation"
-      })
-    }).catch(err => console.error("Logging failed:", err));
-  }
-});
 
   
-  </script>
 </body>
 </html>
