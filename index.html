@@ -2758,7 +2758,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tipClose = document.getElementById('tips-close');
     const tipSignup = document.getElementById('tips-signup');
     
-    // New: Create Feedback button dynamically
+    // Create Feedback button dynamically
     const tipFeedback = document.createElement('button');
     tipFeedback.textContent = "Submit Feedback";
     tipFeedback.style.padding = "0.5rem 1rem";
@@ -2782,11 +2782,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     function updateTip() {
       tipText.textContent = tips[currentTip];
-      tipCounter.textContent = `${currentTip+1}/${tips.length}`;
+      tipCounter.textContent = `${currentTip + 1}/${tips.length}`;
     
       tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
     
-      // Handle feedback button dynamically
       if (currentTip === 4) { // 5th tip (index 4)
         if (!tipPopup.contains(tipFeedback)) {
           tipPopup.querySelector('div[style*="display:flex"]').prepend(tipFeedback);
@@ -2817,13 +2816,10 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "/login.html";
     };
     
-    // ================================
-    // Premium Upsell for Basic Users
-    // ================================
     function showPremiumPopup() {
       if (localStorage.getItem('premiumPopupLastShown')) {
         const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
-        if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
+        if (Date.now() - lastShown < 24 * 60 * 60 * 1000) return; // Only once every 24 hours
       }
       premiumPopup.style.display = 'block';
       setTimeout(() => { premiumPopup.style.display = 'none'; }, 10000); // auto close after 10 sec
@@ -2831,11 +2827,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     // ================================
-    // Detect User Type Properly
+    // Wait for user type to be ready AFTER 7 seconds
     // ================================
-    document.addEventListener("DOMContentLoaded", () => {
+    
+    function checkUserTypeAndShowPopup() {
       const indicator = document.getElementById("user-type-indicator");
-      const userType = indicator ? indicator.textContent.toLowerCase() : "guest";
+      if (!indicator || !indicator.textContent.trim()) {
+        setTimeout(checkUserTypeAndShowPopup, 300); // Retry after 300ms
+        return;
+      }
+    
+      const userType = indicator.textContent.toLowerCase();
     
       if (userType.includes("premium")) {
         // Premium users see nothing
@@ -2843,9 +2845,12 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (userType.includes("basic")) {
         setTimeout(showPremiumPopup, 3000);
       } else {
-        // guests or not signed in
         setTimeout(showTipPopup, 3000);
       }
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+      setTimeout(checkUserTypeAndShowPopup, 7000); // ⏳ Wait 7 seconds after page load
     });
     </script>
     
