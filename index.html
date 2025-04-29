@@ -2737,118 +2737,122 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("DOMContentLoaded", adjustPremiumUI);
   </script>
   
- <script type="module">
+ 
+  <script type="module">
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
   import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
 
-  const tipPopup = document.getElementById('tips-popup');
-  const premiumPopup = document.getElementById('premium-popup');
-  const tipText = document.getElementById('tip-text');
-  const tipCounter = document.getElementById('tip-counter');
-  const tipNext = document.getElementById('tips-next');
-  const tipClose = document.getElementById('tips-close');
-  const tipSignup = document.getElementById('tips-signup');
+  document.addEventListener('DOMContentLoaded', () => {
+    const tipPopup = document.getElementById('tips-popup');
+    const premiumPopup = document.getElementById('premium-popup');
+    const tipText = document.getElementById('tip-text');
+    const tipCounter = document.getElementById('tip-counter');
+    const tipNext = document.getElementById('tips-next');
+    const tipClose = document.getElementById('tips-close');
+    const tipSignup = document.getElementById('tips-signup');
 
-  // New: Create Feedback Button
-  const tipFeedback = document.createElement('button');
-  tipFeedback.id = 'tips-feedback';
-  tipFeedback.style.display = 'none';
-  tipFeedback.style.padding = '0.5rem 1rem';
-  tipFeedback.style.background = '#16a34a';
-  tipFeedback.style.color = '#fff';
-  tipFeedback.style.border = 'none';
-  tipFeedback.style.borderRadius = '5px';
-  tipFeedback.style.cursor = 'pointer';
-  tipFeedback.textContent = 'Give Feedback';
-  tipFeedback.onclick = () => {
-    window.location.href = "/feedback.html";
-  };
-  tipNext.parentElement.insertBefore(tipFeedback, tipNext);
+    // Create Feedback Button
+    const tipFeedback = document.createElement('button');
+    tipFeedback.id = 'tips-feedback';
+    tipFeedback.style.display = 'none';
+    tipFeedback.style.padding = '0.5rem 1rem';
+    tipFeedback.style.background = '#16a34a';
+    tipFeedback.style.color = '#fff';
+    tipFeedback.style.border = 'none';
+    tipFeedback.style.borderRadius = '5px';
+    tipFeedback.style.cursor = 'pointer';
+    tipFeedback.textContent = 'Give Feedback';
+    tipFeedback.onclick = () => {
+      window.location.href = "/feedback.html";
+    };
 
-  const tips = [
-    "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
-    "We invite you to sign up for a free account to unlock unlimited access to all basic tools!",
-    "For guests who choose not to sign in, your usage limit resets daily!",
-    "For savvy investors: Each tool has a detailed explanation breaking down equations, data sources, and methods!",
-    "We are a small team dedicated to maximum value. Submit feedback or tool ideas—and gain early access to new scanners!"
-  ];
+    if (tipNext && tipNext.parentElement) {
+      tipNext.parentElement.insertBefore(tipFeedback, tipNext);
+    }
 
-  let currentTip = 0;
+    const tips = [
+      "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
+      "We invite you to sign up for a free account to unlock unlimited access to all basic tools!",
+      "For guests who choose not to sign in, your usage limit resets daily!",
+      "For savvy investors: Each tool has a detailed explanation breaking down equations, data sources, and methods!",
+      "We are a small team dedicated to maximum value. Submit feedback or tool ideas—and gain early access to new scanners!"
+    ];
 
-  function updateTip() {
-    tipText.textContent = tips[currentTip];
-    tipCounter.textContent = `${currentTip+1}/${tips.length}`;
+    let currentTip = 0;
 
-    tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
-    tipFeedback.style.display = (currentTip === 4) ? 'inline-block' : 'none';
-  }
+    function updateTip() {
+      tipText.textContent = tips[currentTip];
+      tipCounter.textContent = `${currentTip+1}/${tips.length}`;
 
-  tipNext.onclick = () => {
-    currentTip++;
-    if (currentTip >= tips.length) {
+      tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
+      tipFeedback.style.display = (currentTip === 4) ? 'inline-block' : 'none';
+    }
+
+    tipNext.onclick = () => {
+      currentTip++;
+      if (currentTip >= tips.length) {
+        tipPopup.style.display = 'none';
+        localStorage.setItem('dismissedTips', 'true');
+      } else {
+        updateTip();
+      }
+    };
+
+    tipClose.onclick = () => {
       tipPopup.style.display = 'none';
       localStorage.setItem('dismissedTips', 'true');
-    } else {
+    };
+
+    tipSignup.onclick = () => {
+      window.location.href = "/login.html";
+    };
+
+    function showTipsPopup() {
+      if (localStorage.getItem('dismissedTips')) return;
+      tipPopup.style.display = 'block';
       updateTip();
     }
-  };
 
-  tipClose.onclick = () => {
-    tipPopup.style.display = 'none';
-    localStorage.setItem('dismissedTips', 'true');
-  };
-
-  tipSignup.onclick = () => {
-    window.location.href = "/login.html";
-  };
-
-  function showTipsPopup() {
-    if (localStorage.getItem('dismissedTips')) return;
-    tipPopup.style.display = 'block';
-    updateTip();
-  }
-
-  function showPremiumPopup() {
-    premiumPopup.style.display = 'block';
-    setTimeout(() => {
-      premiumPopup.style.display = 'none';
-    }, 10000);
-  }
-
-  // Now properly handle user detection
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      // Not logged in → treat as guest
-      setTimeout(showTipsPopup, 4000);
-      return;
+    function showPremiumPopup() {
+      premiumPopup.style.display = 'block';
+      setTimeout(() => {
+        premiumPopup.style.display = 'none';
+      }, 10000);
+      localStorage.setItem('premiumPopupLastShown', Date.now().toString());
     }
 
-    try {
-      const snap = await get(ref(db, "users/" + user.uid));
-      const role = snap.exists() ? (snap.val().role || "").toLowerCase() : "";
-
-      if (role === "premium") {
-        // Premium users = No popups
+    // === Firebase User Role Check ===
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // Not signed in (Guest)
+        setTimeout(showTipsPopup, 4000);
         return;
-      } else if (role === "basic") {
-        // Basic users = Premium popup (upsell)
-        if (!localStorage.getItem('premiumPopupLastShown') || (Date.now() - parseInt(localStorage.getItem('premiumPopupLastShown'), 10)) > (24*60*60*1000)) {
-          setTimeout(showPremiumPopup, 4000);
-          localStorage.setItem('premiumPopupLastShown', Date.now().toString());
+      }
+
+      try {
+        const snap = await get(ref(db, "users/" + user.uid));
+        const role = snap.exists() ? (snap.val().role || "").toLowerCase() : "";
+
+        if (role === "premium") {
+          // Premium = Show nothing
+          return;
+        } else if (role === "basic") {
+          // Basic = Premium Upsell Popup
+          if (!localStorage.getItem('premiumPopupLastShown') || (Date.now() - parseInt(localStorage.getItem('premiumPopupLastShown'), 10)) > (24*60*60*1000)) {
+            setTimeout(showPremiumPopup, 4000);
+          }
+        } else {
+          // Undefined role = Guest behavior
+          setTimeout(showTipsPopup, 4000);
         }
-      } else {
-        // Undefined role, guest, anything else = Show Tips
+      } catch (error) {
+        console.error("Error checking user role:", error);
         setTimeout(showTipsPopup, 4000);
       }
-    } catch (error) {
-      console.error("Error checking user role:", error);
-      // fallback to showing tips if role checking fails
-      setTimeout(showTipsPopup, 4000);
-    }
+    });
   });
 </script>
 
-  
 </body>
 </html>
