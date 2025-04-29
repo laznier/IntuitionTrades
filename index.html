@@ -1935,6 +1935,9 @@ footer {
     const auth = getAuth(app);
     const db   = getDatabase(app);
     
+    //2.4 for the popup
+    window.currentUserType = "guest"; // globally accessible
+
    // 3) Watch auth & update UI
 onAuthStateChanged(auth, async user => {
   const indicator   = document.getElementById("user-type-indicator");
@@ -1944,6 +1947,9 @@ onAuthStateChanged(auth, async user => {
 
   if (!user || user.isAnonymous) { // ← explicitly handle anonymous or not signed in
     indicator.textContent = "Welcome Guest";
+    //added this for the popup
+    window.currentUserType = "guest"; // default at the top of your file
+    //
     googleBtn.style.display  = "";
     emailBtn.style.display   = "";
     signOutBtn.style.display = "none";
@@ -1964,6 +1970,10 @@ onAuthStateChanged(auth, async user => {
   indicator.textContent = role === "premium"
     ? `Welcome ${name} (Premium)`
     : `Welcome ${name} (Basic)`;
+
+    //added this for the popup
+    window.currentUserType = role;  // <----- add this
+//
 
   googleBtn.style.display   = "none";
   emailBtn.style.display    = "none";
@@ -2738,6 +2748,118 @@ document.addEventListener("DOMContentLoaded", () => {
   </script>
   
  
+<!-- ===================================== 
+      POPUPS for Guest & Basic Users
+====================================== -->
+
+<!-- Tip Popup for Guests -->
+<div id="tips-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+    <div id="tip-counter">1/5</div>
+    <button id="tips-close" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
+  </div>
+  <div id="tip-text" style="font-size:1rem; margin-bottom:1rem;">Loading tip...</div>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
+    <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
+  </div>
+</div>
+
+<!-- Premium Upsell Popup for Basic Users -->
+<div id="premium-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999; text-align:center;">
+  <div style="font-size:1rem; margin-bottom:1rem;">
+    Please consider upgrading to Premium to unlock access to all scanners and thousands of stocks!
+  </div>
+  <a href="/checkout.html" style="padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; text-decoration:none;">Upgrade to Premium</a>
+</div>
+
+<script>
+// ================================
+// Popup Logic
+// ================================
+
+const tips = [
+  "Our Top 5 picks updated weekly! Select any ticker to generate full analysis.",
+  "We invite you to sign up for a free account to unlock free unlimited access to all basic tools!",
+  "For guests who choose not to sign in, your usage limit resets daily!",
+  "For savvy investors: Each tool has a detailed explanation breaking down equations, sources, and APIs!",
+  "We are a small team dedicated to bringing maximum value. Please submit feedback or tool ideas!"
+];
+
+const tipPopup = document.getElementById('tips-popup');
+const premiumPopup = document.getElementById('premium-popup');
+const tipText = document.getElementById('tip-text');
+const tipCounter = document.getElementById('tip-counter');
+const tipNext = document.getElementById('tips-next');
+const tipClose = document.getElementById('tips-close');
+const tipSignup = document.getElementById('tips-signup');
+
+let currentTip = 0;
+
+function showTipPopup() {
+  if (localStorage.getItem('dismissedTips')) return;
+  tipPopup.style.display = 'block';
+  updateTip();
+}
+
+function updateTip() {
+  tipText.textContent = tips[currentTip];
+  tipCounter.textContent = `${currentTip + 1}/${tips.length}`;
+  tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
+}
+
+tipNext.onclick = () => {
+  currentTip++;
+  if (currentTip >= tips.length) {
+    tipPopup.style.display = 'none';
+    localStorage.setItem('dismissedTips', 'true');
+  } else {
+    updateTip();
+  }
+};
+
+tipClose.onclick = () => {
+  tipPopup.style.display = 'none';
+  localStorage.setItem('dismissedTips', 'true');
+};
+
+tipSignup.onclick = () => {
+  window.location.href = "/login.html";
+};
+
+// ================================
+// Premium Upsell for Basic Users
+// ================================
+function showPremiumPopup() {
+  if (localStorage.getItem('premiumPopupLastShown')) {
+    const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
+    if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
+  }
+  premiumPopup.style.display = 'block';
+  setTimeout(() => { premiumPopup.style.display = 'none'; }, 10000); // auto close after 10 sec
+  localStorage.setItem('premiumPopupLastShown', Date.now().toString());
+}
+
+// ================================
+// Detect User Type using currentUserType
+// ================================
+function waitForUserType() {
+  if (typeof window.currentUserType !== 'undefined') {
+    if (window.currentUserType === 'guest') {
+      setTimeout(showTipPopup, 3000);
+    } else if (window.currentUserType === 'basic') {
+      setTimeout(showPremiumPopup, 3000);
+    }
+  } else {
+    // Try again in 500ms if userType not loaded yet
+    setTimeout(waitForUserType, 500);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  waitForUserType();
+});
+</script>
 
   
 </body>
