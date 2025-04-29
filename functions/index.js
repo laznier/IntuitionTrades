@@ -295,7 +295,6 @@ exports.checkUsageLimit = onCall(
 );
 /******************************************************************
  * 7️⃣  Purge anonymous auth-accounts + their usageCounts
- *     – helper first, then two v2 functions
  ******************************************************************/
 
 // -- shared helper -------------------------------------------------
@@ -344,11 +343,11 @@ async function purgeAnonymous() {
 }
 
 /*---------------------------------------------------------------
-   (a) Scheduled – runs once every 24 h
+   SINGLE scheduled trigger – runs every 10 minutes
 ----------------------------------------------------------------*/
-exports.purgeAnonymousDaily = onSchedule(
+exports.purgeAnonymous = onSchedule(
   {
-    schedule : "every 24 hours",
+    schedule : "every 10 minutes",   // ⏱️ cadence
     timeZone : "Etc/UTC",
     region   : "us-central1",
     memory   : "256MiB",
@@ -356,20 +355,3 @@ exports.purgeAnonymousDaily = onSchedule(
   () => purgeAnonymous()
 );
 
-/*---------------------------------------------------------------
-   (b) Manual – callable from CLI / your app
-       firebase functions:call purgeAnonymousNow --data '{}' --project <id>
-       (caller must have customClaim  { admin: true })
-----------------------------------------------------------------*/
-exports.purgeAnonymousNow = onCall(
-  { region: "us-central1", memory: "256MiB" },
-  async ({ auth }) => {
-    if (!auth || auth.token?.admin !== true) {
-      throw new HttpsError(
-        "permission-denied",
-        "Must be signed-in with admin privileges to run this."
-      );
-    }
-    return await purgeAnonymous();
-  }
-);
