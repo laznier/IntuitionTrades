@@ -295,55 +295,56 @@ exports.checkUsageLimit = onCall(
 );
 /******************************************************************
  * 7️⃣  Purge anonymous auth-accounts + their usageCounts
+ *     – helper first, then two v2 functions
  ******************************************************************/
 
-/*---------------------------------------------------------------
-  helper that does the real work (can be reused by both triggers)
-----------------------------------------------------------------*/
+// -- shared helper -------------------------------------------------
 async function purgeAnonymous() {
   const auth  = admin.auth();
-  const BATCH = 1000;                 // user-list page size
-  let   next  = undefined;
-  let   total = { scanned: 0, deleted: 0 };
+  const BATCH = 1000;                               // listUsers page size
+  let   next  = undefined;                          // pageToken cursor
+  let   stats = { scanned: 0, deleted: 0 };
 
   do {
+    /* page through Firebase Auth users */
     const page = await auth.listUsers(BATCH, next);
-    next = page.pageToken || undefined;
+    next       = page.pageToken || undefined;
+    stats.scanned += page.users.length;
 
-    // filter by: no providerData  →  anonymous account
-    const anonUids = page.users
+    /* pick purely-anonymous accounts (providerData === []) */
+    const anonUIDs = page.users
       .filter(u => u.providerData.length === 0)
       .map(u => u.uid);
 
-    total.scanned += page.users.length;
-    if (anonUids.length === 0) continue;
+    if (anonUIDs.length === 0) continue;
 
-    // check the role stored in RTDB – only delete real “anon” roles
-    const rolesSnap = await db.ref("users").child(anonUids[0]).parent
-                         .get(); // grab all roles in one request
+    /* read all roles once so we can look-up each UID’s role quickly */
+    const rolesSnap = await db.ref("users").once("value");
     const deletions = [];
 
-    for (const uid of anonUids) {
+    for (const uid of anonUIDs) {
       const role = rolesSnap.child(uid).child("role").val();
-      if (role !== "anon") continue;                     // keep real users
+      if (role !== "anon") continue;                // keep real users
 
       deletions.push(
-        auth.deleteUser(uid).catch(() => null),          // ignore 404
+        auth.deleteUser(uid).catch(() => null),     // ignore 404
         db.ref(`users/${uid}`).remove().catch(() => null),
         db.ref(`usageCounts/${uid}`).remove().catch(() => null)
       );
-      total.deleted++;
+      stats.deleted++;
     }
 
-    await Promise.all(deletions);
+    await Promise.all(deletions);                   // finish this page
   } while (next);
 
-  console.log(`🔄 purge done – scanned ${total.scanned}, deleted ${total.deleted}`);
-  return total;
+  console.log(
+    `🔄 purge finished – scanned ${stats.scanned}, deleted ${stats.deleted}`
+  );
+  return stats;
 }
 
 /*---------------------------------------------------------------
-   (a) scheduled once every 24 hours
+   (a) Scheduled – runs once every 24 h
 ----------------------------------------------------------------*/
 exports.purgeAnonymousDaily = onSchedule(
   {
@@ -352,20 +353,22 @@ exports.purgeAnonymousDaily = onSchedule(
     region   : "us-central1",
     memory   : "256MiB",
   },
-  async () => purgeAnonymous()
+  () => purgeAnonymous()
 );
 
 /*---------------------------------------------------------------
-   (b) manual trigger – callable Cloud Function
-   call with:  firebase functions:call purgeAnonymousNow --data '{}'
-   (only authenticated users with customClaim admin=true are allowed)
+   (b) Manual – callable from CLI / your app
+       firebase functions:call purgeAnonymousNow --data '{}' --project <id>
+       (caller must have customClaim  { admin: true })
 ----------------------------------------------------------------*/
 exports.purgeAnonymousNow = onCall(
   { region: "us-central1", memory: "256MiB" },
   async ({ auth }) => {
     if (!auth || auth.token?.admin !== true) {
-      throw new HttpsError("permission-denied",
-        "Must be signed-in with an admin account to run this.");
+      throw new HttpsError(
+        "permission-denied",
+        "Must be signed-in with admin privileges to run this."
+      );
     }
     return await purgeAnonymous();
   }
