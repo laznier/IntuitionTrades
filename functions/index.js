@@ -293,3 +293,80 @@ exports.checkUsageLimit = onCall(
     return { allowed: true };
   }
 );
+/******************************************************************
+ * 7️⃣  Purge anonymous auth-accounts + their usageCounts
+ ******************************************************************/
+
+/*---------------------------------------------------------------
+  helper that does the real work (can be reused by both triggers)
+----------------------------------------------------------------*/
+async function purgeAnonymous() {
+  const auth  = admin.auth();
+  const BATCH = 1000;                 // user-list page size
+  let   next  = undefined;
+  let   total = { scanned: 0, deleted: 0 };
+
+  do {
+    const page = await auth.listUsers(BATCH, next);
+    next = page.pageToken || undefined;
+
+    // filter by: no providerData  →  anonymous account
+    const anonUids = page.users
+      .filter(u => u.providerData.length === 0)
+      .map(u => u.uid);
+
+    total.scanned += page.users.length;
+    if (anonUids.length === 0) continue;
+
+    // check the role stored in RTDB – only delete real “anon” roles
+    const rolesSnap = await db.ref("users").child(anonUids[0]).parent
+                         .get(); // grab all roles in one request
+    const deletions = [];
+
+    for (const uid of anonUids) {
+      const role = rolesSnap.child(uid).child("role").val();
+      if (role !== "anon") continue;                     // keep real users
+
+      deletions.push(
+        auth.deleteUser(uid).catch(() => null),          // ignore 404
+        db.ref(`users/${uid}`).remove().catch(() => null),
+        db.ref(`usageCounts/${uid}`).remove().catch(() => null)
+      );
+      total.deleted++;
+    }
+
+    await Promise.all(deletions);
+  } while (next);
+
+  console.log(`🔄 purge done – scanned ${total.scanned}, deleted ${total.deleted}`);
+  return total;
+}
+
+/*---------------------------------------------------------------
+   (a) scheduled once every 24 hours
+----------------------------------------------------------------*/
+exports.purgeAnonymousDaily = onSchedule(
+  {
+    schedule : "every 24 hours",
+    timeZone : "Etc/UTC",
+    region   : "us-central1",
+    memory   : "256MiB",
+  },
+  async () => purgeAnonymous()
+);
+
+/*---------------------------------------------------------------
+   (b) manual trigger – callable Cloud Function
+   call with:  firebase functions:call purgeAnonymousNow --data '{}'
+   (only authenticated users with customClaim admin=true are allowed)
+----------------------------------------------------------------*/
+exports.purgeAnonymousNow = onCall(
+  { region: "us-central1", memory: "256MiB" },
+  async ({ auth }) => {
+    if (!auth || auth.token?.admin !== true) {
+      throw new HttpsError("permission-denied",
+        "Must be signed-in with an admin account to run this.");
+    }
+    return await purgeAnonymous();
+  }
+);
