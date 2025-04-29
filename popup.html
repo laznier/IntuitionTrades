@@ -1,0 +1,93 @@
+<!-- popup.html -->
+<div id="popup-overlay" style="display:none;position:fixed;top:0;left:0;
+     width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;
+     display:flex;align-items:center;justify-content:center;">
+  <div id="popup-box" style="background:#222;color:#fff;padding:2rem;
+       border-radius:8px;max-width:90%;width:400px;position:relative;">
+    <button id="popup-close" style="position:absolute;top:8px;right:8px;
+            background:transparent;border:none;color:#fff;font-size:1.2rem;
+            cursor:pointer;">×</button>
+    <p id="popup-text" style="margin-bottom:1rem;"></p>
+    <p id="popup-counter" style="margin-bottom:1rem;font-size:0.9rem;opacity:0.7;"></p>
+    <button id="popup-next" style="margin-right:0.5rem;padding:0.5rem 1rem;
+            background:#16a34a;border:none;color:#fff;border-radius:4px;
+            cursor:pointer;">Next</button>
+    <button id="popup-signup" style="display:none;padding:0.5rem 1rem;
+            background:#0ea5e9;border:none;color:#fff;border-radius:4px;
+            cursor:pointer;">Sign Up</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  // must be set by index.html before loading this file:
+  const role = window.popupRole || 'guest';  
+  const tips = [
+    "Our Top 5 picks are updated weekly! Select any ticker to generate a full analysis.",
+    "Sign up for a free account to unlock unlimited access to all basic tools!",
+    "Guests reset their daily usage limit every 24 hours.",
+    "Each tool comes with a detailed explanation of methods and data sources.",
+    "We're a small team—submit feedback to gain early access to new scanners!"
+  ];
+  let tipIndex = 0;
+
+  const overlay   = document.getElementById('popup-overlay');
+  const textEl    = document.getElementById('popup-text');
+  const countEl   = document.getElementById('popup-counter');
+  const nextBtn   = document.getElementById('popup-next');
+  const closeBtn  = document.getElementById('popup-close');
+  const signupBtn = document.getElementById('popup-signup');
+
+  function showTip() {
+    overlay.style.display = 'flex';
+    textEl.textContent    = tips[tipIndex];
+    countEl.textContent   = `${tipIndex+1}/${tips.length}`;
+    signupBtn.style.display = (tipIndex === 1) ? 'inline-block' : 'none';
+  }
+
+  function showPremiumUpsell() {
+    overlay.style.display = 'flex';
+    textEl.textContent    = "Unlock premium to remove usage limits and get advanced features!";
+    countEl.textContent   = "";
+    nextBtn.style.display = 'none';
+    signupBtn.textContent = "Upgrade Now";
+    signupBtn.style.display = 'inline-block';
+  }
+
+  // wire up buttons
+  nextBtn.onclick = () => {
+    tipIndex++;
+    if (tipIndex < tips.length) {
+      showTip();
+    } else {
+      overlay.style.display = 'none';
+      localStorage.setItem('popupDismissed', 'true');
+    }
+  };
+  closeBtn.onclick = () => {
+    overlay.style.display = 'none';
+    localStorage.setItem('popupDismissed', 'true');
+  };
+  signupBtn.onclick = () => {
+    window.location.href = (role === 'basic') ? '/checkout.html' : '/login.html';
+  };
+
+  // decide which to show
+  if (localStorage.getItem('popupDismissed')) return;
+  if (role === 'premium') {
+    // no popup
+    return;
+  }
+  if (role === 'basic') {
+    // only once per day
+    const last = +localStorage.getItem('premiumPopupLast') || 0;
+    if (Date.now() - last > 86400000) {
+      localStorage.setItem('premiumPopupLast', Date.now());
+      setTimeout(showPremiumUpsell, 4000);
+    }
+  } else {
+    // guest/treatment
+    setTimeout(showTip, 4000);
+  }
+})();
+</script>
