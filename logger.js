@@ -1,25 +1,34 @@
-// public/logger.js
-async function logToolUse() {
+/* public/logger.js  – NO server key needed */
+import {
+    getDatabase,
+    ref,
+    push,
+    set
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+  
+  async function logToolUse() {
+    /* 1️⃣  wait until Auth is ready */
     const auth = window.firebaseAuth || window.getAuth(window.app);
+    if (!auth.currentUser) {
+      await window.signInAnonymously(auth);     // exported by authGate.js
+    }
   
-    if (!auth.currentUser) await window.signInAnonymously(auth);  // anon UID
-  
-    const { uid }   = auth.currentUser;
-    const db        = window.appDb || window.getDatabase(window.app); // already in authGate
-    const pushRef   = window.firebasePush || (await import(
-                        "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js"
-                      )).push;
-    const ref       = (await import(
-                        "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js"
-                      )).ref;
-  
-    pushRef(ref(db, `usageCounts/${uid}/logs`), {
-      pageTitle : document.title || "unknown tool",
-      pagePath  : location.pathname,
+    /* 2️⃣  build the log entry */
+    const { uid }  = auth.currentUser;
+    const payload  = {
+      pageTitle : document.title  || "Unknown tool",
+      pagePath  : location.pathname || "Unknown URL",
       timestamp : Date.now()
-    }).catch(console.error);
+    };
+  
+    /* 3️⃣  write straight to Realtime-DB */
+    const db      = getDatabase(window.app);          // <- use the same app
+    const logRef  = push(ref(db, `usageCounts/${uid}/logs`));
+    await set(logRef, payload)
+          .catch(err => console.error("log error", err));
   }
   
+  /* Run once DOM is ready */
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", logToolUse);
   } else {
