@@ -2843,22 +2843,30 @@ function showPremiumPopup() {
 // ================================
 // Detect User Type using currentUserType
 // ================================
-function waitForUserType() {
-  if (typeof window.currentUserType !== 'undefined') {
-    if (window.currentUserType === 'guest') {
-      setTimeout(showTipPopup, 3000);
-    } else if (window.currentUserType === 'basic') {
+// ===================================
+// Reliable Popup Trigger based on User Type
+// ===================================
+
+function waitForFinalUserType(retries = 20) {
+  if (typeof window.currentUserType !== 'undefined' && window.currentUserType !== 'guest') {
+    // Final role loaded (basic or premium)
+    if (window.currentUserType === 'basic') {
       setTimeout(showPremiumPopup, 3000);
     }
+  } else if (retries > 0) {
+    setTimeout(() => waitForFinalUserType(retries - 1), 300); // Retry every 300ms
   } else {
-    // Try again in 500ms if userType not loaded yet
-    setTimeout(waitForUserType, 500);
+    // If still no valid role after retries, assume guest
+    if (window.currentUserType === 'guest') {
+      setTimeout(showTipPopup, 3000);
+    }
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  waitForUserType();
+  waitForFinalUserType();
 });
+
 </script>
 
   
