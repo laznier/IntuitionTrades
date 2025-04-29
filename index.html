@@ -2759,16 +2759,18 @@ document.addEventListener("DOMContentLoaded", () => {
     <button id="tips-close" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
   </div>
   <div id="tip-text" style="font-size:1rem; margin-bottom:1rem;">Loading tip...</div>
-  <div style="display:flex; justify-content:space-between; align-items:center;">
-    <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
-    <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
-  </div>
+  <!-- Buttons area inside #tips-popup -->
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
+  <button id="tips-feedback" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Submit Feedback</button>
+  <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
+</div>
 </div>
 
 <!-- Premium Upsell Popup for Basic Users -->
 <div id="premium-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999; text-align:center;">
   <div style="font-size:1rem; margin-bottom:1rem;">
-    Please consider upgrading to Premium to unlock access to all scanners and thousands of stocks!
+    Please consider upgrading to Premium to unlock full access to stock scanners for each of our tools!
   </div>
   <a href="/checkout.html" style="padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; text-decoration:none;">Upgrade to Premium</a>
 </div>
@@ -2779,11 +2781,11 @@ document.addEventListener("DOMContentLoaded", () => {
 // ================================
 
 const tips = [
-  "Our Top 5 picks updated weekly! Select any ticker to generate full analysis.",
-  "We invite you to sign up for a free account to unlock free unlimited access to all basic tools!",
-  "For guests who choose not to sign in, your usage limit resets daily!",
-  "For savvy investors: Each tool has a detailed explanation breaking down equations, sources, and APIs!",
-  "We are a small team dedicated to bringing maximum value. Please submit feedback or tool ideas!"
+  "Our Top 5 stock picks are updated weekly! Select any ticker to generate a detailed analysis.",
+  "We invite you to sign up for a free account to unlock unlimited use of all basic tools!",
+  "For guests who prefer not to sign up for an account, your daily usage limit resets every 24 hours.",
+  "For savvy investors: Each tool has a detailed explanation breaking down the math, references, and data sources.",
+  "Submit feedback and unlock early access to new tools—such as the upcoming Social Media Stock Scanner!"
 ];
 
 const tipPopup = document.getElementById('tips-popup');
@@ -2805,8 +2807,14 @@ function showTipPopup() {
 function updateTip() {
   tipText.textContent = tips[currentTip];
   tipCounter.textContent = `${currentTip + 1}/${tips.length}`;
+  
+  // Only show signup button on tip 2 (index 1)
   tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
+  
+  // Only show feedback button on tip 5 (index 4)
+  tipFeedback.style.display = (currentTip === 4) ? 'inline-block' : 'none';
 }
+
 
 tipNext.onclick = () => {
   currentTip++;
@@ -2825,6 +2833,10 @@ tipClose.onclick = () => {
 
 tipSignup.onclick = () => {
   window.location.href = "/login.html";
+};
+
+tipFeedback.onclick = () => {
+  window.location.href = "/feedback.html";
 };
 
 // ================================
