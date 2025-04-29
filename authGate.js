@@ -142,71 +142,88 @@ async function recordUsage(uid) {
   }
   
 
-// Handle user state changes properly
+/* ---------- Handle user-state changes ---------- */
 onAuthStateChanged(auth, user => {
-    if (!user) {                       // 🔒 guard against the first null event
-            console.log("🔄 no user yet – signing-in anonymously");
-            signInAnonymously(auth).catch(console.error);
-            return;                          // wait for the next event
-          }
-        
-          currentUser = user;
-          console.log("👤 Firebase user ready:", user.uid);
-        
-          if (user.isAnonymous) {
-    // Initialize usage count if not yet set
+  if (!user) {
+    // No UID yet – that’s fine; we’ll create one on first interaction.
+    console.log("⌛ No Firebase user yet (lazy sign-in enabled)");
+    return;
+  }
+
+  currentUser = user;
+  console.log("👤 Firebase user ready:", user.uid);
+
+  if (user.isAnonymous) {
+    // Ensure DB nodes exist the first time we ever see this UID
     const usageRef = ref(db, `usageCounts/${user.uid}/count`);
     get(usageRef).then(snap => {
       if (!snap.exists()) {
-        // Also create a /users/{uid} entry with role: "anon"
+        console.log("🆕 Initialising DB nodes for anon UID");
         runTransaction(usageRef, () => 0);
-        runTransaction(ref(db, `users/${user.uid}`), current => current || { role: "anon", createdAt: Date.now() });
+        runTransaction(
+          ref(db, `users/${user.uid}`),
+          cur => cur || { role: "anon", createdAt: Date.now() }
+        );
       }
     });
   }
-  
-
-  // Now that we know user is ready → set up the click listeners
-  setupToolClicks();
 });
 
+/* ---------- Click listener for “free-run” tools ---------- */
 function setupToolClicks() {
-    document.addEventListener("click", async e => {
-      const btn = e.target.closest(".tool-free-run");
-      if (!btn) return; // not a tool trigger
-  
-      if (!currentUser) {
-        console.error("User not ready yet.");
+  document.addEventListener("click", async e => {
+    const btn = e.target.closest(".tool-free-run");
+    if (!btn) return;                         // not a tool trigger
+
+    /* 1️⃣ Lazy sign-in: create anon UID right now (first interaction) */
+    if (!auth.currentUser) {
+      console.log("⚡ First interaction — signing-in anonymously");
+      await signInAnonymously(auth).catch(console.error);
+      currentUser = auth.currentUser;
+
+      // Create the DB nodes for this brand-new UID
+      const usageRef = ref(db, `usageCounts/${currentUser.uid}/count`);
+      const snap = await get(usageRef);
+      if (!snap.exists()) {
+        await runTransaction(usageRef, () => 0);
+        await runTransaction(
+          ref(db, `users/${currentUser.uid}`),
+          cur => cur || { role: "anon", createdAt: Date.now() }
+        );
+      }
+    }
+
+    /* 2️⃣ If the user is now non-anonymous (i.e. real account), allow unlimited */
+    if (!currentUser.isAnonymous) {
+      const roleSnap = await get(ref(db, `users/${currentUser.uid}/role`));
+      const role     = roleSnap.exists() ? roleSnap.val() : "basic";
+      if (role === "basic" || role === "premium") {
+        return;  // no limits for registered users
+      }
+    }
+
+    /* 3️⃣ Anonymous user – server-side usage-limit check */
+    try {
+      const usageCheck = await checkUsageLimit();
+      if (!usageCheck.data.allowed) {
+        console.warn(`❌ Usage limit reached for UID: ${currentUser.uid}`);
+        showSignupVideoPopup();               // block action
         return;
       }
-  
-      // 1️⃣ If logged in with a real account, allow unlimited
-      if (!currentUser.isAnonymous) {
-        const snap = await get(ref(db, `users/${currentUser.uid}/role`));
-        const role = snap.exists() ? snap.val() : "basic";
-        if (role === "basic" || role === "premium") {
-          return; // unlimited access
-        }
-      }
-  
-      // 2️⃣ Otherwise (anonymous), check usage limit
-      try {
-        const usageCheck = await checkUsageLimit();
-        if (!usageCheck.data.allowed) {
-            console.warn(`❌ Usage limit reached for UID: ${currentUser.uid}`);
-          showSignupVideoPopup();
-          return; // Block action, don't proceed
-        }
-      } catch (err) {
-        console.error("Usage check failed:", err.message);
-        showSignupVideoPopup(); // Block just in case
-        return;
-      }
-  
-      // 3️⃣ Locally record usage too
-      await recordUsage(currentUser.uid);
-    });
-  }
+    } catch (err) {
+      console.error("Usage check failed:", err.message);
+      showSignupVideoPopup();                 // block just in case
+      return;
+    }
+
+    /* 4️⃣ Locally increment the counter */
+    await recordUsage(currentUser.uid);
+  });
+}
+
+/* Install the listener immediately (UID not required beforehand) */
+setupToolClicks();
+
   
   // make them available to logger.js without an import-cycle
 window.firebaseAuth      = auth;
