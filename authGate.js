@@ -129,16 +129,33 @@ async function getUsageCount(uid) {
 }
 
 async function recordUsage(uid) {
-  await runTransaction(ref(db, `usageCounts/${uid}/count`), current => (current || 0) + 1);
-}
+    await runTransaction(ref(db, `usageCounts/${uid}/count`), current => {
+      const newCount = (current || 0) + 1;
+      console.log(`🧮 Recorded free run usage for UID: ${uid}. New count: ${newCount}`);
+      return newCount;
+    });
+  }
 
 // Handle user state changes properly
 onAuthStateChanged(auth, user => {
   currentUser = user;
+  console.log("👤 Anonymous user signed in:", user.uid);
+
 
   if (!user) {
     signInAnonymously(auth).catch(err => console.error(err));
+  } else if (user.isAnonymous) {
+    // Initialize usage count if not yet set
+    const usageRef = ref(db, `usageCounts/${user.uid}/count`);
+    get(usageRef).then(snap => {
+      if (!snap.exists()) {
+        // Also create a /users/{uid} entry with role: "anon"
+        runTransaction(usageRef, () => 0);
+        runTransaction(ref(db, `users/${user.uid}`), current => current || { role: "anon", createdAt: Date.now() });
+      }
+    });
   }
+  
 
   // Now that we know user is ready → set up the click listeners
   setupToolClicks();
@@ -167,6 +184,7 @@ function setupToolClicks() {
       try {
         const usageCheck = await checkUsageLimit();
         if (!usageCheck.data.allowed) {
+            console.warn(`❌ Usage limit reached for UID: ${currentUser.uid}`);
           showSignupVideoPopup();
           return; // Block action, don't proceed
         }
