@@ -1678,6 +1678,28 @@ footer {
       <a href="https://www.intuitiontrades.com/lastweek.html" class="back-button">See Previous Week</a>
     </div>
   </section>  
+<!-- ======================================
+     POPUPS for Guest & Basic Users
+======================================= -->
+
+<!-- Tip Popup for Guests -->
+<div id="tips-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+    <div id="tip-counter">1/5</div>
+    <button id="tips-close" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
+  </div>
+  <div id="tip-text" style="font-size:1rem; margin-bottom:1rem;">Loading tip...</div>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
+    <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
+  </div>
+</div>
+
+<!-- Premium Upsell Popup for Basic Users -->
+<div id="premium-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999;">
+  <div style="margin-bottom:0.5rem;">Please consider upgrading to Premium to unlock access to all scanners and thousands of stocks!</div>
+  <a href="/checkout.html" style="padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; text-decoration:none;">Upgrade to Premium</a>
+</div>
 
 <script>document.addEventListener("DOMContentLoaded", () => {
   const now = new Date();
