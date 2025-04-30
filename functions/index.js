@@ -327,10 +327,10 @@ async function purgeAnonymousAndUsage() {
   return stats;
 }
 
-/* --------------- scheduled every 10 minutes ------------------- */
+/* --------------- scheduled every 24 hours ------------------- */
 exports.purgeAnonymousEvery10min = onSchedule(
   {
-    schedule : "every 10 minutes",
+    schedule : "every 24 hours",
     timeZone : "Etc/UTC",
     region   : "us-central1",
     memory   : "256MiB",
