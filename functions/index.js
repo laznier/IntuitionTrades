@@ -328,7 +328,7 @@ async function purgeAnonymousAndUsage() {
 }
 
 /* --------------- scheduled every 24 hours ------------------- */
-exports.purgeAnonymousEvery10min = onSchedule(
+exports.purgeAnonymousEvery24hour = onSchedule(
   {
     schedule : "every 24 hours",
     timeZone : "Etc/UTC",
