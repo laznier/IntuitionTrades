@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ADAFCO Bullseye/BRAA Trainer</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+  :root{
+    --bg:#0a0a0d; --grid:#222; --icc:#27e835;
+    --braa:#0ea5e9; --track:#ff5757; --text:#f8f8f8;
+    --yellow:#ffd60a; --warn:#ff4d4d;
+  }
+  *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh}
+  header{display:flex;flex-direction:column;align-items:center;padding:.5rem 1rem;background:#111;gap:.5rem}
+  #controls{display:flex;gap:.75rem}
+  button{padding:.25rem .8rem;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+  #practiceBtn{background:var(--icc);color:#000}
+  #tagsBtn,#helpBtn{background:var(--braa);color:#000}
+  #status{font-size:.9rem}
+  #feedback{font-size:.8rem;color:var(--warn);min-height:1em}
+  #scope{flex:1;width:100%;cursor:crosshair;background:var(--bg)}
+  .card{position:fixed;top:10px;left:10px;background:#181818;border:1px solid #333;padding:1rem 1.5rem;border-radius:8px;z-index:15}
+  .card h3{margin:0 0 .4rem;color:var(--icc);font-size:1.1rem}
+  .card button{margin-top:.8rem;background:var(--track);color:#fff;cursor:pointer}
+  .label{position:absolute;pointer-events:none;background:rgba(0,0,0,.65);border-radius:3px;padding:1px 4px;line-height:1.2;text-align:left}
+  .label .be{color:var(--yellow);font-size:.85rem;font-weight:600}
+  .label .braa{color:var(--braa);font-size:.65rem}
+  /* Help overlay */
+  #helpOverlay{
+    display:none;
+    position:fixed;top:60px;left:50%;transform:translateX(-50%);
+    background:#222;color:#f8f8f8;padding:1rem;border:1px solid #444;border-radius:8px;
+    z-index:20;max-width:400px;
+  }
+  #helpOverlay h3{margin-top:0;color:var(--icc)}
+  #helpOverlay button{margin-top:1rem;background:var(--track);color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <div id="controls">
+    <button id="practiceBtn">Practice Mode</button>
+    <button id="tagsBtn">TAGS: OFF</button>
+    <button id="helpBtn">Help</button>
+  </div>
+  <div id="status">Free mode — Ctrl + R sets Bullseye (Ctrl-click a static first)</div>
+  <div id="feedback"></div>
+</header>
+
+<canvas id="scope"></canvas>
+
+<!-- Help overlay -->
+<div id="helpOverlay">
+  <h3>How to Play</h3>
+  <p>In Practice Mode you run up to <strong>10</strong> Cover→Engage→Away→Kill sequences:</p>
+  <ol>
+    <li><strong>Cover:</strong> Click the prompted track and press <strong>A</strong> (Affirm).  
+        If you press <strong>N</strong> (Negate), it tags “NEGATE” and you remain in Cover until you press <strong>A</strong>.</li>
+    <li><strong>Engage:</strong> Click the same track and press <strong>W</strong> (Away).</li>
+    <li><strong>Kill:</strong> Click the track and press <strong>K</strong>.  
+        If you don’t press <strong>K</strong> within 10 s, it auto‐kills.</li>
+  </ol>
+  <p>You earn 1 point for each correctly completed sequence. After 10 rounds, you see GAME OVER with your score.</p>
+  <h3>Hotkeys</h3>
+  <ul>
+    <li><strong>C</strong>: COVER (free mode)</li>
+    <li><strong>A</strong>: AFFIRM</li>
+    <li><strong>N</strong>: NEGATE</li>
+    <li><strong>W</strong>: AWAY</li>
+    <li><strong>E</strong>: ENGAGE</li>
+    <li><strong>K</strong>: KILL</li>
+  </ul>
+  <button id="closeHelp">Close</button>
+</div>
+
+<script>
+// ===== CONFIG =====
+const CONFIG = {
+  trackCount: 10,
+  nmPerPixel: 0.20,
+  maxSpawnNm: 150,
+  frameRate: 60,
+  maxSpeedKts: 800,
+  destroyMs: 6000,
+  autoKillMs: 10000,
+  rounds: 10
+};
+
+// ===== STATE =====
+let bullseye, staticPts = [], tracks = [];
+let mouse = {x:0,y:0}, dragStart = null, isDragging = false;
+let selectedTrack = null, selectedStatic = null;
+let mode = 'free', phase = '', currentTrack = null, killTimer = null;
+let round = 0, score = 0;
+let tagMode = 0, tagLabels = ['OFF','B/E','JTN','INFO','ALL'];
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('scope'),
+      ctx    = canvas.getContext('2d');
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 40;
+  buildStatics();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== STATIC POINTS =====
+function buildStatics(){
+  const cx = canvas.width/2, cy = canvas.height/2,
+        px10 = 10 / CONFIG.nmPerPixel;
+  staticPts = [
+    {type:'icc',      id:'00176', x:cx,       y:cy      },
+    {type:'launcher', id:'00177', x:cx+px10, y:cy-px10},
+    {type:'launcher', id:'00178', x:cx-px10, y:cy+px10},
+    {type:'launcher', id:'00179', x:cx+px10, y:cy+px10},
+    {type:'radar',    id:'00180', x:cx-px10, y:cy-px10}
+  ];
+  bullseye = {x:cx, y:cy};
+}
+buildStatics();
+
+// ===== TRACKS =====
+const rand = (a,b) => Math.floor(Math.random()*(b-a)+a);
+function newTrack(){
+  const ang = Math.random()*2*Math.PI,
+        r   = Math.sqrt(Math.random())*CONFIG.maxSpawnNm/CONFIG.nmPerPixel,
+        x0  = bullseye.x + Math.cos(ang)*r,
+        y0  = bullseye.y + Math.sin(ang)*r,
+        x   = Math.min(Math.max(x0,0),canvas.width),
+        y   = Math.min(Math.max(y0,0),canvas.height);
+  return {
+    id:    ('00000'+rand(1000,7776)).slice(-5),
+    x,y,
+    heading: rand(0,359),
+    speed:   rand(200,CONFIG.maxSpeedKts),
+    alt:     rand(5,600),
+    tag:     null,
+    tagTime: 0,
+    destroyed:false
+  };
+}
+function initTracks(){
+  tracks = Array.from({length:CONFIG.trackCount}, () => newTrack());
+}
+initTracks();
+
+// ===== UTILITIES =====
+const deg2rad = d => d * Math.PI/180;
+function bearing(p1,p2){
+  let a = (Math.atan2(p2.x-p1.x, p1.y-p2.y)*180/Math.PI + 360) % 360;
+  let r = Math.round(a);
+  if (r <= 0) r = 360;
+  if (r > 360) r = r % 360;
+  return r;
+}
+function distNm(p1,p2){
+  return Math.round(Math.hypot(p1.x-p2.x, p1.y-p2.y) * CONFIG.nmPerPixel);
+}
+function mousePos(e){
+  const r = canvas.getBoundingClientRect();
+  return {x:e.clientX - r.left, y: e.clientY - r.top};
+}
+
+// ===== DRAWING =====
+function drawGrid(){
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
+  ctx.lineWidth = 1; const step = 100;
+  for(let x=0;x<canvas.width;x+=step){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
+  }
+  for(let y=0;y<canvas.height;y+=step){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+  }
+}
+function drawStatics(){
+  const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
+  staticPts.forEach(p=>{
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    if (p.type==='icc'){
+      ctx.fillStyle = colICC;
+      ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.fill();
+    } else if (p.type==='launcher'){
+      ctx.strokeStyle = colICC;
+      ctx.beginPath();
+      ctx.moveTo(p.x-6,p.y);ctx.lineTo(p.x+6,p.y);
+      ctx.moveTo(p.x,p.y-6);ctx.lineTo(p.x,p.y+6);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = colICC;
+      ctx.beginPath();ctx.arc(p.x,p.y,6,0,2*Math.PI);ctx.stroke();
+    }
+    ctx.fillStyle = colICC;
+    ctx.fillText(p.id, p.x+8, p.y);
+  });
+  // bullseye cross
+  ctx.strokeStyle = colICC;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bullseye.x-10,bullseye.y);ctx.lineTo(bullseye.x+10,bullseye.y);
+  ctx.moveTo(bullseye.x,bullseye.y-10);ctx.lineTo(bullseye.x,bullseye.y+10);
+  ctx.stroke();
+}
+function drawTracks(now){
+  const yellow = getComputedStyle(document.documentElement).getPropertyValue('--yellow'),
+        textCol= getComputedStyle(document.documentElement).getPropertyValue('--text'),
+        tagCol = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+  tracks.forEach(t=>{
+    if(t.destroyed){
+      if(now - t.tagTime < CONFIG.destroyMs){
+        ctx.fillStyle = '#888';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('#', t.x, t.y+5);
+      }
+      return;
+    }
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--track');
+    ctx.save();
+    ctx.translate(t.x,t.y);
+    ctx.rotate(deg2rad(t.heading));
+    ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(4,4);ctx.lineTo(-4,4);ctx.closePath();ctx.fill();
+    ctx.restore();
+    if(t.tag){
+      ctx.font='10px monospace';ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillStyle = tagCol;
+      ctx.fillText(t.tag, t.x, t.y-8);
+    }
+    if(tagMode){
+      let lines=[];
+      if(tagMode===1||tagMode===4){
+        const b=('000'+bearing(bullseye,t)).slice(-3);
+        lines.push(`${b}/${distNm(bullseye,t)}`);
+      }
+      if(tagMode===2||tagMode===4) lines.push(t.id);
+      if(tagMode===3||tagMode===4)
+        lines.push(`${('000'+t.heading).slice(-3)}°/${('000'+t.alt).slice(-3)}/${t.speed}`);
+      ctx.font='10px monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+      lines.forEach((ln,i)=>{
+        ctx.fillStyle = (tagMode===1 && i===0)?yellow:textCol;
+        ctx.fillText(ln, t.x+8, t.y-8 + i*12);
+      });
+    }
+  });
+}
+function drawDrag(){
+  if(isDragging && dragStart){
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(dragStart.x,dragStart.y);
+    ctx.lineTo(mouse.x,mouse.y);
+    ctx.stroke();
+  }
+}
+function updateTracks(dt){
+  const pxPerSec = (CONFIG.nmPerpixel||CONFIG.nmPerPixel)/3600*CONFIG.frameRate;
+  tracks.forEach(t=>{
+    if(t.destroyed) return;
+    t.x = (t.x + Math.sin(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.width) % canvas.width;
+    t.y = (t.y - Math.cos(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.height) % canvas.height;
+  });
+}
+
+// ===== ANIMATION LOOP =====
+let last=performance.now();
+function animate(now){
+  const dt=(now-last)/1000; last=now;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawGrid(); drawStatics(); drawTracks(now); drawDrag();
+  updateTracks(dt);
+  requestAnimationFrame(animate);
+}
+animate(last);
+
+// ===== CURSOR LABEL =====
+const label=document.createElement('div');
+label.className='label';document.body.appendChild(label);
+function updateLabel(){
+  const b3=('000'+bearing(bullseye,mouse)).slice(-3),
+        r3=distNm(bullseye,mouse);
+  let html=`<div class="be">${b3}/${r3}</div>`;
+  if(isDragging && dragStart){
+    const b2=('000'+bearing(dragStart,mouse)).slice(-3),
+          r2=distNm(dragStart,mouse);
+    html=`<div class="braa">${b2}/${r2}</div>`+html;
+  }
+  label.innerHTML=html;
+  label.style.left=(mouse.x+15)+'px';
+  label.style.top=(mouse.y+15)+'px';
+}
+canvas.addEventListener('mousemove', e=>{ mouse=mousePos(e); updateLabel(); });
+canvas.addEventListener('mousedown', e=>{ if(e.button===0){ isDragging=true; dragStart=mousePos(e); } });
+canvas.addEventListener('mouseup',   e=>{ if(e.button===0){ isDragging=false; dragStart=null; } });
+
+// ===== CLICK LOGIC =====
+canvas.addEventListener('click', e=>{
+  const m=mousePos(e);
+  selectedTrack = tracks.find(t=>Math.hypot(t.x-m.x,t.y-m.y)<15)||null;
+  if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
+  if(e.ctrlKey||!selectedTrack){
+    selectedStatic = staticPts.find(p=>Math.hypot(p.x-m.x,p.y-m.y)<12)||null;
+  }
+});
+function showCard(t){
+  document.querySelectorAll('.card').forEach(c=>c.remove());
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML=`<h3>Track ${t.id}</h3>
+    ${('000'+t.heading).slice(-3)}° /
+    <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
+    ${t.speed} kts<br><button>Close</button>`;
+  c.querySelector('button').onclick=()=>c.remove();
+  document.body.appendChild(c);
+}
+
+// ===== KEYBOARD =====
+const statusEl=document.getElementById('status'),
+      feedbackEl=document.getElementById('feedback');
+window.addEventListener('keydown', e=>{
+  const k=e.key.toLowerCase();
+  if(e.ctrlKey&&k==='r'){ e.preventDefault();
+    if(selectedStatic){ bullseye={x:selectedStatic.x,y:selectedStatic.y};
+      statusEl.textContent='Bullseye reset'; feedbackEl.textContent=''; }
+    return;
+  }
+  if(mode==='practice'&&['a','n','w','k'].includes(k)){
+    feedbackEl.textContent='';
+    if(phase==='cover'){
+      if(selectedTrack===currentTrack){
+        if(k==='a'){
+          currentTrack.tag='ENGAGE'; phase='engage';
+          const b3=('000'+bearing(bullseye,currentTrack)).slice(-3);
+          statusEl.textContent=`ADAFCO, SL, ENGAGE Track ${currentTrack.id}, B/E ${b3}/${distNm(bullseye,currentTrack)}`;
+        } else if(k==='n'){
+          currentTrack.tag='NEGATE'; currentTrack.tagTime=Date.now();
+          feedbackEl.textContent='Negated. Press A to proceed.';
+        } else feedbackEl.textContent='Wrong. Try again.';
+      } else feedbackEl.textContent='Wrong. Try again.';
+    }
+    else if(phase==='engage'){
+      if(selectedTrack===currentTrack&&k==='w'){
+        currentTrack.tag='AWAY'; phase='kill';
+        statusEl.textContent=`ADAFCO, SL, KILL Track ${currentTrack.id}`;
+        killTimer=setTimeout(()=>{
+          currentTrack.destroyed=true;
+          currentTrack.tagTime=Date.now();
+          nextRound();
+        }, CONFIG.autoKillMs);
+      } else feedbackEl.textContent='Wrong. Try again.';
+    }
+    else if(phase==='kill'){
+      if(selectedTrack===currentTrack&&k==='k'){
+        clearTimeout(killTimer);
+        currentTrack.destroyed=true;
+        currentTrack.tagTime=Date.now();
+        nextRound();
+      } else feedbackEl.textContent='Wrong. Try again.';
+    }
+    return;
+  }
+  if(mode==='free'&&selectedTrack){
+    const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
+    if(k in map){
+      selectedTrack.tag=map[k];
+      selectedTrack.tagTime=Date.now();
+    } else if(k==='k'){
+      selectedTrack.destroyed=true;
+      selectedTrack.tagTime=Date.now();
+    }
+  }
+});
+
+// ===== PRACTICE CONTROL =====
+document.getElementById('practiceBtn').onclick=function(){
+  if(mode==='free'||mode==='gameover'){
+    mode='practice'; round=0; score=0; this.textContent='Free Mode'; nextRound();
+  } else {
+    mode='free'; this.textContent='Practice Mode';
+    statusEl.textContent='Free mode — Ctrl + R sets Bullseye';
+    feedbackEl.textContent='';
+  }
+};
+
+function nextRound(){
+  // only now remove killed tracks
+  tracks = tracks.filter(t=>!t.destroyed);
+
+  round++;
+  if(round>CONFIG.rounds){
+    mode='gameover';
+    statusEl.textContent=`GAME OVER — Score ${score}/${CONFIG.rounds}`;
+    document.getElementById('practiceBtn').textContent='Practice Mode';
+    return;
+  }
+  if(round>1) score++;
+  phase='cover';
+  currentTrack = tracks[rand(0,tracks.length)];
+  currentTrack.tag='COVER';
+  const b3=('000'+bearing(bullseye,currentTrack)).slice(-3);
+  statusEl.textContent=`ADAFCO, SL, COVER Track ${currentTrack.id}, B/E ${b3}/${distNm(bullseye,currentTrack)}`;
+  feedbackEl.textContent='';
+}
+
+// ===== TAGS CYCLE =====
+document.getElementById('tagsBtn').onclick=function(){
+  tagMode=(tagMode+1)%tagLabels.length;
+  this.textContent=`TAGS: ${tagLabels[tagMode]}`;
+};
+
+// ===== HELP OVERLAY =====
+const helpBtn=document.getElementById('helpBtn'),
+      helpOverlay=document.getElementById('helpOverlay'),
+      closeHelp=document.getElementById('closeHelp');
+
+helpBtn.onclick=()=>{ helpOverlay.style.display='block'; };
+closeHelp.onclick=()=>{ helpOverlay.style.display='none'; };
+</script>
+
+</body>
+</html>
