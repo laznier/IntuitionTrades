@@ -93,7 +93,7 @@
   <canvas id="scope"></canvas>
   <div id="helpOverlay">
     <h3>How to Play</h3>
-    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Kill sequences:</p>
+    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences:</p>
     <ol>
       <li><strong>Cover:</strong> Click the prompted track + <strong>A</strong> (Affirm). Press <strong>N</strong> (Negate).</li>
       <li><strong>Engage:</strong> Click + <strong>W</strong> (Away).</li>
@@ -107,7 +107,7 @@
       <li><strong>N</strong>: NEGATE</li>
       <li><strong>W</strong>: AWAY</li>
       <li><strong>E</strong>: ENGAGE</li>
-      <li><strong>K</strong>: KILL</li>
+      <li><strong>K</strong>: KILL/DROP</li>
     </ul>
     <button id="closeHelp">Close</button>
   </div>
@@ -160,14 +160,26 @@
 // right after you grab helpOverlay, tagsBtn, etc.
 const label = document.getElementById('cursorLabel');
 
-    function resize(){
-      worldWidth  = canvas.width  = window.innerWidth;
-      const hdr  = document.querySelector('header').offsetHeight;
-      worldHeight = canvas.height = window.innerHeight - hdr;
-      buildStatics();
-    }
-    window.addEventListener('resize', resize);
-    resize();
+function resize () {
+  worldWidth  = canvas.width  = window.innerWidth;
+  const hdr   = document.querySelector('header').offsetHeight;
+  worldHeight = canvas.height = window.innerHeight - hdr;
+
+  /* Rebuild statics only on the first call so they don’t jump
+     whenever Safari’s URL bar shows/hides and the visual viewport
+     height changes */
+  if (!resize.didInit) {
+    buildStatics();
+    resize.didInit = true;
+  }
+}
+   
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
+
+
+resize();
 
     function buildStatics(){
       const cx = worldWidth/2, cy = worldHeight/2,
@@ -527,7 +539,7 @@ const label = document.getElementById('cursorLabel');
         else if(phase==='engage'){
           if(selectedTrack===curTrack&&k==='w'){
             curTrack.tag='AWAY'; phase='kill';
-            statusEl.textContent=`ADAFCO, SL, KILL Track ${curTrack.id}`;
+            statusEl.textContent=`ADAFCO, SL, Track ${curTrack.id} Vanished`;
             killTimer=setTimeout(()=>{
               curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound();
             },CFG.autoKillMs);
