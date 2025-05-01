@@ -365,9 +365,12 @@ resize();
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
     function storeMouse(e){
-      const rect=canvas.getBoundingClientRect();
-      mouse.sx=e.clientX-rect.left;
-      mouse.sy=e.clientY-rect.top;
+      const rect = canvas.getBoundingClientRect();
+ const x = ('pageX' in e ? e.pageX : e.clientX);
+ const y = ('pageY' in e ? e.pageY : e.clientY) -
+           (window.visualViewport ? window.visualViewport.offsetTop : 0);
+ mouse.sx = x - rect.left;
+ mouse.sy = y - rect.top;
       mouse.px=e.clientX; mouse.py=e.clientY;
       const w=scrToWorld(mouse.sx,mouse.sy);
       mouse.wx=w.x; mouse.wy=w.y;
@@ -414,9 +417,11 @@ resize();
         const sim={clientX:t.clientX,clientY:t.clientY,button:0};
         storeMouse(sim);
         canvas.dispatchEvent(new MouseEvent('click',{
-          bubbles:true,cancelable:true,view:window,
-          clientX:t.clientX,clientY:t.clientY,button:0
-        }));
+   bubbles:true, cancelable:true, view:window, button:0,
+   clientX:t.pageX,
+   clientY:t.pageY -
+          (window.visualViewport ? window.visualViewport.offsetTop : 0)
+ }));
       }
     },{passive:false});
 
