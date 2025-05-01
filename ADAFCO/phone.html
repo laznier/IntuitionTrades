@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     :root {
-      --bg: #0a0a0d; --grid: #222; --icc: #27e835;
+      --bg: #0a0a0d; --icc: #27e835;
       --braa: #0ea5e9; --track: #ff5757; --text: #f8f8f8;
       --yellow: #ffd60a; --warn: #ff4d4d;
     }
@@ -25,7 +25,7 @@
       font-weight: 600; cursor: pointer; white-space: nowrap;
     }
     #practiceBtn { background: var(--icc); color: #000; }
-    #tagsBtn, #helpBtn { background: var(--braa); color: #000; }
+    #tagsBtn, #helpBtn, #compassBtn { background: var(--braa); color: #000; }
     #status { font-size: .9rem; z-index: 3; }
     #feedback { font-size: .8rem; color: var(--warn); min-height: 1em; z-index: 3; }
     #scope {
@@ -82,6 +82,7 @@
     <div id="controls">
       <button id="practiceBtn">Practice Mode</button>
       <button id="tagsBtn">TAGS: OFF</button>
+      <button id="compassBtn">Compass: OFF</button>
       <button id="helpBtn">Help</button>
     </div>
     <div id="status">Free mode — Ctrl+R sets Bullseye (Ctrl-click a static)</div>
@@ -98,7 +99,6 @@
       <li><strong>Engage:</strong> Click + <strong>W</strong> (Away).</li>
       <li><strong>Kill:</strong> Click + <strong>K</strong>. Auto-kill in 10 s.</li>
     </ol>
-    <p>1 point per correct sequence; after 10 rounds, see GAME OVER + score.</p>
     <h3>Hotkeys</h3>
     <ul>
       <li><strong>C</strong>: COVER</li>
@@ -147,6 +147,7 @@
     let mode='free', phase='', curTrack=null, killTimer=null;
     let round=0, score=0;
     let tagMode=0, tagLabels=['OFF','B/E','JTN','INFO','ALL'];
+    let compassOn = false;
 
     // ─── SETUP ──────────────────────────────────────────────────────────
     const canvas = document.getElementById('scope'),
@@ -154,7 +155,8 @@
           label  = document.getElementById('cursorLabel'),
           statusEl   = document.getElementById('status'),
           feedbackEl = document.getElementById('feedback'),
-          helpOverlay= document.getElementById('helpOverlay');
+          helpOverlay= document.getElementById('helpOverlay'),
+          compassBtn = document.getElementById('compassBtn');
 
     function resize(){
       worldWidth  = canvas.width  = window.innerWidth;
@@ -195,9 +197,7 @@
         tag:null, tagTime:0, destroyed:false
       };
     }
-    function initTracks(){
-      tracks = Array.from({length:CFG.trackCount}, newTrack);
-    }
+    function initTracks(){ tracks = Array.from({length:CFG.trackCount}, newTrack); }
     initTracks();
 
     // ─── UTILS ──────────────────────────────────────────────────────────
@@ -206,27 +206,18 @@
       let ang = (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;
       return Math.round(ang)||360;
     }
-    function distNm(a,b){
-      return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel);
-    }
-    function scrToWorld(sx,sy){
-      return { x: offX + sx/scale, y: offY + sy/scale };
-    }
-    function distTouch(t0,t1){
-      return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
+    function distNm(a,b){ return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel); }
+    function scrToWorld(sx,sy){ return { x: offX + sx/scale, y: offY + sy/scale }; }
+    function storeMouse(e){
+      const rect=canvas.getBoundingClientRect();
+      mouse.sx=e.clientX-rect.left; mouse.sy=e.clientY-rect.top;
+      mouse.px=e.clientX; mouse.py=e.clientY;
+      const w=scrToWorld(mouse.sx,mouse.sy);
+      mouse.wx=w.x; mouse.wy=w.y;
+      updateCursorLabel();
     }
 
     // ─── DRAW ───────────────────────────────────────────────────────────
-    function drawGrid(){
-      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
-      ctx.lineWidth = 1; const step = 100;
-      for(let x=0;x<worldWidth/scale;x+=step){
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,worldHeight/scale); ctx.stroke();
-      }
-      for(let y=0;y<worldHeight/scale;y+=step){
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(worldWidth/scale,y); ctx.stroke();
-      }
-    }
     function drawStatics(){
       const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
       statics.forEach(s=>{
@@ -249,10 +240,10 @@
       ctx.stroke();
     }
     function drawTracks(now){
-      const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
-            colB = getComputedStyle(document.documentElement).getPropertyValue('--braa'),
-            colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow'),
-            colX = getComputedStyle(document.documentElement).getPropertyValue('--text');
+      const colT = getComputedStyle(document.documentElement).getPropertyValue('--track');
+      const colB = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+      const colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+      const colX = getComputedStyle(document.documentElement).getPropertyValue('--text');
       tracks.forEach(o=>{
         if(o.destroyed){
           if(now-o.tagTime<CFG.destroyMs){
@@ -283,8 +274,7 @@
         }
       });
     }
-    function drawRubber(){
-      if(!rubber) return;
+    function drawRubber(){ if(!rubber) return;
       ctx.setTransform(1,0,0,1,0,0);
       ctx.strokeStyle='#fff'; ctx.lineWidth=1;
       const {cx,cy,ex,ey}=rubber;
@@ -293,18 +283,27 @@
             width=Math.abs(ex-ox), height=Math.abs(ey-oy);
       ctx.strokeRect(left,top,width,height);
     }
-    function drawDragLine(){
-      if(isDragging&&dragStart){
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
-        ctx.lineWidth=1;
+    function drawCompass(){
+      const pxPerNm = 1 / CFG.nmPerPixel;
+      const radii = [50,100,150].map(nm => nm * pxPerNm);
+      const angles = [0,90,180,270].map(d => d2r(d));
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+      ctx.lineWidth = 1;
+      radii.forEach(r => {
         ctx.beginPath();
-        ctx.moveTo(dragStart.wx,dragStart.wy);
-        ctx.lineTo(mouse.wx,mouse.wy);
+        ctx.arc(bullseye.x, bullseye.y, r, 0, 2*Math.PI);
         ctx.stroke();
-      }
+      });
+      angles.forEach(a => {
+        ctx.beginPath();
+        const dx=Math.sin(a)*radii[2], dy=-Math.cos(a)*radii[2];
+        ctx.moveTo(bullseye.x, bullseye.y);
+        ctx.lineTo(bullseye.x+dx, bullseye.y+dy);
+        ctx.stroke();
+      });
     }
 
-    // ─── UPDATE TRACKS (wrap using fixed worldWidth/worldHeight) ────────
+    // ─── UPDATE TRACKS ───────────────────────────────────────────────────
     function updateTracks(dt){
       const pps=CFG.nmPerPixel/3600*CFG.frameRate;
       tracks.forEach(o=>{
@@ -314,61 +313,70 @@
       });
     }
 
-    // ─── ANIMATE ───────────────────────────────────────────────────────
+    // ─── ANIMATE ─────────────────────────────────────────────────────────
     let lastTime=performance.now();
     function animate(now){
-      const dt=(now-lastTime)/1000;
-      lastTime=now;
+      const dt=(now-lastTime)/1000; lastTime=now;
       updateTracks(dt);
-
       ctx.setTransform(1,0,0,1,0,0);
       ctx.clearRect(0,0,worldWidth,worldHeight);
       ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
-
-      drawGrid();
+      // drawGrid(); // removed
       drawStatics();
       drawTracks(now);
-      drawDragLine();
       drawRubber();
-
+      if(compassOn) drawCompass();
       requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
 
-    // ─── MOUSE/TOUCH/LABEL ─────────────────────────────────────────────
-    function storeMouse(e){
-      const rect=canvas.getBoundingClientRect();
-      mouse.sx=e.clientX-rect.left;
-      mouse.sy=e.clientY-rect.top;
-      mouse.px=e.clientX; mouse.py=e.clientY;
-      const w=scrToWorld(mouse.sx,mouse.sy);
-      mouse.wx=w.x; mouse.wy=w.y;
-      updateCursorLabel();
+    // ─── INPUT HANDLING ─────────────────────────────────────────────────
+    function updateCursorLabel(){
+      const world={x:mouse.wx,y:mouse.wy};
+      const b=('000'+bearing(bullseye,world)).slice(-3), r=distNm(bullseye,world);
+      let html=`<span class=\"be\">${b}/${r}</span>`;
+      if(isDragging&&dragStart){
+        const start={x:dragStart.wx,y:dragStart.wy};
+        const b2=('000'+bearing(start,world)).slice(-3), r2=distNm(start,world);
+        html=`<span class=\"braa\">${b2}/${r2}</span><br>`+html;
+      }
+      label.innerHTML=html;
+      label.style.left=`${mouse.px+5}px`;
+      label.style.top=`${mouse.py-label.offsetHeight-5}px`;
     }
 
-    // pinch start
-    canvas.addEventListener('touchstart',e=>{
+    function handleClick(e){
+      storeMouse(e);
+      selectedTrack = tracks.find(t=>Math.hypot(t.x-mouse.wx,t.y-mouse.wy)<8)||null;
+      if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
+      if(e.ctrlKey||!selectedTrack){
+        selectedStatic = statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12)||null;
+      }
+    }
+    canvas.addEventListener('click', handleClick);
+
+    // touch start
+    canvas.addEventListener('touchstart', e=>{
       if(e.touches.length===2){
-        pinch.active=true;
-        pinch.startDist=distTouch(e.touches[0],e.touches[1]);
+        e.preventDefault();
+        pinch.active=true; pinch.startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
         pinch.startScale=scale;
         const rect=canvas.getBoundingClientRect();
         const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
-        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        const cy=(e.touches[0].clientY-rect.top+e.touches[1].clientY-rect.top)/2;
         pinch.center=scrToWorld(cx,cy);
       }
     },{passive:false});
-
-    // pinch move & single-touch drag
-    canvas.addEventListener('touchmove',e=>{
+    // touch move
+    canvas.addEventListener('touchmove', e=>{
       if(pinch.active&&e.touches.length===2){
         e.preventDefault();
-        const newDist=distTouch(e.touches[0],e.touches[1]);
+        const newDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
         const f=newDist/pinch.startDist;
         scale=pinch.startScale*f;
         const rect=canvas.getBoundingClientRect();
         const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
-        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        const cy=(e.touches[0].clientY-rect.top+e.touches[1].clientY-rect.top)/2;
         offX=pinch.center.x-cx/scale;
         offY=pinch.center.y-cy/scale;
       } else if(e.touches.length===1){
@@ -376,94 +384,43 @@
         if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
       }
     },{passive:false});
-
     // touch end
-    canvas.addEventListener('touchend',e=>{
+    canvas.addEventListener('touchend', e=>{
       if(pinch.active&&e.touches.length<2) pinch.active=false;
-      // single-finger tap → click
       if(e.changedTouches.length===1&&e.touches.length===0){
         const t=e.changedTouches[0];
-        const sim={clientX:t.clientX,clientY:t.clientY,button:0};
-        storeMouse(sim);
-        canvas.dispatchEvent(new MouseEvent('click',{
-          bubbles:true,cancelable:true,view:window,
-          clientX:t.clientX,clientY:t.clientY,button:0
-        }));
+        handleClick({ clientX: t.clientX, clientY: t.clientY, button: 0 });
       }
     },{passive:false});
 
     // mouse events
-    canvas.addEventListener('mousemove',e=>{
-      storeMouse(e);
-      if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
+    canvas.addEventListener('mousemove', e=>{ storeMouse(e); if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }});
+    canvas.addEventListener('mousedown', e=>{ if(e.button!==0) return; storeMouse(e);
+      if(e.detail===2){ rubber={cx:mouse.sx,cy:mouse.sy,ex:mouse.sx,ey:mouse.sy}; }
+      else { isDragging=true; dragStart={...mouse}; }
     });
-    canvas.addEventListener('mousedown',e=>{
-      if(e.button!==0) return;
-      storeMouse(e);
-      if(e.detail===2){
-        rubber={cx:mouse.sx,cy:mouse.sy,ex:mouse.sx,ey:mouse.sy};
-      } else {
-        isDragging=true; dragStart={...mouse};
-      }
-    });
-    window.addEventListener('mouseup',e=>{
-      if(e.button!==0) return;
-      storeMouse(e);
-      isDragging=false; dragStart=null;
+    window.addEventListener('mouseup', e=>{ if(e.button!==0) return; storeMouse(e); isDragging=false; dragStart=null;
       if(!rubber) return;
-      const dx=Math.abs(mouse.sx-rubber.cx)*2,
-            dy=Math.abs(mouse.sy-rubber.cy)*2;
+      const dx=Math.abs(mouse.sx-rubber.cx)*2, dy=Math.abs(mouse.sy-rubber.cy)*2;
       if(dx>10&&dy>10){
-        const w0=scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
-              w1=scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
+        const w0=scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2), w1=scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
         const newScale=Math.min(worldWidth/(w1.x-w0.x), worldHeight/(w1.y-w0.y));
         scale=newScale; offX=w0.x; offY=w0.y;
       }
       rubber=null;
     });
-
-    // wheel zoom
-    canvas.addEventListener('wheel',e=>{
-      e.preventDefault(); storeMouse(e);
+    canvas.addEventListener('wheel', e=>{ e.preventDefault(); storeMouse(e);
       const f=e.deltaY<0?1.1:1/1.1;
-      const cx=e.clientX-canvas.getBoundingClientRect().left,
-            cy=e.clientY-canvas.getBoundingClientRect().top;
+      const rect=canvas.getBoundingClientRect();
+      const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
       const world=scrToWorld(cx,cy);
-      scale*=f;
-      offX=world.x-cx/scale;
-      offY=world.y-cy/scale;
+      scale*=f; offX=world.x-cx/scale; offY=world.y-cy/scale;
     },{passive:false});
 
-    function updateCursorLabel(){
-      const world={x:mouse.wx,y:mouse.wy};
-      const b=('000'+bearing(bullseye,world)).slice(-3),
-            r=distNm(bullseye,world);
-      let html=`<span class="be">${b}/${r}</span>`;
-      if(isDragging&&dragStart){
-        const start={x:dragStart.wx,y:dragStart.wy},
-              b2=('000'+bearing(start,world)).slice(-3),
-              r2=distNm(start,world);
-        html=`<span class="braa">${b2}/${r2}</span><br>`+html;
-      }
-      label.innerHTML=html;
-      label.style.left=`${mouse.px+5}px`;
-      label.style.top=`${mouse.py-label.offsetHeight-5}px`;
-    }
-
-    // click → select tracks/statics
-    canvas.addEventListener('click',e=>{
-      storeMouse(e);
-      selectedTrack=tracks.find(t=>Math.hypot(t.x-mouse.wx,t.y-mouse.wy)<8)||null;
-      if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
-      if(e.ctrlKey||!selectedTrack){
-        selectedStatic=statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12)||null;
-      }
-    });
     function showCard(t){
       document.querySelectorAll('.card').forEach(c=>c.remove());
       const d=document.createElement('div'); d.className='card';
-      d.innerHTML=`
-        <h3>Track ${t.id}</h3>
+      d.innerHTML=`<h3>Track ${t.id}</h3>
         ${('000'+t.heading).slice(-3)}° /
         <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
         ${t.speed} kts
@@ -472,114 +429,60 @@
       document.body.appendChild(d);
     }
 
-    // PRACTICE & HOTKEYS (unchanged)…
-    window.addEventListener('keydown',e=>{
+    // PRACTICE & HOTKEYS & CONTROLS
+    window.addEventListener('keydown', e=>{
       const k=e.key.toLowerCase();
       if(e.ctrlKey&&k==='r'){
-        e.preventDefault();
-        if(selectedStatic){
-          bullseye={x:selectedStatic.x,y:selectedStatic.y};
-          statusEl.textContent='Bullseye reset'; feedbackEl.textContent='';
-        }
+        e.preventDefault(); if(selectedStatic){ bullseye={x:selectedStatic.x,y:selectedStatic.y}; statusEl.textContent='Bullseye reset'; feedbackEl.textContent=''; }
         return;
       }
       if(mode==='practice'&&['a','n','w','k'].includes(k)){
         feedbackEl.textContent='';
         if(phase==='cover'){
-          if(selectedTrack===curTrack){
-            if(k==='a'){
-              curTrack.tag='ENGAGE'; phase='engage';
-              const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
-              statusEl.textContent=
-                `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
-            } else if(k==='n'){
-              curTrack.tag='NEGATE'; curTrack.tagTime=Date.now();
-              feedbackEl.textContent='Negated. Press A to proceed.';
-            } else feedbackEl.textContent='Wrong. Try again.';
+          if(selectedTrack===curTrack){ if(k==='a'){ curTrack.tag='ENGAGE'; phase='engage'; const b2=('000'+bearing(bullseye,curTrack)).slice(-3); statusEl.textContent=`ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`; }
+            else if(k==='n'){ curTrack.tag='NEGATE'; curTrack.tagTime=Date.now(); feedbackEl.textContent='Negated. Press A to proceed.'; } else feedbackEl.textContent='Wrong. Try again.';
           } else feedbackEl.textContent='Wrong. Try again.';
-        }
-        else if(phase==='engage'){
-          if(selectedTrack===curTrack&&k==='w'){
-            curTrack.tag='AWAY'; phase='kill';
-            statusEl.textContent=`ADAFCO, SL, KILL Track ${curTrack.id}`;
-            killTimer=setTimeout(()=>{
-              curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound();
-            },CFG.autoKillMs);
+        } else if(phase==='engage'){
+          if(selectedTrack===curTrack&&k==='w'){ curTrack.tag='AWAY'; phase='kill'; statusEl.textContent=`ADAFCO, SL, KILL Track ${curTrack.id}`;
+            killTimer=setTimeout(()=>{ curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound(); },CFG.autoKillMs);
           } else feedbackEl.textContent='Wrong. Try again.';
-        }
-        else if(phase==='kill'){
-          if(selectedTrack===curTrack&&k==='k'){
-            clearTimeout(killTimer);
-            curTrack.destroyed=true; curTrack.tagTime=Date.now();
-            nextRound();
-          } else feedbackEl.textContent='Wrong. Try again.';
+        } else if(phase==='kill'){
+          if(selectedTrack===curTrack&&k==='k'){ clearTimeout(killTimer); curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound(); }
+          else feedbackEl.textContent='Wrong. Try again.';
         }
         return;
       }
-      if(mode==='free'&&selectedTrack){
-        const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
-        if(k in map){
-          selectedTrack.tag=map[k];
-          selectedTrack.tagTime=Date.now();
-        } else if(k==='k'){
-          selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now();
-        }
+      if(mode==='free'&&selectedTrack){ const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
+        if(k in map){ selectedTrack.tag=map[k]; selectedTrack.tagTime=Date.now(); }
+        else if(k==='k'){ selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now(); }
       }
     });
 
-    // Practice button & nextRound (unchanged)…
     document.getElementById('practiceBtn').onclick=function(){
-      if(mode==='free'||mode==='gameover'){
-        mode='practice'; round=0; score=0; this.textContent='Free Mode';
-        nextRound();
-      } else {
-        mode='free'; this.textContent='Practice Mode';
-        statusEl.textContent='Free mode — Ctrl+R sets Bullseye';
-        feedbackEl.textContent='';
-      }
+      if(mode==='free'||mode==='gameover'){ mode='practice'; round=0; score=0; this.textContent='Free Mode'; nextRound(); }
+      else { mode='free'; this.textContent='Practice Mode'; statusEl.textContent='Free mode — Ctrl+R sets Bullseye'; feedbackEl.textContent=''; }
     };
-    function nextRound(){
-      tracks=tracks.filter(t=>!t.destroyed);
-      round++;
-      if(round>CFG.rounds){
-        mode='gameover';
-        statusEl.textContent=`GAME OVER — ${score}/${CFG.rounds}`;
-        document.getElementById('practiceBtn').textContent='Practice Mode';
-        return;
-      }
-      if(round>1) score++;
-      phase='cover';
-      curTrack=tracks[Math.floor(Math.random()*tracks.length)];
-      curTrack.tag='COVER';
-      const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
-      statusEl.textContent=
-        `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
-      feedbackEl.textContent='';
-    }
-
-    // TAGS, HELP, MOBILE buttons (unchanged)…
-    document.getElementById('tagsBtn').onclick=function(){
-      tagMode=(tagMode+1)%tagLabels.length;
-      this.textContent=`TAGS: ${tagLabels[tagMode]}`;
-    };
-    document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
-    document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
-    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
-      btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
-    });
-
-    // Center-anchor zoom buttons (unchanged)…
+    document.getElementById('tagsBtn').onclick=function(){ tagMode=(tagMode+1)%tagLabels.length; this.textContent=`TAGS: ${tagLabels[tagMode]}`; };
+    compassBtn.onclick=function(){ compassOn=!compassOn; this.textContent=`Compass: ${compassOn?'ON':'OFF'}`;} ;
+    document.getElementById('helpBtn').onclick=() => helpOverlay.style.display='block';
+    document.getElementById('closeHelp').onclick=() => helpOverlay.style.display='none';
+    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{ btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key})); });
     document.getElementById('zoomIn').onclick=()=>{
-      const cx=worldWidth/2, cy=worldHeight/2;
-      const w=scrToWorld(cx,cy);
-      scale*=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
+      const cx=worldWidth/2, cy=worldHeight/2; const w=scrToWorld(cx,cy); scale*=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
     };
     document.getElementById('zoomOut').onclick=()=>{
-      const cx=worldWidth/2, cy=worldHeight/2;
-      const w=scrToWorld(cx,cy);
-      scale/=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
+      const cx=worldWidth/2, cy=worldHeight/2; const w=scrToWorld(cx,cy); scale/=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
     };
 
+    function nextRound(){
+      tracks=tracks.filter(t=>!t.destroyed); round++; if(round>CFG.rounds){ mode='gameover'; statusEl.textContent=`GAME OVER — ${score}/${CFG.rounds}`; document.getElementById('practiceBtn').textContent='Practice Mode'; return; }
+      if(round>1) score++;
+      phase='cover';
+      curTrack=tracks[Math.floor(Math.random()*tracks.length)]; curTrack.tag='COVER';
+      const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
+      statusEl.textContent=`ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+      feedbackEl.textContent='';
+    }
   </script>
 </body>
 </html>
