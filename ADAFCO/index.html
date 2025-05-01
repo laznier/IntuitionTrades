@@ -250,30 +250,33 @@ let coverTimer = null, practiceSaveIndex = null;
   const cx = worldWidth/2,
         cy = worldHeight/2,
         p10 = 10 / CFG.nmPerPixel,
-        ro  = 2  / CFG.nmPerPixel;    // radar offset (2 NM)
+        ro  = 2  / CFG.nmPerPixel;
 
+        
   statics = [
     { type:'icc', id:'00176', x:cx,      y:cy       },
 
+    
     // launcher 1 (NE)
     { type:'ln',  id:'00177', x:cx + p10, y:cy - p10 },
-    { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
+    { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro, wedgeDir: 140 },
 
     // launcher 2 (SW)
     { type:'ln',  id:'00178', x:cx - p10, y:cy + p10 },
-    { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
+    { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro, wedgeDir: 270 },
 
     // launcher 3 (SE)
     { type:'ln',  id:'00175', x:cx + p10, y:cy + p10 },
-    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
+    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro, wedgeDir: 050 },
 
-    // launcher 4 (your extra cross)
+    // launcher 4
     { type:'ln',  id:'00111', x:cx - p10/2, y:cy - p10 },
-    { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro }
+    { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro, wedgeDir: 220 },
   ];
 
   bullseye = { x:cx, y:cy };
 }
+
 
 
  // ─── TRACKS ─────────────────────────────────────────────────────────
@@ -321,9 +324,9 @@ initTracks();
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
     function bearing(a,b){
-      let ang = (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;
-      return Math.round(ang)||360;
-    }
+  return Math.round((Math.atan2(b.x-a.x, a.y-b.y)*180/Math.PI+360)%360)||360;
+}
+
     function distNm(a,b){
       return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel);
     }
@@ -334,47 +337,36 @@ initTracks();
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 
-    // ─── DRAW ───────────────────────────────────────────────────────────
-    function drawStatics(){
-  const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
-  statics.forEach(s=>{
-    // ─── draw 90° engagement wedge for each launcher ───────────
-    if (s.type === 'ln') {
-      const center = bearing(bullseye, s);
-      const radius = 50 / CFG.nmPerPixel;
-      ctx.fillStyle = 'rgba(255,214,10,0.07)';
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.arc(
-        s.x, s.y,
-        radius,
-        d2r(center - 120),
-        d2r(center - 0)
-      );
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // …rest of your existing drawStatics code…
-    ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
-    if(s.type==='icc'){
-      ctx.fillStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.fill();
-    } else if(s.type==='ln'){
-      ctx.strokeStyle=colICC; ctx.beginPath();
-      ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y);
-      ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke();
-    } else {
-      ctx.strokeStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.stroke();
-    }
-    ctx.fillStyle=colICC; ctx.fillText(s.id,s.x+8,s.y);
-  });
-
-  ctx.strokeStyle=colICC; ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(bullseye.x-10,bullseye.y); ctx.lineTo(bullseye.x+10,bullseye.y);
-  ctx.moveTo(bullseye.x,bullseye.y-10); ctx.lineTo(bullseye.x,bullseye.y+10);
-  ctx.stroke();
+   // ─── UTILS ──────────────────────────────────────────────────────────
+function nmToPx(nm) {
+  return nm / CFG.nmPerPixel;
 }
+function drawCircle(ctx, p, radiusNm) {
+  const rpx = nmToPx(radiusNm);
+  ctx.save();
+  ctx.beginPath();
+  // use the same yellow you’ve defined in :root
+  ctx.fillStyle = 'rgba(255,214,10,0.1)';
+  ctx.arc(p.x, p.y, rpx, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
+  const rpx = nmToPx(radiusNm);
+  ctx.save();
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255,214,10,0.1)';
+  const toRad = d => (90 - d) * Math.PI/180;
+  ctx.moveTo(p.x, p.y);
+  ctx.arc(p.x, p.y, rpx, toRad(startDeg), toRad(endDeg), true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+    // ─── DRAW ───────────────────────────────────────────────────────────
+
+
 
 
     function drawCompass(){
@@ -396,50 +388,108 @@ initTracks();
       ctx.restore();
     }
 
-    function drawTracks(now){
-      const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
-            colB = getComputedStyle(document.documentElement).getPropertyValue('--braa'),
-            colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow'),
-            colX = getComputedStyle(document.documentElement).getPropertyValue('--text');
-      tracks.forEach(o=>{
-        if(o.destroyed){
-          if(now-o.tagTime<CFG.destroyMs){
-            ctx.fillStyle='#888'; ctx.font='14px monospace';
-            ctx.textAlign='center'; ctx.fillText('#',o.x,o.y+5);
-          }
-          return;
-        }
-        ctx.fillStyle=colT; ctx.save();
-          ctx.translate(o.x,o.y); ctx.rotate(d2r(o.heading));
-          ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,4); ctx.lineTo(-4,4);
-          ctx.closePath(); ctx.fill();
-        ctx.restore();
-            // ◉ highlight the selected track:
+   // ─── DRAW STATICS ────────────────────────────────────────────────────
+// Remove any global wedge here! Just draw icons/text.
+function drawStatics() {
+  const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
+
+  statics.forEach(s => {
+    // if this is a radar AND the user has set wedgeDir, draw it
+    if (s.type === 'rad' && s.wedgeDir != null) {
+      const halfAngle = 45;           // adjust as you like
+      const radiusNm  = 50;           // or whatever radius
+      drawWedge(ctx, s,
+                s.wedgeDir - halfAngle,
+                s.wedgeDir + halfAngle,
+                radiusNm);
+    }
+
+    // … the rest of your icon + text drawing …
+    if (s.type === 'icc') {
+      ctx.fillStyle = colICC;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 6, 0, 2*Math.PI);
+      ctx.fill();
+    } else if (s.type === 'ln') {
+      ctx.strokeStyle = colICC;
+      ctx.beginPath();
+      ctx.moveTo(s.x - 6, s.y);
+      ctx.lineTo(s.x + 6, s.y);
+      ctx.moveTo(s.x, s.y - 6);
+      ctx.lineTo(s.x, s.y + 6);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = colICC;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 6, 0, 2*Math.PI);
+      ctx.stroke();
+    }
+    ctx.fillStyle = colICC;
+    ctx.fillText(s.id, s.x + 8, s.y);
+  });
+}
+
+
+// ─── DRAW TRACKS ─────────────────────────────────────────────────────
+function drawTracks(now) {
+  const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
+        colX = getComputedStyle(document.documentElement).getPropertyValue('--text'),
+        colB = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+
+        tracks.forEach(o => {
+    if (o.destroyed) {
+      // your existing “destroyed” logic (e.g. drawing '#') …
+      return;
+    }
+
+    // draw the little triangle
+    ctx.fillStyle = colT;
+    ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(d2r(o.heading));
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(4, 4);
+      ctx.lineTo(-4, 4);
+      ctx.closePath();
+      ctx.fill();
+    ctx.restore();
+
+    // highlight if selected
     if (o === selectedTrack) {
       ctx.strokeStyle = colX;
       ctx.lineWidth   = 2;
       ctx.beginPath();
-      ctx.arc(o.x, o.y, 12, 0, 2 * Math.PI);
+      ctx.arc(o.x, o.y, 12, 0, 2*Math.PI);
       ctx.stroke();
     }
-        if(o.tag){
-          ctx.font='10px monospace'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-          ctx.fillStyle=colB; ctx.fillText(o.tag,o.x,o.y-8);
-        }
-        if(tagMode){
-          const lines=[];
-          if(tagMode===1||tagMode===4) lines.push(`${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`);
-          if(tagMode===2||tagMode===4) lines.push(o.id);
-          if(tagMode===3||tagMode===4) lines.push(`${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`);
-          ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
-          lines.forEach((ln,i)=>{
-            ctx.fillStyle=(tagMode===1&&i===0)?colY:colX;
-            ctx.fillText(ln,o.x+8,o.y-8+i*12);
-          });
-        }
+    // any practice-mode tag text
+    if (o.tag) {
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle    = colB;
+      ctx.fillText(o.tag, o.x, o.y - 8);
+    }
+  });
+}
+    if (tagMode) {
+      const lines = [];
+      if (tagMode === 1 || tagMode === 4) lines.push(`${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`);
+      if (tagMode === 2 || tagMode === 4) lines.push(o.id);
+      if (tagMode === 3 || tagMode === 4) lines.push(`${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`);
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      lines.forEach((ln, i) => {
+        ctx.fillStyle = (tagMode === 1 && i === 0) ? colY : colX;
+        ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
       });
     }
 
+
+
+ 
     function drawDragLine(){
       if(isDragging && dragStart){
         ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
@@ -686,7 +736,17 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-
+ // if user has clicked (selectedStatic) AND presses 'o', lock in the wedge direction
+ if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
+    // compute bearing *from* the radar to the current world-cursor
+    selectedStatic.wedgeDir = bearing(
+      selectedStatic,
+      { x: mouse.wx, y: mouse.wy }
+    );
+    // optional feedback
+    feedbackEl.textContent = 
+      `Radar ${selectedStatic.id} wedge set to ${selectedStatic.wedgeDir}°`;
+  }
   // ─── practice keys only when in practice mode ──────────────────
   if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
 
