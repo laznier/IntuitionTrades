@@ -29,8 +29,8 @@
     #status { font-size: .9rem; z-index: 3; }
     #feedback { font-size: .8rem; color: var(--warn); min-height: 1em; z-index: 3; }
     #scope {
-      flex: 1; width: 100%; touch-action: none; cursor: crosshair;
-      background: var(--bg); position: relative; z-index: 1;
+      flex: 1; width: 100%; background: var(--bg);
+      touch-action: none; position: relative; z-index: 1;
     }
     #mobileControls {
       display: none; position: fixed; bottom: 0; left: 0; width: 100%;
@@ -94,16 +94,14 @@
     <h3>How to Play</h3>
     <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Kill sequences:</p>
     <ol>
-      <li><strong>Cover:</strong> Click the prompted track + <strong>A</strong> (Affirm).
-        Press <strong>N</strong> (Negate) to stay until <strong>A</strong>.</li>
+      <li><strong>Cover:</strong> Click the prompted track + <strong>A</strong> (Affirm). Press <strong>N</strong> (Negate).</li>
       <li><strong>Engage:</strong> Click + <strong>W</strong> (Away).</li>
-      <li><strong>Kill:</strong> Click + <strong>K</strong>.
-        Auto-kill in 10 s.</li>
+      <li><strong>Kill:</strong> Click + <strong>K</strong>. Auto-kill in 10 s.</li>
     </ol>
     <p>1 point per correct sequence; after 10 rounds, see GAME OVER + score.</p>
     <h3>Hotkeys</h3>
     <ul>
-      <li><strong>C</strong>: COVER (free mode)</li>
+      <li><strong>C</strong>: COVER</li>
       <li><strong>A</strong>: AFFIRM</li>
       <li><strong>N</strong>: NEGATE</li>
       <li><strong>W</strong>: AWAY</li>
@@ -127,7 +125,7 @@
   <div id="cursorLabel"></div>
 
   <script>
-    // ─── CONFIG ─────────────────────────────────────────────────────────
+    // ─── CONFIG & STATE ─────────────────────────────────────────────────
     const CFG = {
       trackCount: 10,
       nmPerPixel: 0.2,
@@ -139,15 +137,16 @@
       rounds: 10
     };
 
-    // ─── STATE ───────────────────────────────────────────────────────────
+    let worldWidth, worldHeight;
     let bullseye, statics = [], tracks = [];
     let mouse = { wx:0, wy:0, sx:0, sy:0, px:0, py:0 },
         dragStart = null, isDragging = false, rubber = null,
         scale = 1, offX = 0, offY = 0;
+    let pinch = { active:false, startDist:0, startScale:1, center:{x:0,y:0} };
     let selectedTrack = null, selectedStatic = null;
-    let mode = 'free', phase = '', curTrack = null, killTimer = null;
-    let round = 0, score = 0;
-    let tagMode = 0, tagLabels = ['OFF','B/E','JTN','INFO','ALL'];
+    let mode='free', phase='', curTrack=null, killTimer=null;
+    let round=0, score=0;
+    let tagMode=0, tagLabels=['OFF','B/E','JTN','INFO','ALL'];
 
     // ─── SETUP ──────────────────────────────────────────────────────────
     const canvas = document.getElementById('scope'),
@@ -158,9 +157,9 @@
           helpOverlay= document.getElementById('helpOverlay');
 
     function resize(){
-      canvas.width = window.innerWidth;
-      const hdr = document.querySelector('header').offsetHeight;
-      canvas.height = window.innerHeight - hdr;
+      worldWidth  = canvas.width  = window.innerWidth;
+      const hdr  = document.querySelector('header').offsetHeight;
+      worldHeight = canvas.height = window.innerHeight - hdr;
       buildStatics();
     }
     window.addEventListener('resize', resize);
@@ -168,10 +167,10 @@
 
     // ─── STATICS ─────────────────────────────────────────────────────────
     function buildStatics(){
-      const cx = canvas.width/2, cy = canvas.height/2,
+      const cx = worldWidth/2, cy = worldHeight/2,
             p10 = 10 / CFG.nmPerPixel;
       statics = [
-        { type:'icc', id:'00176', x:cx,    y:cy   },
+        { type:'icc', id:'00176', x:cx,    y:cy    },
         { type:'ln',  id:'00177', x:cx+p10,y:cy-p10 },
         { type:'ln',  id:'00178', x:cx-p10,y:cy+p10 },
         { type:'ln',  id:'00179', x:cx+p10,y:cy+p10 },
@@ -179,10 +178,9 @@
       ];
       bullseye = { x:cx, y:cy };
     }
-    buildStatics();
 
     // ─── TRACKS ─────────────────────────────────────────────────────────
-    const rand = (a,b) => Math.floor(Math.random()*(b-a)+a);
+    const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
     function newTrack(){
       const ang = Math.random()*2*Math.PI,
             r   = Math.sqrt(Math.random())*CFG.maxSpawnNm/CFG.nmPerPixel,
@@ -194,9 +192,7 @@
         heading: rand(0,359),
         speed:   rand(200,CFG.maxSpeedKts),
         alt:     rand(5,600),
-        tag:       null,
-        tagTime:   0,
-        destroyed: false
+        tag:null, tagTime:0, destroyed:false
       };
     }
     function initTracks(){
@@ -205,27 +201,30 @@
     initTracks();
 
     // ─── UTILS ──────────────────────────────────────────────────────────
-    const d2r = d => d * Math.PI/180;
+    const d2r = d=>d*Math.PI/180;
     function bearing(a,b){
-      let ang = (Math.atan2(b.x-a.x, a.y-b.y)*180/Math.PI + 360)%360;
-      return Math.round(ang) || 360;
+      let ang = (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;
+      return Math.round(ang)||360;
     }
     function distNm(a,b){
-      return Math.round(Math.hypot(a.x-b.x, a.y-b.y) * CFG.nmPerPixel);
+      return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel);
     }
     function scrToWorld(sx,sy){
       return { x: offX + sx/scale, y: offY + sy/scale };
+    }
+    function distTouch(t0,t1){
+      return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 
     // ─── DRAW ───────────────────────────────────────────────────────────
     function drawGrid(){
       ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
       ctx.lineWidth = 1; const step = 100;
-      for(let x=0; x<canvas.width/scale; x+=step){
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height/scale); ctx.stroke();
+      for(let x=0;x<worldWidth/scale;x+=step){
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,worldHeight/scale); ctx.stroke();
       }
-      for(let y=0; y<canvas.height/scale; y+=step){
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width/scale,y); ctx.stroke();
+      for(let y=0;y<worldHeight/scale;y+=step){
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(worldWidth/scale,y); ctx.stroke();
       }
     }
     function drawStatics(){
@@ -256,7 +255,7 @@
             colX = getComputedStyle(document.documentElement).getPropertyValue('--text');
       tracks.forEach(o=>{
         if(o.destroyed){
-          if(now-o.tagTime < CFG.destroyMs){
+          if(now-o.tagTime<CFG.destroyMs){
             ctx.fillStyle='#888'; ctx.font='14px monospace';
             ctx.textAlign='center'; ctx.fillText('#',o.x,o.y+5);
           }
@@ -272,14 +271,14 @@
           ctx.fillStyle=colB; ctx.fillText(o.tag,o.x,o.y-8);
         }
         if(tagMode){
-          const lines = [];
+          const lines=[];
           if(tagMode===1||tagMode===4) lines.push(`${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`);
           if(tagMode===2||tagMode===4) lines.push(o.id);
           if(tagMode===3||tagMode===4) lines.push(`${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`);
           ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
           lines.forEach((ln,i)=>{
             ctx.fillStyle=(tagMode===1&&i===0)?colY:colX;
-            ctx.fillText(ln, o.x+8, o.y-8 + i*12);
+            ctx.fillText(ln,o.x+8,o.y-8+i*12);
           });
         }
       });
@@ -288,216 +287,249 @@
       if(!rubber) return;
       ctx.setTransform(1,0,0,1,0,0);
       ctx.strokeStyle='#fff'; ctx.lineWidth=1;
-      const {cx,cy,ex,ey} = rubber;
-      const ox = 2*cx - ex, oy = 2*cy - ey;
-      const left   = Math.min(ex,ox),
-            top    = Math.min(ey,oy),
-            width  = Math.abs(ex-ox),
-            height = Math.abs(ey-oy);
-      ctx.strokeRect(left, top, width, height);
+      const {cx,cy,ex,ey}=rubber;
+      const ox=2*cx-ex, oy=2*cy-ey;
+      const left=Math.min(ex,ox), top=Math.min(ey,oy),
+            width=Math.abs(ex-ox), height=Math.abs(ey-oy);
+      ctx.strokeRect(left,top,width,height);
     }
-
-    // ─── DRAW BRAA LINE DURING DRAG ────────────────────────────────────
     function drawDragLine(){
-      if(isDragging && dragStart){
-        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
-        ctx.lineWidth = 1;
+      if(isDragging&&dragStart){
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+        ctx.lineWidth=1;
         ctx.beginPath();
-        ctx.moveTo(dragStart.wx, dragStart.wy);
-        ctx.lineTo(mouse.wx, mouse.wy);
+        ctx.moveTo(dragStart.wx,dragStart.wy);
+        ctx.lineTo(mouse.wx,mouse.wy);
         ctx.stroke();
       }
     }
 
-    // ─── UPDATE TRACKS ───────────────────────────────────────────────────
+    // ─── UPDATE TRACKS (wrap using fixed worldWidth/worldHeight) ────────
     function updateTracks(dt){
-      const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+      const pps=CFG.nmPerPixel/3600*CFG.frameRate;
       tracks.forEach(o=>{
         if(o.destroyed) return;
-        o.x = (o.x + Math.sin(d2r(o.heading)) * o.speed * pps * dt + canvas.width/scale) % (canvas.width/scale);
-        o.y = (o.y - Math.cos(d2r(o.heading)) * o.speed * pps * dt + canvas.height/scale) % (canvas.height/scale);
+        o.x=(o.x + Math.sin(d2r(o.heading))*o.speed*pps*dt + worldWidth)%worldWidth;
+        o.y=(o.y - Math.cos(d2r(o.heading))*o.speed*pps*dt + worldHeight)%worldHeight;
       });
     }
 
     // ─── ANIMATE ───────────────────────────────────────────────────────
-    let lastTime = performance.now();
+    let lastTime=performance.now();
     function animate(now){
-      const dt = (now - lastTime) / 1000;
-      lastTime = now;
+      const dt=(now-lastTime)/1000;
+      lastTime=now;
       updateTracks(dt);
 
       ctx.setTransform(1,0,0,1,0,0);
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(0,0,worldWidth,worldHeight);
       ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
 
       drawGrid();
       drawStatics();
-      drawTracks(performance.now());
+      drawTracks(now);
       drawDragLine();
       drawRubber();
+
       requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
 
-    // ─── MOUSE & LABEL ─────────────────────────────────────────────────
+    // ─── MOUSE/TOUCH/LABEL ─────────────────────────────────────────────
     function storeMouse(e){
-      const rect = canvas.getBoundingClientRect();
-      mouse.sx = e.clientX - rect.left;
-      mouse.sy = e.clientY - rect.top;
-      mouse.px = e.clientX;
-      mouse.py = e.clientY;
-      const w = scrToWorld(mouse.sx, mouse.sy);
-      mouse.wx = w.x; mouse.wy = w.y;
+      const rect=canvas.getBoundingClientRect();
+      mouse.sx=e.clientX-rect.left;
+      mouse.sy=e.clientY-rect.top;
+      mouse.px=e.clientX; mouse.py=e.clientY;
+      const w=scrToWorld(mouse.sx,mouse.sy);
+      mouse.wx=w.x; mouse.wy=w.y;
       updateCursorLabel();
     }
-    canvas.addEventListener('mousemove', e=>{
-      storeMouse(e);
-      if(rubber){
-        rubber.ex = mouse.sx; rubber.ey = mouse.sy;
+
+    // pinch start
+    canvas.addEventListener('touchstart',e=>{
+      if(e.touches.length===2){
+        pinch.active=true;
+        pinch.startDist=distTouch(e.touches[0],e.touches[1]);
+        pinch.startScale=scale;
+        const rect=canvas.getBoundingClientRect();
+        const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
+        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        pinch.center=scrToWorld(cx,cy);
       }
+    },{passive:false});
+
+    // pinch move & single-touch drag
+    canvas.addEventListener('touchmove',e=>{
+      if(pinch.active&&e.touches.length===2){
+        e.preventDefault();
+        const newDist=distTouch(e.touches[0],e.touches[1]);
+        const f=newDist/pinch.startDist;
+        scale=pinch.startScale*f;
+        const rect=canvas.getBoundingClientRect();
+        const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
+        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        offX=pinch.center.x-cx/scale;
+        offY=pinch.center.y-cy/scale;
+      } else if(e.touches.length===1){
+        storeMouse(e.touches[0]);
+        if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
+      }
+    },{passive:false});
+
+    // touch end
+    canvas.addEventListener('touchend',e=>{
+      if(pinch.active&&e.touches.length<2) pinch.active=false;
+      // single-finger tap → click
+      if(e.changedTouches.length===1&&e.touches.length===0){
+        const t=e.changedTouches[0];
+        const sim={clientX:t.clientX,clientY:t.clientY,button:0};
+        storeMouse(sim);
+        canvas.dispatchEvent(new MouseEvent('click',{
+          bubbles:true,cancelable:true,view:window,
+          clientX:t.clientX,clientY:t.clientY,button:0
+        }));
+      }
+    },{passive:false});
+
+    // mouse events
+    canvas.addEventListener('mousemove',e=>{
+      storeMouse(e);
+      if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
     });
-    canvas.addEventListener('mousedown', e=>{
+    canvas.addEventListener('mousedown',e=>{
       if(e.button!==0) return;
       storeMouse(e);
       if(e.detail===2){
-        rubber = { cx: mouse.sx, cy: mouse.sy, ex: mouse.sx, ey: mouse.sy };
+        rubber={cx:mouse.sx,cy:mouse.sy,ex:mouse.sx,ey:mouse.sy};
       } else {
-        isDragging = true; dragStart = {...mouse};
+        isDragging=true; dragStart={...mouse};
       }
     });
-    window.addEventListener('mouseup', e=>{
+    window.addEventListener('mouseup',e=>{
       if(e.button!==0) return;
       storeMouse(e);
-      isDragging = false; dragStart = null;
+      isDragging=false; dragStart=null;
       if(!rubber) return;
-      const dx = Math.abs(mouse.sx - rubber.cx)*2,
-            dy = Math.abs(mouse.sy - rubber.cy)*2;
-      if(dx>10 && dy>10){
-        const w0 = scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
-              w1 = scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
-        const newScale = Math.min(canvas.width/(w1.x-w0.x), canvas.height/(w1.y-w0.y));
-        scale = newScale; offX = w0.x; offY = w0.y;
+      const dx=Math.abs(mouse.sx-rubber.cx)*2,
+            dy=Math.abs(mouse.sy-rubber.cy)*2;
+      if(dx>10&&dy>10){
+        const w0=scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
+              w1=scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
+        const newScale=Math.min(worldWidth/(w1.x-w0.x), worldHeight/(w1.y-w0.y));
+        scale=newScale; offX=w0.x; offY=w0.y;
       }
-      rubber = null;
+      rubber=null;
     });
-    canvas.addEventListener('wheel', e=>{
+
+    // wheel zoom
+    canvas.addEventListener('wheel',e=>{
       e.preventDefault(); storeMouse(e);
-      const f = e.deltaY < 0 ? 1.1 : 1/1.1;
-      const cx = e.clientX - canvas.getBoundingClientRect().left;
-      const cy = e.clientY - canvas.getBoundingClientRect().top;
-      const world = scrToWorld(cx, cy);
-      scale *= f;
-      offX = world.x - cx/scale;
-      offY = world.y - cy/scale;
-    }, { passive: false });
+      const f=e.deltaY<0?1.1:1/1.1;
+      const cx=e.clientX-canvas.getBoundingClientRect().left,
+            cy=e.clientY-canvas.getBoundingClientRect().top;
+      const world=scrToWorld(cx,cy);
+      scale*=f;
+      offX=world.x-cx/scale;
+      offY=world.y-cy/scale;
+    },{passive:false});
 
     function updateCursorLabel(){
-      const world = { x: mouse.wx, y: mouse.wy };
-      const b = ('000'+bearing(bullseye, world)).slice(-3);
-      const r = distNm(bullseye, world);
-      let html = `<span class="be">${b}/${r}</span>`;
-      if(isDragging && dragStart){
-        const start = { x: dragStart.wx, y: dragStart.wy };
-        const b2 = ('000'+bearing(start, world)).slice(-3);
-        const r2 = distNm(start, world);
-        html = `<span class="braa">${b2}/${r2}</span><br>` + html;
+      const world={x:mouse.wx,y:mouse.wy};
+      const b=('000'+bearing(bullseye,world)).slice(-3),
+            r=distNm(bullseye,world);
+      let html=`<span class="be">${b}/${r}</span>`;
+      if(isDragging&&dragStart){
+        const start={x:dragStart.wx,y:dragStart.wy},
+              b2=('000'+bearing(start,world)).slice(-3),
+              r2=distNm(start,world);
+        html=`<span class="braa">${b2}/${r2}</span><br>`+html;
       }
-      label.innerHTML = html;
-      label.style.left = (mouse.px + 5) + 'px';
-      label.style.top  = (mouse.py - label.offsetHeight - 5) + 'px';
+      label.innerHTML=html;
+      label.style.left=`${mouse.px+5}px`;
+      label.style.top=`${mouse.py-label.offsetHeight-5}px`;
     }
 
-    // ─── CLICK, TAP & CARD ──────────────────────────────────────────────
-    canvas.addEventListener('click', e=>{
+    // click → select tracks/statics
+    canvas.addEventListener('click',e=>{
       storeMouse(e);
-      selectedTrack = tracks.find(t=>Math.hypot(t.x-mouse.wx,t.y-mouse.wy)<8) || null;
-      if(selectedTrack){
-        selectedStatic = null; showCard(selectedTrack); return;
-      }
-      if(e.ctrlKey || !selectedTrack){
-        selectedStatic = statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12) || null;
+      selectedTrack=tracks.find(t=>Math.hypot(t.x-mouse.wx,t.y-mouse.wy)<8)||null;
+      if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
+      if(e.ctrlKey||!selectedTrack){
+        selectedStatic=statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12)||null;
       }
     });
-    canvas.addEventListener('touchend', e=>{
-      e.preventDefault();
-      const touch = e.changedTouches[0];
-      const sim = { clientX: touch.clientX, clientY: touch.clientY, button:0 };
-      storeMouse(sim);
-      canvas.dispatchEvent(new MouseEvent('click', {
-        bubbles:true, cancelable:true, view:window,
-        clientX: touch.clientX, clientY: touch.clientY, button:0
-      }));
-    }, { passive:false });
-
     function showCard(t){
       document.querySelectorAll('.card').forEach(c=>c.remove());
-      const d = document.createElement('div'); d.className = 'card';
-      d.innerHTML = `
+      const d=document.createElement('div'); d.className='card';
+      d.innerHTML=`
         <h3>Track ${t.id}</h3>
         ${('000'+t.heading).slice(-3)}° /
         <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
         ${t.speed} kts
         <br><button>Close</button>`;
-      d.querySelector('button').onclick = ()=>d.remove();
+      d.querySelector('button').onclick=()=>d.remove();
       document.body.appendChild(d);
     }
 
-    // ─── PRACTICE & HOTKEYS ────────────────────────────────────────────
-    window.addEventListener('keydown', e=>{
-      const k = e.key.toLowerCase();
-      if(e.ctrlKey && k==='r'){
+    // PRACTICE & HOTKEYS (unchanged)…
+    window.addEventListener('keydown',e=>{
+      const k=e.key.toLowerCase();
+      if(e.ctrlKey&&k==='r'){
         e.preventDefault();
         if(selectedStatic){
-          bullseye = { x:selectedStatic.x, y:selectedStatic.y };
-          statusEl.textContent = 'Bullseye reset'; feedbackEl.textContent = '';
+          bullseye={x:selectedStatic.x,y:selectedStatic.y};
+          statusEl.textContent='Bullseye reset'; feedbackEl.textContent='';
         }
         return;
       }
-      if(mode==='practice' && ['a','n','w','k'].includes(k)){
-        feedbackEl.textContent = '';
+      if(mode==='practice'&&['a','n','w','k'].includes(k)){
+        feedbackEl.textContent='';
         if(phase==='cover'){
           if(selectedTrack===curTrack){
             if(k==='a'){
-              curTrack.tag = 'ENGAGE'; phase='engage';
-              const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
-              statusEl.textContent =
+              curTrack.tag='ENGAGE'; phase='engage';
+              const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
+              statusEl.textContent=
                 `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
             } else if(k==='n'){
               curTrack.tag='NEGATE'; curTrack.tagTime=Date.now();
-              feedbackEl.textContent = 'Negated. Press A to proceed.';
-            } else feedbackEl.textContent = 'Wrong. Try again.';
-          } else feedbackEl.textContent = 'Wrong. Try again.';
+              feedbackEl.textContent='Negated. Press A to proceed.';
+            } else feedbackEl.textContent='Wrong. Try again.';
+          } else feedbackEl.textContent='Wrong. Try again.';
         }
         else if(phase==='engage'){
-          if(selectedTrack===curTrack && k==='w'){
+          if(selectedTrack===curTrack&&k==='w'){
             curTrack.tag='AWAY'; phase='kill';
-            statusEl.textContent = `ADAFCO, SL, KILL Track ${curTrack.id}`;
-            killTimer = setTimeout(()=>{ curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound(); }, CFG.autoKillMs);
-          } else feedbackEl.textContent = 'Wrong. Try again.';
+            statusEl.textContent=`ADAFCO, SL, KILL Track ${curTrack.id}`;
+            killTimer=setTimeout(()=>{
+              curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound();
+            },CFG.autoKillMs);
+          } else feedbackEl.textContent='Wrong. Try again.';
         }
         else if(phase==='kill'){
-          if(selectedTrack===curTrack && k==='k'){
+          if(selectedTrack===curTrack&&k==='k'){
             clearTimeout(killTimer);
             curTrack.destroyed=true; curTrack.tagTime=Date.now();
             nextRound();
-          } else feedbackEl.textContent = 'Wrong. Try again.';
+          } else feedbackEl.textContent='Wrong. Try again.';
         }
         return;
       }
-      if(mode==='free' && selectedTrack){
-        const map = { c:'COVER', a:'AFFIRM', n:'NEGATE', w:'AWAY', e:'ENGAGE' };
+      if(mode==='free'&&selectedTrack){
+        const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
         if(k in map){
-          selectedTrack.tag = map[k];
-          selectedTrack.tagTime = Date.now();
+          selectedTrack.tag=map[k];
+          selectedTrack.tagTime=Date.now();
         } else if(k==='k'){
           selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now();
         }
       }
     });
 
-    // ─── PRACTICE CONTROL ───────────────────────────────────────────────
-    document.getElementById('practiceBtn').onclick = function(){
-      if(mode==='free' || mode==='gameover'){
+    // Practice button & nextRound (unchanged)…
+    document.getElementById('practiceBtn').onclick=function(){
+      if(mode==='free'||mode==='gameover'){
         mode='practice'; round=0; score=0; this.textContent='Free Mode';
         nextRound();
       } else {
@@ -507,49 +539,45 @@
       }
     };
     function nextRound(){
-      tracks = tracks.filter(t=>!t.destroyed);
+      tracks=tracks.filter(t=>!t.destroyed);
       round++;
       if(round>CFG.rounds){
         mode='gameover';
-        statusEl.textContent = `GAME OVER — ${score}/${CFG.rounds}`;
+        statusEl.textContent=`GAME OVER — ${score}/${CFG.rounds}`;
         document.getElementById('practiceBtn').textContent='Practice Mode';
         return;
       }
       if(round>1) score++;
       phase='cover';
-      curTrack = tracks[Math.floor(Math.random()*tracks.length)];
+      curTrack=tracks[Math.floor(Math.random()*tracks.length)];
       curTrack.tag='COVER';
-      const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
-      statusEl.textContent =
+      const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
+      statusEl.textContent=
         `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
       feedbackEl.textContent='';
     }
 
-    // ─── TAGS & HELP & MOBILE ───────────────────────────────────────────
-    document.getElementById('tagsBtn').onclick = function(){
-      tagMode = (tagMode+1) % tagLabels.length;
-      this.textContent = `TAGS: ${tagLabels[tagMode]}`;
+    // TAGS, HELP, MOBILE buttons (unchanged)…
+    document.getElementById('tagsBtn').onclick=function(){
+      tagMode=(tagMode+1)%tagLabels.length;
+      this.textContent=`TAGS: ${tagLabels[tagMode]}`;
     };
-    document.getElementById('helpBtn').onclick   = ()=>helpOverlay.style.display='block';
-    document.getElementById('closeHelp').onclick = ()=>helpOverlay.style.display='none';
+    document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
+    document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
     document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
-      btn.onclick = ()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
+      btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
     });
 
-    // ─── CENTER-ANCHOR ZOOM BUTTONS ────────────────────────────────────
-    document.getElementById('zoomIn').onclick = () => {
-      const cx = canvas.width/2, cy = canvas.height/2;
-      const world = scrToWorld(cx, cy);
-      scale *= 1.2;
-      offX = world.x - cx/scale;
-      offY = world.y - cy/scale;
+    // Center-anchor zoom buttons (unchanged)…
+    document.getElementById('zoomIn').onclick=()=>{
+      const cx=worldWidth/2, cy=worldHeight/2;
+      const w=scrToWorld(cx,cy);
+      scale*=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
     };
-    document.getElementById('zoomOut').onclick = () => {
-      const cx = canvas.width/2, cy = canvas.height/2;
-      const world = scrToWorld(cx, cy);
-      scale /= 1.2;
-      offX = world.x - cx/scale;
-      offY = world.y - cy/scale;
+    document.getElementById('zoomOut').onclick=()=>{
+      const cx=worldWidth/2, cy=worldHeight/2;
+      const w=scrToWorld(cx,cy);
+      scale/=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
     };
 
   </script>
