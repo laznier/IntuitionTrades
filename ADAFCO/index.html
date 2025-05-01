@@ -416,18 +416,6 @@ resize();
       }
     },{passive:false});
 
-    // touch end
-    canvas.addEventListener('touchend',e=>{
-      if(pinch.active&&e.touches.length<2) pinch.active=false;
-      // single-finger tap → direct pick
-      if(e.changedTouches.length===1&&e.touches.length===0){
-        const t=e.changedTouches[0];
-          storeMouse(t);      // real touch coordinates
-  pickObject();       // no fake click needed
- }
-      }
-    ,{passive:false});
-
     // mouse events
     canvas.addEventListener('mousemove',e=>{
       storeMouse(e);
@@ -506,25 +494,27 @@ function pickObject () {
   ) || null;
 }
 
-    // click/tap → select tracks/statics
-    canvas.addEventListener('click', e=>{
-      storeMouse(e);
+    // ─── UNIFIED TAP / CLICK via PointerEvents ────────────────────────
+canvas.addEventListener('pointerup', e => {
+  // Prevent the browser from turning this into a click or scroll
+  e.preventDefault();
 
-        pickObject();      // unified picker
-      });
+  // offsetX/Y are always relative to the canvas, no getBoundingClientRect needed
+  mouse.sx = e.offsetX;
+  mouse.sy = e.offsetY;
+  mouse.px = e.clientX;
+  mouse.py = e.clientY;
 
-    function showCard(t){
-      document.querySelectorAll('.card').forEach(c=>c.remove());
-      const d=document.createElement('div'); d.className='card';
-      d.innerHTML=`
-        <h3>Track ${t.id}</h3>
-        ${('000'+t.heading).slice(-3)}° /
-        <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
-        ${t.speed} kts
-        <br><button>Close</button>`;
-      d.querySelector('button').onclick=()=>d.remove();
-      document.body.appendChild(d);
-    }
+  // update world coords
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x;
+  mouse.wy = w.y;
+  updateCursorLabel();
+
+  // do your hit-test
+  pickObject();
+});
+
 
      // PRACTICE & HOTKEYS (unchanged)…
      window.addEventListener('keydown',e=>{
