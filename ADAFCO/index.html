@@ -276,30 +276,47 @@ let coverTimer = null, practiceSaveIndex = null;
 }
 
 
-    // ─── TRACKS ─────────────────────────────────────────────────────────
+ // ─── TRACKS ─────────────────────────────────────────────────────────
 const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
+
 function newTrack(){
-  const ang = Math.random()*2*Math.PI,
-        r   = Math.sqrt(Math.random())*CFG.maxSpawnNm/CFG.nmPerPixel,
-        x   = bullseye.x + Math.cos(ang)*r,
-        y   = bullseye.y + Math.sin(ang)*r;
+  const cx     = worldWidth/2,
+        cy     = worldHeight/2,
+        dx     = bullseye.x - cx,
+        dy     = bullseye.y - cy,
+        radius = CFG.maxSpawnNm / CFG.nmPerPixel;
+
+  let ang, dot;
+  // keep drawing a full-circle angle until it's truly opposite the (dx,dy) vector
+  do {
+    ang = Math.random() * 2 * Math.PI;
+    dot = Math.cos(ang)*dx + Math.sin(ang)*dy;
+  } while (dot > 0);  // dot>0 means “same half‐plane” so we reject it
+
+  const x       = bullseye.x + Math.cos(ang)*radius;
+  const y       = bullseye.y + Math.sin(ang)*radius;
+  const heading = bearing({x,y}, bullseye);
+
   return {
-    id: ('00000'+rand(1000,7776)).slice(-5),
+    id:      ('00000'+rand(1000,7776)).slice(-5),
     x, y,
-    heading: rand(0,359),
+    heading,
     speed:   rand(200,CFG.maxSpeedKts),
     alt:     rand(5,600),
-    tag: null,        // current label
-    tagTime: 0,
-    destroyed:false,
-    everEngaged:false // ⇦ NEW  ➜ has SL ever tagged ENGAGE?
+    tag:        null,
+    tagTime:    0,
+    destroyed:  false,
+    everEngaged:false
   };
 }
 
-    function initTracks(){
-      tracks = Array.from({length:CFG.trackCount}, newTrack);
-    }
-    initTracks();
+
+function initTracks(){
+  tracks = Array.from({length:CFG.trackCount}, newTrack);
+}
+initTracks();
+
+
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -657,6 +674,16 @@ window.addEventListener('keydown', e => {
     bullseye.y = mouse.wy;
     statusEl.textContent =
       `Bullseye set to ${('000'+bearing(bullseye, {x:mouse.wx, y:mouse.wy})).slice(-3)}/${distNm(bullseye, {x:mouse.wx, y:mouse.wy})}`;
+
+          // respawn tracks from the new bullseye
+   initTracks();
+    if (mode === 'practice') {
+      // restart the queue against the new set
+      trackQueue = tracks.slice();
+      queueIndex = 0;
+      negatedStack = [];
+      nextQueueTrack();
+    }
     return;
   }
 
