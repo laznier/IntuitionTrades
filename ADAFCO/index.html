@@ -11,19 +11,19 @@
     --yellow:#ffd60a; --warn:#ff4d4d;
   }
   *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
-  body{margin:0;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  header{display:flex;flex-direction:column;align-items:center;padding:.5rem 1rem;background:#111;gap:.5rem;z-index:2}
-  #controls{display:flex;gap:.5rem}
-  button{padding:.25rem .8rem;border:none;border-radius:6px;font-weight:600;cursor:pointer;white-space:nowrap}
+  body{margin:0;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh}
+  header{display:flex;flex-direction:column;align-items:center;padding:.5rem 1rem;background:#111;gap:.5rem}
+  #controls{display:flex;gap:.75rem}
+  button{padding:.25rem .8rem;border:none;border-radius:6px;font-weight:600;cursor:pointer}
   #practiceBtn{background:var(--icc);color:#000}
   #tagsBtn,#helpBtn{background:var(--braa);color:#000}
-  #status{font-size:.9rem;z-index:2}
-  #feedback{font-size:.8rem;color:var(--warn);min-height:1em;z-index:2}
-  #scope{flex:1;width:100%;touch-action:none;cursor:crosshair;background:var(--bg);position:relative;z-index:1}
-  .card{position:fixed;top:10px;left:10px;background:#181818;border:1px solid #333;padding:1rem 1.5rem;border-radius:8px;z-index:3}
+  #status{font-size:.9rem}
+  #feedback{font-size:.8rem;color:var(--warn);min-height:1em}
+  #scope{flex:1;width:100%;cursor:crosshair;background:var(--bg)}
+  .card{position:fixed;top:10px;left:10px;background:#181818;border:1px solid #333;padding:1rem 1.5rem;border-radius:8px;z-index:15}
   .card h3{margin:0 0 .4rem;color:var(--icc);font-size:1.1rem}
   .card button{margin-top:.8rem;background:var(--track);color:#fff;cursor:pointer}
-  .label{position:absolute;pointer-events:none;background:rgba(0,0,0,.65);border-radius:3px;padding:1px 4px;line-height:1.2;text-align:left;z-index:2}
+  .label{position:absolute;pointer-events:none;background:rgba(0,0,0,.65);border-radius:3px;padding:1px 4px;line-height:1.2;text-align:left}
   .label .be{color:var(--yellow);font-size:.85rem;font-weight:600}
   .label .braa{color:var(--braa);font-size:.65rem}
   /* Help overlay */
@@ -31,24 +31,10 @@
     display:none;
     position:fixed;top:60px;left:50%;transform:translateX(-50%);
     background:#222;color:#f8f8f8;padding:1rem;border:1px solid #444;border-radius:8px;
-    z-index:5;max-width:400px;
+    z-index:20;max-width:400px;
   }
   #helpOverlay h3{margin-top:0;color:var(--icc)}
-  #helpOverlay button{margin-top:1rem;background:var(--track);color:#fff;cursor:pointer}
-  /* Mobile hotkey bar */
-  #mobileControls{
-    display:none;
-    position:fixed;bottom:0;left:0;width:100%;background:rgba(17,17,17,0.9);
-    padding:.5rem 0;z-index:4;
-    flex-wrap:wrap;justify-content:space-around;
-  }
-  #mobileControls button{
-    flex:1;margin:.25rem;min-width:40px;
-    font-size:1rem;
-  }
-  @media(max-width:768px){
-    #mobileControls{display:flex}
-  }
+  #helpOverlay button{margin-top:1rem;background:var(--track);color:#fff;}
 </style>
 </head>
 <body>
@@ -70,35 +56,23 @@
   <h3>How to Play</h3>
   <p>In Practice Mode you run up to <strong>10</strong> Cover→Engage→Away→Kill sequences:</p>
   <ol>
-    <li><strong>Cover:</strong> Tap or click the prompted track and press <strong>A</strong> (Affirm).  
-        If you press <strong>N</strong> (Negate), it tags “NEGATE” and you remain in Cover until <strong>A</strong>.</li>
-    <li><strong>Engage:</strong> Tap the same track and press <strong>W</strong> (Away).</li>
-    <li><strong>Kill:</strong> Tap and press <strong>K</strong>.  
-        If you don’t within 10 s, it auto-kills.</li>
+    <li><strong>Cover:</strong> Click the prompted track and press <strong>A</strong> (Affirm).  
+        If you press <strong>N</strong> (Negate), it tags “NEGATE” and you remain in Cover until you press <strong>A</strong>.</li>
+    <li><strong>Engage:</strong> Click the same track and press <strong>W</strong> (Away).</li>
+    <li><strong>Kill:</strong> Click the track and press <strong>K</strong>.  
+        If you don’t press <strong>K</strong> within 10 s, it auto‐kills.</li>
   </ol>
-  <p>You earn 1 point per completed sequence. After 10 rounds, you see GAME OVER with your score.</p>
+  <p>You earn 1 point for each correctly completed sequence. After 10 rounds, you see GAME OVER with your score.</p>
   <h3>Hotkeys</h3>
   <ul>
-    <li><strong>C</strong>: Cover (free mode)</li>
-    <li><strong>A</strong>: Affirm</li>
-    <li><strong>N</strong>: Negate</li>
-    <li><strong>W</strong>: Away</li>
-    <li><strong>E</strong>: Engage</li>
-    <li><strong>K</strong>: Kill</li>
+    <li><strong>C</strong>: COVER (free mode)</li>
+    <li><strong>A</strong>: AFFIRM</li>
+    <li><strong>N</strong>: NEGATE</li>
+    <li><strong>W</strong>: AWAY</li>
+    <li><strong>E</strong>: ENGAGE</li>
+    <li><strong>K</strong>: KILL</li>
   </ul>
   <button id="closeHelp">Close</button>
-</div>
-
-<!-- Mobile hotkey + zoom bar -->
-<div id="mobileControls">
-  <button data-key="c">C</button>
-  <button data-key="a">A</button>
-  <button data-key="n">N</button>
-  <button data-key="w">W</button>
-  <button data-key="e">E</button>
-  <button data-key="k">K</button>
-  <button id="zoomOut">–</button>
-  <button id="zoomIn">+</button>
 </div>
 
 <script>
@@ -121,9 +95,6 @@ let selectedTrack = null, selectedStatic = null;
 let mode = 'free', phase = '', currentTrack = null, killTimer = null;
 let round = 0, score = 0;
 let tagMode = 0, tagLabels = ['OFF','B/E','JTN','INFO','ALL'];
-let scale = 1;           // for zoom
-let pinchStartDist = 0;
-let pinchStartScale = 1;
 
 // ===== CANVAS SETUP =====
 const canvas = document.getElementById('scope'),
@@ -190,18 +161,18 @@ function distNm(p1,p2){
 }
 function mousePos(e){
   const r = canvas.getBoundingClientRect();
-  return {x:(e.clientX - r.left)/scale, y:(e.clientY - r.top)/scale};
+  return {x:e.clientX - r.left, y: e.clientY - r.top};
 }
 
 // ===== DRAWING =====
 function drawGrid(){
   ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
   ctx.lineWidth = 1; const step = 100;
-  for(let x=0;x<canvas.width/scale;x+=step){
-    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height/scale);ctx.stroke();
+  for(let x=0;x<canvas.width;x+=step){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
   }
-  for(let y=0;y<canvas.height/scale;y+=step){
-    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width/scale,y);ctx.stroke();
+  for(let y=0;y<canvas.height;y+=step){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
   }
 }
 function drawStatics(){
@@ -290,8 +261,8 @@ function updateTracks(dt){
   const pxPerSec = (CONFIG.nmPerpixel||CONFIG.nmPerPixel)/3600*CONFIG.frameRate;
   tracks.forEach(t=>{
     if(t.destroyed) return;
-    t.x = (t.x + Math.sin(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.width/scale) % (canvas.width/scale);
-    t.y = (t.y - Math.cos(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.height/scale) % (canvas.height/scale);
+    t.x = (t.x + Math.sin(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.width) % canvas.width;
+    t.y = (t.y - Math.cos(deg2rad(t.heading))*t.speed*pxPerSec*dt + canvas.height) % canvas.height;
   });
 }
 
@@ -299,18 +270,15 @@ function updateTracks(dt){
 let last=performance.now();
 function animate(now){
   const dt=(now-last)/1000; last=now;
-  ctx.save();
-  ctx.scale(scale,scale);
-  ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale);
-  drawGrid();drawStatics();drawTracks(now);drawDrag();
-  ctx.restore();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawGrid(); drawStatics(); drawTracks(now); drawDrag();
   updateTracks(dt);
   requestAnimationFrame(animate);
 }
 animate(last);
 
 // ===== CURSOR LABEL =====
-const label = document.createElement('div');
+const label=document.createElement('div');
 label.className='label';document.body.appendChild(label);
 function updateLabel(){
   const b3=('000'+bearing(bullseye,mouse)).slice(-3),
@@ -322,8 +290,8 @@ function updateLabel(){
     html=`<div class="braa">${b2}/${r2}</div>`+html;
   }
   label.innerHTML=html;
-  label.style.left=(mouse.x*scale+15)+'px';
-  label.style.top =(mouse.y*scale+15)+'px';
+  label.style.left=(mouse.x+15)+'px';
+  label.style.top=(mouse.y+15)+'px';
 }
 canvas.addEventListener('mousemove', e=>{ mouse=mousePos(e); updateLabel(); });
 canvas.addEventListener('mousedown', e=>{ if(e.button===0){ isDragging=true; dragStart=mousePos(e); } });
@@ -332,10 +300,10 @@ canvas.addEventListener('mouseup',   e=>{ if(e.button===0){ isDragging=false; dr
 // ===== CLICK LOGIC =====
 canvas.addEventListener('click', e=>{
   const m=mousePos(e);
-  selectedTrack = tracks.find(t=>Math.hypot(t.x-m.x,t.y-m.y)<15) || null;
+  selectedTrack = tracks.find(t=>Math.hypot(t.x-m.x,t.y-m.y)<15)||null;
   if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
   if(e.ctrlKey||!selectedTrack){
-    selectedStatic = staticPts.find(p=>Math.hypot(p.x-m.x,p.y-m.y)<12) || null;
+    selectedStatic = staticPts.find(p=>Math.hypot(p.x-m.x,p.y-m.y)<12)||null;
   }
 });
 function showCard(t){
@@ -349,14 +317,14 @@ function showCard(t){
   document.body.appendChild(c);
 }
 
-// ===== KEYBOARD & PRACTICE FSM =====
+// ===== KEYBOARD =====
 const statusEl=document.getElementById('status'),
       feedbackEl=document.getElementById('feedback');
 window.addEventListener('keydown', e=>{
   const k=e.key.toLowerCase();
-  if(e.ctrlKey&&k==='r'){e.preventDefault();
+  if(e.ctrlKey&&k==='r'){ e.preventDefault();
     if(selectedStatic){ bullseye={x:selectedStatic.x,y:selectedStatic.y};
-      statusEl.textContent='Bullseye reset'; feedbackEl.textContent='';}
+      statusEl.textContent='Bullseye reset'; feedbackEl.textContent=''; }
     return;
   }
   if(mode==='practice'&&['a','n','w','k'].includes(k)){
@@ -378,15 +346,17 @@ window.addEventListener('keydown', e=>{
         currentTrack.tag='AWAY'; phase='kill';
         statusEl.textContent=`ADAFCO, SL, KILL Track ${currentTrack.id}`;
         killTimer=setTimeout(()=>{
-          currentTrack.destroyed=true; currentTrack.tagTime=Date.now();
+          currentTrack.destroyed=true;
+          currentTrack.tagTime=Date.now();
           nextRound();
-        },CONFIG.autoKillMs);
+        }, CONFIG.autoKillMs);
       } else feedbackEl.textContent='Wrong. Try again.';
     }
     else if(phase==='kill'){
       if(selectedTrack===currentTrack&&k==='k'){
         clearTimeout(killTimer);
-        currentTrack.destroyed=true; currentTrack.tagTime=Date.now();
+        currentTrack.destroyed=true;
+        currentTrack.tagTime=Date.now();
         nextRound();
       } else feedbackEl.textContent='Wrong. Try again.';
     }
@@ -394,8 +364,13 @@ window.addEventListener('keydown', e=>{
   }
   if(mode==='free'&&selectedTrack){
     const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
-    if(k in map){ selectedTrack.tag=map[k]; selectedTrack.tagTime=Date.now(); }
-    else if(k==='k'){ selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now(); }
+    if(k in map){
+      selectedTrack.tag=map[k];
+      selectedTrack.tagTime=Date.now();
+    } else if(k==='k'){
+      selectedTrack.destroyed=true;
+      selectedTrack.tagTime=Date.now();
+    }
   }
 });
 
@@ -409,8 +384,11 @@ document.getElementById('practiceBtn').onclick=function(){
     feedbackEl.textContent='';
   }
 };
+
 function nextRound(){
+  // only now remove killed tracks
   tracks = tracks.filter(t=>!t.destroyed);
+
   round++;
   if(round>CONFIG.rounds){
     mode='gameover';
@@ -427,49 +405,19 @@ function nextRound(){
   feedbackEl.textContent='';
 }
 
-// ===== TAGS & HELP & MOBILE BUTTONS =====
+// ===== TAGS CYCLE =====
 document.getElementById('tagsBtn').onclick=function(){
   tagMode=(tagMode+1)%tagLabels.length;
   this.textContent=`TAGS: ${tagLabels[tagMode]}`;
 };
-const helpOverlay=document.getElementById('helpOverlay');
-document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
-document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
 
-// mobile hotkeys
-document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const ev=new KeyboardEvent('keydown',{key:btn.dataset.key});
-    window.dispatchEvent(ev);
-  });
-});
-// zoom buttons
-document.getElementById('zoomIn').onclick = ()=>{ scale*=1.2; };
-document.getElementById('zoomOut').onclick= ()=>{ scale/=1.2; };
-// pinch-to-zoom
-canvas.addEventListener('touchstart',e=>{
-  if(e.touches.length===2){
-    e.preventDefault();
-    pinchStartDist = Math.hypot(
-      e.touches[0].pageX - e.touches[1].pageX,
-      e.touches[0].pageY - e.touches[1].pageY
-    );
-    pinchStartScale = scale;
-  }
-});
-canvas.addEventListener('touchmove',e=>{
-  if(e.touches.length===2 && pinchStartDist){
-    e.preventDefault();
-    const newDist = Math.hypot(
-      e.touches[0].pageX - e.touches[1].pageX,
-      e.touches[0].pageY - e.touches[1].pageY
-    );
-    scale = pinchStartScale * newDist / pinchStartDist;
-  }
-});
-canvas.addEventListener('touchend',e=>{
-  if(e.touches.length<2) pinchStartDist = 0;
-});
+// ===== HELP OVERLAY =====
+const helpBtn=document.getElementById('helpBtn'),
+      helpOverlay=document.getElementById('helpOverlay'),
+      closeHelp=document.getElementById('closeHelp');
+
+helpBtn.onclick=()=>{ helpOverlay.style.display='block'; };
+closeHelp.onclick=()=>{ helpOverlay.style.display='none'; };
 </script>
 
 </body>
