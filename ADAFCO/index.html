@@ -26,15 +26,7 @@
       flex-direction: column;
       height: 100%;
       overflow: hidden;
-    }
-  
-    #scope {
-      flex: 1;
-      min-height: 0;
-      width: 100%;
-      background: var(--bg);
-      position: relative;
-      z-index: 1;
+    
     }
     header {
       display: flex; flex-direction: column; align-items: center;
@@ -772,71 +764,75 @@ function nextQueueTrack(){
   }, 10000);
 }
 
-
-
-// After an ENGAGE completes, decide whether to revisit a negated track or move on
-function finishEngage(){
-  // Mark destroyed & score
+// ─── finishEngage: scoring, negations & queue-advance ─────────────────────
+function finishEngage() {
+  // destroy & score
   curTrack.destroyed = true;
-  curTrack.tagTime = Date.now();
+  curTrack.tagTime   = Date.now();
   score++;
 
-  // See if any remain this level
+  // who's still alive?
   const remaining = trackQueue.filter(t => !t.destroyed);
+
+  // if none → level complete
   if (remaining.length === 0) {
-    // Level complete!
     showLevelComplete();
     return;
   }
 
-  // Otherwise, check negated revisit (unchanged)...
+  // revisit closest negated?
   if (negatedStack.length) {
-    const neg = negatedStack[0],
-          dNeg = distNm(bullseye, neg),
-          dMin = Math.min(...remaining.map(t => distNm(bullseye, t)));
+    const neg  = negatedStack[0];
+    const dNeg = distNm(bullseye, neg);
+    const dMin = Math.min(...remaining.map(t => distNm(bullseye, t)));
     if (dNeg <= dMin) {
       negatedStack.shift();
       trackQueue = remaining;
-      queueIndex = remaining.indexOf(neg);
-      return nextQueueTrack();
+      queueIndex  = remaining.indexOf(neg);
+      nextQueueTrack();
+      return;
     }
   }
 
-  // Advance to next
+  // otherwise advance normally
   trackQueue = remaining;
-  queueIndex = Math.max(0, trackQueue.indexOf(curTrack)) + 1;
+  queueIndex  = Math.max(0, remaining.indexOf(curTrack)) + 1;
   nextQueueTrack();
 }
-function showLevelComplete(){
+
+// ─── showLevelComplete: pause, bump speed/level, respawn & resume ───────
+function showLevelComplete() {
   mode = 'paused';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
 
-  // Overlay
   const ov = document.createElement('div');
   ov.id = 'levelOverlay';
-  ov.innerHTML = `<div id="levelBox"><h2>Level ${level} Completed!</h2></div>`;
+  ov.innerHTML = `
+    <div id="levelBox">
+      <h2>Level ${level} Completed!</h2>
+    </div>`;
   document.body.appendChild(ov);
 
-  // After 2s, advance
   setTimeout(() => {
     ov.remove();
+    // reset & bump
+    round            = 0;
+    speedMultiplier += 0.5;  // e.g. 1.0→1.5→2.0…
     level++;
-    speedMultiplier = 1 + 0.5 * (level - 1);
-
-    // Reset tracks & queue
+    // respawn & requeue
     initTracks();
     trackQueue = tracks.filter(t => !t.destroyed);
-    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
-    queueIndex = 0;
+    trackQueue.sort((a,b)=>distNm(bullseye,a)-distNm(bullseye,b));
+    queueIndex  = 0;
     negatedStack = [];
-
     mode = 'practice';
     nextQueueTrack();
   }, 2000);
 }
 
-function showFinalScore(){
+// ─── showFinalScore: final-game overlay + full reset ────────────────────
+function showFinalScore() {
   mode = 'gameover';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
@@ -853,15 +849,17 @@ function showFinalScore(){
 
   document.getElementById('retryBtn').onclick = () => {
     ov.remove();
-    // reset everything
-    level = 1;
+    // full reset
+    level           = 1;
     speedMultiplier = 1;
-    score = 0;
-    tracks.forEach(t => t.destroyed = false);
+    score           = 0;
+    tracks.forEach(t=>t.destroyed=false);
     initTracks();
     document.getElementById('practiceBtn').click();
   };
 }
+
+
 
 // ─── SHOW GAME OVER & TRY AGAIN ─────────────────────────────────────
 function showGameOver(reason){
@@ -874,6 +872,7 @@ function showGameOver(reason){
     score -= 10;
   }
 
+  
   // Build overlay
   const ov = document.createElement('div');
   ov.id = 'gameOverOverlay';
