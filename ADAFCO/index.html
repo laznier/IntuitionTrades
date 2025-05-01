@@ -342,13 +342,13 @@ initTracks();
     if (s.type === 'ln') {
       const center = bearing(bullseye, s);
       const radius = 50 / CFG.nmPerPixel;
-      ctx.fillStyle = 'rgba(255,214,10,0.1)';
+      ctx.fillStyle = 'rgba(255,214,10,0.07)';
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
       ctx.arc(
         s.x, s.y,
         radius,
-        d2r(center - 90),
+        d2r(center - 120),
         d2r(center - 0)
       );
       ctx.closePath();
