@@ -213,6 +213,7 @@
         scale = 1, offX = 0, offY = 0;
     let pinch = { active:false, startDist:0, startScale:1, center:{x:0,y:0} };
     let selectedTrack = null, selectedStatic = null;
+    let selectedTrack2 = null, selectedStatic2 = null;
     let mode='free', phase='', curTrack=null, killTimer=null;
     let round=0, score=0;
     let tagMode=0, tagLabels=['OFF','B/E','JTN','INFO','ALL'];
@@ -394,40 +395,90 @@ function drawStatics() {
   const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
 
   statics.forEach(s => {
-    // if this is a radar AND the user has set wedgeDir, draw it
-    if (s.type === 'rad' && s.wedgeDir != null) {
-      const halfAngle = 45;           // adjust as you like
-      const radiusNm  = 50;           // or whatever radius
-      drawWedge(ctx, s,
-                s.wedgeDir - halfAngle,
-                s.wedgeDir + halfAngle,
-                radiusNm);
-    }
+ 
+    // ─── DRAW STATICS ─── inside statics.forEach(s) ─────────────────────
+if (s.type === 'rad') {
+  // 1) draw the wedge as before (if wedgeDir is set)
+  if (s.wedgeDir != null) {
+    const halfAngle = 45;
+    const radiusNm  = 50;
+    drawWedge(ctx, s,
+              s.wedgeDir - halfAngle,
+              s.wedgeDir + halfAngle,
+              radiusNm);
+  }
+
+  // 2) draw a stylized radar dish icon
+  ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.strokeStyle = colICC;
+    ctx.lineWidth   = 2;
+
+    // dish arc
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, -Math.PI * 0.7, Math.PI * 0.7);
+    ctx.stroke();
+
+    // pedestal stem
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 10);
+    ctx.stroke();
+
+    // base
+    ctx.fillStyle = colICC;
+    ctx.fillRect(-4, 10, 8, 3);
+  ctx.restore();
+}
+
 
     // … the rest of your icon + text drawing …
     if (s.type === 'icc') {
+  // draw the small ICC dot
+  ctx.fillStyle = colICC;
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, 6, 0, 2*Math.PI);
+  ctx.fill();
+
+  // draw 20 nm shaded circle around ICC
+  const rpx = nmToPx(20);
+  ctx.save();
+    ctx.fillStyle = 'rgba(255,214,10,0.1)';  // light yellow, 10% opacity
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, rpx, 0, 2*Math.PI);
+    ctx.fill();
+  ctx.restore();
+
+ 
+} else if (s.type === 'ln') {
+      // draw a little SAM launcher icon angled up
       ctx.fillStyle = colICC;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, 6, 0, 2*Math.PI);
-      ctx.fill();
-    } else if (s.type === 'ln') {
-      ctx.strokeStyle = colICC;
-      ctx.beginPath();
-      ctx.moveTo(s.x - 6, s.y);
-      ctx.lineTo(s.x + 6, s.y);
-      ctx.moveTo(s.x, s.y - 6);
-      ctx.lineTo(s.x, s.y + 6);
-      ctx.stroke();
+      ctx.save();
+        ctx.translate(s.x, s.y);
+        // missile body (12px tall) goes upward from the origin
+        ctx.fillRect(-3, -12, 6, 12);
+        // nose cone sits above the body
+        ctx.beginPath();
+        ctx.moveTo(-4, -12);
+        ctx.lineTo(0, -20);
+        ctx.lineTo(4, -12);
+        ctx.closePath();
+        ctx.fill();
+      ctx.restore();
     } else {
+      // default icon for other statics
       ctx.strokeStyle = colICC;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, 6, 0, 2*Math.PI);
+      ctx.arc(s.x, s.y, 6, 0, 2 * Math.PI);
       ctx.stroke();
     }
+    // draw the ID label
     ctx.fillStyle = colICC;
     ctx.fillText(s.id, s.x + 8, s.y);
   });
 }
+
+
 
 
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
@@ -455,13 +506,21 @@ function drawTracks(now) {
       ctx.fill();
     ctx.restore();
 
-    // highlight if selected
-    if (o === selectedTrack) {
+     // highlight if first selectedTrack
+     if (o === selectedTrack) {
       ctx.strokeStyle = colX;
       ctx.lineWidth   = 2;
       ctx.beginPath();
       ctx.arc(o.x, o.y, 12, 0, 2*Math.PI);
       ctx.stroke();
+    }
+
+    // highlight if SECOND selection
+    if (o === selectedTrack2) {
+      ctx.strokeStyle = colY;
+      ctx.lineWidth   = 2;
+      // draw a 24×24px square centered on o
+      ctx.strokeRect(o.x - 12, o.y - 12, 24, 24);
     }
       // any practice-mode tag text
       if (o.tag) {
@@ -527,10 +586,11 @@ function drawTracks(now) {
     if (o.destroyed) return;
 
     if (mode === 'practice') {
-      // Force heading toward bullseye
-      const dx = bullseye.x - o.x, dy = bullseye.y - o.y;
-      o.heading = (Math.atan2(dx, -dy)*180/Math.PI + 360) % 360;
-    }
+  // Force heading toward bullseye, using our normalized bearing() util
+  o.heading = bearing(o, bullseye);
+}
+
+
 
     // Move at base speed × level multiplier
     const vx = Math.sin(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
@@ -671,7 +731,7 @@ function drawTracks(now) {
       label.style.left=`${mouse.px+5}px`;
       label.style.top=`${mouse.py-label.offsetHeight-5}px`;
     }
-
+    
     function showCard(t){
       document.querySelectorAll('.card').forEach(c=>c.remove());
       const d=document.createElement('div'); d.className='card';
@@ -684,40 +744,147 @@ function drawTracks(now) {
       d.querySelector('button').onclick=()=>d.remove();
       document.body.appendChild(d);
     }
+    function showStaticCard(s) {
+  // remove any existing card
+  document.querySelectorAll('.card').forEach(c => c.remove());
+  // build new card
+  const d = document.createElement('div');
+  d.className = 'card';
+  d.innerHTML = `
+    <h3>${s.type.toUpperCase()}</h3>
+    ID: ${s.id}
+    <br><button>Close</button>
+  `;
+  d.querySelector('button').onclick = () => d.remove();
+  document.body.appendChild(d);
+}
 
+// ─── 2) New “showCard2” for top-right display ─────────────────────────
+function showCard2(obj, type) {
+  // remove any existing second-card
+  document.querySelectorAll('.card2').forEach(c=>c.remove());
+  const d = document.createElement('div');
+  d.className = 'card card2';
+  d.style.top   = '10px';
+  d.style.right = '10px';
+  d.style.left  = 'auto';
+  d.innerHTML = type === 'track'
+    ? `<h3>2️⃣ Track ${obj.id}</h3>
+       ${('000'+obj.heading).slice(-3)}° /
+       <span style="color:var(--icc)">${('000'+obj.alt).slice(-3)}</span> /
+       ${obj.speed} kts
+       <br><button>Close</button>`
+    : `<h3>2️⃣ ${obj.type.toUpperCase()}</h3>
+       ID: ${obj.id}
+       <br><button>Close</button>`;
+  d.querySelector('button').onclick = ()=>d.remove();
+  document.body.appendChild(d);
+}
     // ─── PICK-OBJECT helper ──────────────────────────────
-    function pickObject () {
-      selectedTrack = tracks.find(t=>{
-        const sx=(t.x-offX)*scale, sy=(t.y-offY)*scale;
-        return Math.hypot(sx-mouse.sx,sy-mouse.sy)<12;
-      })||null;
-      if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
-      selectedStatic = statics.find(s=>
-        Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12
-      )||null;
-    }
+    function pickObject() {
+  // Try selecting an air track under the mouse
+  selectedTrack = tracks.find(t => {
+    const sx = (t.x - offX) * scale,
+          sy = (t.y - offY) * scale;
+    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+  }) || null;
+
+  if (selectedTrack) {
+    selectedStatic = null;
+    showCard(selectedTrack);
+    return;
+  }
+
+  // Try selecting a static under the mouse
+  selectedStatic = statics.find(s => {
+    const dx = s.x - mouse.wx,
+          dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;
+  }) || null;
+
+  if (selectedStatic) {
+    selectedTrack = null;
+    showStaticCard(selectedStatic);
+    return;
+  }
+
+  // Clicked empty space → clear left selection only
+  selectedTrack  = null;
+  selectedStatic = null;
+  document.querySelectorAll('.card').forEach(c => c.remove());
+}
+
+
 
     // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
-    canvas.addEventListener('pointerup', e=>{
-      e.preventDefault();
-      mouse.sx=e.offsetX; mouse.sy=e.offsetY;
-      mouse.px=e.clientX; mouse.py=e.clientY;
-      const w=scrToWorld(mouse.sx,mouse.sy);
-      mouse.wx=w.x; mouse.wy=w.y;
-      updateCursorLabel();
-      pickObject();
-    });
+     canvas.addEventListener('pointerup', e => {
+   // only handle primary (left) button here
+   if (e.button !== 0) return;
+   e.preventDefault();
+   mouse.sx = e.offsetX; mouse.sy = e.offsetY;
+   mouse.px = e.clientX; mouse.py = e.clientY;
+   const w = scrToWorld(mouse.sx, mouse.sy);
+   mouse.wx = w.x; mouse.wy = w.y;
+   updateCursorLabel();
+   pickObject();
+ });
 
     // ─── DESKTOP CLICK fallback ────────────────────────────────
-    canvas.addEventListener('click', e=>{
-      e.preventDefault();
-      mouse.sx=e.offsetX; mouse.sy=e.offsetY;
-      mouse.px=e.clientX; mouse.py=e.clientY;
-      const w=scrToWorld(mouse.sx,mouse.sy);
-      mouse.wx=w.x; mouse.wy=w.y;
-      updateCursorLabel();
-      pickObject();
-    });
+     canvas.addEventListener('click', e => {
+   // only left-click
+   if (e.button !== 0) return;
+   e.preventDefault();
+   mouse.sx = e.offsetX; mouse.sy = e.offsetY;
+   mouse.px = e.clientX; mouse.py = e.clientY;
+   const w = scrToWorld(mouse.sx, mouse.sy);
+   mouse.wx = w.x; mouse.wy = w.y;
+   updateCursorLabel();
+   pickObject();
+ });
+// ─── 4) Right-click handler on the canvas ───────────────────────────────
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+
+  // update mouse coords like left-click
+  mouse.sx = e.offsetX;
+  mouse.sy = e.offsetY;
+  mouse.px = e.clientX;
+  mouse.py = e.clientY;
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x; mouse.wy = w.y;
+  updateCursorLabel();
+
+  // Try picking an air track for right selection
+  selectedTrack2 = tracks.find(t => {
+    const sx = (t.x - offX) * scale,
+          sy = (t.y - offY) * scale;
+    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+  }) || null;
+
+  if (selectedTrack2) {
+    selectedStatic2 = null;
+    showCard2(selectedTrack2, 'track');
+    return;
+  }
+
+  // Try picking a static for right selection
+  selectedStatic2 = statics.find(s => {
+    const dx = s.x - mouse.wx,
+          dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;
+  }) || null;
+
+  if (selectedStatic2) {
+    selectedTrack2 = null;
+    showCard2(selectedStatic2, 'static');
+    return;
+  }
+
+  // Right-clicked empty space → clear right selection only
+  selectedTrack2  = null;
+  selectedStatic2 = null;
+  document.querySelectorAll('.card2').forEach(c => c.remove());
+});
 
     
 // ─── UNIFIED KEY HANDLER (desktop + mobile) ───────────────────────────
