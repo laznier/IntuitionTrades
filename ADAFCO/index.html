@@ -365,18 +365,25 @@ resize();
     requestAnimationFrame(animate);
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
-    function storeMouse(e){
-      const rect = canvas.getBoundingClientRect();
- const x = ('pageX' in e ? e.pageX : e.clientX);
- const y = ('pageY' in e ? e.pageY : e.clientY) -
-           (window.visualViewport ? window.visualViewport.offsetTop : 0);
- mouse.sx = x - rect.left;
- mouse.sy = y - rect.top;
-      mouse.px=e.clientX; mouse.py=e.clientY;
-      const w=scrToWorld(mouse.sx,mouse.sy);
-      mouse.wx=w.x; mouse.wy=w.y;
-      updateCursorLabel();
-    }
+    function storeMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+
+  let pageX = 'pageX' in e ? e.pageX : e.touches ? e.touches[0].pageX : e.clientX + window.scrollX;
+  let pageY = 'pageY' in e ? e.pageY : e.touches ? e.touches[0].pageY : e.clientY + window.scrollY;
+
+  mouse.sx = pageX - rect.left - window.scrollX;
+  mouse.sy = pageY - rect.top  - window.scrollY;
+
+  mouse.px = pageX;
+  mouse.py = pageY;
+
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x;
+  mouse.wy = w.y;
+
+  updateCursorLabel();
+}
+
 
   // pinch start
   canvas.addEventListener('touchstart',e=>{
