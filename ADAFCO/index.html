@@ -267,7 +267,7 @@ let coverTimer = null, practiceSaveIndex = null;
 
     // launcher 3 (SE)
     { type:'ln',  id:'00175', x:cx + p10, y:cy + p10 },
-    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro, wedgeDir: 050 },
+    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro, wedgeDir: 50 },
 
     // launcher 4
     { type:'ln',  id:'00111', x:cx - p10/2, y:cy - p10 },
@@ -435,7 +435,7 @@ function drawTracks(now) {
   const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
         colX = getComputedStyle(document.documentElement).getPropertyValue('--text'),
         colB = getComputedStyle(document.documentElement).getPropertyValue('--braa');
-
+        colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
         tracks.forEach(o => {
     if (o.destroyed) {
       // your existing “destroyed” logic (e.g. drawing '#') …
@@ -463,30 +463,37 @@ function drawTracks(now) {
       ctx.arc(o.x, o.y, 12, 0, 2*Math.PI);
       ctx.stroke();
     }
-    // any practice-mode tag text
-    if (o.tag) {
+      // any practice-mode tag text
+      if (o.tag) {
       ctx.font         = '10px monospace';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillStyle    = colB;
       ctx.fillText(o.tag, o.x, o.y - 8);
     }
-  });
-}
-    if (tagMode) {
+  });  // end of tracks.forEach
+
+  // practice-mode tag overlay
+  if (tagMode) {
+    tracks.forEach(o => {
       const lines = [];
-      if (tagMode === 1 || tagMode === 4) lines.push(`${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`);
+      if (tagMode === 1 || tagMode === 4) lines.push(
+        `${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`
+      );
       if (tagMode === 2 || tagMode === 4) lines.push(o.id);
-      if (tagMode === 3 || tagMode === 4) lines.push(`${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`);
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'left';
+      if (tagMode === 3 || tagMode === 4) lines.push(
+        `${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`
+      );
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
       lines.forEach((ln, i) => {
         ctx.fillStyle = (tagMode === 1 && i === 0) ? colY : colX;
         ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
       });
-    }
-
+    });
+  }
+}  // end drawTracks
 
 
  
