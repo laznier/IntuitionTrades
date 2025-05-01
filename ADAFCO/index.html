@@ -10,14 +10,31 @@
       --braa: #0ea5e9; --track: #ff5757; --text: #f8f8f8;
       --yellow: #ffd60a; --warn: #ff4d4d;
     }
-    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  
+    html {
+      height: 100%;
+    }
     body {
-      margin: 0; background: var(--bg); color: var(--text);
-      display: flex; flex-direction: column; height: 100%; overflow: hidden;
-      /* ensure the html/container also fills the viewport */
-html {
-  height: 100%;
-}
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+  
+    #scope {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: var(--bg);
+      position: relative;
+      z-index: 1;
     }
     header {
       display: flex; flex-direction: column; align-items: center;
@@ -79,6 +96,61 @@ html {
     .card button {
       margin-top: .8rem; background: var(--track); color: #fff; cursor: pointer;
     }
+    /* ─── GAME OVER OVERLAY STYLES ─────────────────────────────────────── */
+#gameOverOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+#gameOverBox {
+  text-align: center;
+  color: #fff;
+}
+#gameOverBox h1 {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+#gameOverBox p {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+}
+#gameOverBox button {
+  font-size: 1rem;
+  padding: .75rem 1.5rem;
+  background: var(--track);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+/* ─── LEVEL COMPLETE OVERLAY STYLES ───────────────────────────────── */
+#levelOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+#levelBox {
+  background: #222;
+  color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+#levelBox h2 {
+  margin: 0;
+  font-size: 3rem;
+}
+
   </style>
 </head>
 <body>
@@ -154,6 +226,10 @@ html {
     let round=0, score=0;
     let tagMode=0, tagLabels=['OFF','B/E','JTN','INFO','ALL'];
     let compassOn = false;
+let level = 1;
+let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
+let coverTimer = null, practiceSaveIndex = null;
+
 
     // ─── SETUP ──────────────────────────────────────────────────────────
     const canvas     = document.getElementById('scope'),
@@ -337,15 +413,33 @@ html {
       ctx.strokeRect(left,top,width,height);
     }
 
-    // ─── UPDATE & ANIMATE ──────────────────────────────────────────────
+    // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
     function updateTracks(dt){
-      const pps=CFG.nmPerPixel/3600*CFG.frameRate;
-      tracks.forEach(o=>{
-        if(o.destroyed) return;
-        o.x=(o.x + Math.sin(d2r(o.heading))*o.speed*pps*dt + worldWidth)%worldWidth;
-        o.y=(o.y - Math.cos(d2r(o.heading))*o.speed*pps*dt + worldHeight)%worldHeight;
-      });
+  const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+
+  tracks.forEach(o => {
+    if (o.destroyed) return;
+
+    if (mode === 'practice') {
+      // Force heading toward bullseye
+      const dx = bullseye.x - o.x, dy = bullseye.y - o.y;
+      o.heading = (Math.atan2(dx, -dy)*180/Math.PI + 360) % 360;
     }
+
+    // Move at base speed × level multiplier
+    const vx = Math.sin(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
+    const vy = -Math.cos(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
+    o.x = (o.x + vx + worldWidth) % worldWidth;
+    o.y = (o.y + vy + worldHeight) % worldHeight;
+
+    // Center collision → final score
+    if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
+      showFinalScore();
+    }
+  });
+}
+
+
 
     let lastTime=performance.now();
     function animate(now){
@@ -519,90 +613,290 @@ html {
       pickObject();
     });
 
-    // ─── PRACTICE & HOTKEYS ──────────────────────────────────────
-    window.addEventListener('keydown',e=>{
-      const k=e.key.toLowerCase();
-      if(e.ctrlKey&&k==='r'){
-        e.preventDefault();
-        if(selectedStatic){
-          bullseye={x:selectedStatic.x,y:selectedStatic.y};
-          statusEl.textContent='Bullseye reset'; feedbackEl.textContent='';
-        }
-        return;
-      }
-      if(mode==='practice'&&['a','n','w','k'].includes(k)){
-        feedbackEl.textContent='';
-        if(phase==='cover'){
-          if(selectedTrack===curTrack){
-            if(k==='a'){
-              curTrack.tag='ENGAGE'; phase='engage';
-              const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
-              statusEl.textContent=
-                `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
-            } else if(k==='n'){
-              curTrack.tag='NEGATE'; curTrack.tagTime=Date.now();
-              feedbackEl.textContent='Negated. Press A to proceed.';
-            } else feedbackEl.textContent='Wrong. Try again.';
-          } else feedbackEl.textContent='Wrong. Try again.';
-        }
-        else if(phase==='engage'){
-          if(selectedTrack===curTrack&&k==='w'){
-            curTrack.tag='AWAY'; phase='kill';
-            statusEl.textContent=`ADAFCO, SL, Track ${curTrack.id} Vanished`;
-            killTimer=setTimeout(()=>{
-              curTrack.destroyed=true; curTrack.tagTime=Date.now(); nextRound();
-            },CFG.autoKillMs);
-          } else feedbackEl.textContent='Wrong. Try again.';
-        }
-        else if(phase==='kill'){
-          if(selectedTrack===curTrack&&k==='k'){
-            clearTimeout(killTimer);
-            curTrack.destroyed=true; curTrack.tagTime=Date.now();
-            nextRound();
-          } else feedbackEl.textContent='Wrong. Try again.';
-        }
-        return;
-      }
-      if(mode==='free'&&selectedTrack){
-        const map={c:'COVER',a:'AFFIRM',n:'NEGATE',w:'AWAY',e:'ENGAGE'};
-        if(k in map){
-          selectedTrack.tag=map[k];
-          selectedTrack.tagTime=Date.now();
-        } else if(k==='k'){
-          selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now();
-        }
-      }
-    });
+    // ─── PRACTICE-MODE HOTKEYS WITH PENALTIES & OVERRIDES ───────────────
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
+  e.preventDefault();
+  feedbackEl.textContent = '';
 
-    // Practice button & nextRound
-    document.getElementById('practiceBtn').onclick=function(){
-      if(mode==='free'||mode==='gameover'){
-        mode='practice'; round=0; score=0; this.textContent='Free Mode';
-        nextRound();
-      } else {
-        mode='free'; this.textContent='Practice Mode';
-        statusEl.textContent='Free mode';
-        feedbackEl.textContent='';
-      }
-    };
-    function nextRound(){
-      tracks=tracks.filter(t=>!t.destroyed);
-      round++;
-      if(round>CFG.rounds){
-        mode='gameover';
-        statusEl.textContent=`GAME OVER — ${score}/${CFG.rounds}`;
-        document.getElementById('practiceBtn').textContent='Practice Mode';
-        return;
-      }
-      if(round>1) score++;
-      phase='cover';
-      curTrack=tracks[Math.floor(Math.random()*tracks.length)];
-      curTrack.tag='COVER';
-      const b2=('000'+bearing(bullseye,curTrack)).slice(-3);
-      statusEl.textContent=
-        `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
-      feedbackEl.textContent='';
+    // 1) AWAY penalty if the track isn’t in ENGAGE
+    if (k === 'w' && !(selectedTrack && selectedTrack.tag === 'ENGAGE')) {
+    score -= 3;
+    feedbackEl.textContent = 'Penalty: -3 points';
+    return;
+  }
+
+  // 2) COVER-FINISH OVERRIDE: A or W on any COVER track
+  if (selectedTrack && selectedTrack.tag === 'COVER' && ['a','w'].includes(k)){
+    clearTimeout(coverTimer);
+    // jump to ENGAGE for that track
+    curTrack = selectedTrack;
+    curTrack.tag     = 'ENGAGE';
+    curTrack.tagTime = Date.now();
+    phase            = 'engage';
+
+    const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
+    statusEl.textContent =
+      `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+
+    // start auto-kill
+    clearTimeout(killTimer);
+    killTimer = setTimeout(() => {
+      curTrack.destroyed = true;
+      curTrack.tagTime  = Date.now();
+      finishEngage();
+    }, CFG.autoKillMs);
+
+    return;
+  }
+
+  // 3) GLOBAL AFFIRM OVERRIDE: A on any track
+  if (k === 'a' && selectedTrack){
+    clearTimeout(coverTimer);
+    curTrack = selectedTrack;
+    curTrack.tag     = 'ENGAGE';
+    curTrack.tagTime = Date.now();
+    phase            = 'engage';
+
+    const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
+    statusEl.textContent =
+      `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+
+    clearTimeout(killTimer);
+    killTimer = setTimeout(() => {
+      curTrack.destroyed = true;
+      curTrack.tagTime  = Date.now();
+      finishEngage();
+    }, CFG.autoKillMs);
+
+    return;
+  }
+
+  // 4) COVER phase: N to negate
+  if (phase === 'cover' && selectedTrack === curTrack){
+    if (k === 'n'){
+      clearTimeout(coverTimer);
+      curTrack.tag     = 'NEGATE';
+      curTrack.tagTime = Date.now();
+      practiceSaveIndex = queueIndex;
+      negatedStack.push(curTrack);
+      queueIndex++;
+      nextQueueTrack();
     }
+    else {
+      feedbackEl.textContent = 'Wrong. Try again.';
+    }
+    return;
+  }
+
+  // 5) ENGAGE phase: W or K to finish
+  if (phase === 'engage' && selectedTrack === curTrack){
+    if (k === 'w'){
+      clearTimeout(killTimer);
+      finishEngage();
+    }
+    else if (k === 'k'){
+      clearTimeout(killTimer);
+      curTrack.destroyed = true;
+      curTrack.tagTime  = Date.now();
+      finishEngage();
+    }
+    else {
+      feedbackEl.textContent = 'Wrong. Try again.';
+    }
+  }
+});
+
+
+
+    // ─── PRACTICE MODE INITIALIZER & QUEUE ───────────────────────────────
+let trackQueue = [], queueIndex = 0, negatedStack = [];
+
+document.getElementById('practiceBtn').onclick = function(){
+  if (mode === 'free' || mode === 'gameover') {
+    // Start practice
+    mode = 'practice';
+    round = 0;
+    score = 0;
+    this.textContent = 'Free Mode';
+    statusEl.textContent = '';
+
+    // Initialize queue
+    trackQueue = tracks.filter(t => !t.destroyed);
+    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+    queueIndex = 0;
+    negatedStack = [];
+
+    nextQueueTrack();
+  } else {
+    // Exit practice
+    mode = 'free';
+    this.textContent = 'Practice Mode';
+    statusEl.textContent = 'Free mode — Ctrl+R sets Bullseye';
+    feedbackEl.textContent = '';
+    clearTimeout(coverTimer);
+  }
+};
+
+// ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────
+function nextQueueTrack(){
+  // bail if not in practice
+  if (mode !== 'practice') return;
+
+  clearTimeout(coverTimer);
+
+  // build alive list
+  const alive = trackQueue.filter(t => !t.destroyed);
+  if (alive.length === 0){
+    phase = 'cover';
+    statusEl.textContent = 'All tracks negated – press A to engage.';
+    return;
+  }
+
+  // pick next
+  phase = 'cover';
+  curTrack = alive[queueIndex] || alive[0];
+  queueIndex = alive.indexOf(curTrack);
+
+  curTrack.tag = 'COVER';
+  const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
+  statusEl.textContent =
+    `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+  feedbackEl.textContent = '';
+
+  // auto-advance after 10s
+  coverTimer = setTimeout(() => {
+    queueIndex++;
+    nextQueueTrack();
+  }, 10000);
+}
+
+
+
+// After an ENGAGE completes, decide whether to revisit a negated track or move on
+function finishEngage(){
+  // Mark destroyed & score
+  curTrack.destroyed = true;
+  curTrack.tagTime = Date.now();
+  score++;
+
+  // See if any remain this level
+  const remaining = trackQueue.filter(t => !t.destroyed);
+  if (remaining.length === 0) {
+    // Level complete!
+    showLevelComplete();
+    return;
+  }
+
+  // Otherwise, check negated revisit (unchanged)...
+  if (negatedStack.length) {
+    const neg = negatedStack[0],
+          dNeg = distNm(bullseye, neg),
+          dMin = Math.min(...remaining.map(t => distNm(bullseye, t)));
+    if (dNeg <= dMin) {
+      negatedStack.shift();
+      trackQueue = remaining;
+      queueIndex = remaining.indexOf(neg);
+      return nextQueueTrack();
+    }
+  }
+
+  // Advance to next
+  trackQueue = remaining;
+  queueIndex = Math.max(0, trackQueue.indexOf(curTrack)) + 1;
+  nextQueueTrack();
+}
+function showLevelComplete(){
+  mode = 'paused';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  // Overlay
+  const ov = document.createElement('div');
+  ov.id = 'levelOverlay';
+  ov.innerHTML = `<div id="levelBox"><h2>Level ${level} Completed!</h2></div>`;
+  document.body.appendChild(ov);
+
+  // After 2s, advance
+  setTimeout(() => {
+    ov.remove();
+    level++;
+    speedMultiplier = 1 + 0.5 * (level - 1);
+
+    // Reset tracks & queue
+    initTracks();
+    trackQueue = tracks.filter(t => !t.destroyed);
+    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+    queueIndex = 0;
+    negatedStack = [];
+
+    mode = 'practice';
+    nextQueueTrack();
+  }, 2000);
+}
+
+function showFinalScore(){
+  mode = 'gameover';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  const ov = document.createElement('div');
+  ov.id = 'gameOverOverlay';
+  ov.innerHTML = `
+    <div id="gameOverBox">
+      <h1>FINAL SCORE</h1>
+      <p>${score} point${score===1?'':'s'}</p>
+      <button id="retryBtn">TRY AGAIN?</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  document.getElementById('retryBtn').onclick = () => {
+    ov.remove();
+    // reset everything
+    level = 1;
+    speedMultiplier = 1;
+    score = 0;
+    tracks.forEach(t => t.destroyed = false);
+    initTracks();
+    document.getElementById('practiceBtn').click();
+  };
+}
+
+// ─── SHOW GAME OVER & TRY AGAIN ─────────────────────────────────────
+function showGameOver(reason){
+  mode = 'gameover';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  // Deduct center-hit penalty if applicable
+  if (reason === 'center') {
+    score -= 10;
+  }
+
+  // Build overlay
+  const ov = document.createElement('div');
+  ov.id = 'gameOverOverlay';
+  ov.innerHTML = `
+    <div id="gameOverBox">
+      <h1>GAME OVER</h1>
+      <p>Your score: ${score}</p>
+      <button id="retryBtn">TRY AGAIN?</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // Retry handler
+  document.getElementById('retryBtn').onclick = () => {
+    ov.remove();
+    document.getElementById('practiceBtn').click(); // restart practice
+  };
+}
+
+// In your updateTracks(dt) collision check, swap to:
+if (mode==='practice' && Math.hypot(o.x-bullseye.x,o.y-bullseye.y) < 6) {
+  showGameOver('center');
+}
+
 
     // TAGS, HELP, MOBILE buttons
     tagsBtn.onclick=function(){
