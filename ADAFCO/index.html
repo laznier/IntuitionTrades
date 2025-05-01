@@ -231,6 +231,7 @@ resize();
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 
+    
     // ─── DRAW ───────────────────────────────────────────────────────────
     function drawStatics(){
       const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
@@ -411,19 +412,14 @@ resize();
     // touch end
     canvas.addEventListener('touchend',e=>{
       if(pinch.active&&e.touches.length<2) pinch.active=false;
-      // single-finger tap → click
+      // single-finger tap → direct pick
       if(e.changedTouches.length===1&&e.touches.length===0){
         const t=e.changedTouches[0];
-        const sim={clientX:t.clientX,clientY:t.clientY,button:0};
-        storeMouse(sim);
-        canvas.dispatchEvent(new MouseEvent('click',{
-   bubbles:true, cancelable:true, view:window, button:0,
-   clientX:t.pageX,
-   clientY:t.pageY -
-          (window.visualViewport ? window.visualViewport.offsetTop : 0)
- }));
+          storeMouse(t);      // real touch coordinates
+  pickObject();       // no fake click needed
+ }
       }
-    },{passive:false});
+    ,{passive:false});
 
     // mouse events
     canvas.addEventListener('mousemove',e=>{
@@ -482,25 +478,33 @@ resize();
       label.style.left=`${mouse.px+5}px`;
       label.style.top=`${mouse.py-label.offsetHeight-5}px`;
     }
+    // ─── PICK-OBJECT helper ──────────────────────────────
+function pickObject () {
+  /* hit-test tracks */
+  selectedTrack = tracks.find(t => {
+    const sx = (t.x - offX) * scale;
+    const sy = (t.y - offY) * scale;
+    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+  }) || null;
+
+  if (selectedTrack) {
+    selectedStatic = null;
+    showCard(selectedTrack);
+    return;
+  }
+
+  /* hit-test statics */
+  selectedStatic = statics.find(s =>
+    Math.hypot(s.x - mouse.wx, s.y - mouse.wy) < 12
+  ) || null;
+}
+
     // click/tap → select tracks/statics
     canvas.addEventListener('click', e=>{
       storeMouse(e);
 
-      // pixel-based hit-test for tracks
-      selectedTrack = tracks.find(t=>{
-        const sx = (t.x - offX)*scale;
-        const sy = (t.y - offY)*scale;
-        return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
-      }) || null;
-
-      if(selectedTrack){
-        selectedStatic = null;
-        showCard(selectedTrack);
-        return;
-      }
-      // static selection as before...
-      selectedStatic = statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12) || null;
-    });
+        pickObject();      // unified picker
+      });
 
     function showCard(t){
       document.querySelectorAll('.card').forEach(c=>c.remove());
