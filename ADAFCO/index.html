@@ -261,21 +261,25 @@ let coverTimer = null, practiceSaveIndex = null;
     }
 
     // ─── TRACKS ─────────────────────────────────────────────────────────
-    const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
-    function newTrack(){
-      const ang = Math.random()*2*Math.PI,
-            r   = Math.sqrt(Math.random())*CFG.maxSpawnNm/CFG.nmPerPixel,
-            x   = bullseye.x + Math.cos(ang)*r,
-            y   = bullseye.y + Math.sin(ang)*r;
-      return {
-        id: ('00000'+rand(1000,7776)).slice(-5),
-        x,y,
-        heading: rand(0,359),
-        speed:   rand(200,CFG.maxSpeedKts),
-        alt:     rand(5,600),
-        tag:null, tagTime:0, destroyed:false
-      };
-    }
+const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
+function newTrack(){
+  const ang = Math.random()*2*Math.PI,
+        r   = Math.sqrt(Math.random())*CFG.maxSpawnNm/CFG.nmPerPixel,
+        x   = bullseye.x + Math.cos(ang)*r,
+        y   = bullseye.y + Math.sin(ang)*r;
+  return {
+    id: ('00000'+rand(1000,7776)).slice(-5),
+    x, y,
+    heading: rand(0,359),
+    speed:   rand(200,CFG.maxSpeedKts),
+    alt:     rand(5,600),
+    tag: null,        // current label
+    tagTime: 0,
+    destroyed:false,
+    everEngaged:false // ⇦ NEW  ➜ has SL ever tagged ENGAGE?
+  };
+}
+
     function initTracks(){
       tracks = Array.from({length:CFG.trackCount}, newTrack);
     }
@@ -605,98 +609,101 @@ let coverTimer = null, practiceSaveIndex = null;
       pickObject();
     });
 
-    // ─── PRACTICE-MODE HOTKEYS WITH PENALTIES & OVERRIDES ───────────────
+    
+// ─── UNIFIED KEY HANDLER (desktop + mobile) ───────────────────────────
 window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
   e.preventDefault();
   feedbackEl.textContent = '';
 
-    // 1) AWAY penalty if the track isn’t in ENGAGE
-    if (k === 'w' && !(selectedTrack && selectedTrack.tag === 'ENGAGE')) {
-    score -= 3;
-    feedbackEl.textContent = 'Penalty: -3 points';
-    return;
-  }
+  if (!selectedTrack) return;
+  const t  = selectedTrack;
+  const be = ('000' + bearing(bullseye, t)).slice(-3);
+  const r  = distNm(bullseye, t);
 
-  // 2) COVER-FINISH OVERRIDE: A or W on any COVER track
-  if (selectedTrack && selectedTrack.tag === 'COVER' && ['a','w'].includes(k)){
+  /* ───── NEGATE ───────────────────────────────────────────── */
+  if (k === 'n' && t.tag === 'COVER') {
     clearTimeout(coverTimer);
-    // jump to ENGAGE for that track
-    curTrack = selectedTrack;
-    curTrack.tag     = 'ENGAGE';
-    curTrack.tagTime = Date.now();
-    phase            = 'engage';
-
-    const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
-    statusEl.textContent =
-      `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
-
-    // start auto-kill
-    clearTimeout(killTimer);
-    killTimer = setTimeout(() => {
-      curTrack.destroyed = true;
-      curTrack.tagTime  = Date.now();
-      finishEngage();
-    }, CFG.autoKillMs);
-
+    t.tag     = 'NEGATE';
+    t.tagTime = Date.now();
+    negatedStack.push(t);
+    nextQueueTrack();            // move straight to next COVER
     return;
   }
 
-  // 3) GLOBAL AFFIRM OVERRIDE: A on any track
-  if (k === 'a' && selectedTrack){
+  /* ───── AFFIRM  → ENGAGE ─────────────────────────────────── */
+  if (k === 'a' && (t.tag === 'COVER' || t.tag === 'NEGATE')) {
     clearTimeout(coverTimer);
-    curTrack = selectedTrack;
-    curTrack.tag     = 'ENGAGE';
-    curTrack.tagTime = Date.now();
-    phase            = 'engage';
-
-    const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
+    curTrack          = t;
+    curTrack.tag      = 'ENGAGE';
+    curTrack.everEngaged = true; // mark for ROE
+    curTrack.tagTime  = Date.now();
+    phase             = 'engage';
     statusEl.textContent =
-      `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
+    return;
+  }
 
-    clearTimeout(killTimer);
-    killTimer = setTimeout(() => {
-      curTrack.destroyed = true;
-      curTrack.tagTime  = Date.now();
-      finishEngage();
-    }, CFG.autoKillMs);
+  /* ───── AWAY (Birds Away) ────────────────────────────────── */
+  if (k === 'w') {
+    clearTimeout(coverTimer);
+    curTrack = t;
+
+    // ROE penalty only if SL never ENGAGE’d this track
+    if (!t.everEngaged) {
+      score -= 5;
+      feedbackEl.textContent = 'ROE violation: -5 points';
+    }
+
+    // tag AWAY & continue sequence
+    t.tag     = 'AWAY';
+    t.tagTime = Date.now();
+    statusEl.textContent =
+      `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${be}/${r}`;
+
+      setTimeout(() => {
+  // clear the “#” and vanish
+  t.tag       = null;
+  t.tagTime   = Date.now();
+  statusEl.textContent = `SL, Track ${t.id} Vanished`;
+
+  // mark destroyed
+  t.destroyed = true;
+
+  // advance: either next level or next cover
+  if (tracks.every(tr => tr.destroyed)) {
+    showLevelComplete();
+  } else {
+    nextQueueTrack();
+  }
+}, 5000);
 
     return;
   }
 
-  // 4) COVER phase: N to negate
-  if (phase === 'cover' && selectedTrack === curTrack){
-    if (k === 'n'){
-      clearTimeout(coverTimer);
-      curTrack.tag     = 'NEGATE';
-      curTrack.tagTime = Date.now();
-      practiceSaveIndex = queueIndex;
-      negatedStack.push(curTrack);
-      queueIndex++;
-      nextQueueTrack();
-    }
-    else {
-      feedbackEl.textContent = 'Wrong. Try again.';
-    }
-    return;
-  }
+  /* ───── KILL ─────────────────────────────────────────────── */
+  if (k === 'k') {
+    clearTimeout(coverTimer);
+    curTrack     = t;
+    curTrack.tag = '#';
+    curTrack.tagTime = Date.now();
+    setTimeout(() => {
+  // clear the “#”
+  curTrack.tag = null;
+  curTrack.tagTime = Date.now();
 
-  // 5) ENGAGE phase: W or K to finish
-  if (phase === 'engage' && selectedTrack === curTrack){
-    if (k === 'w'){
-      clearTimeout(killTimer);
-      finishEngage();
-    }
-    else if (k === 'k'){
-      clearTimeout(killTimer);
-      curTrack.destroyed = true;
-      curTrack.tagTime  = Date.now();
-      finishEngage();
-    }
-    else {
-      feedbackEl.textContent = 'Wrong. Try again.';
-    }
+  // mark destroyed
+  curTrack.destroyed = true;
+
+  // advance: either next level or next cover
+  if (tracks.every(tr => tr.destroyed)) {
+    showLevelComplete();
+  } else {
+    nextQueueTrack();
+  }
+}, 5000);
+ 
   }
 });
 
@@ -731,38 +738,34 @@ document.getElementById('practiceBtn').onclick = function(){
   }
 };
 
-// ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────
+// ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────────
 function nextQueueTrack(){
-  // bail if not in practice
   if (mode !== 'practice') return;
-
   clearTimeout(coverTimer);
 
-  // build alive list
-  const alive = trackQueue.filter(t => !t.destroyed);
-  if (alive.length === 0){
-    phase = 'cover';
-    statusEl.textContent = 'All tracks negated – press A to engage.';
-    return;
-  }
+  // pick ONLY un-tagged, live tracks (blank labels) closest to B/E
+  const blanks = tracks
+    .filter(t => !t.destroyed && !t.tag)
+    .sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b)); // nearer first
 
-  // pick next
-  phase = 'cover';
-  curTrack = alive[queueIndex] || alive[0];
-  queueIndex = alive.indexOf(curTrack);
+  // if none left, just wait for user actions (all sitting NEGATE, etc.)
+  if (blanks.length === 0) return;
 
-  curTrack.tag = 'COVER';
-  const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
+  phase    = 'cover';
+  curTrack = blanks[0];
+
+  curTrack.tag     = 'COVER';
+  curTrack.tagTime = Date.now();
+
+  const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
   statusEl.textContent =
     `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
   feedbackEl.textContent = '';
 
-  // auto-advance after 10s
-  coverTimer = setTimeout(() => {
-    queueIndex++;
-    nextQueueTrack();
-  }, 10000);
+  coverTimer = setTimeout(nextQueueTrack, 10000);  // 10 s → auto-cycle
 }
+
+
 
 // ─── finishEngage: scoring, negations & queue-advance ─────────────────────
 function finishEngage() {
