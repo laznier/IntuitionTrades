@@ -171,7 +171,7 @@
     <h3>Hotkeys</h3>
     <ul>
 
-      <li><strong>Ctrl + R</strong>: Set new B/E</li>
+      <li><strong>R</strong>: Set new B/E</li>
       <li><strong>C</strong>: COVER</li>
       <li><strong>A</strong>: AFFIRM</li>
       <li><strong>N</strong>: NEGATE</li>
@@ -189,8 +189,7 @@
     <button data-key="w">W</button>
     <button data-key="e">E</button>
     <button data-key="k">K</button>
-    <button id="zoomOut">–</button>
-    <button id="zoomIn">+</button>
+    <button data-key="r">R</button>
   </div>
 
   <div id="cursorLabel"></div>
@@ -248,17 +247,34 @@ let coverTimer = null, practiceSaveIndex = null;
     resize();
 
     function buildStatics(){
-      const cx = worldWidth/2, cy = worldHeight/2,
-            p10 = 10 / CFG.nmPerPixel;
-      statics = [
-        { type:'icc', id:'00176', x:cx,    y:cy    },
-        { type:'ln',  id:'00177', x:cx+p10,y:cy-p10 },
-        { type:'ln',  id:'00178', x:cx-p10,y:cy+p10 },
-        { type:'ln',  id:'00179', x:cx+p10,y:cy+p10 },
-        { type:'rad', id:'00180', x:cx-p10,y:cy-p10 }
-      ];
-      bullseye = { x:cx, y:cy };
-    }
+  const cx = worldWidth/2,
+        cy = worldHeight/2,
+        p10 = 10 / CFG.nmPerPixel,
+        ro  = 2  / CFG.nmPerPixel;    // radar offset (2 NM)
+
+  statics = [
+    { type:'icc', id:'00176', x:cx,      y:cy       },
+
+    // launcher 1 (NE)
+    { type:'ln',  id:'00177', x:cx + p10, y:cy - p10 },
+    { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
+
+    // launcher 2 (SW)
+    { type:'ln',  id:'00178', x:cx - p10, y:cy + p10 },
+    { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
+
+    // launcher 3 (SE)
+    { type:'ln',  id:'00175', x:cx + p10, y:cy + p10 },
+    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
+
+    // launcher 4 (your extra cross)
+    { type:'ln',  id:'00111', x:cx - p10/2, y:cy - p10 },
+    { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro }
+  ];
+
+  bullseye = { x:cx, y:cy };
+}
+
 
     // ─── TRACKS ─────────────────────────────────────────────────────────
 const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
@@ -303,26 +319,46 @@ function newTrack(){
 
     // ─── DRAW ───────────────────────────────────────────────────────────
     function drawStatics(){
-      const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
-      statics.forEach(s=>{
-        ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
-        if(s.type==='icc'){
-          ctx.fillStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.fill();
-        } else if(s.type==='ln'){
-          ctx.strokeStyle=colICC; ctx.beginPath();
-          ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y);
-          ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke();
-        } else {
-          ctx.strokeStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.stroke();
-        }
-        ctx.fillStyle=colICC; ctx.fillText(s.id,s.x+8,s.y);
-      });
-      ctx.strokeStyle=colICC; ctx.lineWidth=2;
+  const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
+  statics.forEach(s=>{
+    // ─── draw 90° engagement wedge for each launcher ───────────
+    if (s.type === 'ln') {
+      const center = bearing(bullseye, s);
+      const radius = 50 / CFG.nmPerPixel;
+      ctx.fillStyle = 'rgba(255,214,10,0.1)';
       ctx.beginPath();
-      ctx.moveTo(bullseye.x-10,bullseye.y); ctx.lineTo(bullseye.x+10,bullseye.y);
-      ctx.moveTo(bullseye.x,bullseye.y-10); ctx.lineTo(bullseye.x,bullseye.y+10);
-      ctx.stroke();
+      ctx.moveTo(s.x, s.y);
+      ctx.arc(
+        s.x, s.y,
+        radius,
+        d2r(center - 90),
+        d2r(center - 0)
+      );
+      ctx.closePath();
+      ctx.fill();
     }
+
+    // …rest of your existing drawStatics code…
+    ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    if(s.type==='icc'){
+      ctx.fillStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.fill();
+    } else if(s.type==='ln'){
+      ctx.strokeStyle=colICC; ctx.beginPath();
+      ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y);
+      ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke();
+    } else {
+      ctx.strokeStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.stroke();
+    }
+    ctx.fillStyle=colICC; ctx.fillText(s.id,s.x+8,s.y);
+  });
+
+  ctx.strokeStyle=colICC; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(bullseye.x-10,bullseye.y); ctx.lineTo(bullseye.x+10,bullseye.y);
+  ctx.moveTo(bullseye.x,bullseye.y-10); ctx.lineTo(bullseye.x,bullseye.y+10);
+  ctx.stroke();
+}
+
 
     function drawCompass(){
       if(!compassOn) return;
@@ -613,7 +649,20 @@ function newTrack(){
 // ─── UNIFIED KEY HANDLER (desktop + mobile) ───────────────────────────
 window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
+
+  // ─── R sets new bullseye ─────────────────────────────────────
+  if (k === 'r') {
+    e.preventDefault();
+    bullseye.x = mouse.wx;
+    bullseye.y = mouse.wy;
+    statusEl.textContent =
+      `Bullseye set to ${('000'+bearing(bullseye, {x:mouse.wx, y:mouse.wy})).slice(-3)}/${distNm(bullseye, {x:mouse.wx, y:mouse.wy})}`;
+    return;
+  }
+
+  // ─── practice keys only when in practice mode ──────────────────
   if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
+
   e.preventDefault();
   feedbackEl.textContent = '';
 
