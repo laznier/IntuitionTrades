@@ -987,17 +987,6 @@ if (mode==='practice' && Math.hypot(o.x-bullseye.x,o.y-bullseye.y) < 6) {
       btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
     });
 
-    // Center-anchor zoom buttons
-    document.getElementById('zoomIn').onclick=()=>{
-      const cx=worldWidth/2, cy=worldHeight/2;
-      const w=scrToWorld(cx,cy);
-      scale*=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
-    };
-    document.getElementById('zoomOut').onclick=()=>{
-      const cx=worldWidth/2, cy=worldHeight/2;
-      const w=scrToWorld(cx,cy);
-      scale/=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
-    };
 
     // COMPASS toggle
     compassBtn.onclick = ()=>{
