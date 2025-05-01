@@ -90,7 +90,7 @@ html {
       <button id="compassBtn">Compass: OFF</button>
       <button id="helpBtn">Help</button>
     </div>
-    <div id="status">Free mode — Ctrl+R sets Bullseye</div>
+    <div id="status">Free mode</div>
     <div id="feedback"></div>
   </header>
 
@@ -106,6 +106,8 @@ html {
     <p>1 point per correct sequence; after 10 rounds, see GAME OVER + score.</p>
     <h3>Hotkeys</h3>
     <ul>
+
+      <li><strong>Ctrl + R</strong>: Set new B/E</li>
       <li><strong>C</strong>: COVER</li>
       <li><strong>A</strong>: AFFIRM</li>
       <li><strong>N</strong>: NEGATE</li>
@@ -579,7 +581,7 @@ html {
         nextRound();
       } else {
         mode='free'; this.textContent='Practice Mode';
-        statusEl.textContent='Free mode — Ctrl+R sets Bullseye';
+        statusEl.textContent='Free mode';
         feedbackEl.textContent='';
       }
     };
