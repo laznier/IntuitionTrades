@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ADAFCO Bullseye/BRAA Trainer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #0a0a0d; --grid: #222; --icc: #27e835;
+      --braa: #0ea5e9; --track: #ff5757; --text: #f8f8f8;
+      --yellow: #ffd60a; --warn: #ff4d4d;
+    }
+    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+    header {
+      display: flex; flex-direction: column; align-items: center;
+      padding: .5rem 1rem; background: #111; gap: .5rem; z-index: 3;
+    }
+    #controls { display: flex; gap: .75rem; }
+    button {
+      padding: .25rem .8rem; border: none; border-radius: 6px;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    #practiceBtn { background: var(--icc); color: #000; }
+    #tagsBtn, #helpBtn { background: var(--braa); color: #000; }
+    #status { font-size: .9rem; z-index: 3; }
+    #feedback { font-size: .8rem; color: var(--warn); min-height: 1em; z-index: 3; }
+    #scope {
+      flex: 1; width: 100%; touch-action: none; cursor: crosshair;
+      background: var(--bg); position: relative; z-index: 1;
+    }
+    #mobileControls {
+      display: none; position: fixed; bottom: 0; left: 0; width: 100%;
+      background: rgba(17,17,17,0.9); padding: .5rem 0; z-index: 4;
+      flex-wrap: wrap; justify-content: space-around;
+    }
+    #mobileControls button {
+      flex: 1; margin: .25rem; min-width: 40px; font-size: 1rem;
+    }
+    @media (max-width: 768px) {
+      #mobileControls { display: flex; }
+    }
+    #helpOverlay {
+      display: none; position: fixed; top: 70px; left: 50%;
+      transform: translateX(-50%);
+      background: #222; color: #f8f8f8; padding: 1rem;
+      border: 1px solid #444; border-radius: 8px; z-index: 5;
+      max-width: 380px;
+    }
+    #helpOverlay h3 { margin-top: 0; color: var(--icc); }
+    #helpOverlay button {
+      margin-top: 1rem; background: var(--track); color: #fff;
+      cursor: pointer;
+    }
+    #cursorLabel {
+      position: fixed; pointer-events: none; z-index: 6;
+      background: rgba(0,0,0,0.7); border-radius: 4px;
+      padding: 2px 5px; font-family: monospace; font-size: .8rem;
+      color: var(--text);
+    }
+    #cursorLabel .be { color: var(--yellow); font-weight: 600; }
+    #cursorLabel .braa { display: block; color: var(--braa); font-size: .7rem; }
+    .card {
+      position: fixed; top: 10px; left: 10px;
+      background: #181818; border: 1px solid #333;
+      padding: 1rem 1.5rem; border-radius: 8px; z-index: 15;
+    }
+    .card h3 {
+      margin: 0 0 .4rem; color: var(--icc); font-size: 1.1rem;
+    }
+    .card button {
+      margin-top: .8rem; background: var(--track); color: #fff; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div id="controls">
+      <button id="practiceBtn">Practice Mode</button>
+      <button id="tagsBtn">TAGS: OFF</button>
+      <button id="helpBtn">Help</button>
+    </div>
+    <div id="status">Free mode — Ctrl+R sets Bullseye (Ctrl-click a static)</div>
+    <div id="feedback"></div>
+  </header>
+
+  <canvas id="scope"></canvas>
+
+  <div id="helpOverlay">
+    <h3>How to Play</h3>
+    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Kill sequences:</p>
+    <ol>
+      <li><strong>Cover:</strong> Click the prompted track + <strong>A</strong> (Affirm).
+        Press <strong>N</strong> (Negate) to stay until <strong>A</strong>.</li>
+      <li><strong>Engage:</strong> Click + <strong>W</strong> (Away).</li>
+      <li><strong>Kill:</strong> Click + <strong>K</strong>.
+        Auto-kill in 10 s.</li>
+    </ol>
+    <p>1 point per correct sequence; after 10 rounds, see GAME OVER + score.</p>
+    <h3>Hotkeys</h3>
+    <ul>
+      <li><strong>C</strong>: COVER (free mode)</li>
+      <li><strong>A</strong>: AFFIRM</li>
+      <li><strong>N</strong>: NEGATE</li>
+      <li><strong>W</strong>: AWAY</li>
+      <li><strong>E</strong>: ENGAGE</li>
+      <li><strong>K</strong>: KILL</li>
+    </ul>
+    <button id="closeHelp">Close</button>
+  </div>
+
+  <div id="mobileControls">
+    <button data-key="c">C</button>
+    <button data-key="a">A</button>
+    <button data-key="n">N</button>
+    <button data-key="w">W</button>
+    <button data-key="e">E</button>
+    <button data-key="k">K</button>
+    <button id="zoomOut">–</button>
+    <button id="zoomIn">+</button>
+  </div>
+
+  <div id="cursorLabel"></div>
+
+  <script>
+    // ─── CONFIG ─────────────────────────────────────────────────────────
+    const CFG = {
+      trackCount: 10,
+      nmPerPixel: 0.2,
+      maxSpawnNm: 150,
+      frameRate: 60,
+      maxSpeedKts: 800,
+      destroyMs: 6000,
+      autoKillMs: 10000,
+      rounds: 10
+    };
+
+    // ─── STATE ───────────────────────────────────────────────────────────
+    let bullseye, statics = [], tracks = [];
+    let mouse = { wx:0, wy:0, sx:0, sy:0, px:0, py:0 },
+        dragStart = null, isDragging = false, rubber = null,
+        scale = 1, offX = 0, offY = 0;
+    let selectedTrack = null, selectedStatic = null;
+    let mode = 'free', phase = '', curTrack = null, killTimer = null;
+    let round = 0, score = 0;
+    let tagMode = 0, tagLabels = ['OFF','B/E','JTN','INFO','ALL'];
+
+    // ─── SETUP ──────────────────────────────────────────────────────────
+    const canvas = document.getElementById('scope'),
+          ctx    = canvas.getContext('2d'),
+          label  = document.getElementById('cursorLabel'),
+          statusEl   = document.getElementById('status'),
+          feedbackEl = document.getElementById('feedback'),
+          helpOverlay= document.getElementById('helpOverlay');
+
+    function resize(){
+      canvas.width = window.innerWidth;
+      const hdr = document.querySelector('header').offsetHeight;
+      canvas.height = window.innerHeight - hdr;
+      buildStatics();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ─── STATICS ─────────────────────────────────────────────────────────
+    function buildStatics(){
+      const cx = canvas.width/2, cy = canvas.height/2,
+            p10 = 10 / CFG.nmPerPixel;
+      statics = [
+        { type:'icc', id:'00176', x:cx,    y:cy   },
+        { type:'ln',  id:'00177', x:cx+p10,y:cy-p10 },
+        { type:'ln',  id:'00178', x:cx-p10,y:cy+p10 },
+        { type:'ln',  id:'00179', x:cx+p10,y:cy+p10 },
+        { type:'rad', id:'00180', x:cx-p10,y:cy-p10 }
+      ];
+      bullseye = { x:cx, y:cy };
+    }
+    buildStatics();
+
+    // ─── TRACKS ─────────────────────────────────────────────────────────
+    const rand = (a,b) => Math.floor(Math.random()*(b-a)+a);
+    function newTrack(){
+      const ang = Math.random()*2*Math.PI,
+            r   = Math.sqrt(Math.random())*CFG.maxSpawnNm/CFG.nmPerPixel,
+            x   = bullseye.x + Math.cos(ang)*r,
+            y   = bullseye.y + Math.sin(ang)*r;
+      return {
+        id: ('00000'+rand(1000,7776)).slice(-5),
+        x,y,
+        heading: rand(0,359),
+        speed:   rand(200,CFG.maxSpeedKts),
+        alt:     rand(5,600),
+        tag:       null,
+        tagTime:   0,
+        destroyed: false
+      };
+    }
+    function initTracks(){
+      tracks = Array.from({length:CFG.trackCount}, newTrack);
+    }
+    initTracks();
+
+    // ─── UTILS ──────────────────────────────────────────────────────────
+    const d2r = d => d * Math.PI/180;
+    function bearing(a,b){
+      let ang = (Math.atan2(b.x-a.x, a.y-b.y)*180/Math.PI + 360)%360;
+      return Math.round(ang) || 360;
+    }
+    function distNm(a,b){
+      return Math.round(Math.hypot(a.x-b.x, a.y-b.y) * CFG.nmPerPixel);
+    }
+    function scrToWorld(sx,sy){
+      return { x: offX + sx/scale, y: offY + sy/scale };
+    }
+
+    // ─── DRAW ───────────────────────────────────────────────────────────
+    function drawGrid(){
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid');
+      ctx.lineWidth = 1; const step = 100;
+      for(let x=0; x<canvas.width/scale; x+=step){
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height/scale); ctx.stroke();
+      }
+      for(let y=0; y<canvas.height/scale; y+=step){
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width/scale,y); ctx.stroke();
+      }
+    }
+    function drawStatics(){
+      const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
+      statics.forEach(s=>{
+        ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        if(s.type==='icc'){
+          ctx.fillStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.fill();
+        } else if(s.type==='ln'){
+          ctx.strokeStyle=colICC; ctx.beginPath();
+          ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y);
+          ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke();
+        } else {
+          ctx.strokeStyle=colICC; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,2*Math.PI); ctx.stroke();
+        }
+        ctx.fillStyle=colICC; ctx.fillText(s.id,s.x+8,s.y);
+      });
+      ctx.strokeStyle=colICC; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.moveTo(bullseye.x-10,bullseye.y); ctx.lineTo(bullseye.x+10,bullseye.y);
+      ctx.moveTo(bullseye.x,bullseye.y-10); ctx.lineTo(bullseye.x,bullseye.y+10);
+      ctx.stroke();
+    }
+    function drawTracks(now){
+      const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
+            colB = getComputedStyle(document.documentElement).getPropertyValue('--braa'),
+            colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow'),
+            colX = getComputedStyle(document.documentElement).getPropertyValue('--text');
+      tracks.forEach(o=>{
+        if(o.destroyed){
+          if(now-o.tagTime < CFG.destroyMs){
+            ctx.fillStyle='#888'; ctx.font='14px monospace';
+            ctx.textAlign='center'; ctx.fillText('#',o.x,o.y+5);
+          }
+          return;
+        }
+        ctx.fillStyle=colT; ctx.save();
+          ctx.translate(o.x,o.y); ctx.rotate(d2r(o.heading));
+          ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,4); ctx.lineTo(-4,4);
+          ctx.closePath(); ctx.fill();
+        ctx.restore();
+        if(o.tag){
+          ctx.font='10px monospace'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+          ctx.fillStyle=colB; ctx.fillText(o.tag,o.x,o.y-8);
+        }
+        if(tagMode){
+          const lines = [];
+          if(tagMode===1||tagMode===4) lines.push(`${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`);
+          if(tagMode===2||tagMode===4) lines.push(o.id);
+          if(tagMode===3||tagMode===4) lines.push(`${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`);
+          ctx.font='10px monospace'; ctx.textAlign='left'; ctx.textBaseline='middle';
+          lines.forEach((ln,i)=>{
+            ctx.fillStyle=(tagMode===1&&i===0)?colY:colX;
+            ctx.fillText(ln, o.x+8, o.y-8 + i*12);
+          });
+        }
+      });
+    }
+    function drawRubber(){
+      if(!rubber) return;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+      const {cx,cy,ex,ey} = rubber;
+      const ox = 2*cx - ex, oy = 2*cy - ey;
+      const left   = Math.min(ex,ox),
+            top    = Math.min(ey,oy),
+            width  = Math.abs(ex-ox),
+            height = Math.abs(ey-oy);
+      ctx.strokeRect(left, top, width, height);
+    }
+
+    // ─── UPDATE TRACKS ───────────────────────────────────────────────────
+    function updateTracks(dt){
+      const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+      tracks.forEach(o=>{
+        if(o.destroyed) return;
+        o.x = (o.x + Math.sin(d2r(o.heading)) * o.speed * pps * dt + canvas.width/scale) % (canvas.width/scale);
+        o.y = (o.y - Math.cos(d2r(o.heading)) * o.speed * pps * dt + canvas.height/scale) % (canvas.height/scale);
+      });
+    }
+
+    // ─── ANIMATE ───────────────────────────────────────────────────────
+    let lastTime = performance.now();
+    function animate(now){
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      updateTracks(dt);
+
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
+
+      drawGrid(); drawStatics(); drawTracks(performance.now()); drawRubber();
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // ─── MOUSE & LABEL ─────────────────────────────────────────────────
+    function storeMouse(e){
+      const rect = canvas.getBoundingClientRect();
+      mouse.sx = e.clientX - rect.left;
+      mouse.sy = e.clientY - rect.top;
+      mouse.px = e.clientX;
+      mouse.py = e.clientY;
+      // **compute world coords**
+      const w = scrToWorld(mouse.sx, mouse.sy);
+      mouse.wx = w.x;
+      mouse.wy = w.y;
+      updateCursorLabel();
+    }
+    canvas.addEventListener('mousemove', e=>{
+      storeMouse(e);
+      if(rubber){
+        rubber.ex = mouse.sx; rubber.ey = mouse.sy;
+      }
+    });
+    canvas.addEventListener('mousedown', e=>{
+      if(e.button!==0) return;
+      storeMouse(e);
+      if(e.detail===2){
+        rubber = { cx: mouse.sx, cy: mouse.sy, ex: mouse.sx, ey: mouse.sy };
+      } else {
+        isDragging = true; dragStart = {...mouse};
+      }
+    });
+    window.addEventListener('mouseup', e=>{
+      if(e.button!==0) return;
+      storeMouse(e);
+      isDragging = false; dragStart = null;
+      if(!rubber) return;
+      const dx = Math.abs(mouse.sx - rubber.cx)*2,
+            dy = Math.abs(mouse.sy - rubber.cy)*2;
+      if(dx>10 && dy>10){
+        const w0 = scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
+              w1 = scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
+        const newScale = Math.min(canvas.width/(w1.x-w0.x), canvas.height/(w1.y-w0.y));
+        scale = newScale; offX = w0.x; offY = w0.y;
+      }
+      rubber = null;
+    });
+    canvas.addEventListener('wheel', e=>{
+      e.preventDefault(); storeMouse(e);
+      const f = e.deltaY < 0 ? 1.1 : 1/1.1;
+      scale *= f; offX = mouse.wx - mouse.sx/scale; offY = mouse.wy - mouse.sy/scale;
+    }, { passive: false });
+
+    function updateCursorLabel(){
+      // use world coords for bearing/range
+      const world = { x: mouse.wx, y: mouse.wy };
+      const b = ('000'+bearing(bullseye, world)).slice(-3);
+      const r = distNm(bullseye, world);
+      let html = `<span class="be">${b}/${r}</span>`;
+      if(isDragging && dragStart){
+        const start = { x: dragStart.wx, y: dragStart.wy };
+        const b2 = ('000'+bearing(start, world)).slice(-3);
+        const r2 = distNm(start, world);
+        html = `<span class="braa">${b2}/${r2}</span><br>` + html;
+      }
+      label.innerHTML = html;
+      label.style.left = (mouse.px + 5) + 'px';
+      label.style.top  = (mouse.py - label.offsetHeight - 5) + 'px';
+    }
+
+    // ─── CLICK & CARD ──────────────────────────────────────────────────
+    canvas.addEventListener('click', e=>{
+      storeMouse(e);
+      selectedTrack = tracks.find(t=>Math.hypot(t.x-mouse.wx,t.y-mouse.wy)<8) || null;
+      if(selectedTrack){
+        selectedStatic = null; showCard(selectedTrack); return;
+      }
+      if(e.ctrlKey || !selectedTrack){
+        selectedStatic = statics.find(s=>Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12) || null;
+      }
+    });
+    function showCard(t){
+      document.querySelectorAll('.card').forEach(c=>c.remove());
+      const d = document.createElement('div'); d.className = 'card';
+      d.innerHTML = `
+        <h3>Track ${t.id}</h3>
+        ${('000'+t.heading).slice(-3)}° /
+        <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
+        ${t.speed} kts
+        <br><button>Close</button>`;
+      d.querySelector('button').onclick = ()=>d.remove();
+      document.body.appendChild(d);
+    }
+
+    // ─── PRACTICE & HOTKEYS ────────────────────────────────────────────
+    window.addEventListener('keydown', e=>{
+      const k = e.key.toLowerCase();
+      if(e.ctrlKey && k==='r'){
+        e.preventDefault();
+        if(selectedStatic){
+          bullseye = { x:selectedStatic.x, y:selectedStatic.y };
+          statusEl.textContent = 'Bullseye reset'; feedbackEl.textContent = '';
+        }
+        return;
+      }
+      if(mode==='practice' && ['a','n','w','k'].includes(k)){
+        feedbackEl.textContent = '';
+        if(phase==='cover'){
+          if(selectedTrack===curTrack){
+            if(k==='a'){
+              curTrack.tag = 'ENGAGE'; phase='engage';
+              const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
+              statusEl.textContent =
+                `ADAFCO, SL, ENGAGE Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+            } else if(k==='n'){
+              curTrack.tag='NEGATE'; curTrack.tagTime=Date.now();
+              feedbackEl.textContent = 'Negated. Press A to proceed.';
+            } else feedbackEl.textContent = 'Wrong. Try again.';
+          } else feedbackEl.textContent = 'Wrong. Try again.';
+        }
+        else if(phase==='engage'){
+          if(selectedTrack===curTrack && k==='w'){
+            curTrack.tag='AWAY'; phase='kill';
+            statusEl.textContent = `ADAFCO, SL, KILL Track ${curTrack.id}`;
+            killTimer = setTimeout(()=>{
+              curTrack.destroyed=true; curTrack.tagTime=Date.now();
+              nextRound();
+            }, CFG.autoKillMs);
+          } else feedbackEl.textContent = 'Wrong. Try again.';
+        }
+        else if(phase==='kill'){
+          if(selectedTrack===curTrack && k==='k'){
+            clearTimeout(killTimer);
+            curTrack.destroyed=true; curTrack.tagTime=Date.now();
+            nextRound();
+          } else feedbackEl.textContent = 'Wrong. Try again.';
+        }
+        return;
+      }
+      if(mode==='free' && selectedTrack){
+        const map = { c:'COVER', a:'AFFIRM', n:'NEGATE', w:'AWAY', e:'ENGAGE' };
+        if(k in map){
+          selectedTrack.tag = map[k];
+          selectedTrack.tagTime = Date.now();
+        } else if(k==='k'){
+          selectedTrack.destroyed=true; selectedTrack.tagTime=Date.now();
+        }
+      }
+    });
+
+    // ─── PRACTICE CONTROL ───────────────────────────────────────────────
+    document.getElementById('practiceBtn').onclick = function(){
+      if(mode==='free' || mode==='gameover'){
+        mode='practice'; round=0; score=0; this.textContent='Free Mode';
+        nextRound();
+      } else {
+        mode='free'; this.textContent='Practice Mode';
+        statusEl.textContent='Free mode — Ctrl+R sets Bullseye';
+        feedbackEl.textContent='';
+      }
+    };
+
+    function nextRound(){
+      tracks = tracks.filter(t=>!t.destroyed);
+      round++;
+      if(round>CFG.rounds){
+        mode='gameover';
+        statusEl.textContent = `GAME OVER — ${score}/${CFG.rounds}`;
+        document.getElementById('practiceBtn').textContent='Practice Mode';
+        return;
+      }
+      if(round>1) score++;
+      phase='cover';
+      curTrack = tracks[Math.floor(Math.random()*tracks.length)];
+      curTrack.tag='COVER';
+      const b2 = ('000'+bearing(bullseye,curTrack)).slice(-3);
+      statusEl.textContent =
+        `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+      feedbackEl.textContent='';
+    }
+
+    // ─── TAGS & HELP & MOBILE ───────────────────────────────────────────
+    document.getElementById('tagsBtn').onclick = function(){
+      tagMode = (tagMode+1) % tagLabels.length;
+      this.textContent = `TAGS: ${tagLabels[tagMode]}`;
+    };
+    document.getElementById('helpBtn').onclick   = ()=>helpOverlay.style.display='block';
+    document.getElementById('closeHelp').onclick = ()=>helpOverlay.style.display='none';
+    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
+      btn.onclick = ()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
+    });
+    document.getElementById('zoomIn').onclick  = ()=>{ scale*=1.2; };
+    document.getElementById('zoomOut').onclick = ()=>{ scale/=1.2; };
+
+  </script>
+</body>
+</html>
