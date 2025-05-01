@@ -31,7 +31,7 @@
     #feedback { font-size: .8rem; color: var(--warn); min-height: 1em; z-index: 3; }
     #scope {
       flex: 1; width: 100%; background: var(--bg);
-      touch-action: none; position: relative; z-index: 1;
+      position: relative; z-index: 1;
     }
     #mobileControls {
       display: none; position: fixed; bottom: 0; left: 0; width: 100%;
@@ -150,36 +150,28 @@
     let compassOn = false;
 
     // ─── SETUP ──────────────────────────────────────────────────────────
-    const canvas = document.getElementById('scope'),
-          ctx    = canvas.getContext('2d'),
+    const canvas     = document.getElementById('scope'),
+          ctx        = canvas.getContext('2d'),
           statusEl   = document.getElementById('status'),
           feedbackEl = document.getElementById('feedback'),
           tagsBtn    = document.getElementById('tagsBtn'),
           compassBtn = document.getElementById('compassBtn'),
           helpOverlay= document.getElementById('helpOverlay');
-// right after you grab helpOverlay, tagsBtn, etc.
-const label = document.getElementById('cursorLabel');
+    const label      = document.getElementById('cursorLabel');
 
-function resize () {
-  worldWidth  = canvas.width  = window.innerWidth;
-  const hdr   = document.querySelector('header').offsetHeight;
-  worldHeight = canvas.height = window.innerHeight - hdr;
-
-  /* Rebuild statics only on the first call so they don’t jump
-     whenever Safari’s URL bar shows/hides and the visual viewport
-     height changes */
-  if (!resize.didInit) {
-    buildStatics();
-    resize.didInit = true;
-  }
-}
-   
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', resize);
-}
-
-
-resize();
+    function resize () {
+      worldWidth  = canvas.width  = window.innerWidth;
+      const hdr   = document.querySelector('header').offsetHeight;
+      worldHeight = canvas.height = window.innerHeight - hdr;
+      if (!resize.didInit) {
+        buildStatics();
+        resize.didInit = true;
+      }
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', resize);
+    }
+    resize();
 
     function buildStatics(){
       const cx = worldWidth/2, cy = worldHeight/2,
@@ -231,7 +223,6 @@ resize();
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 
-    
     // ─── DRAW ───────────────────────────────────────────────────────────
     function drawStatics(){
       const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
@@ -348,7 +339,6 @@ resize();
       lastTime=now;
       updateTracks(dt);
 
-      // clear & set world transform
       ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
       ctx.clearRect(offX, offY, worldWidth/scale, worldHeight/scale);
 
@@ -356,8 +346,6 @@ resize();
       drawCompass();
       drawTracks(now);
       drawDragLine();
-
-      // draw rubber-band selection outside world transform
       drawRubber();
 
       requestAnimationFrame(animate);
@@ -366,40 +354,32 @@ resize();
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
     function storeMouse(e) {
-  const rect = canvas.getBoundingClientRect();
+      const rect = canvas.getBoundingClientRect();
+      let pageX = 'pageX' in e ? e.pageX : e.clientX;
+      let pageY = 'pageY' in e ? e.pageY : e.clientY;
+      mouse.sx = pageX - rect.left;
+      mouse.sy = pageY - rect.top;
+      mouse.px = pageX;
+      mouse.py = pageY;
+      const w = scrToWorld(mouse.sx, mouse.sy);
+      mouse.wx = w.x;
+      mouse.wy = w.y;
+      updateCursorLabel();
+    }
 
-  let pageX = 'pageX' in e ? e.pageX : e.touches ? e.touches[0].pageX : e.clientX + window.scrollX;
-  let pageY = 'pageY' in e ? e.pageY : e.touches ? e.touches[0].pageY : e.clientY + window.scrollY;
-
-  mouse.sx = pageX - rect.left - window.scrollX;
-  mouse.sy = pageY - rect.top  - window.scrollY;
-
-  mouse.px = pageX;
-  mouse.py = pageY;
-
-  const w = scrToWorld(mouse.sx, mouse.sy);
-  mouse.wx = w.x;
-  mouse.wy = w.y;
-
-  updateCursorLabel();
-}
-
-
-  // pinch start
-  canvas.addEventListener('touchstart',e=>{
+    canvas.addEventListener('touchstart', e=>{
       if(e.touches.length===2){
         pinch.active=true;
         pinch.startDist=distTouch(e.touches[0],e.touches[1]);
         pinch.startScale=scale;
         const rect=canvas.getBoundingClientRect();
         const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
-        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top)/2;
         pinch.center=scrToWorld(cx,cy);
       }
     },{passive:false});
 
-    // pinch move & single-touch drag
-    canvas.addEventListener('touchmove',e=>{
+    canvas.addEventListener('touchmove', e=>{
       if(pinch.active&&e.touches.length===2){
         e.preventDefault();
         const newDist=distTouch(e.touches[0],e.touches[1]);
@@ -407,7 +387,7 @@ resize();
         scale=pinch.startScale*f;
         const rect=canvas.getBoundingClientRect();
         const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
-        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top )/2;
+        const cy=(e.touches[0].clientY-rect.top+e.touches[1].clientY-rect.top)/2;
         offX=pinch.center.x-cx/scale;
         offY=pinch.center.y-cy/scale;
       } else if(e.touches.length===1){
@@ -416,12 +396,16 @@ resize();
       }
     },{passive:false});
 
-    // mouse events
-    canvas.addEventListener('mousemove',e=>{
+    canvas.addEventListener('touchend', e=>{
+      if(pinch.active && e.touches.length<2) pinch.active=false;
+    },{passive:false});
+
+    canvas.addEventListener('mousemove', e=>{
       storeMouse(e);
       if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
     });
-    canvas.addEventListener('mousedown',e=>{
+
+    canvas.addEventListener('mousedown', e=>{
       if(e.button!==0) return;
       storeMouse(e);
       if(e.detail===2){
@@ -430,7 +414,8 @@ resize();
         isDragging=true; dragStart={...mouse};
       }
     });
-    window.addEventListener('mouseup',e=>{
+
+    window.addEventListener('mouseup', e=>{
       if(e.button!==0) return;
       storeMouse(e);
       isDragging=false; dragStart=null;
@@ -446,8 +431,7 @@ resize();
       rubber=null;
     });
 
-    // wheel zoom
-    canvas.addEventListener('wheel',e=>{
+    canvas.addEventListener('wheel', e=>{
       e.preventDefault(); storeMouse(e);
       const f=e.deltaY<0?1.1:1/1.1;
       const cx=e.clientX-canvas.getBoundingClientRect().left,
@@ -473,51 +457,56 @@ resize();
       label.style.left=`${mouse.px+5}px`;
       label.style.top=`${mouse.py-label.offsetHeight-5}px`;
     }
+
+    function showCard(t){
+      document.querySelectorAll('.card').forEach(c=>c.remove());
+      const d=document.createElement('div'); d.className='card';
+      d.innerHTML=`
+        <h3>Track ${t.id}</h3>
+        ${('000'+t.heading).slice(-3)}° /
+        <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
+        ${t.speed} kts
+        <br><button>Close</button>`;
+      d.querySelector('button').onclick=()=>d.remove();
+      document.body.appendChild(d);
+    }
+
     // ─── PICK-OBJECT helper ──────────────────────────────
-function pickObject () {
-  /* hit-test tracks */
-  selectedTrack = tracks.find(t => {
-    const sx = (t.x - offX) * scale;
-    const sy = (t.y - offY) * scale;
-    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
-  }) || null;
+    function pickObject () {
+      selectedTrack = tracks.find(t=>{
+        const sx=(t.x-offX)*scale, sy=(t.y-offY)*scale;
+        return Math.hypot(sx-mouse.sx,sy-mouse.sy)<12;
+      })||null;
+      if(selectedTrack){ selectedStatic=null; showCard(selectedTrack); return; }
+      selectedStatic = statics.find(s=>
+        Math.hypot(s.x-mouse.wx,s.y-mouse.wy)<12
+      )||null;
+    }
 
-  if (selectedTrack) {
-    selectedStatic = null;
-    showCard(selectedTrack);
-    return;
-  }
+    // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
+    canvas.addEventListener('pointerup', e=>{
+      e.preventDefault();
+      mouse.sx=e.offsetX; mouse.sy=e.offsetY;
+      mouse.px=e.clientX; mouse.py=e.clientY;
+      const w=scrToWorld(mouse.sx,mouse.sy);
+      mouse.wx=w.x; mouse.wy=w.y;
+      updateCursorLabel();
+      pickObject();
+    });
 
-  /* hit-test statics */
-  selectedStatic = statics.find(s =>
-    Math.hypot(s.x - mouse.wx, s.y - mouse.wy) < 12
-  ) || null;
-}
+    // ─── DESKTOP CLICK fallback ────────────────────────────────
+    canvas.addEventListener('click', e=>{
+      e.preventDefault();
+      mouse.sx=e.offsetX; mouse.sy=e.offsetY;
+      mouse.px=e.clientX; mouse.py=e.clientY;
+      const w=scrToWorld(mouse.sx,mouse.sy);
+      mouse.wx=w.x; mouse.wy=w.y;
+      updateCursorLabel();
+      pickObject();
+    });
 
-    // ─── UNIFIED TAP / CLICK via PointerEvents ────────────────────────
-canvas.addEventListener('pointerup', e => {
-  // Prevent the browser from turning this into a click or scroll
-  e.preventDefault();
-
-  // offsetX/Y are always relative to the canvas, no getBoundingClientRect needed
-  mouse.sx = e.offsetX;
-  mouse.sy = e.offsetY;
-  mouse.px = e.clientX;
-  mouse.py = e.clientY;
-
-  // update world coords
-  const w = scrToWorld(mouse.sx, mouse.sy);
-  mouse.wx = w.x;
-  mouse.wy = w.y;
-  updateCursorLabel();
-
-  // do your hit-test
-  pickObject();
-});
-
-
-     // PRACTICE & HOTKEYS (unchanged)…
-     window.addEventListener('keydown',e=>{
+    // ─── PRACTICE & HOTKEYS ──────────────────────────────────────
+    window.addEventListener('keydown',e=>{
       const k=e.key.toLowerCase();
       if(e.ctrlKey&&k==='r'){
         e.preventDefault();
@@ -571,7 +560,7 @@ canvas.addEventListener('pointerup', e => {
       }
     });
 
-    // Practice button & nextRound (unchanged)…
+    // Practice button & nextRound
     document.getElementById('practiceBtn').onclick=function(){
       if(mode==='free'||mode==='gameover'){
         mode='practice'; round=0; score=0; this.textContent='Free Mode';
@@ -601,8 +590,8 @@ canvas.addEventListener('pointerup', e => {
       feedbackEl.textContent='';
     }
 
-    // TAGS, HELP, MOBILE buttons (unchanged)…
-    document.getElementById('tagsBtn').onclick=function(){
+    // TAGS, HELP, MOBILE buttons
+    tagsBtn.onclick=function(){
       tagMode=(tagMode+1)%tagLabels.length;
       this.textContent=`TAGS: ${tagLabels[tagMode]}`;
     };
@@ -612,7 +601,7 @@ canvas.addEventListener('pointerup', e => {
       btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
     });
 
-    // Center-anchor zoom buttons (unchanged)…
+    // Center-anchor zoom buttons
     document.getElementById('zoomIn').onclick=()=>{
       const cx=worldWidth/2, cy=worldHeight/2;
       const w=scrToWorld(cx,cy);
@@ -624,15 +613,11 @@ canvas.addEventListener('pointerup', e => {
       scale/=1.2; offX=w.x-cx/scale; offY=w.y-cy/scale;
     };
 
-
-
     // COMPASS toggle
     compassBtn.onclick = ()=>{
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
-
-    // other controls unchanged...
   </script>
 </body>
 </html>
