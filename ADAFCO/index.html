@@ -1163,6 +1163,7 @@ window.addEventListener('keydown', e => {
    if (!inCircle && !inWedge) {
      score -= 1;
     feedbackEl.textContent = 'Bird Trashed: -1 points';
+
     // revert tag back to ENGAGE
      t.tag         = 'ENGAGE';
      t.everEngaged = true;
@@ -1175,6 +1176,11 @@ window.addEventListener('keydown', e => {
        `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
      return;
    }
+
+   
+  // ─── HIT! award point ─────────────────────────────────────
+   score++;
+   feedbackEl.textContent = 'Vanished: +1 point';
 
     // ── HIT → proceed with normal AWAY → VANISH sequence
     t.tag     = 'AWAY';
