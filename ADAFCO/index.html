@@ -58,12 +58,24 @@
       #mobileControls { display: flex; }
     }
     #helpOverlay {
-      display: none; position: fixed; top: 70px; left: 50%;
-      transform: translateX(-50%);
-      background: #222; color: #f8f8f8; padding: 1rem;
-      border: 1px solid #444; border-radius: 8px; z-index: 5;
-      max-width: 380px;
-    }
+  display: none;
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #f8f8f8;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  z-index: 5;
+  max-width: 380px;
+
+  /* new: limit height and allow scrolling */
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
     #helpOverlay h3 { margin-top: 0; color: var(--icc); }
     #helpOverlay button {
       margin-top: 1rem; background: var(--track); color: #fff;
@@ -161,26 +173,51 @@
   <canvas id="scope"></canvas>
   <div id="helpOverlay">
     <h3>How to Play</h3>
-    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences:</p>
+    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences. Each sequence follows:</p>
     <ol>
-      <li><strong>Cover:</strong> Click the prompted track + <strong>A</strong> (Affirm). Press <strong>N</strong> (Negate).</li>
-      <li><strong>Engage:</strong> Click + <strong>W</strong> (Away).</li>
-      <li><strong>Kill:</strong> Click + <strong>K</strong>. Auto-kill in 10 s.</li>
+      <li>
+        <strong>COVER</strong><br>
+        Click the track under the current B/E prompt, then press <strong>C</strong> (Cover).
+      </li>
+      <li>
+        <strong>NEGATE or AFFIRM</strong><br>
+        • If the prompted track is <em>not</em> on B/E, press <strong>N</strong> (Negate) to skip.<br>
+        • Otherwise press <strong>A</strong> (Affirm) to move to Engage.
+      </li>
+      <li>
+        <strong>AWAY</strong><br>
+        Press <strong>W</strong> to send Birds Away. Must be inside the ICC circle or any radar wedge.
+      </li>
+      <li>
+        <strong>KILL/DROP</strong><br>
+        Press <strong>K</strong> to kill. Auto-kill after <strong>6 s</strong> if you wait.
+      </li>
     </ol>
-    <p>1 point per correct sequence; after 10 rounds, see GAME OVER + score.</p>
-    <h3>Hotkeys</h3>
+  
+    <h3>Scoring</h3>
     <ul>
-
-      <li><strong>R</strong>: Set new B/E</li>
-      <li><strong>C</strong>: COVER</li>
-      <li><strong>A</strong>: AFFIRM</li>
-      <li><strong>N</strong>: NEGATE</li>
-      <li><strong>W</strong>: AWAY</li>
-      <li><strong>E</strong>: ENGAGE</li>
-      <li><strong>K</strong>: KILL/DROP</li>
+      <li><strong>+1</strong> point for each correct Cover→Affirm→Away→Vanished sequence.</li>
+      <li><strong>–1</strong> point if Away misses (Bird Trashed).</li>
+      <li><strong>–5</strong> points for an ROE violation (Away before engaging).</li>
+      <li><strong>0</strong> points for a correct Negate.</li>
     </ul>
+  
+    <h3>Hotkeys & Controls</h3>
+    <ul>
+      <li><strong>R</strong>: <em>Set new Bullseye</em> at cursor and respawn tracks.</li>
+      <li><strong>C</strong>: Cover</li>
+      <li><strong>A</strong>: Affirm → Engage</li>
+      <li><strong>N</strong>: Negate</li>
+      <li><strong>W</strong>: Away (Birds Away)</li>
+      <li><strong>K</strong>: Kill/Drop</li>
+      <li><strong>Click/Drag</strong>: Draw BRAA line from your drag start to cursor</li>
+      <li><strong>Right-click</strong>: Secondary select (show 2️⃣ card)</li>
+      <li><strong>Mobile Buttons</strong>: Tap the onscreen buttons (C, A, N, W, K, R) to trigger the same hotkeys.</li>
+    </ul>
+  
     <button id="closeHelp">Close</button>
   </div>
+  
 
   <div id="mobileControls">
     <button data-key="c">C</button>
