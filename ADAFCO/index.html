@@ -1188,14 +1188,15 @@ if (k === 'w') {
       .some(s => insideWedge(s, t));
     const possible = inCircle || inWedge;
 
-    if (possible) {
-      // A) friendly inside → fratricide
-      score -= 20;
-      feedbackEl.textContent = 'Fratricide! –20 points';
-      t.destroyed = true;
-      nextQueueTrack();
-      return;
-    } else {
+    if (possible && t.friendly) {
+  score -= 20;
+  feedbackEl.textContent = 'Fratricide! –20 points';
+  setTimeout(() => {
+    t.destroyed = true;
+    nextQueueTrack();
+  }, 6000);
+  return;
+} else {
       // B) friendly outside → shot trashed + ROE
       score -= 1;
       score -= 5;
