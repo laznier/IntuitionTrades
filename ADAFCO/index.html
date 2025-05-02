@@ -374,6 +374,8 @@ function newTrack(){
     x, y,
     heading,
     speed,
+        destAlt:      0,         // friendly will descend to this
+    friendly:     false,     // will be set for level 2
     alt,
     tag:          null,
     tagTime:      0,
@@ -576,18 +578,26 @@ if (s.type === 'rad') {
 
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
 function drawTracks(now) {
-  const colT = getComputedStyle(document.documentElement).getPropertyValue('--track'),
-        colX = getComputedStyle(document.documentElement).getPropertyValue('--text'),
-        colB = getComputedStyle(document.documentElement).getPropertyValue('--braa');
-        colY = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
-        tracks.forEach(o => {
+  const colHostile = getComputedStyle(document.documentElement).getPropertyValue('--track');
+  const colText    = getComputedStyle(document.documentElement).getPropertyValue('--text');
+  const colTag     = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+  const colHighlight2 = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+
+  tracks.forEach(o => {
+    // ─── pick fill color ─────────────────────────────────────────
+    if (o.friendly) {
+      // green when high, blue when descending low
+      ctx.fillStyle = o.alt > 100 ? 'green' : 'blue';
+    } else {
+      ctx.fillStyle = colHostile;
+    }
+
+    // ─── skip destroyed tracks ───────────────────────────────────
     if (o.destroyed) {
-      // your existing “destroyed” logic (e.g. drawing '#') …
       return;
     }
 
-    // draw the little triangle
-    ctx.fillStyle = colT;
+    // ─── draw the little triangle ────────────────────────────────
     ctx.save();
       ctx.translate(o.x, o.y);
       ctx.rotate(d2r(o.heading));
@@ -599,53 +609,54 @@ function drawTracks(now) {
       ctx.fill();
     ctx.restore();
 
-     // highlight if first selectedTrack
-     if (o === selectedTrack) {
-      ctx.strokeStyle = colX;
+    // ─── highlight primary selection ─────────────────────────────
+    if (o === selectedTrack) {
+      ctx.strokeStyle = colText;
       ctx.lineWidth   = 2;
       ctx.beginPath();
-      ctx.arc(o.x, o.y, 12, 0, 2*Math.PI);
+      ctx.arc(o.x, o.y, 12, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // highlight if SECOND selection
+    // ─── highlight secondary selection ───────────────────────────
     if (o === selectedTrack2) {
-      ctx.strokeStyle = colY;
+      ctx.strokeStyle = colHighlight2;
       ctx.lineWidth   = 2;
-      // draw a 24×24px square centered on o
       ctx.strokeRect(o.x - 12, o.y - 12, 24, 24);
     }
-      // any practice-mode tag text
-      if (o.tag) {
+
+    // ─── practice‐mode tag text ─────────────────────────────────
+    if (o.tag) {
       ctx.font         = '10px monospace';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle    = colB;
+      ctx.fillStyle    = colTag;
       ctx.fillText(o.tag, o.x, o.y - 8);
     }
-  });  // end of tracks.forEach
+  });
 
-  // practice-mode tag overlay
+  // ─── optional overlay tags in practice mode ───────────────────
   if (tagMode) {
     tracks.forEach(o => {
       const lines = [];
       if (tagMode === 1 || tagMode === 4) lines.push(
-        `${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`
+        `${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`
       );
       if (tagMode === 2 || tagMode === 4) lines.push(o.id);
       if (tagMode === 3 || tagMode === 4) lines.push(
-        `${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`
+        `${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`
       );
+
       ctx.font         = '10px monospace';
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      lines.forEach((ln, i) => {
-        ctx.fillStyle = (tagMode === 1 && i === 0) ? colY : colX;
-        ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
+      lines.forEach((ln,i) => {
+        ctx.fillStyle = (tagMode===1 && i===0) ? colHighlight2 : colText;
+        ctx.fillText(ln, o.x + 8, o.y - 8 + i*12);
       });
     });
   }
-}  // end drawTracks
+}
 
 
  
@@ -678,6 +689,26 @@ function drawTracks(now) {
   tracks.forEach(o => {
     if (o.destroyed) return;
 
+ // ── friendly landing: hold at 200 until within 30 NM, then descend ──
+    if (o.friendly) {
+      const distToBE = distNm(o, bullseye);
+      if (distToBE > 30) {
+        // hold at 200 until inside 30 NM
+        o.alt = 200;
+      } else {
+        // then descend linearly to destAlt over the remaining distance
+        const descentRatePerNm = 200 / 30; // 200 NM fall over 30 NM
+        o.alt = Math.max(o.destAlt, o.alt - descentRatePerNm * (dt * CFG.nmPerPixel * CFG.frameRate / CFG.frameRate));
+        if (o.alt <= o.destAlt) {
+          o.destroyed = true;
+          return;
+        }
+      }
+      // always head toward ICC
+      const icc = statics.find(s=>s.type==='icc');
+      o.heading = bearing(o, icc);
+      // continue on to movement below
+    }
     if (mode === 'practice') {
   // Force heading toward bullseye, using our normalized bearing() util
   o.heading = bearing(o, bullseye);
@@ -1141,72 +1172,131 @@ window.addEventListener('keydown', e => {
     return;
   }
 
-      /* ───── AWAY (Birds Away) ────────────────────────────────── */
-  if (k === 'w') {
-    e.preventDefault();
-    clearTimeout(coverTimer);
-    curTrack = t;
+     /* ───── AWAY (Birds Away) ────────────────────────────────── */
+if (k === 'w') {
+  e.preventDefault();
+  clearTimeout(coverTimer);
+  curTrack = t;
 
-    // ROE penalty only if SL never ENGAGE’d this track
-    if (!t.everEngaged) {
-      score -= 5;
-      feedbackEl.textContent = 'ROE violation: -5 points';
-    }
+        // ── UNIVERSAL FRIENDLY RULE ────────────────────────────────
+  if (t.friendly) {
+    // compute geometry gate once
+    const icc      = statics.find(s => s.type === 'icc');
+    const inCircle = icc && distNm(icc, t) <= 15;
+    const inWedge  = statics
+      .filter(s => s.type==='rad' && s.wedgeDir!=null)
+      .some(s => insideWedge(s, t));
+    const possible = inCircle || inWedge;
 
-   // ── NEW: check for valid hit (inside ICC circle or any radar wedge)
-   const icc = statics.find(s => s.type === 'icc');
-   const inCircle = icc && distNm(icc, t) <= 15;
-      const inWedge = statics
-     .filter(s => s.type === 'rad' && s.wedgeDir != null)
-     .some(s => insideWedge(s, t));
-   // MISS → Bird Trashed: revert to ENGAGE on same track
-   if (!inCircle && !inWedge) {
-     score -= 1;
-    feedbackEl.textContent = 'Bird Trashed: -1 points';
-
-    // revert tag back to ENGAGE
-     t.tag         = 'ENGAGE';
-     t.everEngaged = true;
-     t.tagTime     = Date.now();
-     phase         = 'engage';
-     // status update with bearing/range
-     const be2 = ('000' + bearing(bullseye, t)).slice(-3);
-     const r2  = distNm(bullseye, t);
-     statusEl.textContent =
-       `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
-     return;
-   }
-
-   
-  // ─── HIT! award point ─────────────────────────────────────
-   score++;
-   feedbackEl.textContent = 'Vanished: +1 point';
-
-    // ── HIT → proceed with normal AWAY → VANISH sequence
-    t.tag     = 'AWAY';
-    t.tagTime = Date.now();
-    statusEl.textContent =
-      `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${be}/${r}`;
-
-    setTimeout(() => {
-      // vanish
-      t.tag       = null;
-      t.tagTime   = Date.now();
-      statusEl.textContent = `SL, Track ${t.id} Vanished`;
-
-      // mark destroyed
+    if (possible) {
+      // A) friendly inside → fratricide
+      score -= 20;
+      feedbackEl.textContent = 'Fratricide! –20 points';
       t.destroyed = true;
+      nextQueueTrack();
+      return;
+    } else {
+      // B) friendly outside → shot trashed + ROE
+      score -= 1;
+      score -= 5;
+      feedbackEl.textContent = 'Bird Trashed: -1; ROE Violation: -5';
+      nextQueueTrack();
+      return;
+    }
+  }
 
-      // advance: next level or next cover
-      if (tracks.every(tr => tr.destroyed)) {
-        showLevelComplete();
-      } else {
-        nextQueueTrack();
-      }
-    }, 5000);
+    // ── now falls into Branch A1/B/C exactly as before ───────
+  // 1) Compute geometry gate
+  const icc      = statics.find(s => s.type === 'icc');
+  const inCircle = icc && distNm(icc, t) <= 15;
+  const inWedge  = statics
+    .filter(s => s.type === 'rad' && s.wedgeDir != null)
+    .some(s => insideWedge(s, t));
+  const possible = inCircle || inWedge;
 
+  /// ─── Branch A1: ANY W outside wedge/ICC ─────────────────────────
+if (!possible) {
+  if (!t.everEngaged) {
+    // A1.1: not yet ENGAGED → –1 Bird + –5 ROE, reissue COVER
+    score -= 1;
+    score -= 5;
+    feedbackEl.textContent = 'Bird Trashed: -1; ROE Violation: -5';
+
+    t.tag     = 'COVER';
+    t.tagTime = Date.now();
+    const beC = ('000' + bearing(bullseye, t)).slice(-3);
+    const rC  = distNm(bullseye, t);
+    statusEl.textContent =
+      `SL, ADAFCO, COVER Track ${t.id}, B/E ${beC}/${rC}`;
+  } else {
+    // A1.2: was ENGAGED → only –1 Bird, reissue ENGAGE
+    score -= 1;
+    feedbackEl.textContent = 'Bird Trashed: -1 point';
+
+    t.tag           = 'ENGAGE';
+    t.everEngaged   = true;
+    t.tagTime       = Date.now();
+    const beE = ('000' + bearing(bullseye, t)).slice(-3);
+    const rE  = distNm(bullseye, t);
+    statusEl.textContent =
+      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${beE}/${rE}`;
+  }
+  return;
+}
+
+
+
+// ─── Branch B/C: ONLY if shot is possible ─────────────────────────────────
+if (possible) {
+  // 1) Fratricide proximity check: any friendly within 5 NM of this hostile?
+  const fr = tracks.find(x =>
+    x.friendly && !x.destroyed && distNm(x, t) <= 5
+  );
+  if (fr) {
+    // a) Apply fratricide penalty
+    score -= 20;
+    feedbackEl.textContent = 'Fratricide! –20 points';
+    // b) Kill the friendly immediately
+    fr.destroyed = true;
+    // c) Re‑issue ENGAGE on the hostile
+    t.tag         = 'ENGAGE';
+    t.everEngaged = true;
+    t.tagTime     = Date.now();
+    const beF = ('000' + bearing(bullseye, t)).slice(-3);
+    const rF  = distNm(bullseye, t);
+    statusEl.textContent =
+      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${beF}/${rF}`;
     return;
   }
+
+  // 2) Birds Away call for the hostile
+  t.tag     = 'AWAY';
+  t.tagTime = Date.now();
+  statusEl.textContent =
+    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+
+  // 3) ROE violation branch: hostile not previously engaged
+  if (!t.everEngaged) {
+    score -= 5;
+    feedbackEl.textContent = 'ROE Violation: -5 points';
+    // vanish after 6 seconds
+    setTimeout(() => {
+      t.destroyed = true;
+      nextQueueTrack();
+    }, 6000);
+    return;
+  }
+
+  // 4) Normal hit branch: hostile was engaged
+  score += 1;
+  feedbackEl.textContent = 'Vanished: +1 point';
+  // vanish after 6 seconds
+  setTimeout(() => {
+    t.destroyed = true;
+    nextQueueTrack();
+  }, 6000);
+  return;
+}};
 
 
 
@@ -1274,8 +1364,8 @@ function nextQueueTrack(){
 
   // pick ONLY un-tagged, live tracks (blank labels) closest to B/E
   const blanks = tracks
-    .filter(t => !t.destroyed && !t.tag)
-    .sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b)); // nearer first
+  .filter(t => !t.destroyed && !t.tag && !t.friendly)
+  .sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
 
   // if none left, just wait for user actions (all sitting NEGATE, etc.)
   if (blanks.length === 0) return;
@@ -1354,6 +1444,22 @@ function showLevelComplete() {
     level++;
     // respawn & requeue
     initTracks();
+    // ══ LEVEL 2: add up to 3 friendly tracks landing at ICC ══
+    if (level === 2) {
+      const icc = statics.find(s=>s.type==='icc');
+      // generate 3 friendly at random edge positions
+      for (let i=0; i<3; i++) {
+        const t = newTrack();
+        t.friendly = true;
+        // override color later in drawTracks
+        // set heading toward ICC
+        t.heading = bearing(t, icc);
+        // start high altitude
+        t.alt     = 200;
+        t.destAlt = 0;
+        tracks.push(t);
+      }
+    }
     trackQueue = tracks.filter(t => !t.destroyed);
     trackQueue.sort((a,b)=>distNm(bullseye,a)-distNm(bullseye,b));
     queueIndex  = 0;
