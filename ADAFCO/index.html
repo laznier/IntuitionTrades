@@ -486,7 +486,7 @@ function drawStatics() {
 if (s.type === 'rad') {
   // 1) draw the wedge as before (if wedgeDir is set)
   if (s.wedgeDir != null) {
-    const halfAngle = 50;
+    const halfAngle = 45;
     const radiusNm  = 50;
     drawWedge(ctx, s,
               s.wedgeDir - halfAngle,
@@ -1017,7 +1017,7 @@ window.addEventListener('keydown', e => {
   const r  = distNm(bullseye, t);
 
   /* ───── NEGATE ───────────────────────────────────────────── */
-  if (k === 'n' && t.tag === 'COVER') {
+   if (k === 'n') {
     clearTimeout(coverTimer);
     t.tag     = 'NEGATE';
     t.tagTime = Date.now();
@@ -1027,7 +1027,7 @@ window.addEventListener('keydown', e => {
   }
 
   /* ───── AFFIRM  → ENGAGE ─────────────────────────────────── */
-  if (k === 'a' && (t.tag === 'COVER' || t.tag === 'NEGATE')) {
+  if (k === 'a') {
     clearTimeout(coverTimer);
     curTrack          = t;
     curTrack.tag      = 'ENGAGE';
@@ -1036,6 +1036,16 @@ window.addEventListener('keydown', e => {
         phase             = 'engage';
     statusEl.textContent =
       `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
+
+         // ── After 10 s SL will prompt “Engage” again if still in practice
+   setTimeout(() => {
+     if (mode === 'practice' && !t.destroyed) {
+       const be2 = ('000' + bearing(bullseye, t)).slice(-3);
+       const r2  = distNm(bullseye, t);
+       statusEl.textContent =
+         `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
+     }
+   }, 10000);
 
     // ── NEW: after calling ENGAGE, move to next COVER in 2 s
     setTimeout(() => {
@@ -1058,7 +1068,7 @@ window.addEventListener('keydown', e => {
 
    // ── NEW: check for valid hit (inside ICC circle or any radar wedge)
    const icc = statics.find(s => s.type === 'icc');
-   const inCircle = icc && distNm(icc, t) <= 20;
+   const inCircle = icc && distNm(icc, t) <= 15;
       const inWedge = statics
      .filter(s => s.type === 'rad' && s.wedgeDir != null)
      .some(s => insideWedge(s, t));
