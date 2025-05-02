@@ -449,7 +449,7 @@ function drawStatics() {
 if (s.type === 'rad') {
   // 1) draw the wedge as before (if wedgeDir is set)
   if (s.wedgeDir != null) {
-    const halfAngle = 45;
+    const halfAngle = 50;
     const radiusNm  = 50;
     drawWedge(ctx, s,
               s.wedgeDir - halfAngle,
@@ -491,7 +491,7 @@ if (s.type === 'rad') {
   ctx.fill();
 
   // draw 20 nm shaded circle around ICC
-  const rpx = nmToPx(20);
+  const rpx = nmToPx(15);
   ctx.save();
     ctx.fillStyle = 'rgba(255,214,10,0.1)';  // light yellow, 10% opacity
     ctx.beginPath();
