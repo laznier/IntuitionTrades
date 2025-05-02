@@ -275,13 +275,16 @@ let coverTimer = null, practiceSaveIndex = null;
 
   bullseye = { x:cx, y:cy };
 
-  // ── NEW: point every radar at the bullseye to get the true initial wedgeDir
-  statics.forEach(s => {
-    if (s.type === 'rad') {
-      s.wedgeDir = bearing(s, bullseye);
-    }
-  });
+  // ── Point every radar EXACTLY away from B/E ───────────────
+   statics.forEach(s => {
+   if (s.type === 'rad') {
+     // direct bearing from B/E to radar gives the "away" direction
+     s.wedgeDir = bearing(bullseye, s);
+   }
+ });
+
 }
+
 
 
 
@@ -369,8 +372,8 @@ initTracks();
   const d  = Math.hypot(dx, dy);
   if (d > 50) return false;
 
-  // 2) wedge centerline in canvas coords uses toRad(d) = (90 - d) * π/180
-  const θ  = (90 - s.wedgeDir) * Math.PI/180;
+    // 2) wedge centerline in canvas coords uses toRad(d) = (d - 90) * π/180
+    const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
   const ay = Math.sin(θ);
 
@@ -402,13 +405,15 @@ function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
   ctx.save();
   ctx.beginPath();
   ctx.fillStyle = 'rgba(255,214,10,0.1)';
-  const toRad = d => (90 - d) * Math.PI/180;
+  // 0°=north, 90°=east → subtract 90 to get canvas 0 at +x
+  const toRad = d => (d - 90) * Math.PI/180;
   ctx.moveTo(p.x, p.y);
-  ctx.arc(p.x, p.y, rpx, toRad(startDeg), toRad(endDeg), true);
+  ctx.arc(p.x, p.y, rpx, toRad(startDeg), toRad(endDeg), false);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
+
     // ─── DRAW ───────────────────────────────────────────────────────────
 
 
@@ -956,15 +961,10 @@ window.addEventListener('keydown', e => {
     return;
   }
  // ─── ‘O’ sets exact wedge centerline under the cursor ────────
-  if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
+   if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
     const s = selectedStatic;
-    // vector from radar→cursor in world coords
-    const dx = mouse.wx - s.x;
-    const dy = mouse.wy - s.y;
-    // canvas uses toRad(d) = (90 - d) * π/180, so invert that:
-    const angRad = Math.atan2(dy, dx);
-    const dir    = (90 - angRad * 180/Math.PI + 360) % 360;
-    s.wedgeDir   = Math.round(dir);
+    // use your bearing util (0° north, 90° east)
+    s.wedgeDir = bearing(s, { x: mouse.wx, y: mouse.wy });
     feedbackEl.textContent =
       `Radar ${s.id} wedge set to ${s.wedgeDir}°`;
   }
