@@ -1429,6 +1429,7 @@ if (possible) {
     // vanish after 6 seconds
     setTimeout(() => {
       t.destroyed = true;
+      t.tag       = null;  
       nextQueueTrack();
     }, 6000);
     return;
@@ -1440,6 +1441,7 @@ if (possible) {
   // vanish after 6 seconds
   setTimeout(() => {
     t.destroyed = true;
+    t.tag       = null;  
     nextQueueTrack();
   }, 6000);
   return;
