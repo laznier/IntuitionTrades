@@ -974,9 +974,39 @@ canvas.addEventListener('contextmenu', e => {
 });
 
     
-// ─── UNIFIED KEY HANDLER (desktop + mobile) ───────────────────────────
+// ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
 window.addEventListener('keydown', e => {
-  const k = e.key.toLowerCase();
+  const k = e.key;
+
+  // ─── PAN WITH ARROWS ────────────────────────────────────────────
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
+    e.preventDefault();
+    // pixels for 10 nautical miles:
+    const delta = 10 / CFG.nmPerPixel;
+    switch (k) {
+      case 'ArrowUp':    offY -= delta; break;  // pan north
+      case 'ArrowDown':  offY += delta; break;  // pan south
+      case 'ArrowLeft':  offX -= delta; break;  // pan west
+      case 'ArrowRight': offX += delta; break;  // pan east
+    }
+    return;
+  }
+
+  // ─── ZOOM WITH + / - ─────────────────────────────────────────────
+  if (k === '+' || k === '-') {
+    e.preventDefault();
+    const f = k === '+' ? 1.1 : 1/1.1;
+    // zoom around last mouse position
+    const cx = mouse.sx, cy = mouse.sy;
+    const world = scrToWorld(cx, cy);
+    scale *= f;
+    offX = world.x - cx / scale;
+    offY = world.y - cy / scale;
+    return;
+  }
+
+  // ─── LOWERCASE FOR REST OF HOTKEYS ───────────────────────────────
+  const key = k.toLowerCase();
 
   // ─── R sets new bullseye ─────────────────────────────────────
   if (k === 'r') {
