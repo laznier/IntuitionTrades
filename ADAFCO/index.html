@@ -156,6 +156,14 @@
   margin: 0;
   font-size: 3rem;
 }
+#fireballBtn {
+  position: fixed;
+  bottom: 3rem;
+  right: 1rem;
+  z-index: 10;
+  background: var(--warn);
+  color: #fff;
+}
 
   </style>
 </head>
@@ -171,6 +179,9 @@
     <div id="status">Free mode</div>
     <div id="feedback"></div>
   </header>
+
+  <button id="fireballBtn" disabled>FIREBALL</button>
+
 
   <canvas id="scope"></canvas>
   <div id="helpOverlay">
@@ -269,8 +280,17 @@
       maxSpeedKts: 800,
       destroyMs: 6000,
       autoKillMs: 10000,
-      rounds: 10
+      rounds: 10,
+      tbmCount:      3,
+  tbmMinDistNm:  5,
+  tbmMaxDistNm:  10,
+  tbmAltitude:   999,
+  tbmSpeedKts:   2000,
+  tbmWindowMs:   null,    // will be set per wave
+
     };
+
+    let tbmWaves = [];        // active TBM waves
 
     let worldWidth, worldHeight;
     let bullseye, statics = [], tracks = [];
@@ -282,7 +302,11 @@
     let selectedTrack2 = null, selectedStatic2 = null;
     let mode='free', phase='', curTrack=null, killTimer=null;
     let round=0, score=0;
-    let tagMode=0, tagLabels=['OFF','B/E','JTN','INFO','ALL'];
+    // ─── TAG MODES ─────────────────────────────────────────────
+// ─── TAG MODES ─────────────────────────────────────────────
+let tagMode   = 0,
+    tagLabels = ['OFF','B/E','JTN','INFO','ALL','ALT']; 
+
     let compassOn = false;
 let level = 1;
 let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
@@ -400,7 +424,11 @@ function newTrack(){
         cy     = worldHeight/2,
         dx     = bullseye.x - cx,
         dy     = bullseye.y - cy,
-        radius = CFG.maxSpawnNm / CFG.nmPerPixel;
+               // choose spawn distance between 50 and 190 NM
+       minSpawnNm   = 50,
+      maxSpawnNm   = 190,
+       spawnDistNm  = Math.random() * (maxSpawnNm - minSpawnNm) + minSpawnNm,
+       radius       = spawnDistNm / CFG.nmPerPixel;
 
   let ang, dot;
   // keep drawing a full-circle angle until it's truly opposite the (dx,dy) vector
@@ -450,7 +478,67 @@ function initTracks(){
 }
 initTracks();
 
+function spawnTbmWave() {
+  const now = Date.now();
+  const icc = statics.find(s => s.type === 'icc');
+  const origin = { x: icc.x, y: icc.y };
+  const wave = { spawn: now, impact: null, resolved: false };
 
+  for (let i = 0; i < CFG.tbmCount; i++) {
+    // random bearing and distance
+    const ang    = Math.random() * 2 * Math.PI;
+    const distNm = 200;    // always 200 NM
+    const px = origin.x + Math.cos(ang) * (distNm / CFG.nmPerPixel);
+    const py = origin.y + Math.sin(ang) * (distNm / CFG.nmPerPixel);
+    const heading = bearing({ x: px, y: py }, origin);
+
+    const t = {
+      id:       `TBM${i+1}`,
+      x:        px,
+      y:        py,
+      heading,
+      speed:    CFG.tbmSpeedKts,
+      alt:      CFG.tbmAltitude,
+      tag:      null,
+      destroyed: false,
+      everEngaged: false,
+      isTbm:    true
+    };
+    // compute time‑to‑impact
+    const timeToImpactMs = (distNm / CFG.tbmSpeedKts) * 3600 * 1000;
+    wave.impact = now + timeToImpactMs;
+    setTimeout(() => {
+      // if wave not resolved by FIREBALL:
+      if (!wave.resolved) {
+        score -= 2;
+        feedbackEl.textContent = "–2 points for contract violation";
+      }
+      wave.resolved = true;
+    }, timeToImpactMs);
+
+    tracks.push(t);
+  }
+
+  // enable FIREBALL button for this wave
+  tbmWaves.push(wave);
+  fireballBtn.disabled = false;
+  CFG.tbmWindowMs = wave.impact - now;
+}
+
+const fireballBtn = document.getElementById('fireballBtn');
+
+fireballBtn.addEventListener('click', () => {
+  const now = Date.now();
+  tbmWaves.forEach(wave => {
+    if (!wave.resolved && now >= wave.spawn && now <= wave.impact) {
+      wave.resolved = true;
+      score += 2;
+      feedbackEl.textContent = "FIREBALL FIREBALL FIREBALL!";
+    }
+  });
+  // disable until next wave
+  fireballBtn.disabled = true;
+});
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -665,72 +753,130 @@ function drawStatics() {
   });
 }
 
-
-
-
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
 function drawTracks(now) {
-  // ─── 1) expire any stale tags older than vanish timeout ─────────────────
+  // 1) expire any stale tags
   tracks.forEach(o => {
     if (o.tag && now - o.tagTime > CFG.destroyMs) {
       o.tag = null;
     }
   });
 
-  // ─── 2) now proceed with the normal drawing logic ─────────────────────
+  // 2) precompute common colors
   const colHostile   = getComputedStyle(document.documentElement).getPropertyValue('--track');
   const colText      = getComputedStyle(document.documentElement).getPropertyValue('--text');
   const colTag       = getComputedStyle(document.documentElement).getPropertyValue('--braa');
   const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
 
+  // 3) draw each track
   tracks.forEach(o => {
-    if (o.destroyed) return;     // skip dead
-    // choose color
+    if (o.destroyed) return;  // skip dead
+
+    // 3a) special TBM icon
+    if (o.isTbm) {
+      for (let i = 0; i < 4; i++) {
+        ctx.save();
+          ctx.translate(o.x, o.y);
+          ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180); // spinning effect
+          ctx.beginPath();
+            ctx.moveTo(0, -6);
+            ctx.lineTo(3, 0);
+            ctx.lineTo(-3, 0);
+          ctx.closePath();
+          ctx.fillStyle = 'red';
+          ctx.fill();
+        ctx.restore();
+      }
+      return;  // done with TBMs
+    }
+
+    // 3b) normal hostile/friendly fill color
     ctx.fillStyle = o.friendly
       ? (o.alt > 100 ? 'green' : 'blue')
       : colHostile;
 
-    // draw triangle
+    // 3c) draw the little triangle
     ctx.save();
       ctx.translate(o.x, o.y);
       ctx.rotate(d2r(o.heading));
       ctx.beginPath();
-      ctx.moveTo(0, -6); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(4, 4);
+        ctx.lineTo(-4, 4);
+      ctx.closePath();
       ctx.fill();
     ctx.restore();
 
-    // primary & secondary highlights
-    if (o === selectedTrack)  drawCircle(ctx, o, 3), ctx.strokeStyle = colText, ctx.stroke();
-    if (o === selectedTrack2) ctx.strokeStyle = colHighlight, ctx.strokeRect(o.x-12,o.y-12,24,24);
+    // 3d) highlight selections
+    if (o === selectedTrack) {
+      ctx.strokeStyle = colText;
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (o === selectedTrack2) {
+      ctx.strokeStyle = colHighlight;
+      ctx.lineWidth   = 2;
+      ctx.strokeRect(o.x - 12, o.y - 12, 24, 24);
+    }
 
-    // draw the tag if still present
+    // 3e) draw tag text
     if (o.tag) {
-      ctx.font      = '10px monospace';
-      ctx.textAlign = 'center';
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle = colTag;
+      ctx.fillStyle    = colTag;
       ctx.fillText(o.tag, o.x, o.y - 8);
     }
   });
 
+
+
   // optional overlay tags in practice mode
-  if (tagMode) {
+   // ─── overlay TAGS ──────────────────────────────────────────
+   if (tagMode) {
     tracks.forEach(o => {
       if (o.destroyed) return;
-      let lines = [];
-      if ([1,4].includes(tagMode)) lines.push(`${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`);
-      if ([2,4].includes(tagMode)) lines.push(o.id);
-      if ([3,4].includes(tagMode)) lines.push(`${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`);
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'left';
+
+      const lines = [];
+
+      // ① B/E range
+      if ([1, 4].includes(tagMode))
+        lines.push(
+          `${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`
+        );
+
+      // ② JTN
+      if ([2, 4].includes(tagMode)) lines.push(o.id);
+
+      // ③ INFO (hdg/alt/spd)
+      if ([3, 4].includes(tagMode))
+        lines.push(
+          `${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`
+        );
+
+      // ④ ALT‑ONLY (green)
+      if (tagMode === 5) lines.push(('000' + o.alt).slice(-3));
+
+      // ── draw ───────────────────────────────────────────────
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      lines.forEach((ln,i) => {
-        ctx.fillStyle = (tagMode===1 && i===0) ? colHighlight : colText;
-        ctx.fillText(ln, o.x+8, o.y-8 + i*12);
+
+      const colAlt = getComputedStyle(document.documentElement)
+                     .getPropertyValue('--icc');   // same bright green
+
+      lines.forEach((ln, i) => {
+        ctx.fillStyle =
+          tagMode === 1 && i === 0 ? colHighlight :         // yellow B/E
+          tagMode === 5            ? colAlt        : colText; // green ALT
+        ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
       });
     });
   }
 }
+
 
 
 
@@ -797,10 +943,20 @@ function drawTracks(now) {
     o.x = (o.x + vx + worldWidth) % worldWidth;
     o.y = (o.y + vy + worldHeight) % worldHeight;
 
-    // Center collision → final score
-    if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
-      showFinalScore();
-    }
+// Center collision → hostiles still kill the game, friendlies/TBMs just vanish
+if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
+  if (!o.friendly && !o.isTbm) {
+    // only hostiles cause game over
+    showGameOver('center');
+    return;
+  } else {
+    // friendly or TBM: just disappear and keep going
+    o.destroyed = true;
+    return;
+  }
+}
+
+
   });
 }
 
@@ -1448,7 +1604,7 @@ if (possible) {
   curTrack.destroyed = true;
 
   // advance: either next level or next cover
-  if (tracks.every(tr => tr.destroyed)) {
+  if (trackQueue.every(tr => tr.destroyed)) {
     showLevelComplete();
   } else {
     nextQueueTrack();
@@ -1458,6 +1614,7 @@ if (possible) {
   }
 });
 
+const practiceBtn = document.getElementById('practiceBtn');
 
 
     // ─── PRACTICE MODE INITIALIZER & QUEUE ───────────────────────────────
@@ -1554,12 +1711,70 @@ function finishEngage() {
   nextQueueTrack();
 }
 
-// ─── showLevelComplete: pause, bump speed/level, respawn & resume ───────
+/**
+ * (Re)builds the tracks/friendlies/TBMs for a given level
+ * and kicks off practice mode on that level.
+ */
+ function setupLevel(lv) {
+  // Clear any timers
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+  clearTimeoutAnyPendingTbmTimers();  // if you’ve stored them
+
+  // Reset state
+  mode             = 'practice';
+  round            = 0;
+  score            = 0;
+  level            = lv;
+  speedMultiplier  = 1 + 0.5 * (lv - 1);
+
+   // ── Reset NASAM ───────────────────────────────────────────────
+ iccMissiles      = 6;
+ iccDisabledUntil = 0;
+
+ // ── Reset FIREBALL ────────────────────────────────────────────
+ tbmWaves = [];
+ fireballBtn.disabled = true;
+
+  // Build static world if needed (we assume statics are already there)
+  // 1) Spawn friendlies on level 2
+  const keepers = [];
+  if (lv >= 2) {
+    const icc = statics.find(s => s.type==='icc');
+    for (let i=0; i<3; i++) {
+      const t = newTrack();
+      t.friendly = true;
+      t.heading  = bearing(t, icc);
+      t.alt      = 200;
+      t.destAlt  = 0;
+      keepers.push(t);
+    }
+  }
+  // 2) Spawn hostiles
+  const hostiles = Array.from({length: CFG.trackCount}, () => newTrack());
+  tracks = hostiles.concat(keepers);
+
+  // 3) Reset the practice queue
+  trackQueue  = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+  trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+  queueIndex  = 0;
+  negatedStack= [];
+
+  // 4) Update button text & status
+  practiceBtn.textContent = 'Free Mode';
+  statusEl.textContent   = '';
+
+  // 5) Start
+  nextQueueTrack();
+}
+
+// ─── showLevelComplete: rebuild hostiles only, preserve friendlies & TBMs ─────────────────
 function showLevelComplete() {
   mode = 'paused';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
 
+  // show level overlay
   const ov = document.createElement('div');
   ov.id = 'levelOverlay';
   ov.innerHTML = `
@@ -1570,36 +1785,52 @@ function showLevelComplete() {
 
   setTimeout(() => {
     ov.remove();
-    // reset & bump
-    round            = 0;
-    speedMultiplier += 0.5;  // e.g. 1.0→1.5→2.0…
+    round = 0;
+    speedMultiplier += 0.5;
     level++;
-    // respawn & requeue
-    initTracks();
-    // ══ LEVEL 2: add up to 3 friendly tracks landing at ICC ══
+
+    // LEVEL 2 → spawn 3 friendlies
     if (level === 2) {
-      const icc = statics.find(s=>s.type==='icc');
-      // generate 3 friendly at random edge positions
-      for (let i=0; i<3; i++) {
+      const icc = statics.find(s => s.type === 'icc');
+      for (let i = 0; i < 3; i++) {
         const t = newTrack();
         t.friendly = true;
-        // override color later in drawTracks
-        // set heading toward ICC
-        t.heading = bearing(t, icc);
-        // start high altitude
-        t.alt     = 200;
-        t.destAlt = 0;
+        t.heading  = bearing(t, icc);
+        t.alt      = 200;
+        t.destAlt  = 0;
         tracks.push(t);
       }
     }
-    trackQueue = tracks.filter(t => !t.destroyed);
-    trackQueue.sort((a,b)=>distNm(bullseye,a)-distNm(bullseye,b));
-    queueIndex  = 0;
+
+    // LEVEL 3 → schedule TBM wave
+    if (level === 3) {
+      const delay = Math.random() * 2 * 60 * 1000;
+      setTimeout(spawnTbmWave, delay);
+    }
+
+    // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
+    // 1) pull out all the friendlies and TBMs we want to keep
+    const keepers = tracks.filter(t => t.friendly || t.isTbm);
+    // 2) rebuild exactly CFG.trackCount new hostiles
+    const newHostiles = Array.from({ length: CFG.trackCount }, () => newTrack());
+    // 3) merge back
+    tracks = newHostiles.concat(keepers);
+
+    // ─── RE‑QUEUE EVERYTHING ───────────────────────────────────
+    trackQueue = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+    trackQueue.sort((a, b) => distNm(bullseye, a) - distNm(bullseye, b));
+    queueIndex   = 0;
     negatedStack = [];
+
     mode = 'practice';
     nextQueueTrack();
+
   }, 2000);
 }
+
+
+
+
 
 // ─── showFinalScore: final-game overlay + full reset ────────────────────
 function showFinalScore() {
@@ -1631,47 +1862,59 @@ function showFinalScore() {
 
 
 
-// ─── SHOW GAME OVER & TRY AGAIN ─────────────────────────────────────
-function showGameOver(reason){
+function showGameOver(reason) {
   mode = 'gameover';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
 
-  // Deduct center-hit penalty if applicable
-  if (reason === 'center') {
-    score -= 10;
-  }
+  if (reason === 'center') score -= 10;
 
-  
-  // Build overlay
+  // Build overlay with two buttons
   const ov = document.createElement('div');
   ov.id = 'gameOverOverlay';
   ov.innerHTML = `
     <div id="gameOverBox">
       <h1>GAME OVER</h1>
       <p>Your score: ${score}</p>
-      <button id="retryBtn">TRY AGAIN?</button>
+      <button id="restartLevelBtn">Restart Level</button>
+      <button id="restartGameBtn">Restart Game</button>
     </div>`;
   document.body.appendChild(ov);
 
-  // Retry handler
-  document.getElementById('retryBtn').onclick = () => {
+  // Restart *this* level
+  document.getElementById('restartLevelBtn').onclick = () => {
     ov.remove();
-    document.getElementById('practiceBtn').click(); // restart practice
+    setupLevel(level);
   };
+
+  // Restart *from* level 1
+  document.getElementById('restartGameBtn').onclick = () => {
+  ov.remove();
+
+  // Optional: reset view
+  scale = 1;
+  offX = offY = 0;
+
+  // Reset all world state before level 1
+  tracks = [];
+  tbmWaves = [];
+  iccMissiles = 6;
+  iccDisabledUntil = 0;
+  fireballBtn.disabled = true;
+
+  setupLevel(1);
+};
 }
 
-// In your updateTracks(dt) collision check, swap to:
-if (mode==='practice' && Math.hypot(o.x-bullseye.x,o.y-bullseye.y) < 6) {
-  showGameOver('center');
-}
 
 
     // TAGS, HELP, MOBILE buttons
-    tagsBtn.onclick=function(){
-      tagMode=(tagMode+1)%tagLabels.length;
-      this.textContent=`TAGS: ${tagLabels[tagMode]}`;
-    };
+    tagsBtn.addEventListener('click', e => {
+  e.preventDefault();
+  tagMode = (tagMode + 1) % tagLabels.length;
+  tagsBtn.textContent = `TAGS: ${tagLabels[tagMode]}`;
+});
+
     document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
     document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
     document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
