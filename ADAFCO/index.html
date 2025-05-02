@@ -175,50 +175,75 @@
   <canvas id="scope"></canvas>
   <div id="helpOverlay">
     <h3>How to Play</h3>
-    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences. Each sequence follows:</p>
+    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences.<br>
+       Each sequence is:</p>
     <ol>
       <li>
         <strong>COVER</strong><br>
-        Click the track under the current B/E prompt, then press <strong>C</strong> (Cover).
+        Click the track under the current B/E prompt, then press <strong>C</strong>.
       </li>
       <li>
         <strong>NEGATE or AFFIRM</strong><br>
-        • If the prompted track is <em>not</em> on B/E, press <strong>N</strong> (Negate) to skip.<br>
-        • Otherwise press <strong>A</strong> (Affirm) to move to Engage.
+        • If the prompted track is <em>not</em> on B/E, press <strong>N</strong> to Negate.<br>
+        • Otherwise press <strong>A</strong> to Affirm → ENGAGE.
       </li>
       <li>
-        <strong>AWAY</strong><br>
-        Press <strong>W</strong> to send Birds Away. Must be inside the ICC circle or any radar wedge.
+        <strong>AWAY (Birds Away)</strong><br>
+        Press <strong>W</strong> to fire. Must be inside the <strong>ICC circle</strong> or any <strong>radar wedge</strong>.
       </li>
       <li>
-        <strong>KILL/DROP</strong><br>
-        Press <strong>K</strong> to kill. Auto-kill after <strong>6 s</strong> if you wait.
+        <strong>VANISHED</strong><br>
+        Target auto‑vanishes <strong>6 s</strong> after a valid Birds Away. Or press <strong>K</strong> to Kill/Drop (auto‑kill after 6 s).
       </li>
     </ol>
   
-    <h3>Scoring</h3>
+    <h3>Core Scoring</h3>
     <ul>
-      <li><strong>+1</strong> point for each correct Cover→Affirm→Away→Vanished sequence.</li>
-      <li><strong>–1</strong> point if Away misses (Bird Trashed).</li>
-      <li><strong>–5</strong> points for an ROE violation (Away before engaging).</li>
-      <li><strong>0</strong> points for a correct Negate.</li>
+      <li><strong>+1</strong> point: correct Cover→Affirm→Away→Vanished.</li>
+      <li><strong>–1</strong> point: Birds Away missed (“Bird Trashed”).</li>
+      <li><strong>–5</strong> points: ROE violation (Away before ENGAGE).</li>
+      <li><strong>–0</strong> points: correct Negate.</li>
     </ul>
   
-    <h3>Hotkeys & Controls</h3>
+    <h3>New Friendly & Fratricide Rules</h3>
     <ul>
-      <li><strong>R</strong>: <em>Set new Bullseye</em> at cursor and respawn tracks.</li>
-      <li><strong>C</strong>: Cover</li>
-      <li><strong>A</strong>: Affirm → Engage</li>
-      <li><strong>N</strong>: Negate</li>
-      <li><strong>W</strong>: Away (Birds Away)</li>
-      <li><strong>K</strong>: Kill/Drop</li>
-      <li><strong>Click/Drag</strong>: Draw BRAA line from your drag start to cursor</li>
-      <li><strong>Right-click</strong>: Secondary select (show 2️⃣ card)</li>
-      <li><strong>Mobile Buttons</strong>: Tap the onscreen buttons (C, A, N, W, K, R) to trigger the same hotkeys.</li>
+      <li>Level 2 introduces <strong>friendly tracks</strong> heading into ICC.</li>
+      <li>If you fire on a friendly <em>inside</em> the circle or wedge:<br>
+        → –20 points (Fratricide)<br>
+        → friendly fades out after <strong>6 s</strong> (no other penalty).</li>
+      <li>If you fire on a friendly <em>outside</em> any shooting geometry:<br>
+        → –1 (Bird Trashed) and –5 (ROE) = –6 total, and sequence ends immediately.</li>
+      <li>You can never issue COVER or ENGAGE on a friendly—only on hostiles.</li>
+    </ul>
+  
+    <h3>NASAM (ICC) Missile Logic</h3>
+    <ul>
+      <li>The ICC has <strong>4 missiles</strong>.</li>
+      <li>Every Birds Away <em>inside</em> the ICC circle consumes one.</li>
+      <li>After the 4th is fired, ICC goes “Weapons Red” for <strong>5 minutes</strong>.<br>
+        • While red, any further W inside the circle is blocked and shows “NASAM Weapons Red.”<br>
+        • After 5 minutes, missile count resets to 4 (circle turns back yellow).</li>
+    </ul>
+  
+    <h3>Radar Wedge Animation & Disable</h3>
+    <ul>
+      <li>Press <strong>O</strong> when a radar is selected to re‑aim its wedge.<br>
+        • On re‑aim, that wedge animates rotating over <strong>5 minutes</strong> from old→new bearing.<br>
+        • While rotating, it’s “Weapons Red” (no Birds Away allowed in that wedge).</li>
+      <li>Only wedges that are both fully deployed (no animation in progress) <em>and</em> not in red timeout can be used for shooting.</li>
+    </ul>
+  
+    <h3>Timings & Auto‑Cycling</h3>
+    <ul>
+      <li><strong>Cover timeout</strong>: 10 s → auto‑cycle COVER to next track.</li>
+      <li><strong>Re‑prompt ENGAGE</strong>: 10 s after an ENGAGE without kill.</li>
+      <li><strong>Auto‑vanish/Kill</strong>: 6 s after Away or K key.</li>
+      <li><strong>Wedge rotate & NASAM reload</strong>: 5 minutes each.</li>
     </ul>
   
     <button id="closeHelp">Close</button>
   </div>
+  
   
 
   <div id="mobileControls">
