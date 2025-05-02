@@ -670,85 +670,68 @@ function drawStatics() {
 
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
 function drawTracks(now) {
-  const colHostile = getComputedStyle(document.documentElement).getPropertyValue('--track');
-  const colText    = getComputedStyle(document.documentElement).getPropertyValue('--text');
-  const colTag     = getComputedStyle(document.documentElement).getPropertyValue('--braa');
-  const colHighlight2 = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+  // ─── 1) expire any stale tags older than vanish timeout ─────────────────
+  tracks.forEach(o => {
+    if (o.tag && now - o.tagTime > CFG.destroyMs) {
+      o.tag = null;
+    }
+  });
+
+  // ─── 2) now proceed with the normal drawing logic ─────────────────────
+  const colHostile   = getComputedStyle(document.documentElement).getPropertyValue('--track');
+  const colText      = getComputedStyle(document.documentElement).getPropertyValue('--text');
+  const colTag       = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+  const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
 
   tracks.forEach(o => {
-    // ─── pick fill color ─────────────────────────────────────────
-    if (o.friendly) {
-      // green when high, blue when descending low
-      ctx.fillStyle = o.alt > 100 ? 'green' : 'blue';
-    } else {
-      ctx.fillStyle = colHostile;
-    }
+    if (o.destroyed) return;     // skip dead
+    // choose color
+    ctx.fillStyle = o.friendly
+      ? (o.alt > 100 ? 'green' : 'blue')
+      : colHostile;
 
-    // ─── skip destroyed tracks ───────────────────────────────────
-    if (o.destroyed) {
-      return;
-    }
-
-    // ─── draw the little triangle ────────────────────────────────
+    // draw triangle
     ctx.save();
       ctx.translate(o.x, o.y);
       ctx.rotate(d2r(o.heading));
       ctx.beginPath();
-      ctx.moveTo(0, -6);
-      ctx.lineTo(4, 4);
-      ctx.lineTo(-4, 4);
-      ctx.closePath();
+      ctx.moveTo(0, -6); ctx.lineTo(4, 4); ctx.lineTo(-4, 4); ctx.closePath();
       ctx.fill();
     ctx.restore();
 
-    // ─── highlight primary selection ─────────────────────────────
-    if (o === selectedTrack) {
-      ctx.strokeStyle = colText;
-      ctx.lineWidth   = 2;
-      ctx.beginPath();
-      ctx.arc(o.x, o.y, 12, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    // primary & secondary highlights
+    if (o === selectedTrack)  drawCircle(ctx, o, 3), ctx.strokeStyle = colText, ctx.stroke();
+    if (o === selectedTrack2) ctx.strokeStyle = colHighlight, ctx.strokeRect(o.x-12,o.y-12,24,24);
 
-    // ─── highlight secondary selection ───────────────────────────
-    if (o === selectedTrack2) {
-      ctx.strokeStyle = colHighlight2;
-      ctx.lineWidth   = 2;
-      ctx.strokeRect(o.x - 12, o.y - 12, 24, 24);
-    }
-
-    // ─── practice‐mode tag text ─────────────────────────────────
+    // draw the tag if still present
     if (o.tag) {
-      ctx.font         = '10px monospace';
-      ctx.textAlign    = 'center';
+      ctx.font      = '10px monospace';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle    = colTag;
+      ctx.fillStyle = colTag;
       ctx.fillText(o.tag, o.x, o.y - 8);
     }
   });
 
-  // ─── optional overlay tags in practice mode ───────────────────
+  // optional overlay tags in practice mode
   if (tagMode) {
     tracks.forEach(o => {
-      const lines = [];
-      if (tagMode === 1 || tagMode === 4) lines.push(
-        `${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`
-      );
-      if (tagMode === 2 || tagMode === 4) lines.push(o.id);
-      if (tagMode === 3 || tagMode === 4) lines.push(
-        `${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`
-      );
-
-      ctx.font         = '10px monospace';
-      ctx.textAlign    = 'left';
+      if (o.destroyed) return;
+      let lines = [];
+      if ([1,4].includes(tagMode)) lines.push(`${('000'+bearing(bullseye,o)).slice(-3)}/${distNm(bullseye,o)}`);
+      if ([2,4].includes(tagMode)) lines.push(o.id);
+      if ([3,4].includes(tagMode)) lines.push(`${('000'+o.heading).slice(-3)}°/${('000'+o.alt).slice(-3)}/${o.speed}`);
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       lines.forEach((ln,i) => {
-        ctx.fillStyle = (tagMode===1 && i===0) ? colHighlight2 : colText;
-        ctx.fillText(ln, o.x + 8, o.y - 8 + i*12);
+        ctx.fillStyle = (tagMode===1 && i===0) ? colHighlight : colText;
+        ctx.fillText(ln, o.x+8, o.y-8 + i*12);
       });
     });
   }
 }
+
 
 
  
