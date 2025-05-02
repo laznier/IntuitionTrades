@@ -19,6 +19,8 @@
       height: 100%;
     }
     body {
+    
+  background: var(--bg);
       margin: 0;
       background: var(--bg);
       color: var(--text);
@@ -269,6 +271,10 @@ let coverTimer = null, practiceSaveIndex = null;
           compassBtn = document.getElementById('compassBtn'),
           helpOverlay= document.getElementById('helpOverlay');
     const label      = document.getElementById('cursorLabel');
+
+    // ─── load background ─────────────────────────────────────────────
+const bgImg = new Image();
+bgImg.src = '/images/island.png';
 
     function resize () {
       worldWidth  = canvas.width  = window.innerWidth;
@@ -695,23 +701,74 @@ function drawTracks(now) {
 
 
     let lastTime=performance.now();
-    function animate(now){
-      const dt=(now-lastTime)/1000;
-      lastTime=now;
-      updateTracks(dt);
+  // ─── MAIN LOOP ──────────────────────────────────────────────────────
+  function animate(now) {
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+  updateTracks(dt);
 
-      ctx.setTransform(scale,0,0,scale,-offX*scale,-offY*scale);
-      ctx.clearRect(offX, offY, worldWidth/scale, worldHeight/scale);
+  // ─── A) clear & fill “sea” background ───────────────────────
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      drawStatics();
-      drawCompass();
-      drawTracks(now);
-      drawDragLine();
-      drawRubber();
+  // ─── B) draw screen‐space vignette UNDER everything else ────
+  //    (will never move or scale with world)
+  const cx = canvas.width  / 2;
+  const cy = canvas.height / 2;
+  // inner radius = roughly island radius in screen px (tweak as needed)
+  const inner = Math.min(canvas.width, canvas.height) * 0.2;
+  // outer radius = diagonal to cover full screen corners
+  const outer = Math.hypot(canvas.width, canvas.height) / 2;
+  const vg = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(10,10,13,1)');  // same as var(--bg)
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      requestAnimationFrame(animate);
-    }
-    requestAnimationFrame(animate);
+  // ─── C) now switch into world coords (pan & zoom) ──────────
+  ctx.setTransform(
+    scale, 0,
+    0, scale,
+    -offX * scale,
+    -offY * scale
+  );
+
+  // ─── D) draw island, statics, tracks, etc. ────────────────
+  if (bgImg.complete) {
+  // ① compute aspect ratio
+  const ratio = bgImg.width / bgImg.height;
+
+  // ② decide on one “world-space” size—e.g. ¼ of the world’s height
+  const imgH = worldHeight / 3;
+  const imgW = imgH * ratio;   // keeps w/h = original
+
+  // ③ compute the 5 NM east shift in world-pixels
+  const shiftPx = 5 / CFG.nmPerPixel;
+
+  // ④ center that resized island on (bullseye.x + shiftPx, bullseye.y)
+  const destX = bullseye.x + shiftPx - imgW / 3;
+  const destY = bullseye.y             - imgH / 2;
+
+  ctx.drawImage(
+    bgImg,
+    0, 0, bgImg.width, bgImg.height,  // source
+    destX, destY,                     // dest top-left
+    imgW, imgH                        // dest size (keeps aspect)
+  );
+}
+
+
+  drawStatics();
+  drawCompass();
+  drawTracks(now);
+  drawDragLine();
+  drawRubber();
+
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
     function storeMouse(e) {
