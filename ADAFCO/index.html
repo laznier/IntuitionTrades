@@ -220,7 +220,7 @@
     <ul>
       <li>The NASAM has enough missiles for<strong>4 engagements</strong>.</li>
       <li>Every Birds Away <em>inside</em> the ICC circle consumes one.</li>
-      <li>After the 4th engagement NASAM goes “Weapons Red” for <strong>5 minutes</strong> to reload.<br>
+      <li>After the 6th engagement NASAM goes “Weapons Red” for <strong>2 minutes</strong> to reload.<br>
         • While red, any further W inside the circle is blocked and shows “NASAM Weapons Red.”<br>
         • After 5 minutes, missile count resets to full (circle turns back yellow).</li>
     </ul>
@@ -228,7 +228,7 @@
     <h3>Radar Wedge Animation & Disable</h3>
     <ul>
       <li>Press <strong>O</strong> when a radar is selected to re‑aim its wedge.<br>
-        • On re‑aim, that wedge animates rotating over <strong>5 minutes</strong> from old→new bearing.<br>
+        • On re‑aim, that wedge animates rotating over <strong>1 minute</strong> from old→new bearing.<br>
         • While rotating, it’s “Weapons Red” (no Birds Away allowed in that wedge).</li>
       <li>Only wedges that are both fully deployed (no animation in progress) <em>and</em> not in red timeout can be used for shooting.</li>
     </ul>
@@ -289,7 +289,7 @@ let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
 let coverTimer = null, practiceSaveIndex = null;
 
 // NASAM state
-let iccMissiles      = 4;
+let iccMissiles      = 6;
 let iccDisabledUntil = 0;
 
 /**
@@ -309,11 +309,11 @@ function checkNasamStatus(isInsideCircle) {
   // If it's a valid circle shot and missiles remain, consume one
   if (isInsideCircle && iccMissiles > 0) {
     iccMissiles--;
-    // Last missile? go red for 5 min
+    // Last missile? go red for 2 min
     if (iccMissiles === 0) {
       feedbackEl.textContent  = 'NASAM Weapons Red';
-      iccDisabledUntil        = now + 5*60*1000;
-      setTimeout(() => { iccMissiles = 4; }, 5*60*1000);
+      iccDisabledUntil        = now + 2*60*1000;
+      setTimeout(() => { iccMissiles = 6; }, 2*60*1000);
       return true;
     }
   }
@@ -1200,9 +1200,9 @@ window.addEventListener('keydown', e => {
   s.animFrom      = s.wedgeDir;
   s.animTo        = newDir;
   s.animStart     = now;
-  s.disabledUntil = now + 5 * 60 * 1000; // 5 min in ms
+  s.disabledUntil = now + 1 * 60 * 1000; // 1 min in ms
 
-  feedbackEl.textContent = `Repositioning Launcher ${s.id} to ${newDir}°, weapons red for 5 min`;
+  feedbackEl.textContent = `Repositioning Launcher ${s.id} to ${newDir}°, weapons red for 60 seconds`;
   return;
 }
 
