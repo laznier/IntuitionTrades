@@ -164,6 +164,14 @@
   background: var(--warn);
   color: #fff;
 }
+@media (max-width: 768px) {
+  .card,
+  .card2 {
+    top: 80px !important;
+  }
+}
+
+
   </style>
 </head>
 <body>
@@ -1253,10 +1261,6 @@ function renderCard(obj, type, side) {
       left:     'auto',
       zIndex:   '15'
     });
-
-    if (isMobile && side === 'right') {
-  d.style.setProperty('top', '60px', 'important');
-}
 
   } else {
     // left‑click cards already styled via .card CSS
