@@ -495,9 +495,7 @@ function newTrack() {
     x = bullseye.x + Math.cos(ang) * radius;
     y = bullseye.y + Math.sin(ang) * radius;
 
-    // 4) wrap into [0,worldWidth) × [0,worldHeight)
-    x = ((x % worldWidth) + worldWidth) % worldWidth;
-    y = ((y % worldHeight) + worldHeight) % worldHeight;
+// 4) keep the real world coordinates — no wrapping on small screens
 
     // loop until that wrapped point really is ≥50 NM away
   } while (distNm(bullseye, { x, y }) < minSpawnNm);
@@ -1029,8 +1027,9 @@ function drawTracks(now) {
     // Move at base speed × level multiplier
     const vx = Math.sin(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
     const vy = -Math.cos(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
-    o.x = (o.x + vx + worldWidth) % worldWidth;
-    o.y = (o.y + vy + worldHeight) % worldHeight;
+        // let tracks roam in unrestricted world‑space
+    o.x += vx;
+    o.y += vy;
 
 // Center collision → hostiles still kill the game, friendlies/TBMs just vanish
 if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
