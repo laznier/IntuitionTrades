@@ -393,6 +393,8 @@ bgImg.src = '/images/island.png';
       if (!resize.didInit) {
         buildStatics();
         resize.didInit = true;
+
+        
       }
     }
     if (window.visualViewport) {
@@ -402,7 +404,7 @@ bgImg.src = '/images/island.png';
 
     function buildStatics(){
   const cx = worldWidth/2,
-        cy = worldHeight/2,
+        cy = worldHeight/1.5,
         p10 = 10 / CFG.nmPerPixel,
         ro  = 2  / CFG.nmPerPixel;
 
@@ -425,6 +427,15 @@ bgImg.src = '/images/island.png';
     { type:'ln',  id:'00111', x:cx - p10/2, y:cy - p10 },
     { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro },
   ];
+
+    // ─── correlation track at 200 NM east of the bullseye ─────────────────
+    statics.push({
+    type: 'corr',
+    id:   'FRIEND',
+    x:    cx + 200 / CFG.nmPerPixel,
+    y:    cy
+  });
+
 
   bullseye = { x:cx, y:cy };
 
@@ -780,17 +791,37 @@ function drawStatics() {
         ctx.closePath();
         ctx.fill();
       ctx.restore();
-    } else {
+    } 
+      else if (s.type === 'corr') {
+     // draw a cyan cross for correlation track
+     ctx.save();
+        ctx.strokeStyle = 'rgba(0,255,255,0.7)';
+        ctx.lineWidth   = 2;
+        const size = 10;
+        ctx.beginPath();
+        ctx.moveTo(s.x - size, s.y);
+        ctx.lineTo(s.x + size, s.y);
+        ctx.moveTo(s.x, s.y - size);
+        ctx.lineTo(s.x, s.y + size);
+        ctx.stroke();
+        ctx.fillStyle = 'cyan';
+        ctx.fillText(s.id, s.x + 8, s.y - 8);
+      ctx.restore();
+    }
+    else {
       // default icon for other statics
       ctx.strokeStyle = colICC;
       ctx.beginPath();
       ctx.arc(s.x, s.y, 6, 0, 2 * Math.PI);
       ctx.stroke();
     }
+    
     // draw the ID label
     ctx.fillStyle = colICC;
     ctx.fillText(s.id, s.x + 8, s.y);
   });
+
+  
 }
 
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
