@@ -1032,7 +1032,7 @@ if (o.isTbm) {
   } else {
     // compute how many NM we moved this frame
     const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
-    const descentPerNm = CFG.tbmAltitude / 30;   // drop from 999 MSL → 0 over 30 NM
+    const descentPerNm = 999 / 20;  
     o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
     // when we hit ground, destroy
     if (o.alt <= o.destAlt) {
@@ -1040,31 +1040,8 @@ if (o.isTbm) {
       return;
     }
   }
-  // keep heading toward the ICC as you descend
-  const icc = statics.find(s => s.type === 'icc');
-  o.heading = bearing(o, icc);
-}
 
- /// ── friendly landing: hold at 200 until inside 30 NM, then descend smoothly ──
-if (o.friendly) {
-  const distToBE = distNm(o, bullseye);
-  if (distToBE > 30) {
-    // hold at 200 until inside 30 NM
-    o.alt = 200;
-  } else {
-    // compute how many NM we moved this frame
-    const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
-    const descentPerNm = 200 / 30;   // drop 200 MSL over 30 NM
-    o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
-    // if we've reached destination altitude, remove the friendly
-    if (o.alt <= o.destAlt) {
-      o.destroyed = true;
-      return;     // skip the rest of this loop iteration
-    }
-  }
-  // always head toward ICC during the descent
-  const icc = statics.find(s => s.type === 'icc');
-  o.heading = bearing(o, icc);
+
 }
 
     if (mode === 'practice') {
