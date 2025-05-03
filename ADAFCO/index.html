@@ -446,51 +446,50 @@ bgImg.src = '/images/island.png';
  // ─── TRACKS ─────────────────────────────────────────────────────────
 const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
 
-function newTrack(){
-  const cx     = worldWidth/2,
-        cy     = worldHeight/2,
-        dx     = bullseye.x - cx,
-        dy     = bullseye.y - cy,
-               // choose spawn distance between 50 and 190 NM
-       minSpawnNm   = 50,
-      maxSpawnNm   = 190,
-       spawnDistNm  = Math.random() * (maxSpawnNm - minSpawnNm) + minSpawnNm,
-       radius       = spawnDistNm / CFG.nmPerPixel;
+// ─── TRACK SPAWNING ───────────────────────────────────────────────
+function newTrack() {
+  const minSpawnNm = 60,
+        maxSpawnNm = 190;
 
-  let ang, dot;
-  // keep drawing a full-circle angle until it's truly opposite the (dx,dy) vector
+  let x, y, heading, spawnDistNm, radius, ang;
+
+  // keep trying until the final (wrapped) point is ≥50 NM from bullseye
   do {
+    // 1) random direction
     ang = Math.random() * 2 * Math.PI;
-    dot = Math.cos(ang)*dx + Math.sin(ang)*dy;
-  } while (dot > 0);
 
-  const x       = bullseye.x + Math.cos(ang)*radius;
-  const y       = bullseye.y + Math.sin(ang)*radius;
-  const heading = bearing({x,y}, bullseye);
+    // 2) random distance between 50–190 NM
+    spawnDistNm = Math.random() * (maxSpawnNm - minSpawnNm) + minSpawnNm;
+    radius      = spawnDistNm / CFG.nmPerPixel;
 
-  // altitude in hundreds of feet (5–600)
+    // 3) compute raw world coords around bullseye
+    x = bullseye.x + Math.cos(ang) * radius;
+    y = bullseye.y + Math.sin(ang) * radius;
+
+    // 4) wrap into [0,worldWidth) × [0,worldHeight)
+    x = ((x % worldWidth) + worldWidth) % worldWidth;
+    y = ((y % worldHeight) + worldHeight) % worldHeight;
+
+    // loop until that wrapped point really is ≥50 NM away
+  } while (distNm(bullseye, { x, y }) < minSpawnNm);
+
+  // 5) compute heading back to bullseye
+  heading = bearing({ x, y }, bullseye);
+
+  // 6) altitude and speed as before
   const alt = rand(5, 600);
-
-  // speed based on altitude:
-  //  50–150 → 250–500 kts
-  // 150–300 → 400–600 kts
-  // 300–500 → 500–700 kts
   let speed;
-  if (alt <= 150) {
-    speed = rand(250, 500);
-  } else if (alt <= 300) {
-    speed = rand(400, 600);
-  } else {
-    speed = rand(500, 700);
-  }
+  if (alt <= 150)         speed = rand(250, 500);
+  else if (alt <= 300)    speed = rand(400, 600);
+  else                    speed = rand(500, 700);
 
   return {
-    id:           ('00000'+rand(1000,7776)).slice(-5),
+    id:           ('00000' + rand(1000, 7776)).slice(-5),
     x, y,
     heading,
     speed,
-        destAlt:      0,         // friendly will descend to this
-    friendly:     false,     // will be set for level 2
+    destAlt:      0,
+    friendly:     false,
     alt,
     tag:          null,
     tagTime:      0,
@@ -498,6 +497,7 @@ function newTrack(){
     everEngaged:  false
   };
 }
+
 
 
 function initTracks(){
