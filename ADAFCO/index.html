@@ -164,6 +164,12 @@
   background: var(--warn);
   color: #fff;
 }
+@media (max-width: 768px) {
+  /* hide the R button on mobile entirely */
+  #mobileControls button[data-key="r"] {
+    display: none !important;
+  }
+}
 
   </style>
 </head>
@@ -1286,10 +1292,9 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 
     // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
-     canvas.addEventListener('pointerup', e => {
-   // only handle primary (left) button here
-   if (e.button !== 0) return;
-   e.preventDefault();
+    canvas.addEventListener('pointerup', e => {
+  if (e.button !== 0 || e.target !== canvas) return;
+  e.preventDefault();
    mouse.sx = e.offsetX; mouse.sy = e.offsetY;
    mouse.px = e.clientX; mouse.py = e.clientY;
    const w = scrToWorld(mouse.sx, mouse.sy);
@@ -1300,10 +1305,9 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
  });
 
     // ─── DESKTOP CLICK fallback ────────────────────────────────
-     canvas.addEventListener('click', e => {
-   // only left-click
-   if (e.button !== 0) return;
-   e.preventDefault();
+    canvas.addEventListener('click', e => {
+  if (e.button !== 0 || e.target !== canvas) return;
+  e.preventDefault();
    mouse.sx = e.offsetX; mouse.sy = e.offsetY;
    mouse.px = e.clientX; mouse.py = e.clientY;
    const w = scrToWorld(mouse.sx, mouse.sy);
@@ -1960,9 +1964,14 @@ function showGameOver(reason) {
 
     document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
     document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
-    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn=>{
-      btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
-    });
+    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: btn.dataset.key }));
+  });
+});
+
 
     //help with scoring TBMs
     const scoreEl = document.getElementById('score');
