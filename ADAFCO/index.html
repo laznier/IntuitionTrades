@@ -388,6 +388,11 @@ function checkNasamStatus(isInsideCircle) {
 // ↓↓↓  NEW – must be declared before fitMobileView() ever runs
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
+// Distance from the very top where cards should appear
+const cardTop = () =>
+  isMobile ? document.querySelector('header').offsetHeight + 10 : 10;
+
+
 // ─── load background ─────────────────────────────────────────────
 const bgImg = new Image();
 bgImg.src = '/images/island.png';
@@ -478,7 +483,7 @@ const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
 // ─── TRACK SPAWNING ───────────────────────────────────────────────
 function newTrack() {
   const minSpawnNm = 60,
-        maxSpawnNm = 190;
+        maxSpawnNm = 170;
 
   let x, y, heading, spawnDistNm, radius, ang;
 
@@ -487,7 +492,7 @@ function newTrack() {
     // 1) random direction
     ang = Math.random() * 2 * Math.PI;
 
-    // 2) random distance between 50–190 NM
+    // 2) random distance between 50–170 NM
     spawnDistNm = Math.random() * (maxSpawnNm - minSpawnNm) + minSpawnNm;
     radius      = spawnDistNm / CFG.nmPerPixel;
 
@@ -1244,7 +1249,7 @@ function renderCard(obj, type, side) {
   if (side==='right') {
     Object.assign(d.style, {
       position: 'fixed',
-      top:      '10px',
+      top:      cardTop() + 'px',
       right:    '10px',
       left:     'auto',
       zIndex:   '15'
