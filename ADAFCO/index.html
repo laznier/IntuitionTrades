@@ -186,75 +186,78 @@
 
   <canvas id="scope"></canvas>
   <div id="helpOverlay">
-    <h3>How to Play</h3>
-    <p>Practice runs up to <strong>10</strong> Cover→Engage→Away→Vanished sequences.<br>
-       Each sequence is:</p>
+    <h3>How to Play (v2.0)</h3>
+    <p>We’ve added tag‑modes, friendly/fratricide rules, TBM waves & FIREBALL, revamped scoring, and interactive cards.</p>
+  
+    <h4>Core Sequence (Practice Mode)</h4>
     <ol>
       <li>
         <strong>COVER</strong><br>
-        Click the track under the current B/E prompt, then press <strong>C</strong>.
+        SL issues “COVER Track ID, B/E <bearing/dist</b>.”<br>
+        Click the track under the prompt, then press <strong>C</strong>.
       </li>
       <li>
-        <strong>NEGATE or AFFIRM</strong><br>
-        • If the prompted track does <em>not</em> have a targeting solution, press <strong>N</strong> to Negate.<br>
+        <strong>NEGATE</strong> / <strong>AFFIRM</strong><br>
+        • If no engagement solution → press <strong>N</strong> to Negate.<br>
         • Otherwise press <strong>A</strong> to Affirm → ENGAGE.
       </li>
       <li>
-        <strong>AWAY (Birds Away)</strong><br>
-        Press <strong>W</strong> to fire. Must be inside the <strong>NASAM circle</strong> or any <strong>Patriot Radar/Launcher wedge</strong>.
+        <strong>AWAY</strong><br>
+        Press <strong>W</strong> to fire. Must be inside the NASAM circle (15 NM) or a Patriot radar wedge (50 NM ±45°).
       </li>
       <li>
         <strong>VANISHED</strong><br>
-        Target auto‑vanishes <strong>6 s</strong> after a valid Birds Away. Or press <strong>K</strong> to force Kill/Drop for scenario management (auto‑kill after 6 s).
+        Hostiles vanish 6 s after a valid Away (or press <strong>K</strong> to force‑kill early).
       </li>
     </ol>
   
-    <h3>Core Scoring</h3>
+    <h4>Tag Modes</h4>
+    <p>Click <strong>TAGS</strong> to cycle:</p>
     <ul>
-      <li><strong>+1</strong> point: correct Cover→Affirm→Away→Vanished.</li>
-      <li><strong>–1</strong> point: Birds Away missed (“Birds Trashed”).</li>
-      <li><strong>–5</strong> points: ROE violation (Launched Missile before Engagement Order from SL).</li>
-      <li><strong>–0</strong> points: correct Negate.</li>
+      <li><strong>OFF</strong>: no overlays</li>
+      <li><strong>B/E</strong>: bearing/dist in yellow</li>
+      <li><strong>JTN</strong>: track IDs</li>
+      <li><strong>INFO</strong>: heading/altitude/speed</li>
+      <li><strong>ALL</strong>: combine B/E, JTN, INFO</li>
+      <li><strong>ALT</strong>: altitude only (in green)</li>
     </ul>
   
-    <h3>New Friendly & Fratricide Rules</h3>
+    <h4>Friendly & Fratricide Rules</h4>
     <ul>
-      <li>Level 2 introduces <strong>friendly tracks</strong> heading into ICC.</li>
-      <li>If you fire on a friendly <em>inside</em> NASAM or PATRIOT range:<br>
-        → –20 points (Fratricide)<br>
-        → friendly fades out after <strong>6 s</strong> (no other penalty).</li>
-      <li>If you fire on a friendly <em>outside</em> any shooting geometry:<br>
-        → –1 (Birds Trashed) and –5 (ROE) = –6 total, and sequence ends immediately.</li>
-      <li>SL will never issue COVER or ENGAGE on a friendly—only on hostiles.</li>
+      <li>Level 2 and above include friendly tracks.</li>
+      <li>Firing on a friendly <em>inside</em> NASAM or radar → <strong>–20</strong> points, target fades in 6 s (no further penalty).</li>
+      <li>Firing on a friendly <em>outside</em> firing geometry → <strong>–1</strong> (Bird Trashed) + <strong>–5</strong> (ROE) = <strong>–6</strong> total.</li>
+      <li>SL will never COVER or ENGAGE friendlies.</li>
     </ul>
   
-    <h3>NASAM (ICC) Missile Logic</h3>
+    <h4>TBM Waves & FIREBALL</h4>
     <ul>
-      <li>The NASAM has enough missiles for<strong>4 engagements</strong>.</li>
-      <li>Every Birds Away <em>inside</em> the ICC circle consumes one.</li>
-      <li>After the 6th engagement NASAM goes “Weapons Red” for <strong>2 minutes</strong> to reload.<br>
-        • While red, any further W inside the circle is blocked and shows “NASAM Weapons Red.”<br>
-        • After 5 minutes, missile count resets to full (circle turns back yellow).</li>
+      <li>At Level 3+, expect a wave of TBMs </li>
+      <li>Click <strong>FIREBALL</strong> while inbound → <strong>+2</strong> points and “FIREBALL FIREBALL!” feedback.</li>
+      <li>If they impact before Fireball → <strong>–2</strong> points (“TBM Impact!”).</li>
     </ul>
   
-    <h3>Radar Wedge Animation & Disable</h3>
+    <h4>Interactive Cards</h4>
     <ul>
-      <li>Press <strong>O</strong> when a radar is selected to re‑aim its wedge.<br>
-        • On re‑aim, that wedge animates rotating over <strong>1 minute</strong> from old→new bearing.<br>
-        • While rotating, it’s “Weapons Red” (no Birds Away allowed in that wedge).</li>
-      <li>Only wedges that are both fully deployed (no animation in progress) <em>and</em> not in red timeout can be used for shooting.</li>
+      <li><strong>Left‑click</strong> on any track or static to show its card (heading/alt/speed for tracks; ID & status for statics).</li>
+      <li><strong>Right‑click</strong> for a “2️⃣” card in the top‑right with the same info.</li>
     </ul>
   
-    <h3>Timings & Auto‑Cycling</h3>
+    <h4>Key Bindings & Controls</h4>
     <ul>
-      <li><strong>Cover timeout</strong>: 10 s → auto‑cycle COVER to next track.</li>
-      <li><strong>Re‑prompt ENGAGE</strong>: 10 s after an ENGAGE without kill.</li>
-      <li><strong>Auto‑vanish/Kill</strong>: 6 s after Away or K key.</li>
-      <li><strong>Wedge rotate & NASAM reload</strong>: 5 minutes each.</li>
+      <li><strong>C</strong> – COVER</li>
+      <li><strong>A</strong> – AFFIRM/ENGAGE</li>
+      <li><strong>N</strong> – NEGATE</li>
+      <li><strong>W</strong> – AWAY (fire)</li>
+      <li><strong>K</strong> – KILL (force vanish)</li>
+      <li><strong>O</strong> – re‑aim selected radar wedge</li>
+      <li><strong>R</strong> – set new bullseye</li>
+      <li>Arrows / <strong>+</strong> / <strong>–</strong> – pan/zoom</li>
     </ul>
   
     <button id="closeHelp">Close</button>
   </div>
+  
   
   
 
