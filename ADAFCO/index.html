@@ -392,7 +392,6 @@ const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 const cardTop = () =>
   isMobile ? document.querySelector('header').offsetHeight + 10 : 10;
 
-
 // ─── load background ─────────────────────────────────────────────
 const bgImg = new Image();
 bgImg.src = '/images/island.png';
@@ -1249,11 +1248,16 @@ function renderCard(obj, type, side) {
   if (side==='right') {
     Object.assign(d.style, {
       position: 'fixed',
-      top:      cardTop() + 'px',
+      top:      '10px',
       right:    '10px',
       left:     'auto',
       zIndex:   '15'
     });
+
+    if (isMobile && side === 'right') {
+  d.style.setProperty('top', '60px', 'important');
+}
+
   } else {
     // left‑click cards already styled via .card CSS
   }
