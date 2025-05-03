@@ -319,7 +319,7 @@
   tbmMinDistNm:  5,
   tbmMaxDistNm:  10,
   tbmAltitude:   999,
-  tbmSpeedKts:   2000,
+  tbmSpeedKts:   3400,
   tbmWindowMs:   null,    // will be set per wave
 
     };
@@ -343,7 +343,7 @@ let tagMode   = 0,
 
     let compassOn = false;
 let level = 1;
-let speedMultiplier = 1;  // 1.0× on Level 1, 1.1× on Level 2, etc.
+let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
 let coverTimer = null, practiceSaveIndex = null;
 
 // NASAM state
@@ -358,6 +358,7 @@ let pendingReorient  = false;
     // ─── track when we last forced a radar failure ─────────────────
 let lastRadFailure = 0;
 let nextOutageAllowed = 0;  // timestamp (ms) after which we may schedule another outage
+
 /**
  * Returns `true` if the shot should be blocked by NASAM‐weapons‐red,
  * or `false` if you should proceed with the W handler.
@@ -588,6 +589,7 @@ function spawnTbmWave() {
       heading,
       speed,
       alt:      CFG.tbmAltitude,
+     destAlt:  0,               // ← target altitude for descent
       tag:      null,
       destroyed:false,
       everEngaged:false,
@@ -1021,27 +1023,54 @@ function drawTracks(now) {
   tracks.forEach(o => {
     if (o.destroyed) return;
 
-        // ── friendly landing: hold at 200 until within 30 NM, then descend smoothly ──
-    if (o.friendly) {
-      const distToBE = distNm(o, bullseye);
-      if (distToBE > 30) {
-        // hold at 200 until inside 30 NM
-        o.alt = 200;
-      } else {
-        // descent proportional to actual distance moved this frame
-        // speed (kts) → nm/sec = o.speed / 3600
-        const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
-        const descentPerNm = 200 / 30;   // drop 200 MSL over 30 NM
-        o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
-        if (o.alt <= o.destAlt) {
-          o.destroyed = true;
-          return;
-        }
-      }
-      // always head toward ICC during descent
-      const icc = statics.find(s => s.type === 'icc');
-      o.heading = bearing(o, icc);
+    // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
+if (o.isTbm) {
+  const distToBE = distNm(o, bullseye);
+  if (distToBE > 30) {
+    // hold high until inside 30 NM
+    o.alt = CFG.tbmAltitude;
+  } else {
+    // compute how many NM we moved this frame
+    const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
+    const descentPerNm = CFG.tbmAltitude / 30;   // drop from 999 MSL → 0 over 30 NM
+    o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
+    // when we hit ground, destroy
+    if (o.alt <= o.destAlt) {
+      o.destroyed = true;
+      return;
     }
+  }
+  // keep heading toward the ICC as you descend
+  const icc = statics.find(s => s.type === 'icc');
+  o.heading = bearing(o, icc);
+}
+
+ /// ── friendly landing: hold at 200 until inside 30 NM, then descend smoothly ──
+if (o.friendly) {
+  const distToBE = distNm(o, bullseye);
+  if (distToBE > 30) {
+    // hold at 200 until inside 30 NM
+    o.alt = 200;
+  } else {
+    // compute how many NM we moved this frame
+    const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
+    const descentPerNm = 200 / 30;   // drop 200 MSL over 30 NM
+    o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
+    // if we've reached destination altitude, remove the friendly
+    if (o.alt <= o.destAlt) {
+      o.destroyed = true;
+      return;     // skip the rest of this loop iteration
+    }
+  }
+  // always head toward ICC during the descent
+  const icc = statics.find(s => s.type === 'icc');
+  o.heading = bearing(o, icc);
+}
+
+    if (mode === 'practice') {
+  // Force heading toward bullseye, using our normalized bearing() util
+  o.heading = bearing(o, bullseye);
+}
 
 
 
