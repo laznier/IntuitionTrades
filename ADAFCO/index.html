@@ -442,19 +442,19 @@ function buildStatics(){
     { type:'icc', id:'00176', x:cx,      y:cy       },
 
     // launcher 1 (NE)
-    { type:'ln',  id:'00177', x:cx + p10, y:cy - p10 },
+    { type:'fu',  id:'00177', x:cx + p10, y:cy - p10 },
     { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
 
     // launcher 2 (SW)
-    { type:'ln',  id:'00178', x:cx - p10, y:cy + p10 },
+    { type:'fu',  id:'00178', x:cx - p10, y:cy + p10 },
     { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
 
     // launcher 3 (SE)
-    { type:'ln',  id:'00175', x:cx + p10, y:cy + p10 },
+    { type:'fu',  id:'00175', x:cx + p10, y:cy + p10 },
     { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
 
     // launcher 4
-    { type:'ln',  id:'00111', x:cx - p10/2, y:cy - p10 },
+    { type:'fu',  id:'00111', x:cx - p10/2, y:cy - p10 },
     { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro },
   ];
 
@@ -804,7 +804,7 @@ function drawStatics() {
 
 
  
-} else if (s.type === 'ln') {
+} else if (s.type === 'fu') {
       // draw a little SAM launcher icon angled up
       ctx.fillStyle = colICC;
       ctx.save();
@@ -966,11 +966,11 @@ function drawTracks(now) {
       const colAlt = getComputedStyle(document.documentElement)
                      .getPropertyValue('--icc');   // same bright green
 
-      lines.forEach((ln, i) => {
+      lines.forEach((fu, i) => {
         ctx.fillStyle =
           tagMode === 1 && i === 0 ? colHighlight :         // yellow B/E
           tagMode === 5            ? colAlt        : colText; // green ALT
-        ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
+        ctx.fillText(fu, o.x + 8, o.y - 8 + i * 12);
       });
     });
   }
