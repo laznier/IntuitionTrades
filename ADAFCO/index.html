@@ -495,9 +495,7 @@ function newTrack() {
     x = bullseye.x + Math.cos(ang) * radius;
     y = bullseye.y + Math.sin(ang) * radius;
 
-    // 4) wrap into [0,worldWidth) × [0,worldHeight)
-    x = ((x % worldWidth) + worldWidth) % worldWidth;
-    y = ((y % worldHeight) + worldHeight) % worldHeight;
+    // 4) keep the true world coordinates – no folding on small screens
 
     // loop until that wrapped point really is ≥50 NM away
   } while (distNm(bullseye, { x, y }) < minSpawnNm);
