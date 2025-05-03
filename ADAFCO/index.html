@@ -332,7 +332,7 @@
     let selectedTrack2 = null, selectedStatic2 = null;
     let mode='free', phase='', curTrack=null, killTimer=null;
     let round=0, score=0;
-    // ─── TAG MODES ─────────────────────────────────────────────
+ 
 // ─── TAG MODES ─────────────────────────────────────────────
 let tagMode   = 0,
     tagLabels = ['OFF','B/E','JTN','INFO','ALL','ALT']; 
@@ -1090,6 +1090,9 @@ requestAnimationFrame(animate);
       updateCursorLabel();
     }
 
+    let lastTap = null;                                   // ⬅️ remembers last canvas tap
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);   // rudimentary phone test
+
     canvas.addEventListener('touchstart', e=>{
       if(e.touches.length===2){
         pinch.active=true;
@@ -1292,6 +1295,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
    const w = scrToWorld(mouse.sx, mouse.sy);
    mouse.wx = w.x; mouse.wy = w.y;
    updateCursorLabel();
+   lastTap = { wx: mouse.wx, wy: mouse.wy };   
    pickObject();
  });
 
@@ -1305,6 +1309,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
    const w = scrToWorld(mouse.sx, mouse.sy);
    mouse.wx = w.x; mouse.wy = w.y;
    updateCursorLabel();
+   lastTap = { wx: mouse.wx, wy: mouse.wy };   
    pickObject();
  });
 // ─── 4) Right-click handler on the canvas ───────────────────────────────
@@ -1319,6 +1324,7 @@ canvas.addEventListener('contextmenu', e => {
   const w = scrToWorld(mouse.sx, mouse.sy);
   mouse.wx = w.x; mouse.wy = w.y;
   updateCursorLabel();
+  
 
   // Try picking an air track for right selection
   selectedTrack2 = tracks.find(t => {
@@ -1387,14 +1393,14 @@ window.addEventListener('keydown', e => {
   // ─── LOWERCASE FOR REST OF HOTKEYS ───────────────────────────────
   const key = k.toLowerCase();
 
-  // ─── R sets new bullseye ─────────────────────────────────────
+    // ─── R sets new bullseye (phone → lastTap, desktop → mouse) ──
   if (k === 'r') {
     e.preventDefault();
-    bullseye.x = mouse.wx;
-    bullseye.y = mouse.wy;
-    statusEl.textContent =
-      `Bullseye set to ${('000'+bearing(bullseye, {x:mouse.wx, y:mouse.wy})).slice(-3)}/${distNm(bullseye, {x:mouse.wx, y:mouse.wy})}`;
-
+    const tgt = (isMobile && lastTap) ? lastTap : { x: mouse.wx, y: mouse.wy };
+    bullseye.x = tgt.x;
+    bullseye.y = tgt.y;
+     statusEl.textContent =
+     `Bullseye set to ${('000'+bearing(bullseye, tgt)).slice(-3)}/${distNm(bullseye, tgt)}`;
           // respawn tracks from the new bullseye
    initTracks();
     if (mode === 'practice') {
@@ -1416,9 +1422,9 @@ window.addEventListener('keydown', e => {
   s.animFrom      = s.wedgeDir;
   s.animTo        = newDir;
   s.animStart     = now;
-  s.disabledUntil = now + 1 * 60 * 1000; // 1 min in ms
+  s.disabledUntil = now + 1.5 * 60 * 1000; // 1.5 min in ms
 
-  feedbackEl.textContent = `Repositioning Launcher ${s.id} to ${newDir}°, weapons red for 60 seconds`;
+  feedbackEl.textContent = `Repositioning Launcher ${s.id} to ${newDir}°, weapons red for 90 seconds`;
   return;
 }
 
