@@ -276,7 +276,6 @@
       
         <h4>Controls & Hotkeys</h4>
         <ul>
-          <li><strong>C</strong> – COVER</li>
           <li><strong>A</strong> – AFFIRM</li>
           <li><strong>N</strong> – NEGATE</li>
           <li><strong>W</strong> – AWAY (engage)</li>
@@ -344,7 +343,7 @@ let tagMode   = 0,
 
     let compassOn = false;
 let level = 1;
-let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
+let speedMultiplier = 1;  // 1.0× on Level 1, 1.1× on Level 2, etc.
 let coverTimer = null, practiceSaveIndex = null;
 
 // NASAM state
@@ -355,6 +354,10 @@ let iccDisabledUntil = 0;
 let pendingReorient  = false;
     let pendingStatic    = null;
 
+    //PATRIOT down
+    // ─── track when we last forced a radar failure ─────────────────
+let lastRadFailure = 0;
+let nextOutageAllowed = 0;  // timestamp (ms) after which we may schedule another outage
 /**
  * Returns `true` if the shot should be blocked by NASAM‐weapons‐red,
  * or `false` if you should proceed with the W handler.
@@ -724,27 +727,31 @@ function drawStatics() {
     // ─── DRAW STATICS ─── inside statics.forEach(s) ─────────────────────
     if (s.type === 'rad') {
   // determine current direction and fill color
-  const now = Date.now();
+    // determine current direction (with animation) and whether it's down
+    const now = Date.now();
   let dir;
-  let red  = false;
 
-  if (s.animFrom != null && now < s.disabledUntil) {
-    // still animating
-    const t = (now - s.animStart) / (s.disabledUntil - s.animStart);
-    const delta = ((s.animTo - s.animFrom + 540) % 360) - 180; 
+  // ▶️ animate only if there’s a pending rotation
+  if (s.animFrom != null) {
+    const duration = s.disabledUntil - s.animStart;        // same timeout used for animation
+    const t        = Math.min((now - s.animStart) / duration, 1);
+    const delta    = ((s.animTo - s.animFrom + 540) % 360) - 180;
     dir = s.animFrom + delta * t;
-    red = true;
-  } else {
-    // animation done — finalize if needed
-    if (s.animFrom != null) {
+
+    // once the animation is over, finalize the new direction
+    if (t >= 1) {
       s.wedgeDir  = s.animTo;
       s.animFrom  = s.animTo = null;
     }
+  } else {
     dir = s.wedgeDir;
-    red = false;
   }
 
-  const half = 60, radiusNm = 50;
+  // ▶️ radar is “down” (red) whenever disabledUntil is still in the future
+  const red = now < s.disabledUntil;
+
+  const half     = 60;
+  const radiusNm = 50;
   ctx.save();
     ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
     ctx.beginPath();
@@ -760,6 +767,7 @@ function drawStatics() {
     ctx.closePath();
     ctx.fill();
   ctx.restore();
+
 
 
   // 2) draw a stylized radar dish icon
@@ -974,7 +982,7 @@ function drawTracks(now) {
         ctx.fillStyle =
           tagMode === 1 && i === 0 ? colHighlight :         // yellow B/E
           tagMode === 5            ? colAlt        : colText; // green ALT
-        ctx.fillText(ln, o.x + 8, o.y - 8 + i * 12);
+        ctx.fillText(fu, o.x + 8, o.y - 8 + i * 12);
       });
     });
   }
@@ -1013,30 +1021,27 @@ function drawTracks(now) {
   tracks.forEach(o => {
     if (o.destroyed) return;
 
- // ── friendly landing: hold at 200 until within 30 NM, then descend ──
+        // ── friendly landing: hold at 200 until within 30 NM, then descend smoothly ──
     if (o.friendly) {
       const distToBE = distNm(o, bullseye);
       if (distToBE > 30) {
         // hold at 200 until inside 30 NM
         o.alt = 200;
       } else {
-        // then descend linearly to destAlt over the remaining distance
-        const descentRatePerNm = 200 / 30; // 200 NM fall over 30 NM
-        o.alt = Math.max(o.destAlt, o.alt - descentRatePerNm * (dt * CFG.nmPerPixel * CFG.frameRate / CFG.frameRate));
+        // descent proportional to actual distance moved this frame
+        // speed (kts) → nm/sec = o.speed / 3600
+        const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
+        const descentPerNm = 200 / 30;   // drop 200 MSL over 30 NM
+        o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
         if (o.alt <= o.destAlt) {
           o.destroyed = true;
           return;
         }
       }
-      // always head toward ICC
-      const icc = statics.find(s=>s.type==='icc');
+      // always head toward ICC during descent
+      const icc = statics.find(s => s.type === 'icc');
       o.heading = bearing(o, icc);
-      // continue on to movement below
     }
-    if (mode === 'practice') {
-  // Force heading toward bullseye, using our normalized bearing() util
-  o.heading = bearing(o, bullseye);
-}
 
 
 
@@ -1559,7 +1564,7 @@ if (k === 'w') {
 if (selectedStatic && selectedStatic.type === 'rad') {
   const s = selectedStatic;
   if (Date.now() < s.disabledUntil) {
-    feedbackEl.textContent = 'Radar Red—no Birds Away allowed from this wedge';
+    feedbackEl.textContent = 'Radar Red—no Engagements possible from this FU';
     return;
   }
 }
@@ -1690,7 +1695,7 @@ if (possible) {
   t.tag     = 'AWAY';
   t.tagTime = Date.now();
   statusEl.textContent =
-    `ADAFCO, SL, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
   // 3) ROE violation branch: hostile not previously engaged
   if (!t.everEngaged) {
@@ -1799,7 +1804,7 @@ function nextQueueTrack(){
     `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
   feedbackEl.textContent = '';
 
-  coverTimer = setTimeout(nextQueueTrack, 10000);  // 10 s → auto-cycle
+  coverTimer = setTimeout(nextQueueTrack, 25000);  // 25 s → auto-cycle
 }
 
 
@@ -1855,7 +1860,7 @@ function finishEngage() {
   round            = 0;
   score            = 0;
   level            = lv;
-  speedMultiplier  = 1 + 0.5 * (lv - 1);
+  speedMultiplier  = 1 + 0.1 * (lv - 1);
 
    // ── Reset NASAM ───────────────────────────────────────────────
  iccMissiles      = 6;
@@ -1865,20 +1870,8 @@ function finishEngage() {
  tbmWaves = [];
  fireballBtn.disabled = true;
 
-  // Build static world if needed (we assume statics are already there)
-  // 1) Spawn friendlies on level 2
-  const keepers = [];
-  if (lv >= 2) {
-    const icc = statics.find(s => s.type==='icc');
-    for (let i=0; i<3; i++) {
-      const t = newTrack();
-      t.friendly = true;
-      t.heading  = bearing(t, icc);
-      t.alt      = 200;
-      t.destAlt  = 0;
-      keepers.push(t);
-    }
-  }
+
+
   // 2) Spawn hostiles
   const hostiles = Array.from({length: CFG.trackCount}, () => newTrack());
   tracks = hostiles.concat(keepers);
@@ -1915,31 +1908,62 @@ function showLevelComplete() {
   setTimeout(() => {
     ov.remove();
     round = 0;
-    speedMultiplier += 0.5;
+    speedMultiplier += 0.1;
     level++;
 
     // LEVEL 2 → spawn 3 friendlies
-    if (level === 2) {
+    if (level >= 2) {
       const icc = statics.find(s => s.type === 'icc');
       for (let i = 0; i < 3; i++) {
         const t = newTrack();
         t.friendly = true;
         t.heading  = bearing(t, icc);
         t.alt      = 200;
+        t.speed    = 500;
         t.destAlt  = 0;
         tracks.push(t);
       }
     }
 
     // LEVEL 3 → schedule TBM wave
-    if (level === 3) {
+    if (level >= 3) {
       const delay = Math.random() * 2 * 60 * 1000;
       setTimeout(spawnTbmWave, delay);
     }
 
+      // ─── forced radar outage on Level 4+, with 2 min cooldown ─────────────────
+  if (level >= 4) {
+    const now       = Date.now();
+    // compute delay: at least 60 s from now, but also ensure we're past nextOutageAllowed
+    const delayMs   = Math.max(60 * 1000, nextOutageAllowed - now);
+    setTimeout(() => {
+      const then     = Date.now();
+      // pick a random Patriot radar
+      const rads     = statics.filter(s => s.type === 'rad');
+      const s        = rads[Math.floor(Math.random() * rads.length)];
+      // disable it for 5 minutes
+      s.disabledUntil = then + 5 * 60 * 1000;
+      // schedule next allowed outage 2 min after this one ends
+      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
+
+      // notify the user
+      const msg = 'ADAFCO, ICC, system reset, launcher down for 5 minutes';
+      feedbackEl.textContent = msg;
+      statusEl.textContent   = msg;
+    }, delayMs);
+  }
+
     // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
     // 1) pull out all the friendlies and TBMs we want to keep
     const keepers = tracks.filter(t => t.friendly || t.isTbm);
+
+// 1.5) force every friendly to start at 200 MSL
+keepers.forEach(t => {
+  if (t.friendly) {
+    t.alt     = 200;
+    t.destAlt = 0;
+  }
+});
     // 2) rebuild exactly CFG.trackCount new hostiles
     const newHostiles = Array.from({ length: CFG.trackCount }, () => newTrack());
     // 3) merge back
