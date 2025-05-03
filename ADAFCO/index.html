@@ -177,6 +177,7 @@
       <button id="helpBtn">Help</button>
     </div>
     <div id="status">Free mode</div>
+    <div id="score">Score: 0</div>
     <div id="feedback"></div>
   </header>
 
@@ -481,49 +482,65 @@ initTracks();
 function spawnTbmWave() {
   const now = Date.now();
   const icc = statics.find(s => s.type === 'icc');
-  const origin = { x: icc.x, y: icc.y };
-  const wave = { spawn: now, impact: null, resolved: false };
 
-  for (let i = 0; i < CFG.tbmCount; i++) {
-    // random bearing and distance
-    const ang    = Math.random() * 2 * Math.PI;
-    const distNm = 200;    // always 200 NM
-    const px = origin.x + Math.cos(ang) * (distNm / CFG.nmPerPixel);
-    const py = origin.y + Math.sin(ang) * (distNm / CFG.nmPerPixel);
-    const heading = bearing({ x: px, y: py }, origin);
+  // 1) spacing & cluster geometry
+  const sideNm    = 5;                       // ~5 NM between each TBM
+  const offsetNm  = sideNm / Math.sqrt(3);   // centroid → vertex distance
+  const minC      = 200 + offsetNm;          // keep all vertices ≥200 NM from ICC
+  const maxC      = 210 - offsetNm;          // and ≤210 NM from ICC
+  const clusterR  = Math.random() * (maxC - minC) + minC;
+  const clusterAng= Math.random() * 2 * Math.PI;
+  // cluster center in world pixels
+  const cx = icc.x + Math.cos(clusterAng) * (clusterR / CFG.nmPerPixel);
+  const cy = icc.y + Math.sin(clusterAng) * (clusterR / CFG.nmPerPixel);
+
+  // 2) orientation of the triangle (random rotation)
+  const rot = Math.random() * 2 * Math.PI;
+  const dPx = offsetNm / CFG.nmPerPixel;
+
+  // 3) build the three TBMs
+  const wave = { spawn: now, impact: null, resolved: false };
+  for (let i = 0; i < 3; i++) {
+    const ang = rot + (i * 2 * Math.PI / 3);  // 0°, 120°, 240°
+    const x   = cx + Math.cos(ang) * dPx;
+    const y   = cy + Math.sin(ang) * dPx;
+    const heading      = bearing({ x, y }, icc);
+    const speed        = CFG.tbmSpeedKts;
+    // true distance from ICC in NM (for impact time)
+    const distFromIcc  = Math.hypot(x - icc.x, y - icc.y) * CFG.nmPerPixel;
+    const timeToImpact = (distFromIcc / speed) * 3600 * 1000;
 
     const t = {
       id:       `TBM${i+1}`,
-      x:        px,
-      y:        py,
+      x, y,
       heading,
-      speed:    CFG.tbmSpeedKts,
+      speed,
       alt:      CFG.tbmAltitude,
       tag:      null,
-      destroyed: false,
-      everEngaged: false,
+      destroyed:false,
+      everEngaged:false,
       isTbm:    true
     };
-    // compute time‑to‑impact
-    const timeToImpactMs = (distNm / CFG.tbmSpeedKts) * 3600 * 1000;
-    wave.impact = now + timeToImpactMs;
+
+    // schedule impact penalty if not resolved
+    wave.impact = now + timeToImpact;
     setTimeout(() => {
-      // if wave not resolved by FIREBALL:
       if (!wave.resolved) {
-        score -= 2;
-        feedbackEl.textContent = "–2 points for contract violation";
+         changeScore(-2, "TBM Impact! –2");
+        updateScoreDisplay();
       }
       wave.resolved = true;
-    }, timeToImpactMs);
+    }, timeToImpact);
 
     tracks.push(t);
   }
 
-  // enable FIREBALL button for this wave
+  // 4) enable FIREBALL
   tbmWaves.push(wave);
   fireballBtn.disabled = false;
-  CFG.tbmWindowMs = wave.impact - now;
+  CFG.tbmWindowMs     = wave.impact - now;
 }
+
 
 const fireballBtn = document.getElementById('fireballBtn');
 
@@ -532,8 +549,8 @@ fireballBtn.addEventListener('click', () => {
   tbmWaves.forEach(wave => {
     if (!wave.resolved && now >= wave.spawn && now <= wave.impact) {
       wave.resolved = true;
-      score += 2;
-      feedbackEl.textContent = "FIREBALL FIREBALL FIREBALL!";
+      changeScore(2, "FIREBALL FIREBALL FIREBALL! +2");
+      updateScoreDisplay();
     }
   });
   // disable until next wave
@@ -853,7 +870,7 @@ function drawTracks(now) {
       // ③ INFO (hdg/alt/spd)
       if ([3, 4].includes(tagMode))
         lines.push(
-          `${('000' + o.heading).slice(-3)}°/${('000' + o.alt).slice(-3)}/${o.speed}`
+          `${('000' + o.heading).slice(-3)}°/${o.speed} kt/${('000' + o.alt).slice(-3)} MSL`
         );
 
       // ④ ALT‑ONLY (green)
@@ -1134,58 +1151,75 @@ requestAnimationFrame(animate);
         html=`<span class="braa">${b2}/${r2}</span><br>`+html;
       }
       label.innerHTML=html;
-      label.style.left=`${mouse.px+5}px`;
-      label.style.top=`${mouse.py-label.offsetHeight-5}px`;
+      label.style.left = `${mouse.px + 10}px`;
+label.style.top  = `${mouse.py + 5}px`;
+
     }
     
-    function showCard(t){
-      document.querySelectorAll('.card').forEach(c=>c.remove());
-      const d=document.createElement('div'); d.className='card';
-      d.innerHTML=`
-        <h3>Track ${t.id}</h3>
-        ${('000'+t.heading).slice(-3)}° /
-        <span style="color:var(--icc)">${('000'+t.alt).slice(-3)}</span> /
-        ${t.speed} kts
-        <br><button>Close</button>`;
-      d.querySelector('button').onclick=()=>d.remove();
-      document.body.appendChild(d);
-    }
-    function showStaticCard(s) {
-  // remove any existing card
-  document.querySelectorAll('.card').forEach(c => c.remove());
-  // build new card
+    /**
+ * Generic card renderer for tracks or statics, on either side.
+ * @param {object} obj    – the track or static object
+ * @param {'track'|'static'} type
+ * @param {'left'|'right'} side
+ */
+function renderCard(obj, type, side) {
+  // remove any old
+  document.querySelectorAll(`.card${side==='right'?'2':''}`).forEach(c => c.remove());
+
+  // container
   const d = document.createElement('div');
-  d.className = 'card';
-  d.innerHTML = `
-    <h3>${s.type.toUpperCase()}</h3>
-    ID: ${s.id}
-    <br><button>Close</button>
-  `;
+  d.className = side==='right' ? 'card card2' : 'card';
+  if (side==='right') {
+    Object.assign(d.style, {
+      position: 'fixed',
+      top:      '10px',
+      right:    '10px',
+      left:     'auto',
+      zIndex:   '15'
+    });
+  } else {
+    // left‑click cards already styled via .card CSS
+  }
+
+  // build content
+  let html = '';
+  if (type === 'track') {
+    html += `
+      <h3>${side==='right'?'2️⃣ ':''}Track ${obj.id}</h3>
+      <div>
+        ${('000'+obj.heading).slice(-3)}° /
+        ${obj.speed} kts /
+        <span style="color:var(--icc)">${('000'+obj.alt).slice(-3)}</span>
+      </div>
+      <div>ID: ${obj.friendly?'Friendly':'Hostile'}</div>
+    `;
+  } else {
+    // static
+    const now = Date.now();
+    let status = 'Active';
+    if (obj.type==='rad') status = now<obj.disabledUntil?'Disabled (red)':'Active';
+    else if (obj.type==='icc') status = now<iccDisabledUntil?'Weapons Red':'Ready';
+
+    html += `
+      <h3>${side==='right'?'2️⃣ ':''}${obj.type.toUpperCase()}</h3>
+      <div>ID: ${obj.id}</div>
+      <div>Status: ${status}</div>
+    `;
+  }
+
+  html += `<button>Close</button>`;
+  d.innerHTML = html;
   d.querySelector('button').onclick = () => d.remove();
   document.body.appendChild(d);
 }
 
-// ─── 2) New “showCard2” for top-right display ─────────────────────────
-function showCard2(obj, type) {
-  // remove any existing second-card
-  document.querySelectorAll('.card2').forEach(c=>c.remove());
-  const d = document.createElement('div');
-  d.className = 'card card2';
-  d.style.top   = '10px';
-  d.style.right = '10px';
-  d.style.left  = 'auto';
-  d.innerHTML = type === 'track'
-    ? `<h3>2️⃣ Track ${obj.id}</h3>
-       ${('000'+obj.heading).slice(-3)}° /
-       <span style="color:var(--icc)">${('000'+obj.alt).slice(-3)}</span> /
-       ${obj.speed} kts
-       <br><button>Close</button>`
-    : `<h3>2️⃣ ${obj.type.toUpperCase()}</h3>
-       ID: ${obj.id}
-       <br><button>Close</button>`;
-  d.querySelector('button').onclick = ()=>d.remove();
-  document.body.appendChild(d);
-}
+// rewrite the three old functions to just call renderCard:
+function showCard(t)         { renderCard(t, 'track',  'left'); }
+function showStaticCard(s)   { renderCard(s, 'static', 'left'); }
+function showCard2(obj,type) { renderCard(obj,type,    'right'); }
+
+
+
     // ─── PICK-OBJECT helper ──────────────────────────────
     function pickObject() {
   // Try selecting an air track under the mouse
@@ -1452,8 +1486,7 @@ const possible = inCircle || inWedge;
 
 
     if (possible && t.friendly) {
-  score -= 20;
-  feedbackEl.textContent = 'Fratricide! –20 points';
+       changeScore(-20, 'Fratricide! –20 points');
   setTimeout(() => {
     t.destroyed = true;
     nextQueueTrack();
@@ -1461,9 +1494,7 @@ const possible = inCircle || inWedge;
   return;
 } else {
       // B) friendly outside → shot trashed + ROE
-      score -= 1;
-      score -= 5;
-      feedbackEl.textContent = 'Bird Trashed: -1; ROE Violation: -5';
+      changeScore(-6, 'Bird Trashed: -1; ROE Violation: -5');
       nextQueueTrack();
       return;
     }
@@ -1504,9 +1535,7 @@ const possible = inCircle || inWedge;
 if (!possible) {
   if (!t.everEngaged) {
     // A1.1: not yet ENGAGED → –1 Bird + –5 ROE, reissue COVER
-    score -= 1;
-    score -= 5;
-    feedbackEl.textContent = 'Bird Trashed: -1; ROE Violation: -5';
+    changeScore(-6, 'Bird Trashed: -1; ROE Violation: -5');
 
     t.tag     = 'COVER';
     t.tagTime = Date.now();
@@ -1516,8 +1545,7 @@ if (!possible) {
       `SL, ADAFCO, COVER Track ${t.id}, B/E ${beC}/${rC}`;
   } else {
     // A1.2: was ENGAGED → only –1 Bird, reissue ENGAGE
-    score -= 1;
-    feedbackEl.textContent = 'Bird Trashed: -1 point';
+    changeScore(-1, "Bird Trashed: -1 point");
 
     t.tag           = 'ENGAGE';
     t.everEngaged   = true;
@@ -1540,8 +1568,7 @@ if (possible) {
   );
   if (fr) {
     // a) Apply fratricide penalty
-    score -= 20;
-    feedbackEl.textContent = 'Fratricide! –20 points';
+    changeScore(-20, 'Fratricide! –20 points');
     // b) Kill the friendly immediately
     fr.destroyed = true;
     // c) Re‑issue ENGAGE on the hostile
@@ -1563,8 +1590,7 @@ if (possible) {
 
   // 3) ROE violation branch: hostile not previously engaged
   if (!t.everEngaged) {
-    score -= 5;
-    feedbackEl.textContent = 'ROE Violation: -5 points';
+    changeScore(-5, 'ROE Violation: -5 points');
     // vanish after 6 seconds
     setTimeout(() => {
       t.destroyed = true;
@@ -1575,8 +1601,7 @@ if (possible) {
   }
 
   // 4) Normal hit branch: hostile was engaged
-  score += 1;
-  feedbackEl.textContent = 'Vanished: +1 point';
+   changeScore(1, "Vanished: +1 point");
   // vanish after 6 seconds
   setTimeout(() => {
     t.destroyed = true;
@@ -1863,48 +1888,34 @@ function showFinalScore() {
 
 
 function showGameOver(reason) {
+  // 1) Stop the game
   mode = 'gameover';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
 
-  if (reason === 'center') score -= 10;
+  // 2) Apply center‑hit penalty
+  if (reason === 'center') {
+    score -= 0;
+    updateScoreDisplay();
+  }
 
-  // Build overlay with two buttons
+  // 3) Build the overlay
   const ov = document.createElement('div');
   ov.id = 'gameOverOverlay';
   ov.innerHTML = `
     <div id="gameOverBox">
-      <h1>GAME OVER</h1>
-      <p>Your score: ${score}</p>
-      <button id="restartLevelBtn">Restart Level</button>
-      <button id="restartGameBtn">Restart Game</button>
+      <h1>FINAL SCORE</h1>
+      <p>${score} point${score === 1 ? '' : 's'}</p>
+      <button id="tryAgainBtn">TRY AGAIN?</button>
     </div>`;
   document.body.appendChild(ov);
 
-  // Restart *this* level
-  document.getElementById('restartLevelBtn').onclick = () => {
-    ov.remove();
-    setupLevel(level);
+  // 4) Try Again just reloads the page
+  document.getElementById('tryAgainBtn').onclick = () => {
+    location.reload();
   };
-
-  // Restart *from* level 1
-  document.getElementById('restartGameBtn').onclick = () => {
-  ov.remove();
-
-  // Optional: reset view
-  scale = 1;
-  offX = offY = 0;
-
-  // Reset all world state before level 1
-  tracks = [];
-  tbmWaves = [];
-  iccMissiles = 6;
-  iccDisabledUntil = 0;
-  fireballBtn.disabled = true;
-
-  setupLevel(1);
-};
 }
+
 
 
 
@@ -1921,6 +1932,23 @@ function showGameOver(reason) {
       btn.onclick=()=>window.dispatchEvent(new KeyboardEvent('keydown',{key:btn.dataset.key}));
     });
 
+    //help with scoring TBMs
+    const scoreEl = document.getElementById('score');
+function updateScoreDisplay() {
+  scoreEl.textContent = `Score: ${score}`;
+}
+// initialize
+updateScoreDisplay();
+/**
+ * Change the score, update the display, and show a feedback message.
+ * @param {number} delta  positive or negative points
+ * @param {string} msg    feedback text to show
+ */
+ function changeScore(delta, msg) {
+  score += delta;
+  updateScoreDisplay();
+  feedbackEl.textContent = msg;
+}
 
     // COMPASS toggle
     compassBtn.onclick = ()=>{
