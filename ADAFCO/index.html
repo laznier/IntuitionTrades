@@ -495,13 +495,15 @@ function newTrack() {
     x = bullseye.x + Math.cos(ang) * radius;
     y = bullseye.y + Math.sin(ang) * radius;
 
-    // 4) keep the true world coordinates – no folding on small screens
+    // 4) wrap into [0,worldWidth) × [0,worldHeight)
+    x = ((x % worldWidth) + worldWidth) % worldWidth;
+    y = ((y % worldHeight) + worldHeight) % worldHeight;
 
     // loop until that wrapped point really is ≥50 NM away
   } while (distNm(bullseye, { x, y }) < minSpawnNm);
 
-  // 5) compute heading back to bullseye
-  heading = bearing({ x, y }, bullseye);
+    // 5) start with a random roaming heading (0‑359°)
+    heading = Math.floor(Math.random() * 360);
 
   // 6) altitude and speed as before
   const alt = rand(5, 600);
