@@ -185,78 +185,104 @@
 
 
   <canvas id="scope"></canvas>
-  <div id="helpOverlay">
-    <h3>How to Play (v2.0)</h3>
-    <p>We’ve added tag‑modes, friendly/fratricide rules, TBM waves & FIREBALL, revamped scoring, and interactive cards.</p>
   
-    <h4>Core Sequence (Practice Mode)</h4>
-    <ol>
-      <li>
-        <strong>COVER</strong><br>
-        SL issues “COVER Track ID, B/E <bearing/dist</b>.”<br>
-        Click the track under the prompt, then press <strong>C</strong>.
-      </li>
-      <li>
-        <strong>NEGATE</strong> / <strong>AFFIRM</strong><br>
-        • If no engagement solution → press <strong>N</strong> to Negate.<br>
-        • Otherwise press <strong>A</strong> to Affirm → ENGAGE.
-      </li>
-      <li>
-        <strong>AWAY</strong><br>
-        Press <strong>W</strong> to fire. Must be inside the NASAM circle (15 NM) or a Patriot radar wedge (50 NM ±45°).
-      </li>
-      <li>
-        <strong>VANISHED</strong><br>
-        Hostiles vanish 6 s after a valid Away (or press <strong>K</strong> to force‑kill early).
-      </li>
-    </ol>
-  
-    <h4>Tag Modes</h4>
-    <p>Click <strong>TAGS</strong> to cycle:</p>
-    <ul>
-      <li><strong>OFF</strong>: no overlays</li>
-      <li><strong>B/E</strong>: bearing/dist in yellow</li>
-      <li><strong>JTN</strong>: track IDs</li>
-      <li><strong>INFO</strong>: heading/altitude/speed</li>
-      <li><strong>ALL</strong>: combine B/E, JTN, INFO</li>
-      <li><strong>ALT</strong>: altitude only (in green)</li>
-    </ul>
-  
-    <h4>Friendly & Fratricide Rules</h4>
-    <ul>
-      <li>Level 2 and above include friendly tracks.</li>
-      <li>Firing on a friendly <em>inside</em> NASAM or radar → <strong>–20</strong> points, target fades in 6 s (no further penalty).</li>
-      <li>Firing on a friendly <em>outside</em> firing geometry → <strong>–1</strong> (Bird Trashed) + <strong>–5</strong> (ROE) = <strong>–6</strong> total.</li>
-      <li>SL will never COVER or ENGAGE friendlies.</li>
-    </ul>
-  
-    <h4>TBM Waves & FIREBALL</h4>
-    <ul>
-      <li>At Level 3+, expect a wave of TBMs </li>
-      <li>Click <strong>FIREBALL</strong> while inbound → <strong>+2</strong> points and “FIREBALL FIREBALL!” feedback.</li>
-      <li>If they impact before Fireball → <strong>–2</strong> points (“TBM Impact!”).</li>
-    </ul>
-  
-    <h4>Interactive Cards</h4>
-    <ul>
-      <li><strong>Left‑click</strong> on any track or static to show its card (heading/alt/speed for tracks; ID & status for statics).</li>
-      <li><strong>Right‑click</strong> for a “2️⃣” card in the top‑right with the same info.</li>
-    </ul>
-  
-    <h4>Key Bindings & Controls</h4>
-    <ul>
-      <li><strong>C</strong> – COVER</li>
-      <li><strong>A</strong> – AFFIRM/ENGAGE</li>
-      <li><strong>N</strong> – NEGATE</li>
-      <li><strong>W</strong> – AWAY (fire)</li>
-      <li><strong>K</strong> – KILL (force vanish)</li>
-      <li><strong>O</strong> – re‑aim selected radar wedge</li>
-      <li><strong>R</strong> – set new bullseye</li>
-      <li>Arrows / <strong>+</strong> / <strong>–</strong> – pan/zoom</li>
-    </ul>
-  
-    <button id="closeHelp">Close</button>
-  </div>
+    <div id="helpOverlay">
+     
+        <h3>How to Play</h3>
+        <p>
+          You are the ADAFCO, operating from the TOC co-located with the DAL at the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
+        </p>
+      
+        <h4>Mission Flow</h4>
+        <ol>
+          <li>
+            <strong>COVER</strong><br>
+            The SL will order: “COVER Track 12345, B/E 123/45.”<br>
+            Primary select (left-click) the correct track, assess ID, flight profile, and probability of kill (PK), then acknowledge with:<br>
+            <em>“Copy Track 12345.”</em>
+          </li>
+          
+          <li>
+            <strong>ICC/TD Coordination</strong><br>
+            Relay the COVER command to the ICC/TD via simulated radio:<br>
+            <em>“GUARDIAN, BIGFOOT, Cover Group B/E 123/45, 27k, Track South, Hostile, NW Quadrant.”</em><br>
+            • If PK is high (inside Patriot wedge or NASAM ring), press <strong>A</strong> (Affirm).<br>
+            • If no solution exists, press <strong>N</strong> (Negate). You may update to <strong>A</strong> later if conditions change.
+          </li>
+      
+          <li>
+            <strong>Engagement</strong><br>
+            When the track is within range:<br>
+            • TX: <em>“GUARDIAN, BIGFOOT, Engage Group B/E 123/23, 27k, Track South, Hostile, NW Quadrant.”</em><br>
+            • Press <strong>W</strong> to fire. The track must be inside a valid Patriot wedge or NASAM ring, or else the shot is considered <strong>trashed</strong>.
+          </li>
+      
+          <li>
+            <strong>VANISH</strong><br>
+            Tracks vanish automatically 6 seconds after a valid engagement. You may also press <strong>K</strong> to manually remove a track early.
+          </li>
+        </ol>
+      
+        <h4>Track Identification</h4>
+        <p>Use the <strong>TAGS</strong> button to cycle through display modes:</p>
+        <ul>
+          <li><strong>OFF</strong> – Clean scope</li>
+          <li><strong>B/E</strong> – Bearing and distance from Bullseye</li>
+          <li><strong>JTN</strong> – Track number labels</li>
+          <li><strong>INFO</strong> – Heading, altitude, speed</li>
+          <li><strong>ALL</strong> – Full info overlay</li>
+          <li><strong>ALT</strong> – Altitude only</li>
+        </ul>
+      
+        <h4>Rules of Engagement & Friendly Fire</h4>
+        <ul>
+          <li>Friendlies may appear at any time.</li>
+          <li>Firing on a friendly <strong>inside</strong> firing geometry: <strong>–20</strong> pts (Fratricide).</li>
+          <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Bird trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
+          <li>SL should not issue COVER on friendly tracks — but errors are possible.</li>
+        </ul>
+      
+        <h4>TBM & FIREBALL Events</h4>
+        <ul>
+          <li>TBMs appear in triangular waves from 200+ NM.</li>
+          <li>Click the <strong>FIREBALL</strong> button before impact to earn <strong>+2</strong> points.</li>
+          <li>If TBMs impact without interception: <strong>–2</strong> points.</li>
+        </ul>
+      
+        <h4>Cards & Track Interactions</h4>
+        <ul>
+          <li><strong>Left-click</strong> a unit to view its status card.</li>
+          <li><strong>Right-click</strong> to pin the card in the top-right corner.</li>
+          <li>Cards display ID, heading, altitude, speed, and system status.</li>
+        </ul>
+      
+        <h4>Scoring</h4>
+        <ul>
+          <li><strong>+1</strong> – Valid missile kill</li>
+          <li><strong>+2</strong> – FIREBALL intercept</li>
+          <li><strong>–1</strong> – Bird trashed (fired with no coverage)</li>
+          <li><strong>–5</strong> – ROE violation (invalid target)</li>
+          <li><strong>–6</strong> – Friendly fire outside geometry</li>
+          <li><strong>–20</strong> – Fratricide inside geometry</li>
+          <li><strong>–2</strong> – TBM impact</li>
+        </ul>
+      
+        <h4>Controls & Hotkeys</h4>
+        <ul>
+          <li><strong>C</strong> – COVER</li>
+          <li><strong>A</strong> – AFFIRM</li>
+          <li><strong>N</strong> – NEGATE</li>
+          <li><strong>W</strong> – AWAY (engage)</li>
+          <li><strong>K</strong> – KILL (manual vanish)</li>
+          <li><strong>O</strong> – Aim selected radar wedge</li>
+          <li><strong>R</strong> – Reset Bullseye position</li>
+          <li><strong>Arrow Keys</strong> / <strong>+</strong> / <strong>–</strong> – Pan and zoom</li>
+        </ul>
+      
+        <button id="closeHelp">Close</button>
+      </div>
+      
+    
   
   
   
@@ -576,25 +602,22 @@ fireballBtn.addEventListener('click', () => {
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 /**
- * Returns true if track `t` lies within the 50 NM / ±45° wedge of radar `s`.
+ * Returns true if track `t` lies within the 50 NM / ±60° wedge of radar `s`.
  */
  function insideWedge(s, t) {
-  // 1) vector from radar→track in NM
   const dx = (t.x - s.x) * CFG.nmPerPixel;
   const dy = (t.y - s.y) * CFG.nmPerPixel;
   const d  = Math.hypot(dx, dy);
   if (d > 50) return false;
 
-    // 2) wedge centerline in canvas coords uses toRad(d) = (d - 90) * π/180
-    const θ  = (s.wedgeDir - 90) * Math.PI/180;
+  const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
   const ay = Math.sin(θ);
 
-  // 3) compute normalized dot product
   const dot = (dx*ax + dy*ay) / d;
 
-  // 4) inside ±45° if dot ≥ cos(45°) ≈ 0.7071
-  return dot >= Math.SQRT1_2;
+  // inside ±60° if dot ≥ cos(60°) = 0.5
+  return dot >= 0.5;
 }
 
 
@@ -681,7 +704,7 @@ function drawStatics() {
     red = false;
   }
 
-  const half = 45, radiusNm = 50;
+  const half = 60, radiusNm = 50;
   ctx.save();
     ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
     ctx.beginPath();
@@ -1429,7 +1452,7 @@ window.addEventListener('keydown', e => {
     curTrack.tagTime  = Date.now();
         phase             = 'engage';
     statusEl.textContent =
-      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
+      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
 
          // ── After 10 s SL will prompt “Engage” again if still in practice
    setTimeout(() => {
@@ -1437,7 +1460,7 @@ window.addEventListener('keydown', e => {
        const be2 = ('000' + bearing(bullseye, t)).slice(-3);
        const r2  = distNm(bullseye, t);
        statusEl.textContent =
-         `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
+         `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
      }
    }, 10000);
 
@@ -1545,7 +1568,7 @@ if (!possible) {
     const beC = ('000' + bearing(bullseye, t)).slice(-3);
     const rC  = distNm(bullseye, t);
     statusEl.textContent =
-      `SL, ADAFCO, COVER Track ${t.id}, B/E ${beC}/${rC}`;
+      `ADAFCO, SL, COVER Track ${t.id}, B/E ${beC}/${rC}`;
   } else {
     // A1.2: was ENGAGED → only –1 Bird, reissue ENGAGE
     changeScore(-1, "Bird Trashed: -1 point");
@@ -1556,7 +1579,7 @@ if (!possible) {
     const beE = ('000' + bearing(bullseye, t)).slice(-3);
     const rE  = distNm(bullseye, t);
     statusEl.textContent =
-      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${beE}/${rE}`;
+      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${beE}/${rE}`;
   }
   return;
 }
@@ -1581,7 +1604,7 @@ if (possible) {
     const beF = ('000' + bearing(bullseye, t)).slice(-3);
     const rF  = distNm(bullseye, t);
     statusEl.textContent =
-      `SL, ADAFCO, ENGAGE Track ${t.id}, B/E ${beF}/${rF}`;
+      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${beF}/${rF}`;
     return;
   }
 
@@ -1589,7 +1612,7 @@ if (possible) {
   t.tag     = 'AWAY';
   t.tagTime = Date.now();
   statusEl.textContent =
-    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+    `ADAFCO, SL, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
   // 3) ROE violation branch: hostile not previously engaged
   if (!t.everEngaged) {
@@ -1668,7 +1691,7 @@ document.getElementById('practiceBtn').onclick = function(){
     // Exit practice
     mode = 'free';
     this.textContent = 'Practice Mode';
-    statusEl.textContent = 'Free mode — Ctrl+R sets Bullseye';
+    statusEl.textContent = 'Free mode';
     feedbackEl.textContent = '';
     clearTimeout(coverTimer);
   }
