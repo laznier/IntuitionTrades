@@ -382,31 +382,49 @@ function checkNasamStatus(isInsideCircle) {
           helpOverlay= document.getElementById('helpOverlay');
     const label      = document.getElementById('cursorLabel');
 
-    // ─── load background ─────────────────────────────────────────────
+    // ─── CONFIG & STATE ─────────────────────────────────────────────
+
+
+// ↓↓↓  NEW – must be declared before fitMobileView() ever runs
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+// ─── load background ─────────────────────────────────────────────
 const bgImg = new Image();
 bgImg.src = '/images/island.png';
 
-    function resize () {
-      worldWidth  = canvas.width  = window.innerWidth;
-      const hdr   = document.querySelector('header').offsetHeight;
-      worldHeight = canvas.height = window.innerHeight - hdr;
-      if (!resize.didInit) {
-        buildStatics();
-        resize.didInit = true;
+/* Helper: centre view so a 200 NM radius fits the mobile screen */
+function fitMobileView() {
+  if (!isMobile) return;                       // uses your existing isMobile
+  const rpx      = 200 / CFG.nmPerPixel;       // 200 NM in world‑px
+  const fitScale = Math.min(worldWidth, worldHeight) / (2 * rpx);
+  scale = fitScale;
+  offX  = bullseye.x - (worldWidth  / 2) / scale;
+  offY  = bullseye.y - (worldHeight / 2) / scale;
+}
 
-        
-      }
-    }
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', resize);
-    }
-    resize();
+function resize () {
+  worldWidth  = canvas.width  = window.innerWidth;
+  const hdr   = document.querySelector('header').offsetHeight;
+  worldHeight = canvas.height = window.innerHeight - hdr;
 
-    function buildStatics(){
+  if (!resize.didInit) {
+    buildStatics();
+    resize.didInit = true;
+    fitMobileView();           // first‑time mobile fit
+  }
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
+resize();
+
+function buildStatics(){
   const cx = worldWidth/2,
-        cy = worldHeight/1.5,
+        cy = worldHeight/2,
         p10 = 10 / CFG.nmPerPixel,
         ro  = 2  / CFG.nmPerPixel;
+
 
   statics = [
     { type:'icc', id:'00176', x:cx,      y:cy       },
@@ -1118,9 +1136,7 @@ requestAnimationFrame(animate);
       updateCursorLabel();
     }
 
-    let lastTap = null;                                   // ⬅️ remembers last canvas tap
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);   // rudimentary phone test
-
+    //let lastTap = null;                                   // ⬅️ remembers last canvas tap
     canvas.addEventListener('touchstart', e=>{
       if(e.touches.length===2){
         pinch.active=true;
