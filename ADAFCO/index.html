@@ -338,6 +338,11 @@
     let mode='free', phase='', curTrack=null, killTimer=null;
     let round=0, score=0;
  
+    //Patriot orienting 
+    let orientationTarget = null;
+let orientationProposed = null;
+let orientationAngle = null;
+
 // ─── TAG MODES ─────────────────────────────────────────────
 let tagMode   = 0,
     tagLabels = ['OFF','B/E','JTN','INFO','ALL','ALT']; 
@@ -1029,6 +1034,99 @@ function drawTracks(now) {
       o.heading = bearing(o, icc);
       // continue on to movement below
     }
+
+    function resetOrientationMode() {
+  orientationTarget = null;
+  orientationProposed = null;
+  orientationAngle = null;
+}
+
+    if (mode === 'orient') {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+
+  function showPrompt(msg, btn1, btn2, on1, on2) {
+  const prompt = document.createElement('div');
+  prompt.style.position = 'fixed';
+  prompt.style.bottom = '60px';
+  prompt.style.left = '50%';
+  prompt.style.transform = 'translateX(-50%)';
+  prompt.style.background = '#111';
+  prompt.style.color = '#fff';
+  prompt.style.padding = '1rem';
+  prompt.style.border = '1px solid #555';
+  prompt.style.borderRadius = '8px';
+  prompt.style.zIndex = '999';
+
+  const text = document.createElement('div');
+  text.textContent = msg;
+
+  const buttons = document.createElement('div');
+  buttons.style.marginTop = '0.5rem';
+  buttons.style.display = 'flex';
+  buttons.style.justifyContent = 'space-between';
+  buttons.style.gap = '1rem';
+
+  const b1 = document.createElement('button');
+  b1.textContent = btn1;
+  b1.onclick = () => { on1(); prompt.remove(); };
+
+  const b2 = document.createElement('button');
+  b2.textContent = btn2;
+  b2.onclick = () => { on2(); prompt.remove(); };
+
+  [b1, b2].forEach(b => {
+    b.style.padding = '0.5rem 1rem';
+    b.style.background = '#444';
+    b.style.color = '#fff';
+    b.style.border = 'none';
+    b.style.borderRadius = '4px';
+    b.style.cursor = 'pointer';
+  });
+
+  buttons.appendChild(b1);
+  buttons.appendChild(b2);
+  prompt.appendChild(text);
+  prompt.appendChild(buttons);
+  document.body.appendChild(prompt);
+}
+
+  if (!orientationTarget) {
+    orientationTarget = getNearestPatriot(x, y);
+    feedbackEl.textContent = 'Tap again to choose new orientation.';
+  } else {
+    // propose new heading
+    const dx = x - orientationTarget.x;
+    const dy = y - orientationTarget.y;
+    orientationAngle = (r2d(Math.atan2(dy, dx)) + 360) % 360;
+    orientationProposed = { x, y };
+
+    // prompt user
+    showPrompt(
+      `ADAFCO, ICC, confirm you want to set FU and Radar orientation to ${Math.round(orientationAngle)} degrees?`,
+      'Affirm',
+      'Disregard',
+      () => {
+        orientationTarget.wedgeDir = d2r(orientationAngle);
+        orientationTarget.birdsNegateUntil = Date.now() + 90000;
+        feedbackEl.textContent = 'WILCO. Birds negate on that sector for 90 seconds.';
+        setTimeout(() => feedbackEl.textContent = '', 5000);
+        resetOrientationMode();
+      },
+      () => {
+        feedbackEl.textContent = 'ICC copies.';
+        setTimeout(() => feedbackEl.textContent = '', 4000);
+        resetOrientationMode();
+      }
+    );
+  }
+
+  return; // don’t let other click logic run
+}
+
+
     if (mode === 'practice') {
   // Force heading toward bullseye, using our normalized bearing() util
   o.heading = bearing(o, bullseye);
