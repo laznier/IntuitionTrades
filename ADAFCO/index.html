@@ -632,8 +632,14 @@ fireballBtn.addEventListener('click', () => {
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
-    function bearing(a,b){
-  return Math.round((Math.atan2(b.x-a.x, a.y-b.y)*180/Math.PI+360)%360)||360;
+    function bearing(a, b) {
+  // 1) raw angle in [0 … 360)
+  const raw = (Math.atan2(b.x - a.x, a.y - b.y) * 180 / Math.PI + 360) % 360;
+  // 2) always round *up* any fraction
+  let deg = Math.ceil(raw);
+  // 3) map exact 0 → 360 so you stay in 1–360
+  if (deg === 0) deg = 360;
+  return deg;
 }
 
     function distNm(a,b){
@@ -941,7 +947,39 @@ function drawTracks(now) {
       ctx.fillStyle    = colTag;
       ctx.fillText(o.tag, o.x, o.y - 8);
     }
+    // after your normal drawing in drawTracks(now), inside tracks.forEach(o => { … })
+
+  if (o.friendly) {
+      const iccStatic = statics.find(s => s.type === 'icc');
+      const distToIcc = distNm(iccStatic, o);
+
+      // when it first enters 30 NM, record the timestamp
+      if (distToIcc <= 30 && o.identStart == null) {
+        o.identStart = Date.now();
+      }
+
+      // blink IDENT only for 30 seconds from identStart
+      if (o.identStart != null && Date.now() - o.identStart <= 30000) {
+        // only blink while still within 30 NM
+        if (distToIcc <= 30 && Math.floor(Date.now() / 500) % 2 === 0) {
+          ctx.save();
+            ctx.font         = '12px monospace';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle    = 'yellow';
+            ctx.fillText('IDENT', o.x, o.y + 14);
+          ctx.restore();
+        }
+      }
+      // optional: clear identStart if it ever moves back out before 30s elapse:
+      else if (distToIcc > 30) {
+        o.identStart = null;
+      }
+    }
+
   });
+
+
 
 
 
@@ -977,7 +1015,7 @@ function drawTracks(now) {
       // ③ INFO (hdg/alt/spd)
       if ([3, 4].includes(tagMode))
         lines.push(
-          `${('000' + o.heading).slice(-3)}°/${o.speed} kt/${('000' + o.alt).slice(-3)} MSL`
+          `${('000' + o.heading).slice(-3)}°/${o.speed} kts/${('000' + o.alt).slice(-3)} MSL`
         );
 
       // ④ ALT‑ONLY (green)
@@ -1033,6 +1071,25 @@ function drawTracks(now) {
 
   tracks.forEach(o => {
     if (o.destroyed) return;
+
+    
+   // ─── Friendly descent: start at 200 MSL, linearly descend 200→0 over 20 NM ───
+    if (o.friendly) {
+      const icc    = statics.find(s => s.type === 'icc');
+      const dist   = distNm(icc, o);           // in NM
+     if (dist > 20) {
+       o.alt = 200;
+      } else {
+        // map dist [20→0] → alt [200→0], then floor to nearest 10
+        const rawAlt = (dist / 20) * 200;
+        o.alt = Math.floor(rawAlt / 10) * 10;
+        if (o.alt <= 0) {
+          // landed
+          o.destroyed = true;
+          return;
+        }
+      }
+    }
 
     // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
 if (o.isTbm) {
