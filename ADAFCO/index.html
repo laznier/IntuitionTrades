@@ -558,8 +558,8 @@ function spawnTbmWave() {
   // 1) spacing & cluster geometry
   const sideNm    = 5;                       // ~5 NM between each TBM
   const offsetNm  = sideNm / Math.sqrt(3);   // centroid → vertex distance
-  const minC      = 200 + offsetNm;          // keep all vertices ≥200 NM from ICC
-  const maxC      = 210 - offsetNm;          // and ≤210 NM from ICC
+  const minC      = 130 + offsetNm;          
+  const maxC      = 140 - offsetNm;          
   const clusterR  = Math.random() * (maxC - minC) + minC;
   const clusterAng= Math.random() * 2 * Math.PI;
   // cluster center in world pixels
@@ -1805,34 +1805,45 @@ document.getElementById('practiceBtn').onclick = function(){
 };
 
 // ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────────
-function nextQueueTrack(){
+function nextQueueTrack() {
   if (mode !== 'practice') return;
   clearTimeout(coverTimer);
 
-  // pick ONLY un-tagged, live tracks (blank labels) closest to B/E
-  const blanks = tracks
-  .filter(t => !t.destroyed && !t.tag && !t.friendly)
-  .sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+  // 1) Are there any remaining hostiles? (ignore friendlies & TBMs)
+  const hostiles = tracks.filter(t =>
+    !t.destroyed && !t.friendly && !t.isTbm
+  );
 
-  // if none left, just wait for user actions (all sitting NEGATE, etc.)
-  if (blanks.length === 0) return;
-   showLevelComplete();
-   return;
- 
+  // 2) If none remain, complete the level
+  if (hostiles.length === 0) {
+    showLevelComplete();
+    return;
+  }
 
+  // 3) Otherwise, pick only un‑tagged hostiles closest to BE
+  const blanks = hostiles
+    .filter(t => !t.tag)
+    .sort((a, b) => distNm(bullseye, a) - distNm(bullseye, b));
+
+  // 4) If there are no blanks, just wait for user input
+  if (blanks.length === 0) {
+    return;
+  }
+
+  // 5) Issue the next COVER command
   phase    = 'cover';
   curTrack = blanks[0];
-
   curTrack.tag     = 'COVER';
   curTrack.tagTime = Date.now();
-
   const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
   statusEl.textContent =
     `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
   feedbackEl.textContent = '';
 
-  coverTimer = setTimeout(nextQueueTrack, 25000);  // 25 s → auto-cycle
+  // 6) Start the 25 s timer to auto‑cycle
+  coverTimer = setTimeout(nextQueueTrack, 25000);
 }
+
 
 
 
