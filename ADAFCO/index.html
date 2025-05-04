@@ -446,31 +446,31 @@ function buildStatics(){
 
 
   statics = [
-    { type:'icc', id:'00176', x:cx,      y:cy       },
+    { type:'icc', id:'ICC', x:cx,      y:cy       },
 
     // launcher 1 (NE)
-    { type:'fu',  id:'00177', x:cx + p10, y:cy - p10 },
+    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy - p10 },
     { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
 
     // launcher 2 (SW)
-    { type:'fu',  id:'00178', x:cx - p10, y:cy + p10 },
+    { type:'fu',  id:'PATRIOT', x:cx - p10, y:cy + p10 },
     { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
 
     // launcher 3 (SE)
-    { type:'fu',  id:'00175', x:cx + p10, y:cy + p10 },
+    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy + p10 },
     { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
 
     // launcher 4
-    { type:'fu',  id:'00111', x:cx - p10/2, y:cy - p10 },
+    { type:'fu',  id:'PATRIOT', x:cx - p10/2, y:cy - p10 },
     { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro },
   ];
 
-    // ─── correlation track at 200 NM east of the bullseye ─────────────────
-    statics.push({
-    type: 'corr',
-    id:   'FRIEND',
-    x:    cx + 200 / CFG.nmPerPixel,
-    y:    cy
+    // ── NASAM (friendly) icon, 15 NM east of the ICC ─────────────────────
+  statics.push({
+    type:'fu',  id:'00175', x:cx + p10, y:cy + p10,
+    id:   'NASAM',            // label it “NASAM”
+    x:    cx + 0.1 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    y:    cy - 1.5 / CFG.nmPerPixel, 
   });
 
 
@@ -954,10 +954,22 @@ function drawTracks(now) {
       const lines = [];
 
       // ① B/E range
-      if ([1, 4].includes(tagMode))
-        lines.push(
-          `${('000' + bearing(bullseye, o)).slice(-3)}/${distNm(bullseye, o)}`
-        );
+      if ([1, 4].includes(tagMode)) {
+  // 1) compute the “raw” angle exactly as bearing() does internally
+  const raw = (
+    Math.atan2(o.x - bullseye.x, bullseye.y - o.y) * 180/Math.PI
+    + 360
+  ) % 360;
+
+  // 2) always round *up* any fractional part
+  const b = Math.ceil(raw);
+
+  // 3) zero‑pad and push
+  lines.push(
+    `${('000' + b).slice(-3)}/${distNm(bullseye, o)}`
+  );
+}
+
 
       // ② JTN
       if ([2, 4].includes(tagMode)) lines.push(o.id);
@@ -1728,28 +1740,35 @@ if (possible) {
 
 
 
-  /* ───── KILL ─────────────────────────────────────────────── */
-  if (k === 'k') {
+    /* ───── KILL (manual only) ─────────────────────────────────── */
+    if (k === 'k') {
+    e.preventDefault();
     clearTimeout(coverTimer);
-    curTrack     = t;
-    curTrack.tag = '#';
-    curTrack.tagTime = Date.now();
+
+    // only kill the user‑selected track (the one circled on screen)
+    const t = selectedTrack;
+    if (!t) return;
+
+    // mark it with “#”, then vanish it after 5 s
+    t.tag     = '#';
+    t.tagTime = Date.now();
     setTimeout(() => {
-  // clear the “#”
-  curTrack.tag = null;
-  curTrack.tagTime = Date.now();
+      // clear the tag and destroy
+      t.tag       = null;
+      t.destroyed = true;
 
-  // mark destroyed
-  curTrack.destroyed = true;
+      // advance only if you’re still in practice mode
+      if (mode === 'practice') {
+        if (trackQueue.every(tr => tr.destroyed)) {
+          showLevelComplete();
+        } else {
+          nextQueueTrack();
+        }
+      }
+    }, 5000);
 
-  // advance: either next level or next cover
-  if (trackQueue.every(tr => tr.destroyed)) {
-    showLevelComplete();
-  } else {
-    nextQueueTrack();
-  }
-}, 5000);
- 
+    // stop any further hotkey processing
+    return;
   }
 });
 
