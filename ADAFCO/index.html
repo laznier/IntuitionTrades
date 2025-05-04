@@ -1816,7 +1816,10 @@ function nextQueueTrack(){
 
   // if none left, just wait for user actions (all sitting NEGATE, etc.)
   if (blanks.length === 0) return;
-
+   showLevelComplete();
+   return;
+ }
+ 
   phase    = 'cover';
   curTrack = blanks[0];
 
