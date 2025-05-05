@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ADAFCO Bullseye/BRAA Trainer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #0a0a0d; --icc: #27e835;
+      --braa: #0ea5e9; --track: #ff5757; --text: #f8f8f8;
+      --yellow: #ffd60a; --warn: #ff4d4d;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  
+    html {
+      height: 100%;
+    }
+    body {
+    
+  background: var(--bg);
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    
+    }
+    header {
+      display: flex; flex-direction: column; align-items: center;
+      padding: .5rem 1rem; background: #111; gap: .5rem; z-index: 3;
+    }
+    #controls { display: flex; gap: .75rem; }
+    button {
+      padding: .25rem .8rem; border: none; border-radius: 6px;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    #practiceBtn { background: var(--icc); color: #000; }
+    #tagsBtn, #helpBtn { background: var(--braa); color: #000; }
+    #compassBtn { background: var(--yellow); color: #000; }
+    #status { font-size: .9rem; z-index: 3; }
+    #feedback { font-size: .8rem; color: var(--warn); min-height: 1em; z-index: 3; }
+    #scope {
+      flex: 1; min-height:0; width: 100%; background: var(--bg);
+      position: relative; z-index: 1;
+    }
+    #mobileControls {
+      display: none; position: fixed; bottom: 0; left: 0; width: 100%;
+      background: rgba(17,17,17,0.9); padding: .5rem 0; z-index: 4;
+      flex-wrap: wrap; justify-content: space-around;
+    }
+    #mobileControls button {
+      flex: 1; margin: .25rem; min-width: 40px; font-size: 1rem;
+    }
+    @media (max-width: 768px) {
+      #mobileControls { display: flex; }
+    }
+    #helpOverlay {
+  display: none;
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #f8f8f8;
+  padding: 1rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  z-index: 5;
+  max-width: 380px;
+
+  /* new: limit height and allow scrolling */
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+    #helpOverlay h3 { margin-top: 0; color: var(--icc); }
+    #helpOverlay button {
+      margin-top: 1rem; background: var(--track); color: #fff;
+      cursor: pointer;
+    }
+    #cursorLabel {
+      position: fixed; pointer-events: none; z-index: 6;
+      background: rgba(0,0,0,0.7); border-radius: 4px;
+      padding: 2px 5px; font-family: monospace; font-size: .8rem;
+      color: var(--text);
+    }
+    #cursorLabel .be { color: var(--yellow); font-weight: 600; }
+    #cursorLabel .braa { display: block; color: var(--braa); font-size: .7rem; }
+    .card {
+      position: fixed; top: 10px; left: 10px;
+      background: #181818; border: 1px solid #333;
+      padding: 1rem 1.5rem; border-radius: 8px; z-index: 15;
+    }
+    .card h3 {
+      margin: 0 0 .4rem; color: var(--icc); font-size: 1.1rem;
+    }
+    .card button {
+      margin-top: .8rem; background: var(--track); color: #fff; cursor: pointer;
+    }
+    /* ─── GAME OVER OVERLAY STYLES ─────────────────────────────────────── */
+#gameOverOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+#gameOverBox {
+  text-align: center;
+  color: #fff;
+}
+#gameOverBox h1 {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+#gameOverBox p {
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+}
+#gameOverBox button {
+  font-size: 1rem;
+  padding: .75rem 1.5rem;
+  background: var(--track);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+/* ─── LEVEL COMPLETE OVERLAY STYLES ───────────────────────────────── */
+#levelOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+#levelBox {
+  background: #222;
+  color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+#levelBox h2 {
+  margin: 0;
+  font-size: 3rem;
+}
+#fireballBtn {
+  position: fixed;
+  bottom: 3rem;
+  right: 1rem;
+  z-index: 10;
+  background: var(--warn);
+  color: #fff;
+}
+@media (max-width: 768px) {
+  .card,
+  .card2 {
+    top: 100px !important;
+  }
+}
+
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <div id="controls">
+      <button id="practiceBtn">Practice Mode</button>
+      <button id="tagsBtn">TAGS: OFF</button>
+      <button id="compassBtn">Compass: OFF</button>
+      <button id="helpBtn">Help</button>
+    </div>
+    <div id="status">Free mode</div>
+    <div id="score">Score: 0</div>
+    <div id="feedback"></div>
+  </header>
+
+  <button id="fireballBtn" disabled>FIREBALL</button>
+
+
+  <canvas id="scope"></canvas>
+  
+    <div id="helpOverlay">
+     
+        <h3>How to Play</h3>
+        <p>
+          You are the ADAFCO, operating from the TOC co-located with the DAL at the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
+        </p>
+      
+        <h4>Mission Flow</h4>
+        <ol>
+          <li>
+            <strong>COVER</strong><br>
+            The SL will order: “COVER Track 12345, B/E 123/45.”<br>
+            Primary select (left-click) the correct track, assess ID, flight profile, and probability of kill (PK), then acknowledge with:<br>
+            <em>“Copy Track 12345.”</em>
+          </li>
+          
+          <li>
+            <strong>ICC/TD Coordination</strong><br>
+            Relay the COVER command to the ICC/TD via simulated radio:<br>
+            <em>“GUARDIAN, BIGFOOT, Cover Group B/E 123/45, 27k, Track South, Hostile, NW Quadrant.”</em><br>
+            • If PK is high (inside Patriot wedge or NASAM ring), press <strong>A</strong> (Affirm).<br>
+            • If no solution exists, press <strong>N</strong> (Negate). You may update to <strong>A</strong> later if conditions change.
+          </li>
+      
+          <li>
+            <strong>Engagement</strong><br>
+            When the track is within range:<br>
+            • TX: <em>“GUARDIAN, BIGFOOT, Engage Group B/E 123/23, 27k, Track South, Hostile, NW Quadrant.”</em><br>
+            • Press <strong>W</strong> to fire. The track must be inside a valid Patriot wedge or NASAM ring, or else the shot is considered <strong>trashed</strong>.
+          </li>
+      
+          <li>
+            <strong>VANISH</strong><br>
+            Tracks vanish automatically 6 seconds after a valid engagement. You may also press <strong>K</strong> to manually remove a track early.
+          </li>
+        </ol>
+      
+        <h4>Track Identification</h4>
+        <p>Use the <strong>TAGS</strong> button to cycle through display modes:</p>
+        <ul>
+          <li><strong>OFF</strong> – Clean scope</li>
+          <li><strong>B/E</strong> – Bearing and distance from Bullseye</li>
+          <li><strong>JTN</strong> – Track number labels</li>
+          <li><strong>INFO</strong> – Heading, altitude, speed</li>
+          <li><strong>ALL</strong> – Full info overlay</li>
+          <li><strong>ALT</strong> – Altitude only</li>
+        </ul>
+      
+        <h4>Rules of Engagement & Friendly Fire</h4>
+        <ul>
+          <li>Friendlies may appear at any time.</li>
+          <li>Firing on a friendly <strong>inside</strong> firing geometry: <strong>–20</strong> pts (Fratricide).</li>
+          <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Bird trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
+          <li>SL should not issue COVER on friendly tracks — but errors are possible.</li>
+        </ul>
+      
+        <h4>TBM & FIREBALL Events</h4>
+        <ul>
+          <li>TBMs appear in triangular waves from 200+ NM.</li>
+          <li>Click the <strong>FIREBALL</strong> button before impact to earn <strong>+2</strong> points.</li>
+          <li>If TBMs impact without interception: <strong>–2</strong> points.</li>
+        </ul>
+      
+        <h4>Cards & Track Interactions</h4>
+        <ul>
+          <li><strong>Left-click</strong> a unit to view its status card.</li>
+          <li><strong>Right-click</strong> to pin the card in the top-right corner.</li>
+          <li>Cards display ID, heading, altitude, speed, and system status.</li>
+        </ul>
+      
+        <h4>Scoring</h4>
+        <ul>
+          <li><strong>+1</strong> – Valid missile kill</li>
+          <li><strong>+2</strong> – FIREBALL intercept</li>
+          <li><strong>–1</strong> – Bird trashed (fired with no coverage)</li>
+          <li><strong>–5</strong> – ROE violation (invalid target)</li>
+          <li><strong>–6</strong> – Friendly fire outside geometry</li>
+          <li><strong>–20</strong> – Fratricide inside geometry</li>
+          <li><strong>–2</strong> – TBM impact</li>
+        </ul>
+      
+        <h4>Controls & Hotkeys</h4>
+        <ul>
+          <li><strong>A</strong> – AFFIRM</li>
+          <li><strong>N</strong> – NEGATE</li>
+          <li><strong>W</strong> – AWAY (engage)</li>
+          <li><strong>K</strong> – KILL (manual vanish)</li>
+          <li><strong>O</strong> – Aim selected radar wedge</li>
+          <li><strong>R</strong> – Reset Bullseye position</li>
+          <li><strong>Arrow Keys</strong> / <strong>+</strong> / <strong>–</strong> – Pan and zoom</li>
+        </ul>
+      
+        <button id="closeHelp">Close</button>
+      </div>
+      
+    
+  
+  
+  
+
+  <div id="mobileControls">
+    <button data-key="a">A</button>
+    <button data-key="n">N</button>
+    <button data-key="w">W</button>
+    <button data-key="o">O</button>    <!-- ← added! -->
+    <button data-key="k">K</button>
+  </div>
+  
+
+  <div id="cursorLabel"></div>
+  <script>
+    // ─── CONFIG & STATE ─────────────────────────────────────────────────
+    const CFG = {
+      trackCount: 10,
+      nmPerPixel: 0.2,
+      maxSpawnNm: 150,
+      frameRate: 60,
+      maxSpeedKts: 800,
+      destroyMs: 6000,
+      autoKillMs: 10000,
+      rounds: 10,
+      tbmCount:      3,
+  tbmMinDistNm:  5,
+  tbmMaxDistNm:  10,
+  tbmAltitude:   999,
+  tbmSpeedKts:   3400,
+  tbmWindowMs:   null,    // will be set per wave
+
+    };
+
+    let tbmWaves = [];        // active TBM waves
+
+    let worldWidth, worldHeight;
+    let bullseye, statics = [], tracks = [];
+    let mouse = { wx:0, wy:0, sx:0, sy:0, px:0, py:0 },
+        dragStart = null, isDragging = false, rubber = null,
+        scale = 1, offX = 0, offY = 0;
+    let pinch = { active:false, startDist:0, startScale:1, center:{x:0,y:0} };
+    let selectedTrack = null, selectedStatic = null;
+    let selectedTrack2 = null, selectedStatic2 = null;
+    let mode='free', phase='', curTrack=null, killTimer=null;
+    let round=0, score=0;
+ 
+// ─── TAG MODES ─────────────────────────────────────────────
+let tagMode   = 0,
+    tagLabels = ['OFF','B/E','JTN','INFO','ALL','ALT']; 
+
+    let compassOn = false;
+let level = 1;
+let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
+let coverTimer = null, practiceSaveIndex = null;
+
+// NASAM state
+let NASAMMissiles      = 6;
+let NASAMDisabledUntil = 0;
+
+//PATRIOT Reorient
+let pendingReorient  = false;
+    let pendingStatic    = null;
+
+    //PATRIOT down
+    // ─── track when we last forced a radar failure ─────────────────
+let lastRadFailure = 0;
+let nextOutageAllowed = 0;  // timestamp (ms) after which we may schedule another outage
+
+
+//missile
+
+let missiles = [];   // track all in‑flight missile dots
+
+/**
+ * Returns `true` if the shot should be blocked by NASAM‐weapons‐red,
+ * or `false` if you should proceed with the W handler.
+ * Side‑effects: decrements missile count and schedules reload.
+ */
+function checkNasamStatus(isInsideCircle) {
+  const now = Date.now();
+
+  // If circle is red, block every inside‐circle shot
+  if (isInsideCircle && now < NASAMDisabledUntil) {
+    feedbackEl.textContent = 'NASAM Weapons Red';
+    return true;
+  }
+
+  // If it's a valid circle shot and missiles remain, consume one
+  if (isInsideCircle && NASAMMissiles > 0) {
+    NASAMMissiles--;
+    // Last missile? go red for 2 min
+    if (NASAMMissiles === 0) {
+      feedbackEl.textContent  = 'NASAM Weapons Red';
+      NASAMDisabledUntil        = now + 2*60*1000;
+      setTimeout(() => { NASAMMissiles = 6; }, 2*60*1000);
+      return true;
+    }
+  }
+  return false;
+}
+
+
+    // ─── SETUP ──────────────────────────────────────────────────────────
+    const canvas     = document.getElementById('scope'),
+          ctx        = canvas.getContext('2d'),
+          statusEl   = document.getElementById('status'),
+          feedbackEl = document.getElementById('feedback'),
+          tagsBtn    = document.getElementById('tagsBtn'),
+          compassBtn = document.getElementById('compassBtn'),
+          helpOverlay= document.getElementById('helpOverlay');
+    const label      = document.getElementById('cursorLabel');
+
+    // ─── CONFIG & STATE ─────────────────────────────────────────────
+
+
+// ↓↓↓  NEW – must be declared before fitMobileView() ever runs
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+// Distance from the very top where cards should appear
+const cardTop = () =>
+  isMobile ? document.querySelector('header').offsetHeight + 10 : 10;
+
+// ─── load background ─────────────────────────────────────────────
+const bgImg = new Image();
+bgImg.src = '/images/island.png';
+
+/* Helper: centre view so a 200 NM radius fits the mobile screen */
+function fitMobileView() {
+  if (!isMobile) return;                       // uses your existing isMobile
+  const rpx      = 200 / CFG.nmPerPixel;       // 200 NM in world‑px
+  const fitScale = Math.min(worldWidth, worldHeight) / (2 * rpx);
+  scale = fitScale;
+  offX  = bullseye.x - (worldWidth  / 2) / scale;
+  offY  = bullseye.y - (worldHeight / 2) / scale;
+}
+
+function resize () {
+  worldWidth  = canvas.width  = window.innerWidth;
+  const hdr   = document.querySelector('header').offsetHeight;
+  worldHeight = canvas.height = window.innerHeight - hdr;
+
+  if (!resize.didInit) {
+    buildStatics();
+    resize.didInit = true;
+    fitMobileView();           // first‑time mobile fit
+  }
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resize);
+}
+resize();
+
+function buildStatics(){
+  const cx = worldWidth/2,
+        cy = worldHeight/2,
+        p10 = 10 / CFG.nmPerPixel,
+        ro  = 2  / CFG.nmPerPixel;
+
+
+  statics = [
+    { type:'icc', id:'ICC', x:cx,      y:cy       },
+
+    // launcher 1 (NE)
+    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy - p10 },
+    { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
+
+    // launcher 2 (SW)
+    { type:'fu',  id:'PATRIOT', x:cx - p10, y:cy + p10 },
+    { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
+
+    // launcher 3 (SE)
+    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy + p10 },
+    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
+
+    // launcher 4
+    { type:'fu',  id:'PATRIOT', x:cx - p10/2, y:cy - p10 },
+    { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro },
+  ];
+
+    // ── NASAM (friendly) icon, 15 NM east of the ICC ─────────────────────
+  statics.push({
+    type:'fu',
+    id:   'NASAM',            // label it “NASAM”
+    x:    cx + 0 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    y:    cy + 2 / CFG.nmPerPixel, 
+  });
+
+
+  bullseye = { x:cx, y:cy };
+
+  // ── Point every radar EXACTLY away from B/E ───────────────
+   statics.forEach(s => {
+   if (s.type === 'rad') {
+     // direct bearing from B/E to radar gives the "away" direction
+     s.wedgeDir = bearing(bullseye, s);
+ // 2) new animation state
+ s.disabledUntil = 0;     // when its red disable expires
+      s.animFrom      = null;  // starting direction for animation
+      s.animTo        = null;  // target direction
+      s.animStart     = 0;     // timestamp when animation began
+    }
+  });
+}
+
+
+ // ─── TRACKS ─────────────────────────────────────────────────────────
+const rand = (a,b)=>Math.floor(Math.random()*(b-a)+a);
+
+// ─── TRACK SPAWNING ───────────────────────────────────────────────
+function newTrack() {
+  const minSpawnNm = 60,
+        maxSpawnNm = 170;
+
+  let x, y, heading, spawnDistNm, radius, ang;
+
+  // keep trying until the final (wrapped) point is ≥50 NM from bullseye
+  do {
+    // 1) random direction
+    ang = Math.random() * 2 * Math.PI;
+
+    // 2) random distance between 50–170 NM
+    spawnDistNm = Math.random() * (maxSpawnNm - minSpawnNm) + minSpawnNm;
+    radius      = spawnDistNm / CFG.nmPerPixel;
+
+    // 3) compute raw world coords around bullseye
+    x = bullseye.x + Math.cos(ang) * radius;
+    y = bullseye.y + Math.sin(ang) * radius;
+
+// 4) keep the real world coordinates — no wrapping on small screens
+
+    // loop until that wrapped point really is ≥50 NM away
+  } while (distNm(bullseye, { x, y }) < minSpawnNm);
+
+    // 5) start with a random roaming heading (0‑359°)
+    heading = Math.floor(Math.random() * 360);
+
+  // 6) altitude and speed as before
+  const alt = rand(5, 600);
+  let speed;
+  if (alt <= 150)         speed = rand(250, 500);
+  else if (alt <= 300)    speed = rand(400, 600);
+  else                    speed = rand(500, 700);
+
+  return {
+    id:           ('00000' + rand(1000, 7776)).slice(-5),
+    x, y,
+    heading,
+    speed,
+    destAlt:      0,
+    friendly:     false,
+    alt,
+    tag:          null,
+    tagTime:      0,
+    destroyed:    false,
+    everEngaged:  false
+  };
+}
+
+
+
+function initTracks(){
+  tracks = Array.from({length:CFG.trackCount}, newTrack);
+}
+initTracks();
+
+function spawnTbmWave() {
+  const now = Date.now();
+  const icc = statics.find(s => s.type === 'icc');
+
+  const sideNm    = 5,
+        offsetNm  = sideNm / Math.sqrt(3),
+        minC      = 130 + offsetNm,
+        maxC      = 140 - offsetNm,
+        clusterR  = Math.random() * (maxC - minC) + minC,
+        clusterAng= Math.random() * 2 * Math.PI,
+        cx        = icc.x + Math.cos(clusterAng) * (clusterR / CFG.nmPerPixel),
+        cy        = icc.y + Math.sin(clusterAng) * (clusterR / CFG.nmPerPixel),
+        rot       = Math.random() * 2 * Math.PI,
+        dPx       = offsetNm / CFG.nmPerPixel;
+
+  const wave = {
+    spawn:    now,
+    resolved: false,
+    tbms:     [],
+    cross40:  Infinity,
+    cross20:  Infinity
+  };
+
+  let furthestImpact = 0;
+
+  for (let i = 0; i < 3; i++) {
+    const ang       = rot + i * 2 * Math.PI / 3,
+          x         = cx + Math.cos(ang) * dPx,
+          y         = cy + Math.sin(ang) * dPx,
+          speed     = CFG.tbmSpeedKts,
+          distNm    = distNm({x, y}, icc),
+          tImpact   = (distNm / speed) * 3600 * 1000,
+          tCross40  = ((distNm - 40) / speed) * 3600 * 1000,
+          tCross20  = ((distNm - 20) / speed) * 3600 * 1000;
+
+    wave.cross40 = Math.min(wave.cross40, now + tCross40);
+    wave.cross20 = Math.min(wave.cross20, now + tCross20);
+    furthestImpact = Math.max(furthestImpact, tImpact);
+
+    const tbm = {
+      id:        `TBM${i+1}`,
+      x, y,
+      heading:   bearing({x, y}, icc),
+      speed,
+      alt:       CFG.tbmAltitude,
+      destAlt:   0,
+      destroyed: false,
+      isTbm:     true
+    };
+
+    wave.tbms.push(tbm);
+    tracks.push(tbm);
+  }
+
+  wave.craterTimer = setTimeout(() => {
+    if (!wave.resolved) {
+      changeScore(-5, "ADAFCO, ICC, CRATER at B/E! –5");
+      updateScoreDisplay();
+      wave.resolved = true;
+    }
+  }, furthestImpact);
+
+  tbmWaves.push(wave);
+  fireballBtn.disabled = false;
+  CFG.tbmWindowMs = furthestImpact;
+}
+
+
+
+const fireballBtn = document.getElementById('fireballBtn');
+
+// ─── REPLACE your entire Fireball handler with this ─────────────────
+fireballBtn.addEventListener('click', () => {
+  const icc  = statics.find(s => s.type === 'icc');
+  const nas  = statics.find(s => s.id   === 'NASAM');
+  // find the first un‑resolved wave
+  const wave = tbmWaves.find(w => !w.resolved && !w.fireballArmed);
+  if (!wave) return;
+
+  // mark it “armed” and cancel the unsent penalties
+  wave.fireballArmed = true;
+  clearTimeout(wave.craterTimer);
+  clearTimeout(wave.impactTimer);
+
+  const now       = Date.now();
+  // compute closest TBM distance to ICC
+  const dists     = wave.tbms.map(t => distNm(icc, t));
+  const minDist   = Math.min(...dists);
+
+  // helper to launch two Patriot missiles per TBM
+  function launchPatriot() {
+    wave.tbms.forEach(tbm => {
+      if (tbm.destroyed) return;
+      const fu = closestFu(tbm);
+      const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+      [0, 1000].forEach(offset => {
+        setTimeout(() => {
+          if (!tbm.destroyed) {
+            missiles.push({
+              x:             fu.x,
+              y:             fu.y,
+              target:        tbm,
+              fu,
+              speedPxPerSec,
+              expire:        Date.now() + 15_000
+            });
+          }
+        }, offset);
+      });
+    });
+    changeScore(2, "FIREBALL FIREBALL! +2");
+    updateScoreDisplay();
+    wave.resolved = true;
+  }
+
+  // helper to launch one NASAM salvo per TBM
+  function launchNasam() {
+    wave.tbms.forEach(tbm => {
+      if (tbm.destroyed || NASAMMissiles <= 0) return;
+      NASAMMissiles--;
+      missiles.push({
+        x:             nas.x,
+        y:             nas.y,
+        target:        tbm,
+        fu:            nas,
+        speedPxPerSec: (5000/3600)/CFG.nmPerPixel,
+        expire:        Date.now() + 15_000
+      });
+    });
+    changeScore(2, "NASAM Intercept! +2");
+    updateScoreDisplay();
+    wave.resolved = true;
+  }
+
+  if (minDist > 45) {
+    // 1) EARLY window → Patriot fires when TBM hits 40 NM
+    const delay = Math.max(0, wave.cross40 - now);
+    wave.patriotTimer = setTimeout(launchPatriot, delay);
+
+  } else if (minDist >= 20) {
+    // 2) ON‑TIME window → NASAM fires when TBM hits 20 NM
+    const delay = Math.max(0, wave.cross20 - now);
+    wave.nasamTimer = setTimeout(launchNasam, delay);
+
+  } else {
+    // 3) TOO LATE → immediate crater penalty
+    changeScore(-5, "CRATER at B/E! –5");
+    statusEl.textContent = "CRATER at B/E";
+    updateScoreDisplay();
+    wave.resolved = true;
+  }
+
+  // disable the button until the next wave spawns
+  fireballBtn.disabled = true;
+});
+
+
+
+
+
+    // ─── UTILS ──────────────────────────────────────────────────────────
+    const d2r = d=>d*Math.PI/180;
+    function bearing(a, b) {
+  // 1) raw angle in [0 … 360)
+  const raw = (Math.atan2(b.x - a.x, a.y - b.y) * 180 / Math.PI + 360) % 360;
+  // 2) always round *up* any fraction
+  let deg = Math.ceil(raw);
+  // 3) map exact 0 → 360 so you stay in 1–360
+  if (deg === 0) deg = 360;
+  return deg;
+}
+
+    function distNm(a,b){
+      return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel);
+    }
+    function scrToWorld(sx,sy){
+      return { x: offX + sx/scale, y: offY + sy/scale };
+    }
+    function distTouch(t0,t1){
+      return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
+    }
+/**
+ * Returns true if track `t` lies within the 50 NM / ±60° wedge of radar `s`.
+ */
+ function insideWedge(s, t) {
+  const dx = (t.x - s.x) * CFG.nmPerPixel;
+  const dy = (t.y - s.y) * CFG.nmPerPixel;
+  const d  = Math.hypot(dx, dy);
+  if (d > 50) return false;
+
+  const θ  = (s.wedgeDir - 90) * Math.PI/180;
+  const ax = Math.cos(θ);
+  const ay = Math.sin(θ);
+
+  const dot = (dx*ax + dy*ay) / d;
+
+  // inside ±60° if dot ≥ cos(60°) = 0.5
+  return dot >= 0.5;
+}
+
+/* ─── Missile‑in‑flight helpers ───────────────────────────────────────── */
+
+/** Return the FU (PATRIOT or NASAM) closest to this track. */
+function closestFu(track) {
+  return statics
+    .filter(s => s.type === 'fu')                    // PATRIOT launchers + NASAM
+    .reduce((best, s) =>
+      !best || distNm(s, track) < distNm(best, track) ? s : best, null);
+}
+
+/** Schedule the “kill / trashed” assessment at the computed impact time. */
+function scheduleImpactCheck(t) {
+  // 0) if we already scheduled one (re‑shot), cancel it
+  if (t.mslTimer) clearTimeout(t.mslTimer);
+
+  // 1) pick launch site & basic kinematics
+  const fu   = closestFu(t);
+  const dx   = (t.x - fu.x) * CFG.nmPerPixel;    // Δ in NM
+  const dy   = (t.y - fu.y) * CFG.nmPerPixel;
+  const dist = Math.hypot(dx, dy);               // LOS range (NM)
+
+  const Vt   = t.speed;                          // kts
+  const θt   = d2r(t.heading);
+  const vtx  = Math.sin(θt) * Vt;                // NM / hr components
+  const vty  = -Math.cos(θt) * Vt;
+
+  const uX   = dx / dist;                        // LOS unit‑vector
+  const uY   = dy / dist;
+  const Vm   = 3000;                             // missile speed (kts)
+
+  // 2) closure speed along LOS
+  const closure = Vm - (vtx * uX + vty * uY);    // NM / hr
+  if (closure <= 0) {
+    // missile can never overtake → treat as immediate trashed
+    markShotTrashed(t);
+    return;
+  }
+
+  const tHr   = dist / closure;                  // hours to intercept
+  const tMs   = tHr * 3600 * 1000;               // → ms
+
+  // 3) future impact coordinates (world‑px)
+  const ipX = t.x + (vtx / 3600) * tMs / CFG.nmPerPixel;
+  const ipY = t.y + (vty / 3600) * tMs / CFG.nmPerPixel;
+
+  // 4) schedule the decision
+  t.mslTimer = setTimeout(() => impactDecision(t), tMs);
+}
+
+/** Decide at impact whether the bird killed (+1) or trashed (–1 & ENGAGE). */
+function impactDecision(track) {
+  if (track.destroyed) return;
+
+  // use the track’s real world‑px position at this instant:
+  const ix = track.x, 
+        iy = track.y;
+
+  const now = Date.now();
+
+  /* A)  check NASAM ring — 15 NM around the NASAM FU */
+  const nasam = statics.find(s => s.id === 'NASAM');
+  const inRing = nasam && distNm({x:ix,y:iy}, nasam) <= 15;
+
+  /* B)  check *any* active Patriot radar wedge */
+  const inAnyWedge = statics
+    .filter(s => s.type === 'rad' &&
+                 now >= s.disabledUntil &&
+                 s.animFrom == null)
+    .some(rad => insideWedge(rad, { x: ix, y: iy }));
+
+
+
+       // ─── FRIENDLY IMPACT ───────────────────────────────
+  if (track.friendly) {
+    // only inside geometry is fratricide
+    if (inRing || inAnyWedge) {
+      changeScore(-20, 'Fratricide! –20 points');
+    } else {
+      // outside geometry: bird trashed + ROE
+      changeScore(-6, 'Bird Trashed: –1; ROE Violation: –5');
+    }
+    track.destroyed = true;
+    return;
+  }
+
+   // ---------------- VALID kill ----------------
+if (inRing || inAnyWedge) {
+  changeScore(1, `Track ${track.id} Vanished: +1`);
+  track.destroyed = true;
+  track.tag       = null;
+
+  // advance practice queue as usual
+  nextQueueTrack();
+
+  // now check for level completion
+  const hostilesLeft = tracks.some(t =>
+    !t.destroyed && !t.friendly && !t.isTbm
+  );
+  if (!hostilesLeft) {
+    showLevelComplete();
+  }
+} else {
+  // ---------------- TRASHED ----------------
+  markShotTrashed(track);
+}
+
+}
+
+/** Apply the trashed penalty & revert to ENGAGE at current position. */
+function markShotTrashed(t) {
+  changeScore(-1, 'Bird Trashed: -1 point');
+  t.tag           = 'ENGAGE';
+  t.tagTime       = Date.now();
+  t.everEngaged   = true;
+  const be = ('000' + bearing(bullseye, t)).slice(-3);
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be}/${distNm(bullseye,t)}`;
+}
+
+   // ─── UTILS ──────────────────────────────────────────────────────────
+function nmToPx(nm) {
+  return nm / CFG.nmPerPixel;
+}
+function drawCircle(ctx, p, radiusNm) {
+  const rpx = nmToPx(radiusNm);
+  ctx.save();
+  ctx.beginPath();
+  // use the same yellow you’ve defined in :root
+  ctx.fillStyle = 'rgba(255,214,10,0.1)';
+  ctx.arc(p.x, p.y, rpx, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
+  const rpx = nmToPx(radiusNm);
+  ctx.save();
+  ctx.beginPath();
+  ctx.fillStyle = 'rgba(255,214,10,0.1)';
+  // 0°=north, 90°=east → subtract 90 to get canvas 0 at +x
+  const toRad = d => (d - 90) * Math.PI/180;
+  ctx.moveTo(p.x, p.y);
+  ctx.arc(p.x, p.y, rpx, toRad(startDeg), toRad(endDeg), false);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+    // ─── DRAW ───────────────────────────────────────────────────────────
+
+
+
+
+    function drawCompass(){
+      if(!compassOn) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,200,200,0.7)';
+      ctx.lineWidth = 1;
+      const x = bullseye.x, y = bullseye.y;
+      const maxRpx = CFG.maxSpawnNm / CFG.nmPerPixel;
+      [0, Math.PI/2, Math.PI, 3*Math.PI/2].forEach(angle=>{
+        const x2 = x + Math.cos(angle)*maxRpx;
+        const y2 = y + Math.sin(angle)*maxRpx;
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x2,y2); ctx.stroke();
+      });
+      [50,100,150].forEach(rnm=>{
+        const rpx = rnm / CFG.nmPerPixel;
+        ctx.beginPath(); ctx.arc(x,y,rpx,0,2*Math.PI); ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+   // ─── DRAW STATICS ────────────────────────────────────────────────────
+// Remove any global wedge here! Just draw icons/text.
+function drawStatics() {
+  const colICC = getComputedStyle(document.documentElement).getPropertyValue('--icc');
+
+  statics.forEach(s => {
+ 
+        /* ─── PATRIOT radar wedge & dish ─────────────────────────── */
+        if (s.type === 'rad') {
+      const now = Date.now();
+
+      // 1) current pointing direction (animated if rotating)
+      let dir;
+      if (s.animFrom != null) {
+        const pct   = Math.min((now - s.animStart) /
+                               (s.disabledUntil - s.animStart), 1);
+        const delta = ((s.animTo - s.animFrom + 540) % 360) - 180;
+        dir = s.animFrom + delta * pct;
+        if (pct >= 1) { s.wedgeDir = s.animTo; s.animFrom = s.animTo = null; }
+      } else {
+        dir = s.wedgeDir;
+      }
+
+      // 2) draw 50 NM ±60° yellow (or red) wedge
+      const red   = now < s.disabledUntil;
+      const half  = 60;
+      const radR  = 50;
+      ctx.save();
+        ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
+        const toRad = d => (d - 90) * Math.PI/180;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.arc(s.x, s.y, nmToPx(radR),
+                toRad(dir - half), toRad(dir + half), false);
+        ctx.closePath();
+        ctx.fill();
+      ctx.restore();
+
+      // 3) little dish icon
+      ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.strokeStyle = colICC;
+        ctx.lineWidth   = 2;
+        ctx.beginPath();              // dish
+        ctx.arc(0, 0, 8, -Math.PI*0.7, Math.PI*0.7);
+        ctx.stroke();
+        ctx.beginPath();              // stem + base
+        ctx.moveTo(0, 0); ctx.lineTo(0, 10); ctx.stroke();
+        ctx.fillStyle = colICC;
+        ctx.fillRect(-4, 10, 8, 3);
+      ctx.restore();
+
+    /* ─── NASAM launcher & 15 NM ring ─────────────────────────── */
+} else if (s.id === 'NASAM') {
+    // 15 NM NASAM ring: red if weapons disabled, else yellow
+    const now      = Date.now();
+    const disabled = now < NASAMDisabledUntil;
+    ctx.save();
+      ctx.fillStyle = disabled
+        ? 'rgba(255,0,0,0.1)'     // red when out of missiles
+        : 'rgba(255,214,10,0.1)';  // yellow when ready
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI*2);
+      ctx.fill();
+    ctx.restore();
+
+      // launcher icon (same style as Patriot FU)
+      ctx.fillStyle = colICC;
+      ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.fillRect(-3, -12, 6, 12);               // body
+        ctx.beginPath();                            // nose
+          ctx.moveTo(-4, -12); ctx.lineTo(0, -20); ctx.lineTo(4, -12);
+        ctx.closePath(); ctx.fill();
+      ctx.restore();
+
+
+ 
+} else if (s.type === 'fu') {
+      // draw a little SAM launcher icon angled up
+      ctx.fillStyle = colICC;
+      ctx.save();
+        ctx.translate(s.x, s.y);
+        // missile body (12px tall) goes upward from the origin
+        ctx.fillRect(-3, -12, 6, 12);
+        // nose cone sits above the body
+        ctx.beginPath();
+        ctx.moveTo(-4, -12);
+        ctx.lineTo(0, -20);
+        ctx.lineTo(4, -12);
+        ctx.closePath();
+        ctx.fill();
+      ctx.restore();
+    } 
+      else if (s.type === 'corr') {
+     // draw a cyan cross for correlation track
+     ctx.save();
+        ctx.strokeStyle = 'rgba(0,255,255,0.7)';
+        ctx.lineWidth   = 2;
+        const size = 10;
+        ctx.beginPath();
+        ctx.moveTo(s.x - size, s.y);
+        ctx.lineTo(s.x + size, s.y);
+        ctx.moveTo(s.x, s.y - size);
+        ctx.lineTo(s.x, s.y + size);
+        ctx.stroke();
+        ctx.fillStyle = 'cyan';
+        ctx.fillText(s.id, s.x + 8, s.y - 8);
+      ctx.restore();
+    }
+    else {
+      // default icon for other statics
+      ctx.strokeStyle = colICC;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 6, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+    
+    // draw the ID label
+    ctx.fillStyle = colICC;
+    ctx.fillText(s.id, s.x + 8, s.y);
+  });
+
+  
+}
+
+// ─── DRAW TRACKS ─────────────────────────────────────────────────────
+function drawTracks(now) {
+  // 1) expire any stale tags
+  tracks.forEach(o => {
+    if (o.tag && now - o.tagTime > CFG.destroyMs) {
+      o.tag = null;
+    }
+  });
+
+  // 2) precompute common colors
+  const colHostile   = getComputedStyle(document.documentElement).getPropertyValue('--track');
+  const colText      = getComputedStyle(document.documentElement).getPropertyValue('--text');
+  const colTag       = getComputedStyle(document.documentElement).getPropertyValue('--braa');
+  const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+
+  // 3) draw each track
+  tracks.forEach(o => {
+    if (o.destroyed) return;  // skip dead
+
+    // 3a) special TBM icon
+    if (o.isTbm) {
+      for (let i = 0; i < 4; i++) {
+        ctx.save();
+          ctx.translate(o.x, o.y);
+          ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180); // spinning effect
+          ctx.beginPath();
+            ctx.moveTo(0, -6);
+            ctx.lineTo(3, 0);
+            ctx.lineTo(-3, 0);
+          ctx.closePath();
+          ctx.fillStyle = 'red';
+          ctx.fill();
+        ctx.restore();
+      }
+      return;  // done with TBMs
+    }
+
+    // 3b) normal hostile/friendly fill color
+    ctx.fillStyle = o.friendly
+      ? (o.alt > 100 ? 'green' : 'blue')
+      : colHostile;
+
+    // 3c) draw the little triangle
+    ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(d2r(o.heading));
+      ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(4, 4);
+        ctx.lineTo(-4, 4);
+      ctx.closePath();
+      ctx.fill();
+    ctx.restore();
+
+    // 3d) highlight selections
+    if (o === selectedTrack) {
+      ctx.strokeStyle = colText;
+      ctx.lineWidth   = 2;
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, 12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (o === selectedTrack2) {
+      ctx.strokeStyle = colHighlight;
+      ctx.lineWidth   = 2;
+      ctx.strokeRect(o.x - 12, o.y - 12, 24, 24);
+    }
+
+    // 3e) draw tag text
+    if (o.tag) {
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle    = colTag;
+      ctx.fillText(o.tag, o.x, o.y - 8);
+    }
+    // after your normal drawing in drawTracks(now), inside tracks.forEach(o => { … })
+
+  if (o.friendly) {
+      const iccStatic = statics.find(s => s.type === 'icc');
+      const distToIcc = distNm(iccStatic, o);
+
+      // when it first enters 30 NM, record the timestamp
+      if (distToIcc <= 30 && o.identStart == null) {
+        o.identStart = Date.now();
+      }
+
+      // blink IDENT only for 30 seconds from identStart
+      if (o.identStart != null && Date.now() - o.identStart <= 30000) {
+        // only blink while still within 30 NM
+        if (distToIcc <= 30 && Math.floor(Date.now() / 500) % 2 === 0) {
+          ctx.save();
+            ctx.font         = '12px monospace';
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle    = 'yellow';
+            ctx.fillText('IDENT', o.x, o.y + 14);
+          ctx.restore();
+        }
+      }
+      // optional: clear identStart if it ever moves back out before 30s elapse:
+      else if (distToIcc > 30) {
+        o.identStart = null;
+      }
+    }
+
+  });
+
+
+
+
+
+  // optional overlay tags in practice mode
+   // ─── overlay TAGS ──────────────────────────────────────────
+   if (tagMode) {
+    tracks.forEach(o => {
+      if (o.destroyed) return;
+
+      const lines = [];
+
+      // ① B/E range
+      if ([1, 4].includes(tagMode)) {
+  // 1) compute the “raw” angle exactly as bearing() does internally
+  const raw = (
+    Math.atan2(o.x - bullseye.x, bullseye.y - o.y) * 180/Math.PI
+    + 360
+  ) % 360;
+
+  // 2) always round *up* any fractional part
+  const b = Math.ceil(raw);
+
+  // 3) zero‑pad and push
+  lines.push(
+    `${('000' + b).slice(-3)}/${distNm(bullseye, o)}`
+  );
+}
+
+
+      // ② JTN
+      if ([2, 4].includes(tagMode)) lines.push(o.id);
+
+      // ③ INFO (hdg/alt/spd)
+      if ([3, 4].includes(tagMode))
+        lines.push(
+          `${('000' + o.heading).slice(-3)}°/${o.speed} kts/${('000' + o.alt).slice(-3)} MSL`
+        );
+
+      // ④ ALT‑ONLY (green)
+      if (tagMode === 5) lines.push(('000' + o.alt).slice(-3));
+
+      // ── draw ───────────────────────────────────────────────
+      ctx.font         = '10px monospace';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+
+      const colAlt = getComputedStyle(document.documentElement)
+                     .getPropertyValue('--icc');   // same bright green
+
+      lines.forEach((fu, i) => {
+        ctx.fillStyle =
+          tagMode === 1 && i === 0 ? colHighlight :         // yellow B/E
+          tagMode === 5            ? colAlt        : colText; // green ALT
+        ctx.fillText(fu, o.x + 8, o.y - 8 + i * 12);
+      });
+    });
+  }
+}
+
+
+
+
+ 
+    function drawDragLine(){
+      if(isDragging && dragStart){
+        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(dragStart.wx,dragStart.wy);
+        ctx.lineTo(mouse.wx,mouse.wy);
+        ctx.stroke();
+      }
+    }
+
+    function drawRubber(){
+      if(!rubber) return;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1;
+      const {cx,cy,ex,ey}=rubber;
+      const ox=2*cx-ex, oy=2*cy-ey;
+      const left=Math.min(ex,ox), top=Math.min(ey,oy),
+            width=Math.abs(ex-ox), height=Math.abs(ey-oy);
+      ctx.strokeRect(left,top,width,height);
+    }
+
+    function drawMissiles() {
+  ctx.save();
+  ctx.fillStyle = 'white';
+  missiles.forEach(m => {
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 3, 0, 2*Math.PI);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+
+function updateMissiles(dt) {
+  const now = Date.now();
+
+  // first remove any that have lived ≥80 s
+  missiles = missiles.filter(m => m.expire > now);
+
+missiles.forEach(m => {
+  const dx = m.target.x - m.x;
+  const dy = m.target.y - m.y;
+  const d  = Math.hypot(dx, dy);
+
+  if (d < 8) {
+    // stop any pending intercept timer
+    if (m.target.mslTimer) {
+      clearTimeout(m.target.mslTimer);
+      m.target.mslTimer = null;
+    }
+    // funnel the “hit” through your geometry checker
+    impactDecision(m.target);
+
+    // expire this missile
+    m.expire = 0;
+    return;
+  }
+
+    const ux = dx / d, uy = dy / d;
+    m.x += ux * m.speedPxPerSec * dt;
+    m.y += uy * m.speedPxPerSec * dt;
+
+  });
+}
+
+
+    // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
+    function updateTracks(dt){
+  const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+
+  tracks.forEach(o => {
+    if (o.destroyed) return;
+
+   // ─── Friendly descent: start at 200 MSL, linearly descend 200→0 over 20 NM ───
+    if (o.friendly) {
+      const icc    = statics.find(s => s.type === 'icc');
+      const dist   = distNm(icc, o);           // in NM
+     if (dist > 20) {
+       o.alt = 200;
+      } else {
+        // map dist [20→0] → alt [200→0], then floor to nearest 10
+        const rawAlt = (dist / 20) * 200;
+        o.alt = Math.floor(rawAlt / 10) * 10;
+        if (o.alt <= 0) {
+          // landed
+          o.destroyed = true;
+          return;
+        }
+      }
+    }
+
+        
+ 
+    // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
+if (o.isTbm) {
+  const distToBE = distNm(o, bullseye);
+  if (distToBE > 30) {
+    // hold high until inside 30 NM
+    o.alt = CFG.tbmAltitude;
+  } else {
+    // compute how many NM we moved this frame
+    const distanceNm   = (o.speed * speedMultiplier) * (dt / 3600);
+    const descentPerNm = 999 / 20;  
+    o.alt = Math.max(o.destAlt, o.alt - descentPerNm * distanceNm);
+    // when we hit ground, destroy
+    if (o.alt <= o.destAlt) {
+      o.destroyed = true;
+      return;
+    }
+  }
+
+
+}
+
+    // only force‑to‑bullseye when *not* in jink‑mode
+    if (mode === 'practice' && !o.isEvading) {
+      o.heading = bearing(o, bullseye);
+    }
+
+
+
+
+
+    // Move at base speed × level multiplier
+    const vx = Math.sin(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
+    const vy = -Math.cos(d2r(o.heading)) * o.speed * speedMultiplier * pps * dt;
+        // let tracks roam in unrestricted world‑space
+    o.x += vx;
+    o.y += vy;
+
+// Center collision → hostiles still kill the game, friendlies/TBMs just vanish
+if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
+  if (!o.friendly && !o.isTbm) {
+    // only hostiles cause game over
+    showGameOver('center');
+    return;
+  } else {
+    // friendly or TBM: just disappear and keep going
+    o.destroyed = true;
+    return;
+  }
+}
+
+
+  });
+}
+
+
+
+    let lastTime=performance.now();
+  // ─── MAIN LOOP ──────────────────────────────────────────────────────
+  function animate(now) {
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+  updateTracks(dt);
+  updateMissiles(dt);
+
+
+
+  // ─── A) clear & fill “sea” background ───────────────────────
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ─── B) draw screen‐space vignette UNDER everything else ────
+  //    (will never move or scale with world)
+  const cx = canvas.width  / 2;
+  const cy = canvas.height / 2;
+  // inner radius = roughly island radius in screen px (tweak as needed)
+  const inner = Math.min(canvas.width, canvas.height) * 0.2;
+  // outer radius = diagonal to cover full screen corners
+  const outer = Math.hypot(canvas.width, canvas.height) / 2;
+  const vg = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(10,10,13,1)');  // same as var(--bg)
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ─── C) now switch into world coords (pan & zoom) ──────────
+  ctx.setTransform(
+    scale, 0,
+    0, scale,
+    -offX * scale,
+    -offY * scale
+  );
+
+  // ─── D) draw island, statics, tracks, etc. ────────────────
+  if (bgImg.complete) {
+  // ① compute aspect ratio
+  const ratio = bgImg.width / bgImg.height;
+
+  // ② decide on one “world-space” size—e.g. ¼ of the world’s height
+  const imgH = worldHeight / 2.7;
+  const imgW = imgH * ratio;   // keeps w/h = original
+
+  // ③ compute the 5 NM east shift in world-pixels
+  const shiftPx = 5 / CFG.nmPerPixel;
+
+  // ④ center that resized island on (bullseye.x + shiftPx, bullseye.y)
+  const destX = bullseye.x + shiftPx - imgW / 3;
+  const destY = bullseye.y             - imgH / 2;
+
+  ctx.drawImage(
+    bgImg,
+    0, 0, bgImg.width, bgImg.height,  // source
+    destX, destY,                     // dest top-left
+    imgW, imgH                        // dest size (keeps aspect)
+  );
+}
+
+
+  drawStatics();
+  drawCompass();
+  drawTracks(now);
+  drawMissiles();       // render your little dots
+  drawDragLine();
+  drawRubber();
+
+
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+
+    // ─── INPUT HANDLING ─────────────────────────────────────────────────
+    function storeMouse(e) {
+      const rect = canvas.getBoundingClientRect();
+      let pageX = 'pageX' in e ? e.pageX : e.clientX;
+      let pageY = 'pageY' in e ? e.pageY : e.clientY;
+      mouse.sx = pageX - rect.left;
+      mouse.sy = pageY - rect.top;
+      mouse.px = pageX;
+      mouse.py = pageY;
+      const w = scrToWorld(mouse.sx, mouse.sy);
+      mouse.wx = w.x;
+      mouse.wy = w.y;
+      updateCursorLabel();
+    }
+
+    //let lastTap = null;                                   // ⬅️ remembers last canvas tap
+    canvas.addEventListener('touchstart', e=>{
+      if(e.touches.length===2){
+        pinch.active=true;
+        pinch.startDist=distTouch(e.touches[0],e.touches[1]);
+        pinch.startScale=scale;
+        const rect=canvas.getBoundingClientRect();
+        const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
+        const cy=(e.touches[0].clientY-rect.top +e.touches[1].clientY-rect.top)/2;
+        pinch.center=scrToWorld(cx,cy);
+      }
+    },{passive:false});
+
+    canvas.addEventListener('touchmove', e=>{
+      if(pinch.active&&e.touches.length===2){
+        e.preventDefault();
+        const newDist=distTouch(e.touches[0],e.touches[1]);
+        const f=newDist/pinch.startDist;
+        scale=pinch.startScale*f;
+        const rect=canvas.getBoundingClientRect();
+        const cx=(e.touches[0].clientX-rect.left+e.touches[1].clientX-rect.left)/2;
+        const cy=(e.touches[0].clientY-rect.top+e.touches[1].clientY-rect.top)/2;
+        offX=pinch.center.x-cx/scale;
+        offY=pinch.center.y-cy/scale;
+      } else if(e.touches.length===1){
+        storeMouse(e.touches[0]);
+        if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
+      }
+    },{passive:false});
+
+    canvas.addEventListener('touchend', e=>{
+      if(pinch.active && e.touches.length<2) pinch.active=false;
+    },{passive:false});
+
+    canvas.addEventListener('mousemove', e=>{
+      storeMouse(e);
+      if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
+    });
+
+    canvas.addEventListener('mousedown', e=>{
+      if(e.button!==0) return;
+      storeMouse(e);
+      if(e.detail===2){
+        rubber={cx:mouse.sx,cy:mouse.sy,ex:mouse.sx,ey:mouse.sy};
+      } else {
+        isDragging=true; dragStart={...mouse};
+      }
+    });
+
+    window.addEventListener('mouseup', e=>{
+      if(e.button!==0) return;
+      storeMouse(e);
+      isDragging=false; dragStart=null;
+      if(!rubber) return;
+      const dx=Math.abs(mouse.sx-rubber.cx)*2,
+            dy=Math.abs(mouse.sy-rubber.cy)*2;
+      if(dx>10&&dy>10){
+        const w0=scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
+              w1=scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
+        const newScale=Math.min(worldWidth/(w1.x-w0.x), worldHeight/(w1.y-w0.y));
+        scale=newScale; offX=w0.x; offY=w0.y;
+      }
+      rubber=null;
+    });
+
+    canvas.addEventListener('wheel', e=>{
+      e.preventDefault(); storeMouse(e);
+      const f=e.deltaY<0?1.1:1/1.1;
+      const cx=e.clientX-canvas.getBoundingClientRect().left,
+            cy=e.clientY-canvas.getBoundingClientRect().top;
+      const world=scrToWorld(cx,cy);
+      scale*=f;
+      offX=world.x-cx/scale;
+      offY=world.y-cy/scale;
+    },{passive:false});
+
+    function updateCursorLabel(){
+      const world={x:mouse.wx,y:mouse.wy};
+      const b=('000'+bearing(bullseye,world)).slice(-3),
+            r=distNm(bullseye,world);
+      let html=`<span class="be">${b}/${r}</span>`;
+      if(isDragging&&dragStart){
+        const start={x:dragStart.wx,y:dragStart.wy},
+              b2=('000'+bearing(start,world)).slice(-3),
+              r2=distNm(start,world);
+        html=`<span class="braa">${b2}/${r2}</span><br>`+html;
+      }
+      label.innerHTML=html;
+      label.style.left = `${mouse.px + 10}px`;
+label.style.top  = `${mouse.py + 5}px`;
+
+    }
+    
+    /**
+ * Generic card renderer for tracks or statics, on either side.
+ * @param {object} obj    – the track or static object
+ * @param {'track'|'static'} type
+ * @param {'left'|'right'} side
+ */
+function renderCard(obj, type, side) {
+  // remove any old
+  document.querySelectorAll(`.card${side==='right'?'2':''}`).forEach(c => c.remove());
+
+  // container
+  const d = document.createElement('div');
+  d.className = side==='right' ? 'card card2' : 'card';
+  if (side==='right') {
+    Object.assign(d.style, {
+      position: 'fixed',
+      top:      '10px',
+      right:    '10px',
+      left:     'auto',
+      zIndex:   '15'
+    });
+
+  } else {
+    // left‑click cards already styled via .card CSS
+  }
+
+  // build content
+  let html = '';
+  if (type === 'track') {
+    html += `
+      <h3>${side==='right'?'2️⃣ ':''}Track ${obj.id}</h3>
+      <div>
+        ${('000'+obj.heading).slice(-3)}° /
+        ${obj.speed} kts /
+        <span style="color:var(--icc)">${('000'+obj.alt).slice(-3)}</span>
+      </div>
+      <div>ID: ${obj.friendly?'Friendly':'Hostile'}</div>
+    `;
+  } else {
+    // static
+    const now = Date.now();
+    let status = 'Active';
+    if (obj.type==='rad') status = now<obj.disabledUntil?'Disabled (red)':'Active';
+    else if (obj.type==='icc') status = now<NASAMDisabledUntil?'Weapons Red':'Ready';
+
+    html += `
+      <h3>${side==='right'?'2️⃣ ':''}${obj.type.toUpperCase()}</h3>
+      <div>ID: ${obj.id}</div>
+      <div>Status: ${status}</div>
+    `;
+  }
+
+  html += `<button>Close</button>`;
+  d.innerHTML = html;
+  d.querySelector('button').onclick = () => d.remove();
+  document.body.appendChild(d);
+}
+
+// rewrite the three old functions to just call renderCard:
+function showCard(t)         { renderCard(t, 'track',  'left'); }
+function showStaticCard(s)   { renderCard(s, 'static', 'left'); }
+function showCard2(obj,type) { renderCard(obj,type,    'right'); }
+
+
+
+    // ─── PICK-OBJECT helper ──────────────────────────────
+    function pickObject() {
+  // Try selecting an air track under the mouse
+  selectedTrack = tracks.find(t => {
+    const sx = (t.x - offX) * scale,
+          sy = (t.y - offY) * scale;
+    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+  }) || null;
+
+  if (selectedTrack) {
+    selectedStatic = null;
+    showCard(selectedTrack);
+    return;
+  }
+
+  // Try selecting a static under the mouse
+  selectedStatic = statics.find(s => {
+    const dx = s.x - mouse.wx,
+          dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;
+  }) || null;
+
+  if (selectedStatic) {
+    selectedTrack = null;
+    showStaticCard(selectedStatic);
+    return;
+  }
+
+  // Clicked empty space → clear left selection only
+  selectedTrack  = null;
+  selectedStatic = null;
+  document.querySelectorAll('.card').forEach(c => c.remove());
+}
+
+
+
+    // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
+    canvas.addEventListener('pointerup', e => {
+  if (e.button !== 0 || e.target !== canvas) return;
+  e.preventDefault();
+   mouse.sx = e.offsetX; mouse.sy = e.offsetY;
+   mouse.px = e.clientX; mouse.py = e.clientY;
+   const w = scrToWorld(mouse.sx, mouse.sy);
+   mouse.wx = w.x; mouse.wy = w.y;
+   updateCursorLabel();
+   lastTap = { wx: mouse.wx, wy: mouse.wy }; 
+   // ─── Handle pending O‑reorientation ─────────────────
+   if (pendingReorient && pendingStatic) {
+        const s     = pendingStatic;
+        const newDir = bearing(s, { x: mouse.wx, y: mouse.wy });
+        const now   = Date.now();
+
+        // animate wedge from old→new, disable 90s
+        s.animFrom      = s.wedgeDir;
+        s.animTo        = newDir;
+        s.animStart     = now;
+        s.disabledUntil = now + 90 * 1000;
+
+        feedbackEl.textContent = `Reorienting Launcher ${s.id} to ${newDir}°, weapons red for 90 seconds`;
+
+        // clear the “armed” state
+        pendingReorient = false;
+        pendingStatic   = null;
+        return;
+      } 
+     
+   pickObject();
+ });
+
+    // ─── DESKTOP CLICK fallback ────────────────────────────────
+    canvas.addEventListener('click', e => {
+  if (e.button !== 0 || e.target !== canvas) return;
+  e.preventDefault();
+   mouse.sx = e.offsetX; mouse.sy = e.offsetY;
+   mouse.px = e.clientX; mouse.py = e.clientY;
+   const w = scrToWorld(mouse.sx, mouse.sy);
+   mouse.wx = w.x; mouse.wy = w.y;
+   updateCursorLabel();
+   lastTap = { wx: mouse.wx, wy: mouse.wy };   
+   pickObject();
+ });
+// ─── 4) Right-click handler on the canvas ───────────────────────────────
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+
+  // update mouse coords like left-click
+  mouse.sx = e.offsetX;
+  mouse.sy = e.offsetY;
+  mouse.px = e.clientX;
+  mouse.py = e.clientY;
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x; mouse.wy = w.y;
+  updateCursorLabel();
+  
+
+  // Try picking an air track for right selection
+  selectedTrack2 = tracks.find(t => {
+    const sx = (t.x - offX) * scale,
+          sy = (t.y - offY) * scale;
+    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+  }) || null;
+
+  if (selectedTrack2) {
+    selectedStatic2 = null;
+    showCard2(selectedTrack2, 'track');
+    return;
+  }
+
+  // Try picking a static for right selection
+  selectedStatic2 = statics.find(s => {
+    const dx = s.x - mouse.wx,
+          dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;
+  }) || null;
+
+  if (selectedStatic2) {
+    selectedTrack2 = null;
+    showCard2(selectedStatic2, 'static');
+    return;
+  }
+
+  // Right-clicked empty space → clear right selection only
+  selectedTrack2  = null;
+  selectedStatic2 = null;
+  document.querySelectorAll('.card2').forEach(c => c.remove());
+});
+
+    
+// ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  const k = e.key;
+
+  // ─── PAN WITH ARROWS ────────────────────────────────────────────
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
+    e.preventDefault();
+    // pixels for 10 nautical miles:
+    const delta = 10 / CFG.nmPerPixel;
+    switch (k) {
+      case 'ArrowUp':    offY -= delta; break;  // pan north
+      case 'ArrowDown':  offY += delta; break;  // pan south
+      case 'ArrowLeft':  offX -= delta; break;  // pan west
+      case 'ArrowRight': offX += delta; break;  // pan east
+    }
+    return;
+  }
+
+  // ─── ZOOM WITH + / - ─────────────────────────────────────────────
+  if (k === '+' || k === '-') {
+    e.preventDefault();
+    const f = k === '+' ? 1.1 : 1/1.1;
+    // zoom around last mouse position
+    const cx = mouse.sx, cy = mouse.sy;
+    const world = scrToWorld(cx, cy);
+    scale *= f;
+    offX = world.x - cx / scale;
+    offY = world.y - cy / scale;
+    return;
+  }
+
+  // ─── LOWERCASE FOR REST OF HOTKEYS ───────────────────────────────
+  const key = k.toLowerCase();
+
+    // ─── R sets new bullseye (phone → lastTap, desktop → mouse) ──
+  if (k === 'r') {
+    e.preventDefault();
+    const tgt = (isMobile && lastTap) ? lastTap : { x: mouse.wx, y: mouse.wy };
+    bullseye.x = tgt.x;
+    bullseye.y = tgt.y;
+     statusEl.textContent =
+     `Bullseye set to ${('000'+bearing(bullseye, tgt)).slice(-3)}/${distNm(bullseye, tgt)}`;
+          // respawn tracks from the new bullseye
+   initTracks();
+    if (mode === 'practice') {
+      // restart the queue against the new set
+      trackQueue = tracks.slice();
+      queueIndex = 0;
+      negatedStack = [];
+      nextQueueTrack();
+    }
+    return;
+  }
+     // ─── ‘O’ arms the next tap to reorient the selected radar ───
+    if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
+      e.preventDefault();
+      pendingReorient = true;
+      pendingStatic   = selectedStatic;
+      statusEl.textContent   = `Tap on the scope to orient Launcher ${selectedStatic.id}`;
+      feedbackEl.textContent = '';
+      return;
+    }
+
+  // ─── practice keys only when in practice mode ──────────────────
+  if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
+
+  e.preventDefault();
+  feedbackEl.textContent = '';
+
+  if (!selectedTrack) return;
+  const t  = selectedTrack;
+  const be = ('000' + bearing(bullseye, t)).slice(-3);
+  const r  = distNm(bullseye, t);
+
+  /* ───── NEGATE ───────────────────────────────────────────── */
+   if (k === 'n') {
+    clearTimeout(coverTimer);
+    t.tag     = 'NEGATE';
+    t.tagTime = Date.now();
+    negatedStack.push(t);
+    nextQueueTrack();            // move straight to next COVER
+    return;
+  }
+
+  /* ───── AFFIRM  → ENGAGE ─────────────────────────────────── */
+  if (k === 'a') {
+
+    clearTimeout(coverTimer);
+    curTrack          = t;
+    curTrack.tag      = 'ENGAGE';
+    curTrack.everEngaged = true; // mark for ROE
+    curTrack.tagTime  = Date.now();
+        phase             = 'engage';
+    statusEl.textContent =
+      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
+
+         // ── After 10 s SL will prompt “Engage” again if still in practice
+   setTimeout(() => {
+     if (mode === 'practice' && !t.destroyed) {
+       const be2 = ('000' + bearing(bullseye, t)).slice(-3);
+       const r2  = distNm(bullseye, t);
+       statusEl.textContent =
+         `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
+     }
+   }, 10000);
+
+    // ── NEW: after calling ENGAGE, move to next COVER in 2 s
+    setTimeout(() => {
+      if (mode === 'practice') nextQueueTrack();
+    }, 5000);
+    return;
+  }
+
+     /* ───── AWAY (Birds Away) ────────────────────────────────── */
+if (k === 'w') {
+  e.preventDefault();
+  clearTimeout(coverTimer);
+  curTrack = t;
+
+ // ─── ALWAYS fire two missiles, then schedule intercept ─────────────────
+// 1) decide which launcher to use:
+const nasam = statics.find(s => s.id === 'NASAM');
+const inNasamRing = nasam && distNm(nasam, t) <= 20;
+// if inside NASAM ring, fire from NASAM, otherwise from closest Patriot FU
+const fu = inNasamRing ? nasam : closestFu(t);
+
+const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
+const ttlMs         = 70 * 1000;
+
+// 2) if any friendly sits within 5 NM of the hostile, missiles will chase that friendly instead
+const nearbyFriendly = tracks.find(o =>
+  o.friendly && distNm(o, t) <= 5
+);
+const assignedTarget = nearbyFriendly || t;
+
+// ─── 3) launch two missiles, 1 s apart
+// → first missile immediately
+missiles.push({
+  x:           fu.x,
+  y:           fu.y,
+  target:      assignedTarget,
+  fu:          fu,
+  speedPxPerSec,
+  expire:      Date.now() + ttlMs
+});
+
+// → second missile after 1 s
+setTimeout(() => {
+  missiles.push({
+    x:           fu.x,
+    y:           fu.y,
+    target:      assignedTarget,
+    fu:          fu,
+    speedPxPerSec,
+    expire:      Date.now() + ttlMs
+  });
+}, 1000);
+
+
+
+
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+   // NOW fall through into the rest of your friendly vs. hostile logic…
+
+  // check if this wedge is still red
+if (selectedStatic && selectedStatic.type === 'rad') {
+  const s = selectedStatic;
+  if (Date.now() < s.disabledUntil) {
+    feedbackEl.textContent = 'Radar Red—no Engagements possible from this FU';
+    return;
+  }
+}
+  
+    // ── now falls into Branch A1/B/C exactly as before ───────
+  // 1) Compute geometry gate
+  const now = Date.now();
+
+// ICC circle test stays the same
+const icc      = statics.find(s => s.type === 'icc');
+const inCircle = icc && distNm(icc, t) <= 15;
+
+// ONLY consider wedges that are both:
+//   • not mid‑animation  (animFrom == null)
+//   • not still red/disabled (now >= disabledUntil)
+const inWedge = statics
+  .filter(s =>
+    s.type       === 'rad'    &&
+    s.wedgeDir   != null      &&
+    s.animFrom   == null      &&
+    now          >= s.disabledUntil
+  )
+  .some(s => insideWedge(s, t));
+
+const possible = inCircle || inWedge;
+
+
+
+const isInsideCircle = nasam && distNm(nasam, t) <= 15;
+
+  // First, check NASAM status. If it returns true, we block/return.
+  if (checkNasamStatus(isInsideCircle)) {
+    return;
+  }
+
+// ─── All AWAY shots now go to intercept schedule ──────────────────
+  t.tag     = 'AWAY';
+  t.tagTime = Date.now();
+  statusEl.textContent =
+    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+
+  // immediate ROE penalty if first shot
+  if (!t.everEngaged) {
+    changeScore(-5, 'ROE Violation: -5');
+    t.everEngaged = true;
+  }
+
+  // schedule the impact check (inside or outside will be decided there)
+  scheduleImpactCheck(t);
+
+ 
+
+  return;
+
+    // ─── 50% chance for a hostile to evade ────────────────────────
+  if (!t.friendly && !t.isTbm && Math.random() < 0.5) {
+    // random turn between 90–180° left or right
+    const evAngle = (Math.random() * 90 + 90) * (Math.random() < 0.5 ? 1 : -1);
+    t.heading = (t.heading + evAngle + 360) % 360;
+    // after 60 s, turn back toward the ICC
+    setTimeout(() => {
+      t.heading = bearing(t, bullseye);
+    }, 60000);
+  }
+  };
+
+
+
+
+    /* ───── KILL (manual only) ─────────────────────────────────── */
+    if (k === 'k') {
+    e.preventDefault();
+    clearTimeout(coverTimer);
+
+    // only kill the user‑selected track (the one circled on screen)
+    const t = selectedTrack;
+    if (!t) return;
+
+    // mark it with “#”, then vanish it after 5 s
+    t.tag     = '#';
+    t.tagTime = Date.now();
+    setTimeout(() => {
+      // clear the tag and destroy
+      t.tag       = null;
+      t.destroyed = true;
+
+      // advance only if you’re still in practice mode
+      if (mode === 'practice') {
+        if (trackQueue.every(tr => tr.destroyed)) {
+          showLevelComplete();
+        } else {
+          nextQueueTrack();
+        }
+      }
+    }, 5000);
+
+    // stop any further hotkey processing
+    return;
+  }
+});
+
+const practiceBtn = document.getElementById('practiceBtn');
+
+
+    // ─── PRACTICE MODE INITIALIZER & QUEUE ───────────────────────────────
+let trackQueue = [], queueIndex = 0, negatedStack = [];
+
+document.getElementById('practiceBtn').onclick = function(){
+  if (mode === 'free' || mode === 'gameover') {
+    // Start practice
+    mode = 'practice';
+    round = 0;
+    score = 0;
+    this.textContent = 'Free Mode';
+    statusEl.textContent = '';
+
+    // Initialize queue
+    trackQueue = tracks.filter(t => !t.destroyed);
+    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+    queueIndex = 0;
+    negatedStack = [];
+
+    nextQueueTrack();
+  } else {
+    // Exit practice
+    mode = 'free';
+    this.textContent = 'Practice Mode';
+    statusEl.textContent = 'Free mode';
+    feedbackEl.textContent = '';
+    clearTimeout(coverTimer);
+  }
+};
+
+// ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────────
+function nextQueueTrack() {
+  if (mode !== 'practice') return;
+  clearTimeout(coverTimer);
+
+  // 1) Are there any remaining hostiles? (ignore friendlies & TBMs)
+  const hostiles = tracks.filter(t =>
+    !t.destroyed && !t.friendly && !t.isTbm
+  );
+
+  // 2) If none remain, complete the level
+  if (hostiles.length === 0) {
+    showLevelComplete();
+    return;
+  }
+
+  // 3) Otherwise, pick only un‑tagged hostiles closest to BE
+  const blanks = hostiles
+    .filter(t => !t.tag)
+    .sort((a, b) => distNm(bullseye, a) - distNm(bullseye, b));
+
+  // 4) If there are no blanks, just wait for user input
+  if (blanks.length === 0) {
+    return;
+  }
+
+  // 5) Issue the next COVER command
+  phase    = 'cover';
+  curTrack = blanks[0];
+  curTrack.tag     = 'COVER';
+  curTrack.tagTime = Date.now();
+  const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
+  statusEl.textContent =
+    `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+  feedbackEl.textContent = '';
+
+  // 6) Start the 25 s timer to auto‑cycle
+  coverTimer = setTimeout(nextQueueTrack, 25000);
+}
+
+
+
+
+// ─── finishEngage: scoring, negations & queue-advance ─────────────────────
+function finishEngage() {
+  // destroy & score
+  curTrack.destroyed = true;
+  curTrack.tagTime   = Date.now();
+  score++;
+
+  // who's still alive?
+  const remaining = trackQueue.filter(t => !t.destroyed);
+
+  // if none → level complete
+  if (remaining.length === 0) {
+    showLevelComplete();
+    return;
+  }
+  if (curTrack.mslTimer) clearTimeout(curTrack.mslTimer);
+
+  // revisit closest negated?
+  if (negatedStack.length) {
+    const neg  = negatedStack[0];
+    const dNeg = distNm(bullseye, neg);
+    const dMin = Math.min(...remaining.map(t => distNm(bullseye, t)));
+    if (dNeg <= dMin) {
+      negatedStack.shift();
+      trackQueue = remaining;
+      queueIndex  = remaining.indexOf(neg);
+      nextQueueTrack();
+      return;
+      
+    }
+  }
+
+  // otherwise advance normally
+  trackQueue = remaining;
+  queueIndex  = Math.max(0, remaining.indexOf(curTrack)) + 1;
+  nextQueueTrack();
+}
+
+/**
+ * (Re)builds the tracks/friendlies/TBMs for a given level
+ * and kicks off practice mode on that level.
+ */
+ function setupLevel(lv) {
+  // Clear any timers
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+  clearTimeoutAnyPendingTbmTimers();  // if you’ve stored them
+
+  // Reset state
+  mode             = 'practice';
+  round            = 0;
+  score            = 0;
+  level            = lv;
+  speedMultiplier  = 1 + 0.1 * (lv - 1);
+
+   // ── Reset NASAM ───────────────────────────────────────────────
+ NASAMMissiles      = 6;
+ NASAMDisabledUntil = 0;
+
+ // ── Reset FIREBALL ────────────────────────────────────────────
+ tbmWaves = [];
+ fireballBtn.disabled = true;
+
+
+
+  // 2) Spawn hostiles
+  const hostiles = Array.from({length: CFG.trackCount}, () => newTrack());
+  tracks = hostiles.concat(keepers);
+
+  // 3) Reset the practice queue
+  trackQueue  = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+  trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+  queueIndex  = 0;
+  negatedStack= [];
+
+  // 4) Update button text & status
+  practiceBtn.textContent = 'Free Mode';
+  statusEl.textContent   = '';
+
+  // 5) Start
+  nextQueueTrack();
+}
+
+// ─── showLevelComplete: rebuild hostiles only, preserve friendlies & TBMs ─────────────────
+function showLevelComplete() {
+  mode = 'paused';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  // show level overlay
+  const ov = document.createElement('div');
+  ov.id = 'levelOverlay';
+  ov.innerHTML = `
+    <div id="levelBox">
+      <h2>Level ${level} Completed!</h2>
+    </div>`;
+  document.body.appendChild(ov);
+
+  setTimeout(() => {
+    ov.remove();
+    round = 0;
+    speedMultiplier += 0.1;
+    level++;
+
+    // LEVEL 2 → spawn 3 friendlies
+    if (level >= 2) {
+      const icc = statics.find(s => s.type === 'icc');
+      for (let i = 0; i < 3; i++) {
+        const t = newTrack();
+        t.friendly = true;
+        t.heading  = bearing(t, icc);
+        t.alt      = 200;
+        t.speed    = 500;
+        t.destAlt  = 0;
+        tracks.push(t);
+      }
+    }
+
+    // LEVEL 3 → schedule TBM wave
+    if (level >= 3) {
+      const delay = Math.random() * 2 * 60 * 1000;
+      setTimeout(spawnTbmWave, delay);
+    }
+
+      // ─── forced radar outage on Level 4+, with 2 min cooldown ─────────────────
+  if (level >= 4) {
+    const now       = Date.now();
+    // compute delay: at least 60 s from now, but also ensure we're past nextOutageAllowed
+    const delayMs   = Math.max(60 * 1000, nextOutageAllowed - now);
+    setTimeout(() => {
+      const then     = Date.now();
+      // pick a random Patriot radar
+      const rads     = statics.filter(s => s.type === 'rad');
+      const s        = rads[Math.floor(Math.random() * rads.length)];
+      // disable it for 5 minutes
+      s.disabledUntil = then + 5 * 60 * 1000;
+      // schedule next allowed outage 2 min after this one ends
+      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
+
+      // notify the user
+      const msg = 'ADAFCO, ICC, system reset, launcher down for 5 minutes';
+      feedbackEl.textContent = msg;
+      statusEl.textContent   = msg;
+    }, delayMs);
+  }
+
+    // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
+    // 1) pull out all the friendlies and TBMs we want to keep
+    const keepers = tracks.filter(t => t.friendly || t.isTbm);
+
+// 1.5) force every friendly to start at 200 MSL
+keepers.forEach(t => {
+  if (t.friendly) {
+    t.alt     = 200;
+    t.destAlt = 0;
+  }
+});
+    // 2) rebuild exactly CFG.trackCount new hostiles
+    const newHostiles = Array.from({ length: CFG.trackCount }, () => newTrack());
+    // 3) merge back
+    tracks = newHostiles.concat(keepers);
+
+    // ─── RE‑QUEUE EVERYTHING ───────────────────────────────────
+    trackQueue = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+    trackQueue.sort((a, b) => distNm(bullseye, a) - distNm(bullseye, b));
+    queueIndex   = 0;
+    negatedStack = [];
+
+    mode = 'practice';
+    nextQueueTrack();
+
+  }, 2000);
+}
+
+
+
+
+
+// ─── showFinalScore: final-game overlay + full reset ────────────────────
+function showFinalScore() {
+  mode = 'gameover';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  const ov = document.createElement('div');
+  ov.id = 'gameOverOverlay';
+  ov.innerHTML = `
+    <div id="gameOverBox">
+      <h1>FINAL SCORE</h1>
+      <p>${score} point${score===1?'':'s'}</p>
+      <button id="retryBtn">TRY AGAIN?</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  document.getElementById('retryBtn').onclick = () => {
+    ov.remove();
+    // full reset
+    level           = 1;
+    speedMultiplier = 1;
+    score           = 0;
+    tracks.forEach(t=>t.destroyed=false);
+    initTracks();
+    document.getElementById('practiceBtn').click();
+  };
+}
+
+
+
+function showGameOver(reason) {
+  // 1) Stop the game
+  mode = 'gameover';
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+
+  // 2) Apply center‑hit penalty
+  if (reason === 'center') {
+    score -= 0;
+    updateScoreDisplay();
+  }
+
+  // 3) Build the overlay
+  const ov = document.createElement('div');
+  ov.id = 'gameOverOverlay';
+  ov.innerHTML = `
+    <div id="gameOverBox">
+      <h1>FINAL SCORE</h1>
+      <p>${score} point${score === 1 ? '' : 's'}</p>
+      <button id="tryAgainBtn">TRY AGAIN?</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // 4) Try Again just reloads the page
+  document.getElementById('tryAgainBtn').onclick = () => {
+    location.reload();
+  };
+}
+
+
+
+
+    // TAGS, HELP, MOBILE buttons
+    tagsBtn.addEventListener('click', e => {
+  e.preventDefault();
+  tagMode = (tagMode + 1) % tagLabels.length;
+  tagsBtn.textContent = `TAGS: ${tagLabels[tagMode]}`;
+});
+
+    document.getElementById('helpBtn').onclick=()=>helpOverlay.style.display='block';
+    document.getElementById('closeHelp').onclick=()=>helpOverlay.style.display='none';
+    document.querySelectorAll('#mobileControls button[data-key]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: btn.dataset.key }));
+  });
+});
+
+
+    //help with scoring TBMs
+    const scoreEl = document.getElementById('score');
+function updateScoreDisplay() {
+  scoreEl.textContent = `Score: ${score}`;
+}
+// initialize
+updateScoreDisplay();
+/**
+ * Change the score, update the display, and show a feedback message.
+ * @param {number} delta  positive or negative points
+ * @param {string} msg    feedback text to show
+ */
+ function changeScore(delta, msg) {
+  score += delta;
+  updateScoreDisplay();
+  feedbackEl.textContent = msg;
+}
+
+    // COMPASS toggle
+    compassBtn.onclick = ()=>{
+      compassOn = !compassOn;
+      compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
+    };
+  </script>
+</body>
+</html>
