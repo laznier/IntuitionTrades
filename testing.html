@@ -560,161 +560,140 @@ function spawnTbmWave() {
   const now = Date.now();
   const icc = statics.find(s => s.type === 'icc');
 
-  const sideNm    = 5,
-        offsetNm  = sideNm / Math.sqrt(3),
-        minC      = 130 + offsetNm,
-        maxC      = 140 - offsetNm,
-        clusterR  = Math.random() * (maxC - minC) + minC,
-        clusterAng= Math.random() * 2 * Math.PI,
-        cx        = icc.x + Math.cos(clusterAng) * (clusterR / CFG.nmPerPixel),
-        cy        = icc.y + Math.sin(clusterAng) * (clusterR / CFG.nmPerPixel),
-        rot       = Math.random() * 2 * Math.PI,
-        dPx       = offsetNm / CFG.nmPerPixel;
+  // 1) spacing & cluster geometry
+  const sideNm    = 5;                       // ~5 NM between each TBM
+  const offsetNm  = sideNm / Math.sqrt(3);   // centroid → vertex distance
+  const minC      = 130 + offsetNm;          
+  const maxC      = 140 - offsetNm;          
+  const clusterR  = Math.random() * (maxC - minC) + minC;
+  const clusterAng= Math.random() * 2 * Math.PI;
+  // cluster center in world pixels
+  const cx = icc.x + Math.cos(clusterAng) * (clusterR / CFG.nmPerPixel);
+  const cy = icc.y + Math.sin(clusterAng) * (clusterR / CFG.nmPerPixel);
 
-  const wave = {
-    spawn:    now,
-    resolved: false,
-    tbms:     [],
-    cross40:  Infinity,
-    cross20:  Infinity
-  };
+  // 2) orientation of the triangle (random rotation)
+  const rot = Math.random() * 2 * Math.PI;
+  const dPx = offsetNm / CFG.nmPerPixel;
 
-  let furthestImpact = 0;
-
+  // 3) build the three TBMs
+   const wave = { spawn: now, impact: null, resolved: false, tbms: [] };
   for (let i = 0; i < 3; i++) {
-    const ang       = rot + i * 2 * Math.PI / 3,
-          x         = cx + Math.cos(ang) * dPx,
-          y         = cy + Math.sin(ang) * dPx,
-          speed     = CFG.tbmSpeedKts,
-          distNm    = distNm({x, y}, icc),
-          tImpact   = (distNm / speed) * 3600 * 1000,
-          tCross40  = ((distNm - 40) / speed) * 3600 * 1000,
-          tCross20  = ((distNm - 20) / speed) * 3600 * 1000;
+    const ang = rot + (i * 2 * Math.PI / 3);  // 0°, 120°, 240°
+    const x   = cx + Math.cos(ang) * dPx;
+    const y   = cy + Math.sin(ang) * dPx;
+    const heading      = bearing({ x, y }, icc);
+    const speed        = CFG.tbmSpeedKts;
+    // true distance from ICC in NM (for impact time)
+    const distFromIcc  = Math.hypot(x - icc.x, y - icc.y) * CFG.nmPerPixel;
+    const timeToImpact = (distFromIcc / speed) * 3600 * 1000;
 
-    wave.cross40 = Math.min(wave.cross40, now + tCross40);
-    wave.cross20 = Math.min(wave.cross20, now + tCross20);
-    furthestImpact = Math.max(furthestImpact, tImpact);
-
-    const tbm = {
-      id:        `TBM${i+1}`,
+    const t = {
+      id:       `TBM${i+1}`,
       x, y,
-      heading:   bearing({x, y}, icc),
+      heading,
       speed,
-      alt:       CFG.tbmAltitude,
-      destAlt:   0,
-      destroyed: false,
-      isTbm:     true
+      alt:      CFG.tbmAltitude,
+     destAlt:  0,               // ← target altitude for descent
+      tag:      null,
+      destroyed:false,
+      everEngaged:false,
+      isTbm:    true
     };
 
-    wave.tbms.push(tbm);
-    tracks.push(tbm);
+    // schedule impact penalty if not resolved
+    wave.impact = now + timeToImpact;
+    setTimeout(() => {
+      if (!wave.resolved) {
+         changeScore(-2, "TBM Impact! –2");
+        updateScoreDisplay();
+      }
+      wave.resolved = true;
+    }, timeToImpact);
+
+    tracks.push(t);
+    wave.tbms.push(t);
   }
 
-  wave.craterTimer = setTimeout(() => {
-    if (!wave.resolved) {
-      changeScore(-5, "ADAFCO, ICC, CRATER at B/E! –5");
-      updateScoreDisplay();
-      wave.resolved = true;
-    }
-  }, furthestImpact);
-
+  // 4) enable FIREBALL
   tbmWaves.push(wave);
   fireballBtn.disabled = false;
-  CFG.tbmWindowMs = furthestImpact;
+  CFG.tbmWindowMs     = wave.impact - now;
 }
 
+// ─── Helpers to mimic “W” on a TBM ────────────────────────────────
+function engageTbmWithPatriot(tbm) {
+  const fu            = closestFu(tbm);
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  [0, 1000].forEach(offset => {
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x:            fu.x,
+          y:            fu.y,
+          target:       tbm,
+          fu,
+          speedPxPerSec,
+          expire:       Date.now() + 15_000
+        });
+        // schedule the hit/trashed logic exactly as your “W” does
+        scheduleImpactCheck(tbm);
+      }
+    }, offset);
+  });
+}
 
+function engageTbmWithNasam(tbm) {
+  const nas = statics.find(s => s.id === 'NASAM');
+  if (!nas || tbm.destroyed || NASAMMissiles <= 0) return;
+  NASAMMissiles--;
+  missiles.push({
+    x:            nas.x,
+    y:            nas.y,
+    fu:           nas,
+    target:       tbm,
+    speedPxPerSec:(5000/3600)/CFG.nmPerPixel,
+    expire:       Date.now() + 15_000
+  });
+  // NASAM also needs the same intercept logic
+  scheduleImpactCheck(tbm);
+}
 
 const fireballBtn = document.getElementById('fireballBtn');
-
-// ─── REPLACE your entire Fireball handler with this ─────────────────
+// ─── Replace only your Fireball handler with this ──────────────────
 fireballBtn.addEventListener('click', () => {
   const icc  = statics.find(s => s.type === 'icc');
-  const nas  = statics.find(s => s.id   === 'NASAM');
-  // find the first un‑resolved wave
-  const wave = tbmWaves.find(w => !w.resolved && !w.fireballArmed);
+  const wave = tbmWaves.find(w => !w.resolved);
   if (!wave) return;
-
-  // mark it “armed” and cancel the unsent penalties
-  wave.fireballArmed = true;
-  clearTimeout(wave.craterTimer);
-  clearTimeout(wave.impactTimer);
-
-  const now       = Date.now();
-  // compute closest TBM distance to ICC
-  const dists     = wave.tbms.map(t => distNm(icc, t));
-  const minDist   = Math.min(...dists);
-
-  // helper to launch two Patriot missiles per TBM
-  function launchPatriot() {
-    wave.tbms.forEach(tbm => {
-      if (tbm.destroyed) return;
-      const fu = closestFu(tbm);
-      const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
-      [0, 1000].forEach(offset => {
-        setTimeout(() => {
-          if (!tbm.destroyed) {
-            missiles.push({
-              x:             fu.x,
-              y:             fu.y,
-              target:        tbm,
-              fu,
-              speedPxPerSec,
-              expire:        Date.now() + 15_000
-            });
-          }
-        }, offset);
-      });
-    });
-    changeScore(2, "FIREBALL FIREBALL! +2");
-    updateScoreDisplay();
-    wave.resolved = true;
-  }
-
-  // helper to launch one NASAM salvo per TBM
-  function launchNasam() {
-    wave.tbms.forEach(tbm => {
-      if (tbm.destroyed || NASAMMissiles <= 0) return;
-      NASAMMissiles--;
-      missiles.push({
-        x:             nas.x,
-        y:             nas.y,
-        target:        tbm,
-        fu:            nas,
-        speedPxPerSec: (5000/3600)/CFG.nmPerPixel,
-        expire:        Date.now() + 15_000
-      });
-    });
-    changeScore(2, "NASAM Intercept! +2");
-    updateScoreDisplay();
-    wave.resolved = true;
-  }
-
-  if (minDist > 45) {
-    // 1) EARLY window → Patriot fires when TBM hits 40 NM
-    const delay = Math.max(0, wave.cross40 - now);
-    wave.patriotTimer = setTimeout(launchPatriot, delay);
-
-  } else if (minDist >= 20) {
-    // 2) ON‑TIME window → NASAM fires when TBM hits 20 NM
-    const delay = Math.max(0, wave.cross20 - now);
-    wave.nasamTimer = setTimeout(launchNasam, delay);
-
-  } else {
-    // 3) TOO LATE → immediate crater penalty
-    changeScore(-5, "CRATER at B/E! –5");
-    statusEl.textContent = "CRATER at B/E";
-    updateScoreDisplay();
-    wave.resolved = true;
-  }
-
-  // disable the button until the next wave spawns
+  wave.resolved      = true;
   fireballBtn.disabled = true;
+
+  // immediate +2
+  changeScore(2, "FIREBALL FIREBALL! +2");
+  updateScoreDisplay();
+
+  wave.tbms.forEach(tbm => {
+    if (tbm.destroyed) return;
+
+    const d0    = distNm(icc, tbm);   // current NM
+    const speed = tbm.speed;          // kts
+
+    // → schedule Patriot at 40 NM
+    if (d0 > 40) {
+      const delay40 = (d0 - 40) / speed * 3600 * 1000;
+      setTimeout(() => engageTbmWithPatriot(tbm), delay40);
+    } else {
+      engageTbmWithPatriot(tbm);
+    }
+
+    // → schedule NASAM at 20 NM
+    if (d0 > 20) {
+      const delay20 = (d0 - 20) / speed * 3600 * 1000;
+      setTimeout(() => engageTbmWithNasam(tbm), delay20);
+    } else {
+      engageTbmWithNasam(tbm);
+    }
+  });
 });
-
-
-
-
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -738,13 +717,13 @@ fireballBtn.addEventListener('click', () => {
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 /**
- * Returns true if track `t` lies within the 50 NM / ±60° wedge of radar `s`.
+ * Returns true if track `t` lies within the 60 NM / ±60° wedge of radar `s`.
  */
  function insideWedge(s, t) {
   const dx = (t.x - s.x) * CFG.nmPerPixel;
   const dy = (t.y - s.y) * CFG.nmPerPixel;
   const d  = Math.hypot(dx, dy);
-  if (d > 50) return false;
+  if (d > 60) return false;
 
   const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
@@ -928,6 +907,26 @@ function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
       ctx.restore();
     }
 
+    // ─── ADD THESE TWO HELPERS ANYWHERE ABOVE your animate() ─────────────────
+function firePatriotAt(tbm) {
+  const fu = closestFu(tbm);
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  // launch two missiles, 1 s apart
+  [0, 1000].forEach(offset =>
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x:             fu.x,
+          y:             fu.y,
+          target:        tbm,
+          fu,
+          speedPxPerSec,
+          expire:        Date.now() + 15_000
+        });
+      }
+    }, offset)
+  );
+}
    // ─── DRAW STATICS ────────────────────────────────────────────────────
 // Remove any global wedge here! Just draw icons/text.
 function drawStatics() {
@@ -951,10 +950,10 @@ function drawStatics() {
         dir = s.wedgeDir;
       }
 
-      // 2) draw 50 NM ±60° yellow (or red) wedge
+      // 2) draw 60 NM ±60° yellow (or red) wedge
       const red   = now < s.disabledUntil;
       const half  = 60;
-      const radR  = 50;
+      const radR  = 60;
       ctx.save();
         ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
         const toRad = d => (d - 90) * Math.PI/180;
@@ -1249,15 +1248,28 @@ function drawTracks(now) {
     }
 
     function drawMissiles() {
-  ctx.save();
-  ctx.fillStyle = 'white';
   missiles.forEach(m => {
-    ctx.beginPath();
-    ctx.arc(m.x, m.y, 3, 0, 2*Math.PI);
-    ctx.fill();
+    // compute angle towards its target
+    const dx  = m.target.x - m.x;
+    const dy  = m.target.y - m.y;
+    const ang = Math.atan2(dy, dx);
+
+    ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(ang);
+
+      // draw a tiny blue “missile” shape
+      ctx.fillStyle = '#3498db'; // nice blue
+      ctx.beginPath();
+        ctx.moveTo(-6, -2);      // tail left
+        ctx.lineTo( 6,  0);      // nose right
+        ctx.lineTo(-6,  2);      // tail bottom
+      ctx.closePath();
+      ctx.fill();
+    ctx.restore();
   });
-  ctx.restore();
 }
+
 
 
 function updateMissiles(dt) {
