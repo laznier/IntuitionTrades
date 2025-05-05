@@ -549,6 +549,58 @@ function newTrack() {
   };
 }
 
+// Helper to label each FU by quadrant
+function getFuLabel(fu) {
+  const dx = fu.x - bullseye.x,
+        dy = fu.y - bullseye.y;
+  const hemiNS = dy < 0 ? 'N' : 'S',
+        hemiEW = dx < 0 ? 'W' : 'E';
+  return `${hemiNS}${hemiEW} PATRIOT`;
+}
+
+// Returns true if this FU is out of action (weapons‑red or reloading),
+// and updates feedback + schedules reload when needed.
+// Otherwise decrements its missile count and possibly shows a warning.
+function checkPatriotStatus(fu) {
+  const now = Date.now();
+  // lazy‑init magazine & reload timer
+  if (fu.missilesRemaining == null) {
+    fu.missilesRemaining   = 8;
+    fu.disabledUntilFu     = 0;
+  }
+  const label = getFuLabel(fu);
+  // still reloading?
+    if (now < fu.disabledUntilFu) {
+   const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
+    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    return true;
+  }
+  // empty magazine → start reload
+  if (fu.missilesRemaining <= 0) {
+        fu.disabledUntilFu = now + 5*60*1000;
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Reloading. Down for 5 minutes`;
+    // ─── turn its paired radar red for the same duration ─────────────────
+    const radars = statics.filter(s => s.type === 'rad');
+    const paired = radars.reduce((best, s) =>
+      !best || distNm(fu, s) < distNm(fu, best) ? s : best,
+    null);
+    paired.disabledUntil = fu.disabledUntilFu;
+
+    setTimeout(() => { fu.missilesRemaining = 8; }, 5*60*1000);
+    return true;
+  }
+  // consume one
+  fu.missilesRemaining--;
+  // warnings
+  if (fu.missilesRemaining === 4) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Yellow`;
+  } else if (fu.missilesRemaining === 2) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Red`;
+  }
+  return false;
+}
 
 
 function initTracks(){
@@ -622,7 +674,9 @@ function spawnTbmWave() {
 }
 
 function engageTbmWithPatriot(tbm) {
-  const fu = closestFu(tbm);
+  const fu  = closestFu(tbm);
+ // Patriot‑magazine check
+  if (checkPatriotStatus(fu)) return;
   const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
@@ -1927,6 +1981,11 @@ const nasam = statics.find(s => s.id === 'NASAM');
 const inNasamRing = nasam && distNm(nasam, t) <= 20;
 // if inside NASAM ring, fire from NASAM, otherwise from closest Patriot FU
 const fu = inNasamRing ? nasam : closestFu(t);
+
+  // If this is a PATRIOT FU, check its magazine/reload
+  if (fu.id === 'PATRIOT' && checkPatriotStatus(fu)) {
+    return;
+  }
 
 const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
 const ttlMs         = 70 * 1000;
