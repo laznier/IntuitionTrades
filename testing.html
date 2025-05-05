@@ -588,16 +588,19 @@ function spawnTbmWave() {
     const timeToImpact = (distFromIcc / speed) * 3600 * 1000;
 
     const t = {
-      id:       `TBM${i+1}`,
-      x, y,
-      heading,
-      speed,
-      alt:      CFG.tbmAltitude,
-     destAlt:  0,               // ← target altitude for descent
-      tag:      null,
-      destroyed:false,
-      everEngaged:false,
-      isTbm:    true
+  id: `TBM${i+1}`,
+  x, y,
+  heading,
+  speed,
+  alt: CFG.tbmAltitude,
+  destAlt: 0,
+  tag: null,
+  destroyed: false,
+  everEngaged: false,
+  isTbm: true,
+  // ← NEW:
+  patriotFired: false,
+  nasamFired:   false
     };
 
     // schedule impact penalty if not resolved
@@ -620,43 +623,43 @@ function spawnTbmWave() {
   CFG.tbmWindowMs     = wave.impact - now;
 }
 
-// ─── Helpers to mimic “W” on a TBM ────────────────────────────────
 function engageTbmWithPatriot(tbm) {
-  const fu            = closestFu(tbm);
+  const fu = closestFu(tbm);
   const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
       if (!tbm.destroyed) {
         missiles.push({
-          x:            fu.x,
-          y:            fu.y,
-          target:       tbm,
+          x: fu.x,
+          y: fu.y,
+          target: tbm,
           fu,
           speedPxPerSec,
-          expire:       Date.now() + 15_000
+          expire: Date.now() + 15000
         });
-        // schedule the hit/trashed logic exactly as your “W” does
-        scheduleImpactCheck(tbm);
       }
     }, offset);
   });
+  // schedule the impact check just like AWAY
+  scheduleImpactCheck(tbm);
 }
 
 function engageTbmWithNasam(tbm) {
   const nas = statics.find(s => s.id === 'NASAM');
-  if (!nas || tbm.destroyed || NASAMMissiles <= 0) return;
+  if (NASAMMissiles <= 0) return;
   NASAMMissiles--;
   missiles.push({
-    x:            nas.x,
-    y:            nas.y,
-    fu:           nas,
-    target:       tbm,
-    speedPxPerSec:(5000/3600)/CFG.nmPerPixel,
-    expire:       Date.now() + 15_000
+    x: nas.x,
+    y: nas.y,
+    target: tbm,
+    fu: nas,
+    speedPxPerSec: (5000/3600)/CFG.nmPerPixel,
+    expire: Date.now() + 15000
   });
-  // NASAM also needs the same intercept logic
   scheduleImpactCheck(tbm);
 }
+
+
 
 const fireballBtn = document.getElementById('fireballBtn');
 // ─── Replace only your Fireball handler with this ──────────────────
@@ -1306,8 +1309,30 @@ missiles.forEach(m => {
 
 
     // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
-    function updateTracks(dt){
+    function updateTracks(dt) {
   const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+  const icc = statics.find(s => s.type === 'icc');
+
+  // ① First, handle any auto‑launches for armed waves
+  tbmWaves.forEach(wave => {
+    if (!wave.fireballArmed) return;
+    wave.tbms.forEach(tbm => {
+      if (tbm.destroyed) return;
+
+      const d = distNm(icc, tbm);
+
+      // 1) Patriot at 40 NM
+      if (!tbm.patriotFired && d <= 40) {
+        tbm.patriotFired = true;
+        engageTbmWithPatriot(tbm);
+      }
+      // 2) NASAM at 20 NM (only if Patriot didn’t catch it)
+      else if (!tbm.nasamFired && d <= 20) {
+        tbm.nasamFired = true;
+        engageTbmWithNasam(tbm);
+      }
+    });
+  });
 
   tracks.forEach(o => {
     if (o.destroyed) return;
@@ -1328,9 +1353,9 @@ missiles.forEach(m => {
           return;
         }
       }
+      
     }
 
-        
  
     // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
 if (o.isTbm) {
