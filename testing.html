@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ADAFCO Bullseye/BRAA Trainer</title>
+  <title>ADAFCO Bullseye/Air Battle Trainer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     :root {
@@ -600,7 +600,8 @@ function spawnTbmWave() {
   isTbm: true,
   // ← NEW:
   patriotFired: false,
-  nasamFired:   false
+  nasamFired:   false, 
+  cratered:     false
     };
 
     // schedule impact penalty if not resolved
@@ -662,41 +663,42 @@ function engageTbmWithNasam(tbm) {
 
 
 const fireballBtn = document.getElementById('fireballBtn');
-// ─── Replace only your Fireball handler with this ──────────────────
-fireballBtn.addEventListener('click', () => {
-  const icc  = statics.find(s => s.type === 'icc');
-  const wave = tbmWaves.find(w => !w.resolved);
-  if (!wave) return;
-  wave.resolved      = true;
-  fireballBtn.disabled = true;
 
-  // immediate +2
-  changeScore(2, "FIREBALL FIREBALL! +2");
-  updateScoreDisplay();
+ // ─── Always‑enabled Fireball button ────────────────────────────────
+ fireballBtn.disabled = false;
 
-  wave.tbms.forEach(tbm => {
-    if (tbm.destroyed) return;
+ // ─── New Fireball handler: auto‑“W” engage each TBM at 40 NM & 20 NM ─────────────────
+ fireballBtn.addEventListener('click', () => {
+   const icc = statics.find(s => s.type === 'icc');
+   const tbms = tracks.filter(t => t.isTbm && !t.destroyed);
+   tbms.forEach(tbm => {
+     const d0 = distNm(icc, tbm);
 
-    const d0    = distNm(icc, tbm);   // current NM
-    const speed = tbm.speed;          // kts
+     // schedule PATRIOT at 40 NM
+     const schedulePatriot = () => {
+       selectedTrack = tbm;
+       engageTbmWithPatriot(tbm);
+     };
+     if (d0 > 40) {
+       const delay40 = (d0 - 40) / tbm.speed * 3600 * 1000;
+       setTimeout(schedulePatriot, delay40);
+     } else {
+       schedulePatriot();
+     }
 
-    // → schedule Patriot at 40 NM
-    if (d0 > 40) {
-      const delay40 = (d0 - 40) / speed * 3600 * 1000;
-      setTimeout(() => engageTbmWithPatriot(tbm), delay40);
-    } else {
-      engageTbmWithPatriot(tbm);
-    }
-
-    // → schedule NASAM at 20 NM
-    if (d0 > 20) {
-      const delay20 = (d0 - 20) / speed * 3600 * 1000;
-      setTimeout(() => engageTbmWithNasam(tbm), delay20);
-    } else {
-      engageTbmWithNasam(tbm);
-    }
-  });
-});
+     // schedule NASAM at 20 NM
+     const scheduleNasam = () => {
+       selectedTrack = tbm;
+       engageTbmWithNasam(tbm);
+     };
+     if (d0 > 20) {
+       const delay20 = (d0 - 20) / tbm.speed * 3600 * 1000;
+       setTimeout(scheduleNasam, delay20);
+     } else {
+       scheduleNasam();
+     }
+   });
+ });
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -1374,6 +1376,16 @@ if (o.isTbm) {
       return;
     }
   }
+  if (o.isTbm) {
+      const rawDistNm = Math.hypot(o.x - bullseye.x, o.y - bullseye.y) * CFG.nmPerPixel;
+      if (!o.cratered && rawDistNm <= 0.1) {
+        o.cratered = true;
+        changeScore(-5, 'ADAFCO, ICC, CRATER at BULLSEYE -5');
+        updateScoreDisplay();
+        o.destroyed = true;
+        return;    // skip any further per‑track logic
+      }
+    }
 
 
 }
