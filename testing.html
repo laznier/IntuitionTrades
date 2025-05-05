@@ -576,7 +576,13 @@ function spawnTbmWave() {
   const dPx = offsetNm / CFG.nmPerPixel;
 
   // 3) build the three TBMs
-   const wave = { spawn: now, impact: null, resolved: false, tbms: [] };
+    const wave = {
+  spawn:        now,
+    impact:       null,
+    resolved:     false,
+    fireballArmed:false,   // ← NEW: will be set when Fireball pressed
+    tbms:         []
+  };
   for (let i = 0; i < 3; i++) {
     const ang = rot + (i * 2 * Math.PI / 3);  // 0°, 120°, 240°
     const x   = cx + Math.cos(ang) * dPx;
@@ -605,16 +611,7 @@ function spawnTbmWave() {
     };
 
     // schedule impact penalty if not resolved
-    wave.impact = now + timeToImpact;
-    setTimeout(() => {
-      if (!wave.resolved) {
-         changeScore(-2, "TBM Impact! –2");
-        updateScoreDisplay();
-      }
-      wave.resolved = true;
-    }, timeToImpact);
-
-    tracks.push(t);
+   tracks.push(t);
     wave.tbms.push(t);
   }
 
@@ -647,58 +644,62 @@ function engageTbmWithPatriot(tbm) {
 
 function engageTbmWithNasam(tbm) {
   const nas = statics.find(s => s.id === 'NASAM');
-  if (NASAMMissiles <= 0) return;
+  const now = Date.now();
+
+  // If weapons are already red, block
+  if (now < NASAMDisabledUntil) {
+    feedbackEl.textContent = 'NASAM Weapons Red';
+    return;
+  }
+
+  // If out of missiles, go red until reload
+  if (NASAMMissiles <= 0) {
+    NASAMDisabledUntil = now + 5 * 60 * 1000;
+    feedbackEl.textContent = 'NASAM Weapons Red';
+    // schedule reload
+    setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
+    return;
+  }
+
+  // Consume one missile
   NASAMMissiles--;
+  // If that was the last one, start reload timer
+  if (NASAMMissiles === 0) {
+    NASAMDisabledUntil = now + 5 * 60 * 1000;
+    setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
+  }
+
+  // Launch the missile
   missiles.push({
     x: nas.x,
     y: nas.y,
     target: tbm,
     fu: nas,
-    speedPxPerSec: (5000/3600)/CFG.nmPerPixel,
-    expire: Date.now() + 15000
+    speedPxPerSec: (5000/3600) / CFG.nmPerPixel,
+    expire: now + 15000
   });
+
   scheduleImpactCheck(tbm);
 }
 
 
 
+
 const fireballBtn = document.getElementById('fireballBtn');
 
- // ─── Always‑enabled Fireball button ────────────────────────────────
- fireballBtn.disabled = false;
+ // always keep the button enabled
+fireballBtn.disabled = false;
 
- // ─── New Fireball handler: auto‑“W” engage each TBM at 40 NM & 20 NM ─────────────────
- fireballBtn.addEventListener('click', () => {
-   const icc = statics.find(s => s.type === 'icc');
-   const tbms = tracks.filter(t => t.isTbm && !t.destroyed);
-   tbms.forEach(tbm => {
-     const d0 = distNm(icc, tbm);
+// arm all waves & give instant feedback
+fireballBtn.addEventListener('click', () => {
+  // 1) arm every pending TBM wave
+  tbmWaves.forEach(w => w.fireballArmed = true);
 
-     // schedule PATRIOT at 40 NM
-     const schedulePatriot = () => {
-       selectedTrack = tbm;
-       engageTbmWithPatriot(tbm);
-     };
-     if (d0 > 40) {
-       const delay40 = (d0 - 40) / tbm.speed * 3600 * 1000;
-       setTimeout(schedulePatriot, delay40);
-     } else {
-       schedulePatriot();
-     }
+  // 2) immediate UI call‑out
+  statusEl.textContent   = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
+  feedbackEl.textContent = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
+});
 
-     // schedule NASAM at 20 NM
-     const scheduleNasam = () => {
-       selectedTrack = tbm;
-       engageTbmWithNasam(tbm);
-     };
-     if (d0 > 20) {
-       const delay20 = (d0 - 20) / tbm.speed * 3600 * 1000;
-       setTimeout(scheduleNasam, delay20);
-     } else {
-       scheduleNasam();
-     }
-   });
- });
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -1377,8 +1378,8 @@ if (o.isTbm) {
     }
   }
   if (o.isTbm) {
-      const rawDistNm = Math.hypot(o.x - bullseye.x, o.y - bullseye.y) * CFG.nmPerPixel;
-      if (!o.cratered && rawDistNm <= 0.1) {
+         const nmDist = distNm(bullseye, o);
+         if (!o.cratered && nmDist <= 1) {
         o.cratered = true;
         changeScore(-5, 'ADAFCO, ICC, CRATER at BULLSEYE -5');
         updateScoreDisplay();

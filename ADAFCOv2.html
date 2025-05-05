@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ADAFCO Bullseye/BRAA Trainer</title>
+  <title>ADAFCO Bullseye/Air Battle Trainer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     :root {
@@ -576,7 +576,13 @@ function spawnTbmWave() {
   const dPx = offsetNm / CFG.nmPerPixel;
 
   // 3) build the three TBMs
-  const wave = { spawn: now, impact: null, resolved: false };
+    const wave = {
+  spawn:        now,
+    impact:       null,
+    resolved:     false,
+    fireballArmed:false,   // ← NEW: will be set when Fireball pressed
+    tbms:         []
+  };
   for (let i = 0; i < 3; i++) {
     const ang = rot + (i * 2 * Math.PI / 3);  // 0°, 120°, 240°
     const x   = cx + Math.cos(ang) * dPx;
@@ -588,29 +594,25 @@ function spawnTbmWave() {
     const timeToImpact = (distFromIcc / speed) * 3600 * 1000;
 
     const t = {
-      id:       `TBM${i+1}`,
-      x, y,
-      heading,
-      speed,
-      alt:      CFG.tbmAltitude,
-     destAlt:  0,               // ← target altitude for descent
-      tag:      null,
-      destroyed:false,
-      everEngaged:false,
-      isTbm:    true
+  id: `TBM${i+1}`,
+  x, y,
+  heading,
+  speed,
+  alt: CFG.tbmAltitude,
+  destAlt: 0,
+  tag: null,
+  destroyed: false,
+  everEngaged: false,
+  isTbm: true,
+  // ← NEW:
+  patriotFired: false,
+  nasamFired:   false, 
+  cratered:     false
     };
 
     // schedule impact penalty if not resolved
-    wave.impact = now + timeToImpact;
-    setTimeout(() => {
-      if (!wave.resolved) {
-         changeScore(-2, "TBM Impact! –2");
-        updateScoreDisplay();
-      }
-      wave.resolved = true;
-    }, timeToImpact);
-
-    tracks.push(t);
+   tracks.push(t);
+    wave.tbms.push(t);
   }
 
   // 4) enable FIREBALL
@@ -619,21 +621,85 @@ function spawnTbmWave() {
   CFG.tbmWindowMs     = wave.impact - now;
 }
 
+function engageTbmWithPatriot(tbm) {
+  const fu = closestFu(tbm);
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  [0, 1000].forEach(offset => {
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x: fu.x,
+          y: fu.y,
+          target: tbm,
+          fu,
+          speedPxPerSec,
+          expire: Date.now() + 15000
+        });
+      }
+    }, offset);
+  });
+  // schedule the impact check just like AWAY
+  scheduleImpactCheck(tbm);
+}
+
+function engageTbmWithNasam(tbm) {
+  const nas = statics.find(s => s.id === 'NASAM');
+  const now = Date.now();
+
+  // If weapons are already red, block
+  if (now < NASAMDisabledUntil) {
+    feedbackEl.textContent = 'NASAM Weapons Red';
+    return;
+  }
+
+  // If out of missiles, go red until reload
+  if (NASAMMissiles <= 0) {
+    NASAMDisabledUntil = now + 5 * 60 * 1000;
+    feedbackEl.textContent = 'NASAM Weapons Red';
+    // schedule reload
+    setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
+    return;
+  }
+
+  // Consume one missile
+  NASAMMissiles--;
+  // If that was the last one, start reload timer
+  if (NASAMMissiles === 0) {
+    NASAMDisabledUntil = now + 5 * 60 * 1000;
+    setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
+  }
+
+  // Launch the missile
+  missiles.push({
+    x: nas.x,
+    y: nas.y,
+    target: tbm,
+    fu: nas,
+    speedPxPerSec: (5000/3600) / CFG.nmPerPixel,
+    expire: now + 15000
+  });
+
+  scheduleImpactCheck(tbm);
+}
+
+
+
 
 const fireballBtn = document.getElementById('fireballBtn');
 
+ // always keep the button enabled
+fireballBtn.disabled = false;
+
+// arm all waves & give instant feedback
 fireballBtn.addEventListener('click', () => {
-  const now = Date.now();
-  tbmWaves.forEach(wave => {
-    if (!wave.resolved && now >= wave.spawn && now <= wave.impact) {
-      wave.resolved = true;
-      changeScore(2, "FIREBALL FIREBALL FIREBALL! +2");
-      updateScoreDisplay();
-    }
-  });
-  // disable until next wave
-  fireballBtn.disabled = true;
+  // 1) arm every pending TBM wave
+  tbmWaves.forEach(w => w.fireballArmed = true);
+
+  // 2) immediate UI call‑out
+  statusEl.textContent   = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
+  feedbackEl.textContent = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
 });
+
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -657,13 +723,13 @@ fireballBtn.addEventListener('click', () => {
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 /**
- * Returns true if track `t` lies within the 50 NM / ±60° wedge of radar `s`.
+ * Returns true if track `t` lies within the 60 NM / ±60° wedge of radar `s`.
  */
  function insideWedge(s, t) {
   const dx = (t.x - s.x) * CFG.nmPerPixel;
   const dy = (t.y - s.y) * CFG.nmPerPixel;
   const d  = Math.hypot(dx, dy);
-  if (d > 50) return false;
+  if (d > 60) return false;
 
   const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
@@ -745,28 +811,42 @@ function impactDecision(track) {
                  s.animFrom == null)
     .some(rad => insideWedge(rad, { x: ix, y: iy }));
 
-      // ─── FRIENDLY IMPACT (wait for missile to arrive) ────────────
+
+
+       // ─── FRIENDLY IMPACT ───────────────────────────────
   if (track.friendly) {
+    // only inside geometry is fratricide
     if (inRing || inAnyWedge) {
       changeScore(-20, 'Fratricide! –20 points');
-      track.destroyed = true;
     } else {
-      changeScore(-5, 'ROE Violation: –5 points');
+      // outside geometry: bird trashed + ROE
+      changeScore(-6, 'Bird Trashed: –1; ROE Violation: –5');
     }
+    track.destroyed = true;
     return;
   }
 
-  if (inRing || inAnyWedge) {
+   // ---------------- VALID kill ----------------
+if (inRing || inAnyWedge) {
+  changeScore(1, `Track ${track.id} Vanished: +1`);
+  track.destroyed = true;
+  track.tag       = null;
 
-    //---------------- VALID kill ----------------
-    changeScore(1, `Track ${track.id} Vanished: +1`);
-    track.destroyed = true;
-    track.tag       = null;
-    nextQueueTrack();
-  } else {
-    //---------------- TRASHED ----------------
-    markShotTrashed(track);
+  // advance practice queue as usual
+  nextQueueTrack();
+
+  // now check for level completion
+  const hostilesLeft = tracks.some(t =>
+    !t.destroyed && !t.friendly && !t.isTbm
+  );
+  if (!hostilesLeft) {
+    showLevelComplete();
   }
+} else {
+  // ---------------- TRASHED ----------------
+  markShotTrashed(track);
+}
+
 }
 
 /** Apply the trashed penalty & revert to ENGAGE at current position. */
@@ -833,6 +913,26 @@ function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
       ctx.restore();
     }
 
+    // ─── ADD THESE TWO HELPERS ANYWHERE ABOVE your animate() ─────────────────
+function firePatriotAt(tbm) {
+  const fu = closestFu(tbm);
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  // launch two missiles, 1 s apart
+  [0, 1000].forEach(offset =>
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x:             fu.x,
+          y:             fu.y,
+          target:        tbm,
+          fu,
+          speedPxPerSec,
+          expire:        Date.now() + 15_000
+        });
+      }
+    }, offset)
+  );
+}
    // ─── DRAW STATICS ────────────────────────────────────────────────────
 // Remove any global wedge here! Just draw icons/text.
 function drawStatics() {
@@ -856,10 +956,10 @@ function drawStatics() {
         dir = s.wedgeDir;
       }
 
-      // 2) draw 50 NM ±60° yellow (or red) wedge
+      // 2) draw 60 NM ±60° yellow (or red) wedge
       const red   = now < s.disabledUntil;
       const half  = 60;
-      const radR  = 50;
+      const radR  = 60;
       ctx.save();
         ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
         const toRad = d => (d - 90) * Math.PI/180;
@@ -1154,15 +1254,28 @@ function drawTracks(now) {
     }
 
     function drawMissiles() {
-  ctx.save();
-  ctx.fillStyle = 'white';
   missiles.forEach(m => {
-    ctx.beginPath();
-    ctx.arc(m.x, m.y, 3, 0, 2*Math.PI);
-    ctx.fill();
+    // compute angle towards its target
+    const dx  = m.target.x - m.x;
+    const dy  = m.target.y - m.y;
+    const ang = Math.atan2(dy, dx);
+
+    ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(ang);
+
+      // draw a tiny blue “missile” shape
+      ctx.fillStyle = '#3498db'; // nice blue
+      ctx.beginPath();
+        ctx.moveTo(-6, -2);      // tail left
+        ctx.lineTo( 6,  0);      // nose right
+        ctx.lineTo(-6,  2);      // tail bottom
+      ctx.closePath();
+      ctx.fill();
+    ctx.restore();
   });
-  ctx.restore();
 }
+
 
 
 function updateMissiles(dt) {
@@ -1171,30 +1284,58 @@ function updateMissiles(dt) {
   // first remove any that have lived ≥80 s
   missiles = missiles.filter(m => m.expire > now);
 
-  missiles.forEach(m => {
-    // homing toward target
-    const dx = m.target.x - m.x;
-    const dy = m.target.y - m.y;
-    const d  = Math.hypot(dx, dy);
+missiles.forEach(m => {
+  const dx = m.target.x - m.x;
+  const dy = m.target.y - m.y;
+  const d  = Math.hypot(dx, dy);
 
-    // if it’s close enough to count as a hit, kill it
-    if (d < 8) {
-      m.expire = 0;
-      return;
+  if (d < 8) {
+    // stop any pending intercept timer
+    if (m.target.mslTimer) {
+      clearTimeout(m.target.mslTimer);
+      m.target.mslTimer = null;
     }
+    // funnel the “hit” through your geometry checker
+    impactDecision(m.target);
+
+    // expire this missile
+    m.expire = 0;
+    return;
+  }
 
     const ux = dx / d, uy = dy / d;
     m.x += ux * m.speedPxPerSec * dt;
     m.y += uy * m.speedPxPerSec * dt;
 
-    // no more wedge/ring checks here—TTL alone handles self‑destruct
   });
 }
 
 
     // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
-    function updateTracks(dt){
+    function updateTracks(dt) {
   const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+  const icc = statics.find(s => s.type === 'icc');
+
+  // ① First, handle any auto‑launches for armed waves
+  tbmWaves.forEach(wave => {
+    if (!wave.fireballArmed) return;
+    wave.tbms.forEach(tbm => {
+      if (tbm.destroyed) return;
+
+      const d = distNm(icc, tbm);
+
+      // 1) Patriot at 40 NM
+      if (!tbm.patriotFired && d <= 40) {
+        tbm.patriotFired = true;
+        engageTbmWithPatriot(tbm);
+      }
+      // 2) NASAM at 20 NM (only if Patriot didn’t catch it)
+      else if (!tbm.nasamFired && d <= 20) {
+        tbm.nasamFired = true;
+        engageTbmWithNasam(tbm);
+      }
+    });
+  });
 
   tracks.forEach(o => {
     if (o.destroyed) return;
@@ -1215,9 +1356,9 @@ function updateMissiles(dt) {
           return;
         }
       }
+      
     }
 
-        
  
     // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
 if (o.isTbm) {
@@ -1236,6 +1377,16 @@ if (o.isTbm) {
       return;
     }
   }
+  if (o.isTbm) {
+         const nmDist = distNm(bullseye, o);
+         if (!o.cratered && nmDist <= 1) {
+        o.cratered = true;
+        changeScore(-5, 'ADAFCO, ICC, CRATER at BULLSEYE -5');
+        updateScoreDisplay();
+        o.destroyed = true;
+        return;    // skip any further per‑track logic
+      }
+    }
 
 
 }
@@ -1777,8 +1928,8 @@ const inNasamRing = nasam && distNm(nasam, t) <= 20;
 // if inside NASAM ring, fire from NASAM, otherwise from closest Patriot FU
 const fu = inNasamRing ? nasam : closestFu(t);
 
-const speedPxPerSec = (3000/3600) / CFG.nmPerPixel;
-const ttlMs         = 80 * 1000;
+const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
+const ttlMs         = 70 * 1000;
 
 // 2) if any friendly sits within 5 NM of the hostile, missiles will chase that friendly instead
 const nearbyFriendly = tracks.find(o =>
@@ -1786,21 +1937,34 @@ const nearbyFriendly = tracks.find(o =>
 );
 const assignedTarget = nearbyFriendly || t;
 
-// 3) launch two homing dots at the assignedTarget
-for (let i = 0; i < 2; i++) {
+// ─── 3) launch two missiles, 1 s apart
+// → first missile immediately
+missiles.push({
+  x:           fu.x,
+  y:           fu.y,
+  target:      assignedTarget,
+  fu:          fu,
+  speedPxPerSec,
+  expire:      Date.now() + ttlMs
+});
+
+// → second missile after 1 s
+setTimeout(() => {
   missiles.push({
-    x:      fu.x,
-    y:      fu.y,
-    target: assignedTarget,
-    fu:     fu,
+    x:           fu.x,
+    y:           fu.y,
+    target:      assignedTarget,
+    fu:          fu,
     speedPxPerSec,
-    expire: Date.now() + ttlMs
+    expire:      Date.now() + ttlMs
   });
-}
+}, 1000);
+
+
+
 
 // 4) schedule the impact check on the original hostile
 scheduleImpactCheck(t);
-
 
 
    // ─── now do the level‑scaled jinking for any non‑friendly ─────────
