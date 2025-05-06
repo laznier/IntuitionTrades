@@ -205,6 +205,7 @@
       <button id="practiceBtn">Practice Mode</button>
       <button id="tagsBtn">TAGS: OFF</button>
       <button id="compassBtn">Compass: OFF</button>
+      <button id="mapBtn">Map</button>
       <button id="helpBtn">Help</button>
     </div>
     <div id="status">Free mode</div>
@@ -221,7 +222,7 @@
      
         <h3>How to Play</h3>
         <p>
-          You are the ADAFCO, operating from the TOC co-located with the DAL at the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
+          You are the ADAFCO, operating from the TOC (co-located with the DAL) at the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
         </p>
       
         <h4>Mission Flow</h4>
@@ -250,7 +251,7 @@
       
           <li>
             <strong>VANISH</strong><br>
-            Tracks vanish automatically 6 seconds after a valid engagement. You may also press <strong>K</strong> to manually remove a track early.
+            Tracks vanish automatically if the ADA shots make contact after a valid engagement. You may also press <strong>K</strong> to manually remove a track early.
           </li>
         </ol>
       
@@ -271,31 +272,37 @@
           <li>Firing on a friendly <strong>inside</strong> firing geometry: <strong>–20</strong> pts (Fratricide).</li>
           <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Bird trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
           <li>SL should not issue COVER on friendly tracks — but errors are possible.</li>
+          <li>The risk of fraticide exists, so be careful not to engage on hostiles that are within 5 NM of friendly tracks.</li>
         </ul>
       
         <h4>TBM & FIREBALL Events</h4>
         <ul>
-          <li>TBMs appear in triangular waves from 200+ NM.</li>
-          <li>Click the <strong>FIREBALL</strong> button before impact to earn <strong>+2</strong> points.</li>
-          <li>If TBMs impact without interception: <strong>–2</strong> points.</li>
+          <li>TBMs appear in triangular waves.</li>
+          <li>Click the <strong>FIREBALL</strong> button before impact to ensure Patriot and/or NASAM auto fires on TBMs.</li>
+          <li>If TBMs impact without interception: <strong>–5</strong> points.</li>
         </ul>
       
         <h4>Cards & Track Interactions</h4>
         <ul>
           <li><strong>Left-click</strong> a unit to view its status card.</li>
           <li><strong>Right-click</strong> to pin the card in the top-right corner.</li>
-          <li>Cards display ID, heading, altitude, speed, and system status.</li>
+          <li>Cards display ID, heading, altitude, speed, system status, and current missile count.</li>
         </ul>
-      
+        <ul>
+            <li>Each Patriot FU contains 5 launchers with a total loadout of 12xPAC-2, 16xPAC-3, and 24xMSE.</li>
+            <li>A NASAMS FU has been deployed to the island to provice layered defense with 3 Missile Launchers with a total loadlout of 18xAIM-120.</li>
+            <li>Magazine reloads take 15 minutes and Patriot GTL re-orienting takes 90 seconds.</li>
+            <li>There is a high probability of maintenace issues arrising if there is a prolonged attack.</li>
+          </ul>
         <h4>Scoring</h4>
         <ul>
           <li><strong>+1</strong> – Valid missile kill</li>
           <li><strong>+2</strong> – FIREBALL intercept</li>
-          <li><strong>–1</strong> – Bird trashed (fired with no coverage)</li>
+          <li><strong>–1</strong> – Birds/Shots trashed (fired with no coverage or defeated)</li>
           <li><strong>–5</strong> – ROE violation (invalid target)</li>
           <li><strong>–6</strong> – Friendly fire outside geometry</li>
           <li><strong>–20</strong> – Fratricide inside geometry</li>
-          <li><strong>–2</strong> – TBM impact</li>
+          <li><strong>–5</strong> – TBM impact</li>
         </ul>
       
         <h4>Controls & Hotkeys</h4>
@@ -305,7 +312,7 @@
           <li><strong>W</strong> – AWAY (engage)</li>
           <li><strong>K</strong> – KILL (manual vanish)</li>
           <li><strong>O</strong> – Aim selected radar wedge</li>
-          <li><strong>R</strong> – Reset Bullseye position</li>
+          <li><strong>R</strong> – Reset Bullseye position/map</li>
           <li><strong>Arrow Keys</strong> / <strong>+</strong> / <strong>–</strong> – Pan and zoom</li>
         </ul>
       
@@ -447,7 +454,21 @@ const cardTop = () =>
 
 // ─── load background ─────────────────────────────────────────────
 const bgImg = new Image();
-bgImg.src = '/images/island.png';
+bgImg.src = '/images/island3.png';   // default style
+
+const mapBtn = document.getElementById('mapBtn');
+let altMap = false;  // false → island3, true → island4
+
+mapBtn.addEventListener('click', () => {
+  altMap = !altMap;
+  bgImg.src = altMap 
+    ? '/images/island4.png' 
+    : '/images/island3.png';
+  // (optional) update button text to show which style:
+  mapBtn.textContent = altMap 
+    ? 'Map: Style 2' 
+    : 'Map: Style 1';
+});
 
 /* Helper: centre view so a 200 NM radius fits the mobile screen */
 function fitMobileView() {
@@ -487,16 +508,16 @@ function buildStatics(){
   { type:'icc', id:'ICC', x:cx,            y:cy           },
 
   // launcher 1 (NE)
-  { type:'rad', id:'00170', x:cx + p10,         y:cy - p10        },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro,  y:cy - p10 - ro   },
+  { type:'rad', id:'00170', x:cx + p10 -10,         y:cy - p10 - 5       },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro -10,  y:cy - p10 - ro +10  },
 
   // launcher 2 (SW)
   { type:'rad', id:'00171', x:cx - p10,         y:cy + p10        },
   { type:'fu',  id:'PATRIOT', x:cx - p10 - ro,  y:cy + p10 + ro   },
 
   // launcher 3 (SE)
-  { type:'rad', id:'00172', x:cx + p10,         y:cy + p10        },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro,  y:cy + p10 + ro   },
+  { type:'rad', id:'00172', x:cx + p10 +10,         y:cy + p10 -5        },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro + 15,  y:cy + p10 + ro   },
 
   // launcher 4 (NW)
   { type:'rad', id:'00173', x:cx - p10/2,       y:cy - p10        },
@@ -508,7 +529,7 @@ function buildStatics(){
   statics.push({
     type:'fu',
     id:   'NASAM',            // label it “NASAM”
-    x:    cx - 1 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    x:    cx + 1 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
     y:    cy + 3 / CFG.nmPerPixel, 
   });
 
@@ -1617,6 +1638,16 @@ if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
   });
 }
 
+const oceanColor = '#00345c';
+const darkColor  = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--bg');
+
+// inside animate(now):
+ctx.setTransform(1,0,0,1,0,0);
+ctx.fillStyle = altMap ? oceanColor : darkColor;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// then your usual world‑transform and drawImage(bgImg,…)
 
 
     let lastTime=performance.now();
@@ -1629,10 +1660,14 @@ if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
 
 
 
-  // ─── A) clear & fill “sea” background ───────────────────────
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg');
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+// ─── A) clear & fill “sea” background ───────────────────────
+ctx.setTransform(1, 0, 0, 1, 0, 0);
+ctx.fillStyle = altMap
+  ? oceanColor   // Style 2: deep ocean
+  : darkColor;   // Style 1: original dark
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
 
   // ─── B) draw screen‐space vignette UNDER everything else ────
   //    (will never move or scale with world)
@@ -1662,15 +1697,18 @@ if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
   const ratio = bgImg.width / bgImg.height;
 
   // ② decide on one “world-space” size—e.g. ¼ of the world’s height
-  const imgH = worldHeight / 2.7;
+  const imgH  = worldHeight / 2.7 * 3;    // ← zoom in 30%
   const imgW = imgH * ratio;   // keeps w/h = original
 
   // ③ compute the 5 NM east shift in world-pixels
   const shiftPx = 5 / CFG.nmPerPixel;
 
+  
   // ④ center that resized island on (bullseye.x + shiftPx, bullseye.y)
-  const destX = bullseye.x + shiftPx - imgW / 3;
-  const destY = bullseye.y             - imgH / 2;
+   const extraX = -150;   // ← move left by 100 world‑px  
+ const extraY =   5;   // ← move down by 50 world‑px  
+ const destX = bullseye.x + shiftPx - imgW / 3 + extraX;
+ const destY = bullseye.y           - imgH / 2 + extraY;
 
   ctx.drawImage(
     bgImg,
