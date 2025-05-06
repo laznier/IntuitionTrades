@@ -195,6 +195,27 @@
   cursor: pointer;
 }
 
+@media (max-width: 768px) {
+  #controls {
+    display: flex;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  #controls button {
+    body header #controls button {
+    flex: 1 1 0;
+    min-width: 0;
+    line-height: 1.2 !important;}
+    /* shrink font between 0.6rem and 0.9rem based on viewport width */
+    font-size: clamp(0.6rem, 3vw, 1rem) !important;
+    padding: 0.3rem 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 
   </style>
 </head>
@@ -389,6 +410,7 @@ let pendingReorient  = false;
 let lastRadFailure = 0;
 let nextOutageAllowed = 0;  // timestamp (ms) after which we may schedule another outage
 
+let pendingEngagements = [];
 
 //missile
 
@@ -524,13 +546,28 @@ function buildStatics(){
   { type:'fu',  id:'PATRIOT', x:cx - p10/2 - ro, y:cy - p10 - ro  },
 ];
 
+// ── C2 (friendly) icon ─────────────────────
+  statics.push({
+    type:'C2',
+    id:   'C2',            // label it “BIGFOOT”
+    x:    cx - 3 / CFG.nmPerPixel,  
+    y:    cy + 4 / CFG.nmPerPixel, 
+  });
+
+  // ── HHQ (friendly) icon ─────────────────────
+  statics.push({
+    type:'C2',
+    id:   'HHQ',            // label it “BIGFOOT”
+    x:    cx + 3 / CFG.nmPerPixel,  
+    y:    cy + 2 / CFG.nmPerPixel, 
+  });
 
     // ── NASAM (friendly) icon, 15 NM east of the ICC ─────────────────────
   statics.push({
     type:'fu',
     id:   'NASAM',            // label it “NASAM”
-    x:    cx + 1 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
-    y:    cy + 3 / CFG.nmPerPixel, 
+    x:    cx + 2 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    y:    cy + 4 / CFG.nmPerPixel, 
   });
 
 
@@ -1257,6 +1294,17 @@ function drawStatics() {
         ctx.fillText(s.id, s.x + 8, s.y - 8);
       ctx.restore();
     }
+    
+    else if (s.type === 'C2') {
+  // draw C2 as a little shaded dot
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,255,0,0.8)';   // pick whatever color + alpha you like
+  ctx.beginPath();
+    ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);  // radius = 6px (tweak as desired)
+  ctx.fill();
+  ctx.restore();
+    }
+
     else {
       // default icon for other statics
       ctx.strokeStyle = colICC;
@@ -1265,9 +1313,42 @@ function drawStatics() {
       ctx.stroke();
     }
     
-    // draw the ID label
-    ctx.fillStyle = colICC;
-    ctx.fillText(s.id, s.x + 8, s.y);
+    // ─── CONDITIONAL STATIC LABELS ─────────────────────────────────
+    // only draw when tags are ON (tagMode > 0)
+    if (tagMode > 0) {
+      const lines = [ s.id ];
+
+      // in ALL mode (tagMode===4) also show its status
+      if (tagMode === 4) {
+        let statusText;
+        const now = Date.now();
+        if (s.type === 'rad') {
+          statusText = now < s.disabledUntil ? 'Disabled' : 'Active';
+        } else if (s.type === 'fu' && s.id === 'NASAM') {
+          statusText = now < NASAMDisabledUntil ? 'Reloading' : 'Ready';
+        } else if (s.type === 'fu') {
+          statusText = now < s.disabledUntilFu ? 'Reloading' : 'Ready';
+        } else if (s.type === 'icc') {
+          statusText = now < NASAMDisabledUntil ? 'Weapons Red' : 'Ready';
+        } else {
+          statusText = 'Active';
+        }
+        lines.push(statusText);
+      }
+
+      // draw each line
+      ctx.fillStyle    = colICC;
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.font         = '10px monospace';
+      const xOff   = 8;    // px right of icon
+      const yStep  = 12;   // px between lines
+
+      lines.forEach((text, i) => {
+        ctx.fillText(text, s.x + xOff, s.y + i * yStep);
+      });
+    }
+
   });
 
   
@@ -1653,9 +1734,41 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
     let lastTime=performance.now();
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
   function animate(now) {
+  // ─── 1) compute delta ─────────────────────────────────────
   const dt = (now - lastTime) / 1000;
   lastTime = now;
+
+  // ─── 2) update track positions, spawns, etc. ────────────
   updateTracks(dt);
+
+  // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ────
+  {
+    const icc = statics.find(s => s.type === 'icc');
+    // Filter & handle only those still tagged AFFIRM
+    pendingEngagements = pendingEngagements.filter(trk => {
+      // drop if destroyed or re‑tagged
+      if (trk.destroyed || trk.tag !== 'AFFIRM') return false;
+
+      // check distance
+      const d = distNm(icc, trk);
+      if (d <= 65) {
+  // issue ENGAGE
+  trk.tag           = 'ENGAGE';
+  trk.tagTime       = Date.now();
+  trk.everEngaged   = true;       // ← mark it approved by SL
+  phase             = 'engage';
+        const be2   = ('000' + bearing(bullseye, trk)).slice(-3);
+        const r2    = distNm(bullseye, trk);
+        statusEl.textContent = `… ENGAGE Track ${trk.id} …`;
+
+  nextQueueTrack();
+  return false;
+}
+
+      return true;     // keep waiting
+    });
+  }
+
   updateMissiles(dt);
 
 
@@ -2152,34 +2265,32 @@ window.addEventListener('keydown', e => {
     return;
   }
 
-  /* ───── AFFIRM  → ENGAGE ─────────────────────────────────── */
+  // ───── AFFIRM → QUEUE & PEND ─────────────────────────────────
   if (k === 'a') {
+  e.preventDefault();
+  clearTimeout(coverTimer);
 
-    clearTimeout(coverTimer);
-    curTrack          = t;
-    curTrack.tag      = 'ENGAGE';
-    curTrack.everEngaged = true; // mark for ROE
-    curTrack.tagTime  = Date.now();
-        phase             = 'engage';
-    statusEl.textContent =
-      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be}/${r}`;
+  // mark this track AFFIRM
+  const t = selectedTrack;
+  t.tag     = 'AFFIRM';
+  t.tagTime = Date.now();
+  phase     = 'affirm';
+  statusEl.textContent =
+    `ADAFCO, SL, AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
 
-         // ── After 10 s SL will prompt “Engage” again if still in practice
-   setTimeout(() => {
-     if (mode === 'practice' && !t.destroyed) {
-       const be2 = ('000' + bearing(bullseye, t)).slice(-3);
-       const r2  = distNm(bullseye, t);
-       statusEl.textContent =
-         `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be2}/${r2}`;
-     }
-   }, 10000);
+  // remember it (no dupes)
+  if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
 
-    // ── NEW: after calling ENGAGE, move to next COVER in 2 s
-    setTimeout(() => {
-      if (mode === 'practice') nextQueueTrack();
-    }, 5000);
-    return;
-  }
+  // wait 5 seconds, then go to the next COVER
+  coverTimer = setTimeout(() => {
+    nextQueueTrack();
+  }, 5000);
+
+  return;
+}
+
+
+
 
    // ───── AWAY (Birds Away) ──────────────────────────────────
 if (k === 'w') {
@@ -2307,8 +2418,8 @@ const isInsideCircle = nasam && distNm(nasam, t) <= 15;
   statusEl.textContent =
     `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
-  // immediate ROE penalty if first shot
-  if (!t.everEngaged) {
+    // only penalize birds‑away if SL never requested ENGAGE
+  if (t.tag !== 'ENGAGE' && !t.everEngaged) {
     changeScore(-5, 'ROE Violation: -5');
     t.everEngaged = true;
   }
@@ -2723,6 +2834,7 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
+
   </script>
 </body>
 </html>
