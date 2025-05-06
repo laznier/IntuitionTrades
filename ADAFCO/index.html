@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ADAFCO Bullseye/BRAA Trainer</title>
+  <title>ADAFCO Bullseye/Air Battle Trainer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     :root {
@@ -169,6 +169,30 @@
   .card2 {
     top: 100px !important;
   }
+}
+/* Make both cards semi‑transparent */
+.card,
+.card2 {
+  background: rgba(24, 24, 24, 0.8) !important;  /* was #181818 */
+  border: 1px solid rgba(51, 51, 51, 0.8);
+}
+
+/* Style the close “×” button */
+.card .close-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
 }
 
 
@@ -346,8 +370,8 @@ let speedMultiplier = 1;  // 1.0× on Level 1, 1.5× on Level 2, etc.
 let coverTimer = null, practiceSaveIndex = null;
 
 // NASAM state
-let iccMissiles      = 6;
-let iccDisabledUntil = 0;
+let NASAMMissiles      = 18;
+let NASAMDisabledUntil = 0;
 
 //PATRIOT Reorient
 let pendingReorient  = false;
@@ -358,33 +382,47 @@ let pendingReorient  = false;
 let lastRadFailure = 0;
 let nextOutageAllowed = 0;  // timestamp (ms) after which we may schedule another outage
 
+
+//missile
+
+let missiles = [];   // track all in‑flight missile dots
+
 /**
  * Returns `true` if the shot should be blocked by NASAM‐weapons‐red,
  * or `false` if you should proceed with the W handler.
  * Side‑effects: decrements missile count and schedules reload.
  */
-function checkNasamStatus(isInsideCircle) {
+ function checkNasamStatus(isInsideCircle) {
   const now = Date.now();
 
-  // If circle is red, block every inside‐circle shot
-  if (isInsideCircle && now < iccDisabledUntil) {
-    feedbackEl.textContent = 'NASAM Weapons Red';
+  // 1) If we’re still in a reload interval, block and show ETIC
+  if (now < NASAMDisabledUntil) {
+    const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
+    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
     return true;
   }
 
-  // If it's a valid circle shot and missiles remain, consume one
-  if (isInsideCircle && iccMissiles > 0) {
-    iccMissiles--;
-    // Last missile? go red for 2 min
-    if (iccMissiles === 0) {
-      feedbackEl.textContent  = 'NASAM Weapons Red';
-      iccDisabledUntil        = now + 2*60*1000;
-      setTimeout(() => { iccMissiles = 6; }, 2*60*1000);
-      return true;
-    }
+    // 2) If fewer than 2 remain, start a 15 min reload now
+  if (NASAMMissiles <= 1) {
+    NASAMDisabledUntil = now + 15 * 60 * 1000;
+    const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
+    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    setTimeout(() => { NASAMMissiles = 18; }, 15 * 60 * 1000);
+    return true;
   }
+
+    // 3) Otherwise (valid ring shot), consume two AIM‑120s
+  if (isInsideCircle) {
+    NASAMMissiles -= 2;
+  }
+
   return false;
 }
+
 
 
     // ─── SETUP ──────────────────────────────────────────────────────────
@@ -445,37 +483,52 @@ function buildStatics(){
         ro  = 2  / CFG.nmPerPixel;
 
 
-  statics = [
-    { type:'icc', id:'ICC', x:cx,      y:cy       },
+        statics = [
+  { type:'icc', id:'ICC', x:cx,            y:cy           },
 
-    // launcher 1 (NE)
-    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy - p10 },
-    { type:'rad', id:'00170', x:cx + p10 + ro, y:cy - p10 - ro },
+  // launcher 1 (NE)
+  { type:'rad', id:'00170', x:cx + p10,         y:cy - p10        },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro,  y:cy - p10 - ro   },
 
-    // launcher 2 (SW)
-    { type:'fu',  id:'PATRIOT', x:cx - p10, y:cy + p10 },
-    { type:'rad', id:'00171', x:cx - p10 - ro, y:cy + p10 + ro },
+  // launcher 2 (SW)
+  { type:'rad', id:'00171', x:cx - p10,         y:cy + p10        },
+  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro,  y:cy + p10 + ro   },
 
-    // launcher 3 (SE)
-    { type:'fu',  id:'PATRIOT', x:cx + p10, y:cy + p10 },
-    { type:'rad', id:'00172', x:cx + p10 + ro, y:cy + p10 + ro },
+  // launcher 3 (SE)
+  { type:'rad', id:'00172', x:cx + p10,         y:cy + p10        },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro,  y:cy + p10 + ro   },
 
-    // launcher 4
-    { type:'fu',  id:'PATRIOT', x:cx - p10/2, y:cy - p10 },
-    { type:'rad', id:'00173', x:cx - p10/2 - ro, y:cy - p10 - ro },
-  ];
+  // launcher 4 (NW)
+  { type:'rad', id:'00173', x:cx - p10/2,       y:cy - p10        },
+  { type:'fu',  id:'PATRIOT', x:cx - p10/2 - ro, y:cy - p10 - ro  },
+];
+
 
     // ── NASAM (friendly) icon, 15 NM east of the ICC ─────────────────────
   statics.push({
     type:'fu',
     id:   'NASAM',            // label it “NASAM”
-    x:    cx + 0 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
-    y:    cy + 2 / CFG.nmPerPixel, 
+    x:    cx - 1 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    y:    cy + 3 / CFG.nmPerPixel, 
   });
 
 
   bullseye = { x:cx, y:cy };
 
+  // ─── Initialize each Patriot FU’s ammo pool ───────────────
+statics
+  .filter(s => s.type === 'fu')
+  .forEach(fu => {
+    fu.ammo = {           // total missiles per type
+      pac2: 12,
+      pac3: 16,
+      mse:  24
+    };
+    fu.engagementsRemaining = 26;  // 2 missiles per engagement → 56 total
+    fu.disabledUntilFu      = 0;   // reload timestamp
+  });
+
+  
   // ── Point every radar EXACTLY away from B/E ───────────────
    statics.forEach(s => {
    if (s.type === 'rad') {
@@ -488,6 +541,63 @@ function buildStatics(){
       s.animStart     = 0;     // timestamp when animation began
     }
   });
+}
+/**
+ * Decide which missile type to fire (based on range), consume 2 rounds,
+ * decrement engagementsRemaining, and handle reload warnings/outage.
+ * Returns `true` if you SHOULD fire, `false` if blocked/reloading.
+ */
+ function processPatriotEngagement(fu, rangeNm) {
+  const now   = Date.now();
+  const label = getFuLabel(fu);
+
+  // 1) If currently reloading → block
+  if (now < fu.disabledUntilFu) {
+    const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
+    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    return false;
+  }
+
+  // 2) Pick preferred type by range
+  let order;
+  if (rangeNm < 40)         order = ['pac3','mse','pac2'];
+  else if (rangeNm <= 60)   order = ['mse','pac3','pac2'];
+  else                       order = ['pac2','mse','pac3'];
+
+  let chosen;
+  for (const t of order) {
+    if (fu.ammo[t] >= 2) { chosen = t; break; }
+  }
+
+  // 3) If none available → start reload
+  if (!chosen) {
+    fu.disabledUntilFu = now + 15*60*1000;
+    const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
+    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    // refill after 15 min
+    setTimeout(() => {
+      fu.engagementsRemaining = 28;
+      fu.ammo = { pac2:12, pac3:32, mse:12 };
+    }, 15*60*1000);
+    return false;
+  }
+
+  // 4) Consume 2 of that type & one engagement
+  fu.ammo[chosen]         -= 2;
+  fu.engagementsRemaining -= 1;
+
+  // 5) Warnings at thresholds
+  if (fu.engagementsRemaining === 10) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Yellow`;
+  } else if (fu.engagementsRemaining === 4) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Red`;
+  }
+
+  return true;
 }
 
 
@@ -544,6 +654,58 @@ function newTrack() {
   };
 }
 
+// Helper to label each FU by quadrant
+function getFuLabel(fu) {
+  const dx = fu.x - bullseye.x,
+        dy = fu.y - bullseye.y;
+  const hemiNS = dy < 0 ? 'N' : 'S',
+        hemiEW = dx < 0 ? 'W' : 'E';
+  return `${hemiNS}${hemiEW} PATRIOT`;
+}
+
+// Returns true if this FU is out of action (weapons‑red or reloading),
+// and updates feedback + schedules reload when needed.
+// Otherwise decrements its missile count and possibly shows a warning.
+function checkPatriotStatus(fu) {
+  const now = Date.now();
+  // lazy‑init magazine & reload timer
+  if (fu.missilesRemaining == null) {
+    fu.missilesRemaining   = 8;
+    fu.disabledUntilFu     = 0;
+  }
+  const label = getFuLabel(fu);
+  // still reloading?
+    if (now < fu.disabledUntilFu) {
+   const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
+    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    return true;
+  }
+  // empty magazine → start reload
+  if (fu.missilesRemaining <= 0) {
+        fu.disabledUntilFu = now + 15*60*1000;
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Reloading. Down for 15 minutes`;
+    // ─── turn its paired radar red for the same duration ─────────────────
+    const radars = statics.filter(s => s.type === 'rad');
+    const paired = radars.reduce((best, s) =>
+      !best || distNm(fu, s) < distNm(fu, best) ? s : best,
+    null);
+    paired.disabledUntil = fu.disabledUntilFu;
+
+    setTimeout(() => { fu.missilesRemaining = 8; }, 15*60*1000);
+    return true;
+  }
+  // consume one
+  fu.missilesRemaining--;
+  // warnings
+  if (fu.missilesRemaining === 4) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Yellow`;
+  } else if (fu.missilesRemaining === 2) {
+    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Red`;
+  }
+  return false;
+}
 
 
 function initTracks(){
@@ -571,7 +733,13 @@ function spawnTbmWave() {
   const dPx = offsetNm / CFG.nmPerPixel;
 
   // 3) build the three TBMs
-  const wave = { spawn: now, impact: null, resolved: false };
+    const wave = {
+  spawn:        now,
+    impact:       null,
+    resolved:     false,
+    fireballArmed:false,   // ← NEW: will be set when Fireball pressed
+    tbms:         []
+  };
   for (let i = 0; i < 3; i++) {
     const ang = rot + (i * 2 * Math.PI / 3);  // 0°, 120°, 240°
     const x   = cx + Math.cos(ang) * dPx;
@@ -583,29 +751,25 @@ function spawnTbmWave() {
     const timeToImpact = (distFromIcc / speed) * 3600 * 1000;
 
     const t = {
-      id:       `TBM${i+1}`,
-      x, y,
-      heading,
-      speed,
-      alt:      CFG.tbmAltitude,
-     destAlt:  0,               // ← target altitude for descent
-      tag:      null,
-      destroyed:false,
-      everEngaged:false,
-      isTbm:    true
+  id: `TBM${i+1}`,
+  x, y,
+  heading,
+  speed,
+  alt: CFG.tbmAltitude,
+  destAlt: 0,
+  tag: null,
+  destroyed: false,
+  everEngaged: false,
+  isTbm: true,
+  // ← NEW:
+  patriotFired: false,
+  nasamFired:   false, 
+  cratered:     false
     };
 
     // schedule impact penalty if not resolved
-    wave.impact = now + timeToImpact;
-    setTimeout(() => {
-      if (!wave.resolved) {
-         changeScore(-2, "TBM Impact! –2");
-        updateScoreDisplay();
-      }
-      wave.resolved = true;
-    }, timeToImpact);
-
-    tracks.push(t);
+   tracks.push(t);
+    wave.tbms.push(t);
   }
 
   // 4) enable FIREBALL
@@ -614,21 +778,92 @@ function spawnTbmWave() {
   CFG.tbmWindowMs     = wave.impact - now;
 }
 
+function engageTbmWithPatriot(tbm) {
+  const fu = closestFu(tbm);
+  const d  = distNm(fu, tbm);
+  if (!processPatriotEngagement(fu, d)) return;
+ // Patriot‑magazine check
+  if (checkPatriotStatus(fu)) return;
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  [0, 1000].forEach(offset => {
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x: fu.x,
+          y: fu.y,
+          target: tbm,
+          fu,
+          speedPxPerSec,
+          expire: Date.now() + 15000
+        });
+      }
+    }, offset);
+  });
+  // schedule the impact check just like AWAY
+  scheduleImpactCheck(tbm);
+}
+
+function engageTbmWithNasam(tbm) {
+  const nas = statics.find(s => s.id === 'NASAM');
+  const now = Date.now();
+
+  // 1) If we’re still in reload, block
+  if (now < NASAMDisabledUntil) {
+    const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
+    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    return;
+  }
+
+  // 2) If fewer than 2 remain, start reload
+ if (NASAMMissiles <= 1) {
+    NASAMDisabledUntil = now + 15 * 60 * 1000;
+    const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
+    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    statusEl.textContent   = msg;
+    feedbackEl.textContent = msg;
+    setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
+    return;
+  }
+
+    // 3) Consume two AIM‑120s then launch two missiles, 1s apart
+  NASAMMissiles -= 2;
+  [0, 1000].forEach(offset => {
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x:             nas.x,
+          y:             nas.y,
+          target:        tbm,
+          fu:            nas,
+          speedPxPerSec: (5000/3600) / CFG.nmPerPixel,
+          expire:        Date.now() + 15000
+        });
+      }
+    }, offset);
+  });
+  scheduleImpactCheck(tbm);
+ }
+
+
+
 
 const fireballBtn = document.getElementById('fireballBtn');
 
+ // always keep the button enabled
+fireballBtn.disabled = false;
+
+// arm all waves & give instant feedback
 fireballBtn.addEventListener('click', () => {
-  const now = Date.now();
-  tbmWaves.forEach(wave => {
-    if (!wave.resolved && now >= wave.spawn && now <= wave.impact) {
-      wave.resolved = true;
-      changeScore(2, "FIREBALL FIREBALL FIREBALL! +2");
-      updateScoreDisplay();
-    }
-  });
-  // disable until next wave
-  fireballBtn.disabled = true;
+  // 1) arm every pending TBM wave
+  tbmWaves.forEach(w => w.fireballArmed = true);
+
+  // 2) immediate UI call‑out
+  statusEl.textContent   = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
+  feedbackEl.textContent = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
 });
+
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -652,13 +887,13 @@ fireballBtn.addEventListener('click', () => {
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 /**
- * Returns true if track `t` lies within the 50 NM / ±60° wedge of radar `s`.
+ * Returns true if track `t` lies within the 60 NM / ±60° wedge of radar `s`.
  */
  function insideWedge(s, t) {
   const dx = (t.x - s.x) * CFG.nmPerPixel;
   const dy = (t.y - s.y) * CFG.nmPerPixel;
   const d  = Math.hypot(dx, dy);
-  if (d > 50) return false;
+  if (d > 60) return false;
 
   const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
@@ -670,6 +905,127 @@ fireballBtn.addEventListener('click', () => {
   return dot >= 0.5;
 }
 
+/* ─── Missile‑in‑flight helpers ───────────────────────────────────────── */
+
+/** Return the FU (PATRIOT or NASAM) closest to this track. */
+function closestFu(track) {
+  return statics
+    .filter(s => s.type === 'fu')                    // PATRIOT launchers + NASAM
+    .reduce((best, s) =>
+      !best || distNm(s, track) < distNm(best, track) ? s : best, null);
+}
+
+/** Schedule the “kill / trashed” assessment at the computed impact time. */
+function scheduleImpactCheck(t) {
+  // 0) if we already scheduled one (re‑shot), cancel it
+  if (t.mslTimer) clearTimeout(t.mslTimer);
+
+  // 1) pick launch site & basic kinematics
+  const fu   = closestFu(t);
+  const dx   = (t.x - fu.x) * CFG.nmPerPixel;    // Δ in NM
+  const dy   = (t.y - fu.y) * CFG.nmPerPixel;
+  const dist = Math.hypot(dx, dy);               // LOS range (NM)
+
+  const Vt   = t.speed;                          // kts
+  const θt   = d2r(t.heading);
+  const vtx  = Math.sin(θt) * Vt;                // NM / hr components
+  const vty  = -Math.cos(θt) * Vt;
+
+  const uX   = dx / dist;                        // LOS unit‑vector
+  const uY   = dy / dist;
+  const Vm   = 3000;                             // missile speed (kts)
+
+  // 2) closure speed along LOS
+  const closure = Vm - (vtx * uX + vty * uY);    // NM / hr
+  if (closure <= 0) {
+    // missile can never overtake → treat as immediate trashed
+    markShotTrashed(t);
+    return;
+  }
+
+  const tHr   = dist / closure;                  // hours to intercept
+  const tMs   = tHr * 3600 * 1000;               // → ms
+
+  // 3) future impact coordinates (world‑px)
+  const ipX = t.x + (vtx / 3600) * tMs / CFG.nmPerPixel;
+  const ipY = t.y + (vty / 3600) * tMs / CFG.nmPerPixel;
+
+  // 4) schedule the decision
+  t.mslTimer = setTimeout(() => impactDecision(t), tMs);
+}
+
+/** Decide at impact whether the bird killed (+1) or trashed (–1 & ENGAGE). */
+function impactDecision(track) {
+  if (track.destroyed) return;
+
+  // use the track’s real world‑px position at this instant:
+  const ix = track.x, 
+        iy = track.y;
+
+  const now = Date.now();
+
+  /* A)  check NASAM ring — 15 NM around the NASAM FU */
+  const nasam = statics.find(s => s.id === 'NASAM');
+  const inRing = nasam && distNm({x:ix,y:iy}, nasam) <= 15;
+
+    // B) geometry check (ignores reload/red status)
+  const inAnyWedgeGeom = statics
+    .filter(s => s.type === 'rad')
+    .some(rad => insideWedge(rad, { x: ix, y: iy }));
+
+  // C) “active” wedge for launch–blocking elsewhere
+  const inAnyWedgeBlocked = statics
+    .filter(s => s.type === 'rad' &&
+                 now >= s.disabledUntil &&
+                 s.animFrom == null)
+    .some(rad => insideWedge(rad, { x: ix, y: iy }));
+
+       // ─── FRIENDLY IMPACT ───────────────────────────────
+  if (track.friendly) {
+    // only inside geometry is fratricide
+    if (inRing || inAnyWedge) {
+      changeScore(-20, 'Fratricide! –20 points');
+    } else {
+      // outside geometry: bird trashed + ROE
+      changeScore(-6, 'Bird Trashed: –1; ROE Violation: –5');
+    }
+    track.destroyed = true;
+    return;
+  }
+
+   // ---------------- VALID kill ----------------
+   if (inRing || inAnyWedgeGeom) {
+  changeScore(1, `Track ${track.id} Vanished: +1`);
+  track.destroyed = true;
+  track.tag       = null;
+
+  // advance practice queue as usual
+  nextQueueTrack();
+
+  // now check for level completion
+  const hostilesLeft = tracks.some(t =>
+    !t.destroyed && !t.friendly && !t.isTbm
+  );
+  if (!hostilesLeft) {
+    showLevelComplete();
+  }
+} else {
+  // ---------------- TRASHED ----------------
+  markShotTrashed(track);
+}
+
+}
+
+/** Apply the trashed penalty & revert to ENGAGE at current position. */
+function markShotTrashed(t) {
+  changeScore(-1, 'Bird Trashed: -1 point');
+  t.tag           = 'ENGAGE';
+  t.tagTime       = Date.now();
+  t.everEngaged   = true;
+  const be = ('000' + bearing(bullseye, t)).slice(-3);
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${be}/${distNm(bullseye,t)}`;
+}
 
    // ─── UTILS ──────────────────────────────────────────────────────────
 function nmToPx(nm) {
@@ -724,6 +1080,26 @@ function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
       ctx.restore();
     }
 
+    // ─── ADD THESE TWO HELPERS ANYWHERE ABOVE your animate() ─────────────────
+function firePatriotAt(tbm) {
+  const fu = closestFu(tbm);
+  const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
+  // launch two missiles, 1 s apart
+  [0, 1000].forEach(offset =>
+    setTimeout(() => {
+      if (!tbm.destroyed) {
+        missiles.push({
+          x:             fu.x,
+          y:             fu.y,
+          target:        tbm,
+          fu,
+          speedPxPerSec,
+          expire:        Date.now() + 15_000
+        });
+      }
+    }, offset)
+  );
+}
    // ─── DRAW STATICS ────────────────────────────────────────────────────
 // Remove any global wedge here! Just draw icons/text.
 function drawStatics() {
@@ -731,95 +1107,100 @@ function drawStatics() {
 
   statics.forEach(s => {
  
-    // ─── DRAW STATICS ─── inside statics.forEach(s) ─────────────────────
-    if (s.type === 'rad') {
-  // determine current direction and fill color
-    // determine current direction (with animation) and whether it's down
-    const now = Date.now();
+        /* ─── PATRIOT radar wedge & dish ─────────────────────────── */
+        if (s.type === 'rad') {
+  const now = Date.now();
+
+  // 1) compute current pointing direction (animated if rotating)
   let dir;
-
-  // ▶️ animate only if there’s a pending rotation
   if (s.animFrom != null) {
-    const duration = s.disabledUntil - s.animStart;        // same timeout used for animation
-    const t        = Math.min((now - s.animStart) / duration, 1);
-    const delta    = ((s.animTo - s.animFrom + 540) % 360) - 180;
-    dir = s.animFrom + delta * t;
-
-    // once the animation is over, finalize the new direction
-    if (t >= 1) {
-      s.wedgeDir  = s.animTo;
-      s.animFrom  = s.animTo = null;
+    const pct   = Math.min((now - s.animStart) /
+                           (s.disabledUntil - s.animStart), 1);
+    const delta = ((s.animTo - s.animFrom + 540) % 360) - 180;
+    dir = s.animFrom + delta * pct;
+    if (pct >= 1) {
+      s.wedgeDir = s.animTo;
+      s.animFrom = s.animTo = null;
     }
   } else {
     dir = s.wedgeDir;
   }
 
-  // ▶️ radar is “down” (red) whenever disabledUntil is still in the future
-  const red = now < s.disabledUntil;
+  // 2) determine cosmetic wedge color:
+  //    - red for forced outage
+  //    - orange for FU reload
+  //    - yellow otherwise
+  const fus = statics.filter(x => x.type === 'fu');
+  const pairedFu = fus.reduce((best, f) =>
+    !best || distNm(f, s) < distNm(best, s) ? f : best,
+  null);
 
-  const half     = 60;
-  const radiusNm = 50;
+  const isOutage = now < s.disabledUntil;
+  const isReload = pairedFu && now < pairedFu.disabledUntilFu;
+  let fillColor;
+  if (isOutage)       fillColor = 'rgba(255,0,0,0.1)';
+  else if (isReload)  fillColor = 'rgba(255,165,0,0.1)';
+  else                fillColor = 'rgba(0,255,0,0.1)';     // green when active
+
+  // 3) draw the 60 NM ±60° wedge with that color
   ctx.save();
-    ctx.fillStyle = red ? 'rgba(255,0,0,0.1)' : 'rgba(255,214,10,0.1)';
+    ctx.fillStyle = fillColor;
+    const halfDeg = 60, radNm = 60;
+    const toRad = d => (d - 90) * Math.PI / 180;
     ctx.beginPath();
-    const toRad = d => (d - 90) * Math.PI/180;
-    ctx.moveTo(s.x, s.y);
-    ctx.arc(
-      s.x, s.y,
-      nmToPx(radiusNm),
-      toRad(dir - half),
-      toRad(dir + half),
-      false
-    );
-    ctx.closePath();
-    ctx.fill();
+      ctx.moveTo(s.x, s.y);
+      ctx.arc(
+        s.x, s.y,
+        nmToPx(radNm),
+        toRad(dir - halfDeg),
+        toRad(dir + halfDeg),
+        false
+      );
+      ctx.closePath();
+      ctx.fill();
   ctx.restore();
 
-
-
-  // 2) draw a stylized radar dish icon
+  // 4) draw the little dish icon unchanged
   ctx.save();
     ctx.translate(s.x, s.y);
     ctx.strokeStyle = colICC;
     ctx.lineWidth   = 2;
-
     // dish arc
     ctx.beginPath();
-    ctx.arc(0, 0, 8, -Math.PI * 0.7, Math.PI * 0.7);
-    ctx.stroke();
-
-    // pedestal stem
+      ctx.arc(0, 0, 8, -Math.PI*0.7, Math.PI*0.7);
+      ctx.stroke();
+    // stem + base
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, 10);
-    ctx.stroke();
-
-    // base
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 10);
+      ctx.stroke();
     ctx.fillStyle = colICC;
     ctx.fillRect(-4, 10, 8, 3);
   ctx.restore();
-  
-}
 
+    /* ─── NASAM launcher & 15 NM ring ─────────────────────────── */
+} else if (s.id === 'NASAM') {
+    // 15 NM NASAM ring: red if weapons disabled, else yellow
+    const now      = Date.now();
+    const disabled = now < NASAMDisabledUntil;
+    ctx.save();
+         ctx.fillStyle = disabled
+       ? 'rgba(255,0,0,0.1)'
+       : 'rgba(0,255,0,0.1)';     // green when ready
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI*2);
+      ctx.fill();
+    ctx.restore();
 
-    // … the rest of your icon + text drawing …
-    if (s.type === 'icc') {
-  // 1) Fill the 15 NM circle (yellow or red)
-  const disabled = Date.now() < iccDisabledUntil;
-  ctx.beginPath();
-  ctx.fillStyle = disabled
-    ? 'rgba(255,0,0,0.1)'    // red fill
-    : 'rgba(255,214,10,0.1)'; // yellow fill
-  ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI * 2);
-  ctx.fill();
-
-  // 2) Draw the small ICC dot
-  ctx.beginPath();
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--icc');
-  ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
-  ctx.fill();
-
-
+      // launcher icon (same style as Patriot FU)
+      ctx.fillStyle = colICC;
+      ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.fillRect(-3, -12, 6, 12);               // body
+        ctx.beginPath();                            // nose
+          ctx.moveTo(-4, -12); ctx.lineTo(0, -20); ctx.lineTo(4, -12);
+        ctx.closePath(); ctx.fill();
+      ctx.restore();
 
 
  
@@ -1065,14 +1446,93 @@ function drawTracks(now) {
       ctx.strokeRect(left,top,width,height);
     }
 
+    function drawMissiles() {
+  missiles.forEach(m => {
+    // compute angle towards its target
+    const dx  = m.target.x - m.x;
+    const dy  = m.target.y - m.y;
+    const ang = Math.atan2(dy, dx);
+
+    ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(ang);
+
+      // draw a tiny blue “missile” shape
+      ctx.fillStyle = '#3498db'; // nice blue
+      ctx.beginPath();
+        ctx.moveTo(-6, -2);      // tail left
+        ctx.lineTo( 6,  0);      // nose right
+        ctx.lineTo(-6,  2);      // tail bottom
+      ctx.closePath();
+      ctx.fill();
+    ctx.restore();
+  });
+}
+
+
+
+function updateMissiles(dt) {
+  const now = Date.now();
+
+  // first remove any that have lived ≥80 s
+  missiles = missiles.filter(m => m.expire > now);
+
+missiles.forEach(m => {
+  const dx = m.target.x - m.x;
+  const dy = m.target.y - m.y;
+  const d  = Math.hypot(dx, dy);
+
+  if (d < 8) {
+    // stop any pending intercept timer
+    if (m.target.mslTimer) {
+      clearTimeout(m.target.mslTimer);
+      m.target.mslTimer = null;
+    }
+    // funnel the “hit” through your geometry checker
+    impactDecision(m.target);
+
+    // expire this missile
+    m.expire = 0;
+    return;
+  }
+
+    const ux = dx / d, uy = dy / d;
+    m.x += ux * m.speedPxPerSec * dt;
+    m.y += uy * m.speedPxPerSec * dt;
+
+  });
+}
+
+
     // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
-    function updateTracks(dt){
+    function updateTracks(dt) {
   const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
+  const icc = statics.find(s => s.type === 'icc');
+
+  // ① First, handle any auto‑launches for armed waves
+  tbmWaves.forEach(wave => {
+    if (!wave.fireballArmed) return;
+    wave.tbms.forEach(tbm => {
+      if (tbm.destroyed) return;
+
+      const d = distNm(icc, tbm);
+
+      // 1) Patriot at 40 NM
+      if (!tbm.patriotFired && d <= 40) {
+        tbm.patriotFired = true;
+        engageTbmWithPatriot(tbm);
+      }
+      // 2) NASAM at 20 NM (only if Patriot didn’t catch it)
+      else if (!tbm.nasamFired && d <= 20) {
+        tbm.nasamFired = true;
+        engageTbmWithNasam(tbm);
+      }
+    });
+  });
 
   tracks.forEach(o => {
     if (o.destroyed) return;
 
-    
    // ─── Friendly descent: start at 200 MSL, linearly descend 200→0 over 20 NM ───
     if (o.friendly) {
       const icc    = statics.find(s => s.type === 'icc');
@@ -1089,8 +1549,10 @@ function drawTracks(now) {
           return;
         }
       }
+      
     }
 
+ 
     // ── TBM landing: hold at TBM altitude until within 30 NM of BE, then descend smoothly ──
 if (o.isTbm) {
   const distToBE = distNm(o, bullseye);
@@ -1108,14 +1570,26 @@ if (o.isTbm) {
       return;
     }
   }
+  if (o.isTbm) {
+         const nmDist = distNm(bullseye, o);
+         if (!o.cratered && nmDist <= 1) {
+        o.cratered = true;
+        changeScore(-5, 'ADAFCO, ICC, CRATER at BULLSEYE -5');
+        updateScoreDisplay();
+        o.destroyed = true;
+        return;    // skip any further per‑track logic
+      }
+    }
 
 
 }
 
-    if (mode === 'practice') {
-  // Force heading toward bullseye, using our normalized bearing() util
-  o.heading = bearing(o, bullseye);
-}
+    // only force‑to‑bullseye when *not* in jink‑mode
+    if (mode === 'practice' && !o.isEvading) {
+      o.heading = bearing(o, bullseye);
+    }
+
+
 
 
 
@@ -1151,6 +1625,9 @@ if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
   const dt = (now - lastTime) / 1000;
   lastTime = now;
   updateTracks(dt);
+  updateMissiles(dt);
+
+
 
   // ─── A) clear & fill “sea” background ───────────────────────
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1207,8 +1684,10 @@ if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
   drawStatics();
   drawCompass();
   drawTracks(now);
+  drawMissiles();       // render your little dots
   drawDragLine();
   drawRubber();
+
 
   requestAnimationFrame(animate);
 }
@@ -1361,13 +1840,45 @@ function renderCard(obj, type, side) {
       </div>
       <div>ID: ${obj.friendly?'Friendly':'Hostile'}</div>
     `;
-  } else {
-    // static
-    const now = Date.now();
-    let status = 'Active';
-    if (obj.type==='rad') status = now<obj.disabledUntil?'Disabled (red)':'Active';
-    else if (obj.type==='icc') status = now<iccDisabledUntil?'Weapons Red':'Ready';
+} else { 
+  // static
+  const now = Date.now();
 
+  // Patriot launchers
+      if (obj.type === 'fu' && obj.id !== 'NASAM') {
+        html += `
+          <h3>${side==='right'?'2️⃣ ':''}FU ${obj.id}</h3>
+          <div>Status: ${ now < obj.disabledUntilFu ? 'Reloading' : 'Ready' }</div>
+          <hr>
+          <h4>Magazine Status</h4>
+          <ul style="text-align:left; font-size:0.9rem; margin:0; padding-left:1.2em;">
+            <li>PAC‑2: ${obj.ammo.pac2}</li>
+            <li>PAC‑3: ${obj.ammo.pac3}</li>
+            <li>MSE:  ${obj.ammo.mse}</li>
+            <li>Engagements Left: ${obj.engagementsRemaining}</li>
+          </ul>
+        `;
+      }
+      // NASAM special‑case
+      else if (obj.type === 'fu' && obj.id === 'NASAM') {
+        html += `
+          <h3>NASAM</h3>
+     <div>Status: ${ Date.now() < NASAMDisabledUntil ? 'Reloading' : 'Ready' }</div>
+      <hr>
+     <h4>AIM‑120 Missiles</h4>
+      <ul style="text-align:left; padding-left:1.2em;">
+        <li>AIM‑120: ${NASAMMissiles}</li>
+        <li>Engagements Left: ${Math.floor(NASAMMissiles/2)}</li>
+      </ul>
+        `;
+      } else {
+    // Other statics (radars, ICC, etc.)
+    let status = 'Active';
+    if (obj.type==='rad') {
+      status = now < obj.disabledUntil ? 'Disabled (red)' : 'Active';
+    } else if (obj.type==='icc') {
+      status = now < NASAMDisabledUntil ? 'Weapons Red' : 'Ready';
+    }
     html += `
       <h3>${side==='right'?'2️⃣ ':''}${obj.type.toUpperCase()}</h3>
       <div>ID: ${obj.id}</div>
@@ -1375,7 +1886,10 @@ function renderCard(obj, type, side) {
     `;
   }
 
-  html += `<button>Close</button>`;
+}
+
+
+html += `<button class="close-btn">×</button>`;
   d.innerHTML = html;
   d.querySelector('button').onclick = () => d.remove();
   document.body.appendChild(d);
@@ -1602,6 +2116,7 @@ window.addEventListener('keydown', e => {
 
   /* ───── AFFIRM  → ENGAGE ─────────────────────────────────── */
   if (k === 'a') {
+
     clearTimeout(coverTimer);
     curTrack          = t;
     curTrack.tag      = 'ENGAGE';
@@ -1628,11 +2143,85 @@ window.addEventListener('keydown', e => {
     return;
   }
 
-     /* ───── AWAY (Birds Away) ────────────────────────────────── */
+   // ───── AWAY (Birds Away) ──────────────────────────────────
 if (k === 'w') {
   e.preventDefault();
   clearTimeout(coverTimer);
   curTrack = t;
+
+// NEW:
+// 1) decide which launcher to use:
+const nasam       = statics.find(s => s.id === 'NASAM');
+const inNasamRing = nasam && distNm(nasam, t) <= 20;
+const fu          = inNasamRing ? nasam : closestFu(t);
+
+// 2) check reload & ammo for this FU
+const distFu = distNm(fu, t);
+if (fu.id === 'NASAM') {
+  // NASAM uses checkNasamStatus (unchanged)
+  if (checkNasamStatus(inNasamRing)) return;
+} else {
+  // Patriot uses our new mixed‑mag logic
+  if (!processPatriotEngagement(fu, distFu)) return;
+}
+
+
+const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
+const ttlMs         = 70 * 1000;
+
+// 2) if any friendly sits within 5 NM of the hostile, missiles will chase that friendly instead
+const nearbyFriendly = tracks.find(o =>
+  o.friendly && distNm(o, t) <= 5
+);
+const assignedTarget = nearbyFriendly || t;
+
+// ─── 3) launch two missiles, 1 s apart
+// → first missile immediately
+missiles.push({
+  x:           fu.x,
+  y:           fu.y,
+  target:      assignedTarget,
+  fu:          fu,
+  speedPxPerSec,
+  expire:      Date.now() + ttlMs
+});
+
+
+// → second missile after 1 s
+setTimeout(() => {
+  missiles.push({
+    x:           fu.x,
+    y:           fu.y,
+    target:      assignedTarget,
+    fu:          fu,
+    speedPxPerSec,
+    expire:      Date.now() + ttlMs
+  });
+}, 2000);
+
+
+
+
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+   // NOW fall through into the rest of your friendly vs. hostile logic…
 
   // check if this wedge is still red
 if (selectedStatic && selectedStatic.type === 'rad') {
@@ -1642,47 +2231,6 @@ if (selectedStatic && selectedStatic.type === 'rad') {
     return;
   }
 }
-
-
-        // ── UNIVERSAL FRIENDLY RULE ────────────────────────────────
-  if (t.friendly) {
-    // 1) Compute geometry gate (ignore any red/moving wedges)
-    const now = Date.now();
-
-// ICC circle test stays the same
-const icc      = statics.find(s => s.type === 'icc');
-const inCircle = icc && distNm(icc, t) <= 15;
-
-// ONLY consider wedges that are both fully deployed (no anim in‑flight) 
-// and not still in a disabled/red timeout
-const inWedge = statics
-  .filter(s =>
-    s.type === 'rad' &&
-    s.wedgeDir != null &&
-    now >= s.disabledUntil &&    // not still red/disabled
-    s.animFrom == null           // not mid‑animation
-  )
-  .some(s => insideWedge(s, t));
-
-const possible = inCircle || inWedge;
-
-
-
-    if (possible && t.friendly) {
-       changeScore(-20, 'Fratricide! –20 points');
-  setTimeout(() => {
-    t.destroyed = true;
-    nextQueueTrack();
-  }, 6000);
-  return;
-} else {
-      // B) friendly outside → shot trashed + ROE
-      changeScore(-6, 'Bird Trashed: -1; ROE Violation: -5');
-      nextQueueTrack();
-      return;
-    }
-  }
-
   
     // ── now falls into Branch A1/B/C exactly as before ───────
   // 1) Compute geometry gate
@@ -1707,92 +2255,44 @@ const inWedge = statics
 const possible = inCircle || inWedge;
 
 
-  const iccStatic      = statics.find(s => s.type === 'icc');
-  const isInsideCircle = iccStatic && distNm(iccStatic, t) <= 15;
-  // First, check NASAM status. If it returns true, we block/return.
-  if (checkNasamStatus(isInsideCircle)) {
+
+const isInsideCircle = nasam && distNm(nasam, t) <= 15;
+
+  // Only block if the selected FU is NASAM and it’s reloading
+  if (fu.id === 'NASAM' && checkNasamStatus(isInsideCircle)) {
     return;
   }
 
-  /// ─── Branch A1: ANY W outside wedge/ICC ─────────────────────────
-if (!possible) {
-  if (!t.everEngaged) {
-    // A1.1: not yet ENGAGED → –1 Bird + –5 ROE, reissue COVER
-    changeScore(-6, 'Bird Trashed: -1; ROE Violation: -5');
-
-    t.tag     = 'COVER';
-    t.tagTime = Date.now();
-    const beC = ('000' + bearing(bullseye, t)).slice(-3);
-    const rC  = distNm(bullseye, t);
-    statusEl.textContent =
-      `ADAFCO, SL, COVER Track ${t.id}, B/E ${beC}/${rC}`;
-  } else {
-    // A1.2: was ENGAGED → only –1 Bird, reissue ENGAGE
-    changeScore(-1, "Bird Trashed: -1 point");
-
-    t.tag           = 'ENGAGE';
-    t.everEngaged   = true;
-    t.tagTime       = Date.now();
-    const beE = ('000' + bearing(bullseye, t)).slice(-3);
-    const rE  = distNm(bullseye, t);
-    statusEl.textContent =
-      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${beE}/${rE}`;
-  }
-  return;
-}
-
-
-
-// ─── Branch B/C: ONLY if shot is possible ─────────────────────────────────
-if (possible) {
-  // 1) Fratricide proximity check: any friendly within 5 NM of this hostile?
-  const fr = tracks.find(x =>
-    x.friendly && !x.destroyed && distNm(x, t) <= 5
-  );
-  if (fr) {
-    // a) Apply fratricide penalty
-    changeScore(-20, 'Fratricide! –20 points');
-    // b) Kill the friendly immediately
-    fr.destroyed = true;
-    // c) Re‑issue ENGAGE on the hostile
-    t.tag         = 'ENGAGE';
-    t.everEngaged = true;
-    t.tagTime     = Date.now();
-    const beF = ('000' + bearing(bullseye, t)).slice(-3);
-    const rF  = distNm(bullseye, t);
-    statusEl.textContent =
-      `ADAFCO, SL, ENGAGE Track ${t.id}, B/E ${beF}/${rF}`;
-    return;
-  }
-
-  // 2) Birds Away call for the hostile
+// ─── All AWAY shots now go to intercept schedule ──────────────────
   t.tag     = 'AWAY';
   t.tagTime = Date.now();
   statusEl.textContent =
     `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
-  // 3) ROE violation branch: hostile not previously engaged
+  // immediate ROE penalty if first shot
   if (!t.everEngaged) {
-    changeScore(-5, 'ROE Violation: -5 points');
-    // vanish after 6 seconds
-    setTimeout(() => {
-      t.destroyed = true;
-      t.tag       = null;  
-      nextQueueTrack();
-    }, 6000);
-    return;
+    changeScore(-5, 'ROE Violation: -5');
+    t.everEngaged = true;
   }
 
-  // 4) Normal hit branch: hostile was engaged
-   changeScore(1, "Vanished: +1 point");
-  // vanish after 6 seconds
-  setTimeout(() => {
-    t.destroyed = true;
-    t.tag       = null;  
-    nextQueueTrack();
-  }, 6000);
+  // schedule the impact check (inside or outside will be decided there)
+  scheduleImpactCheck(t);
+
+ 
+
   return;
-}};
+
+    // ─── 50% chance for a hostile to evade ────────────────────────
+  if (!t.friendly && !t.isTbm && Math.random() < 0.5) {
+    // random turn between 90–180° left or right
+    const evAngle = (Math.random() * 90 + 90) * (Math.random() < 0.5 ? 1 : -1);
+    t.heading = (t.heading + evAngle + 360) % 360;
+    // after 60 s, turn back toward the ICC
+    setTimeout(() => {
+      t.heading = bearing(t, bullseye);
+    }, 60000);
+  }
+  };
 
 
 
@@ -1919,6 +2419,7 @@ function finishEngage() {
     showLevelComplete();
     return;
   }
+  if (curTrack.mslTimer) clearTimeout(curTrack.mslTimer);
 
   // revisit closest negated?
   if (negatedStack.length) {
@@ -1931,6 +2432,7 @@ function finishEngage() {
       queueIndex  = remaining.indexOf(neg);
       nextQueueTrack();
       return;
+      
     }
   }
 
@@ -1958,8 +2460,8 @@ function finishEngage() {
   speedMultiplier  = 1 + 0.1 * (lv - 1);
 
    // ── Reset NASAM ───────────────────────────────────────────────
- iccMissiles      = 6;
- iccDisabledUntil = 0;
+ NASAMMissiles      = 6;
+ NASAMDisabledUntil = 0;
 
  // ── Reset FIREBALL ────────────────────────────────────────────
  tbmWaves = [];
