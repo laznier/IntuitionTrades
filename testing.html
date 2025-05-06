@@ -2258,8 +2258,8 @@ const possible = inCircle || inWedge;
 
 const isInsideCircle = nasam && distNm(nasam, t) <= 15;
 
-  // First, check NASAM status. If it returns true, we block/return.
-  if (checkNasamStatus(isInsideCircle)) {
+  // Only block if the selected FU is NASAM and it’s reloading
+  if (fu.id === 'NASAM' && checkNasamStatus(isInsideCircle)) {
     return;
   }
 
