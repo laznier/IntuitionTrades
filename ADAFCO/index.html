@@ -1700,23 +1700,23 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
   const imgH  = worldHeight / 2.7 * 3;    // ← zoom in 30%
   const imgW = imgH * ratio;   // keeps w/h = original
 
-  // ③ compute the 5 NM east shift in world-pixels
-  const shiftPx = 5 / CFG.nmPerPixel;
 
-  
-  // ④ center that resized island on (bullseye.x + shiftPx, bullseye.y)
-   const extraX = -150;   // ← move left by 100 world‑px  
- const extraY =   5;   // ← move down by 50 world‑px  
- const destX = bullseye.x + shiftPx - imgW / 3 + extraX;
- const destY = bullseye.y           - imgH / 2 + extraY;
-
+// DRAW THE ISLAND, CENTERED ON ICC:
+if (bgImg.complete) {
+  const ratio = bgImg.width / bgImg.height;
+  // Choose a world‑space height for your island (for example 1/2 the viewport):
+  const imgH = worldHeight * 1.3;
+  const imgW = imgH * ratio;
+  // Now draw it so its center is at (bullseye.x, bullseye.y)
   ctx.drawImage(
     bgImg,
-    0, 0, bgImg.width, bgImg.height,  // source
-    destX, destY,                     // dest top-left
-    imgW, imgH                        // dest size (keeps aspect)
+    0, 0, bgImg.width, bgImg.height,
+    bullseye.x - imgW/2.35,
+    bullseye.y - imgH/2,
+    imgW, imgH
   );
-}
+}}
+
 
 
   drawStatics();
