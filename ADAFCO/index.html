@@ -292,7 +292,7 @@
         <ul>
           <li>Friendlies may appear at any time.</li>
           <li>Firing on a friendly <strong>inside</strong> firing geometry: <strong>–20</strong> pts (Fratricide).</li>
-          <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Bird trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
+          <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Birds trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
           <li>SL should not issue COVER on friendly tracks — but errors are possible.</li>
           <li>The risk of fraticide exists, so be careful not to engage on hostiles that are within 5 NM of friendly tracks.</li>
         </ul>
@@ -526,6 +526,65 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
 }
 resize();
+
+// — trackDrag state & selection array —
+let multiDrag   = null;
+let multiSelect = [];
+
+// helper to update multiSelect from the current box
+function updateMultiSelect() {
+  const { x0, y0, x1, y1 } = multiDrag;
+  const left   = Math.min(x0, x1),
+        right  = Math.max(x0, x1),
+        top    = Math.min(y0, y1),
+        bottom = Math.max(y0, y1);
+
+  multiSelect = tracks.filter(o => {
+    if (o.destroyed) return false;
+    const sx = (o.x - offX) * scale;
+    const sy = (o.y - offY) * scale;
+    return sx >= left && sx <= right && sy >= top && sy <= bottom;
+  });
+}
+
+// start box on shift + left-down
+canvas.addEventListener('pointerdown', e => {
+  if (!shiftDown || e.button !== 0) return;
+  const r = canvas.getBoundingClientRect();
+  multiDrag = {
+    x0: e.clientX - r.left,
+    y0: e.clientY - r.top,
+    x1: e.clientX - r.left,
+    y1: e.clientY - r.top
+  };
+  e.preventDefault();
+});
+
+// update box & selection as you move
+canvas.addEventListener('pointermove', e => {
+  if (!multiDrag) return;
+  const r = canvas.getBoundingClientRect();
+  multiDrag.x1 = e.clientX - r.left;
+  multiDrag.y1 = e.clientY - r.top;
+  updateMultiSelect();
+  e.preventDefault();
+});
+
+// finish on release: render cards
+canvas.addEventListener('pointerup', e => {
+  if (!multiDrag) return;
+  renderMultiCards();
+  multiDrag = null;
+  e.preventDefault();
+});
+
+// plain‐click (no shift) clears the group
+canvas.addEventListener('click', e => {
+  if (!shiftDown && !multiDrag) {
+    multiSelect = [];
+    clearMultiCards();
+  }
+});
 
 function buildStatics(){
   const cx = worldWidth/2,
@@ -1052,8 +1111,8 @@ function impactDecision(track) {
     if (inRing || inAnyWedge) {
       changeScore(-20, 'Fratricide! –20 points');
     } else {
-      // outside geometry: bird trashed + ROE
-      changeScore(-6, 'Bird Trashed: –1; ROE Violation: –5');
+      // outside geometry: birds trashed + ROE
+      changeScore(-6, 'Birds Trashed: –1; ROE Violation: –5');
     }
     track.destroyed = true;
     return;
@@ -1104,7 +1163,7 @@ if (!track.isTbm && !track.isCruise) {
 
 /** Apply the trashed penalty & revert to ENGAGE at current position. */
 function markShotTrashed(t) {
-  changeScore(-1, 'Bird Trashed: -1 point');
+  changeScore(-1, 'Birds Trashed: -1 point');
   t.tag           = 'ENGAGE';
   t.tagTime       = Date.now();
   t.everEngaged   = true;
@@ -1612,9 +1671,67 @@ if (tagMode) {
 }
 
 
+// after your existing single‑selection highlight:
+multiSelect.forEach(o => {
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.arc(o.x, o.y, 14, 0, Math.PI*2);
+  ctx.stroke();
+});
+const targets = multiSelect.length ? multiSelect : [selectedTrack];
+targets.forEach(t => {
+  // run your existing A/W/N/K logic here,
+  // but replace references to `selectedTrack` with `t`
+});
+function renderMultiCards() {
+  clearMultiCards();
+  multiSelect.forEach((t,i) => {
+    renderCard(t, 'track', 'left');
+    const card = document.querySelectorAll('.card')[i];
+    if (card) card.style.top = `${10 + i * 100}px`;
+  });
+}
+
+function clearMultiCards() {
+  document.querySelectorAll('.card').forEach(c => c.remove());
+}
 
 
- 
+// ─── DRAW THE SHIFT+DRAG “SELECT” BOX ─────────────────────────────
+function drawSelectBox() {
+  if (!multiDrag) return;
+  // canvas px coords
+  const x0 = multiDrag.x0, y0 = multiDrag.y0;
+  const x1 = multiDrag.x1 ?? mouse.sx, y1 = multiDrag.y1 ?? mouse.sy;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);      // reset any pan/zoom
+  ctx.strokeStyle = 'yellow';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(
+    Math.min(x0, x1),
+    Math.min(y0, y1),
+    Math.abs(x1 - x0),
+    Math.abs(y1 - y0)
+  );
+}
+
+// ─── DRAW THE DOUBLE‑CLICK+HOLD “ZOOM” BOX ───────────────────────────
+function drawRubber() {
+  if (!rubber) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth   = 1;
+  const { cx, cy, ex, ey } = rubber;
+  // rubber.cx/cy is center, ex/ey is current corner
+  const ox = 2*cx - ex, oy = 2*cy - ey;
+  ctx.strokeRect(
+    Math.min(ex, ox),
+    Math.min(ey, oy),
+    Math.abs(ex - ox),
+    Math.abs(ey - oy)
+  );
+}
+
     function drawDragLine(){
       if(isDragging && dragStart){
         ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
@@ -1626,16 +1743,6 @@ if (tagMode) {
       }
     }
 
-    function drawRubber(){
-      if(!rubber) return;
-      ctx.setTransform(1,0,0,1,0,0);
-      ctx.strokeStyle='#fff'; ctx.lineWidth=1;
-      const {cx,cy,ex,ey}=rubber;
-      const ox=2*cx-ex, oy=2*cy-ey;
-      const left=Math.min(ex,ox), top=Math.min(ey,oy),
-            width=Math.abs(ex-ox), height=Math.abs(ey-oy);
-      ctx.strokeRect(left,top,width,height);
-    }
 
     function drawMissiles() {
   missiles.forEach(m => {
@@ -2047,14 +2154,22 @@ if (bgImg.complete) {
 }
 
 
-
   drawStatics();
   drawCompass();
   drawTracks(now);
-  drawMissiles();       // render your little dots
+    // ←── ADD YOUR MULTI‑SELECT HIGHLIGHT HERE ───────────────────
+    multiSelect.forEach(o => {
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, 14, 0, Math.PI*2);
+    ctx.stroke();
+  });
+
+  drawMissiles();   
   drawDragLine();
   drawRubber();
-
+  drawSelectBox();  
 
   requestAnimationFrame(animate);
 }
@@ -2326,6 +2441,11 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
     // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
     canvas.addEventListener('pointerup', e => {
   if (e.button !== 0 || e.target !== canvas) return;
+    // *before* you call pickObject(), bail if we just did a drag:
+    if (multiDrag) {
+    // we’ll clear multiDrag & show cards in the mouseup that handles the box
+    return;
+  }
   e.preventDefault();
    mouse.sx = e.offsetX; mouse.sy = e.offsetY;
    mouse.px = e.clientX; mouse.py = e.clientY;
@@ -2414,21 +2534,19 @@ canvas.addEventListener('contextmenu', e => {
   document.querySelectorAll('.card2').forEach(c => c.remove());
 });
 
-    
-// ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
+    // ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
 window.addEventListener('keydown', e => {
   const k = e.key;
 
   // ─── PAN WITH ARROWS ────────────────────────────────────────────
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k)) {
     e.preventDefault();
-    // pixels for 10 nautical miles:
     const delta = 10 / CFG.nmPerPixel;
     switch (k) {
-      case 'ArrowUp':    offY -= delta; break;  // pan north
-      case 'ArrowDown':  offY += delta; break;  // pan south
-      case 'ArrowLeft':  offX -= delta; break;  // pan west
-      case 'ArrowRight': offX += delta; break;  // pan east
+      case 'ArrowUp':    offY -= delta; break;
+      case 'ArrowDown':  offY += delta; break;
+      case 'ArrowLeft':  offX -= delta; break;
+      case 'ArrowRight': offX += delta; break;
     }
     return;
   }
@@ -2437,7 +2555,6 @@ window.addEventListener('keydown', e => {
   if (k === '+' || k === '-') {
     e.preventDefault();
     const f = k === '+' ? 1.1 : 1/1.1;
-    // zoom around last mouse position
     const cx = mouse.sx, cy = mouse.sy;
     const world = scrToWorld(cx, cy);
     scale *= f;
@@ -2449,15 +2566,93 @@ window.addEventListener('keydown', e => {
   // ─── LOWERCASE FOR REST OF HOTKEYS ───────────────────────────────
   const key = k.toLowerCase();
 
-     // ─── ‘O’ arms the next tap to reorient the selected radar ───
-    if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
-      e.preventDefault();
-      pendingReorient = true;
-      pendingStatic   = selectedStatic;
-      statusEl.textContent   = `Tap on the scope to orient Launcher ${selectedStatic.id}`;
-      feedbackEl.textContent = '';
-      return;
-    }
+  // ─── MULTI‑SELECT A/N/W/K HANDLER ─────────────────────────────
+  if (mode === 'practice' && multiSelect.length && ['a','n','w','k'].includes(key)) {
+    e.preventDefault();
+    multiSelect.forEach(t => {
+      // NEGATE
+      if (key === 'n') {
+        clearTimeout(coverTimer);
+        t.tag     = 'NEGATE';
+        t.tagTime = Date.now();
+        negatedStack.push(t);
+      }
+      // AFFIRM
+      else if (key === 'a') {
+        clearTimeout(coverTimer);
+        t.tag     = 'AFFIRM';
+        t.tagTime = Date.now();
+        phase     = 'affirm';
+        statusEl.textContent =
+          `SL, ADAFCO, BIRDS AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
+        if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
+        coverTimer = setTimeout(nextQueueTrack, 5000);
+      }
+      // AWAY
+      else if (key === 'w') {
+        // duplicate your existing “W” logic, replacing `selectedTrack` with `t`
+        t.tag     = 'AWAY';
+        t.tagTime = Date.now();
+        const delay = 2000 + Math.random() * 3000;
+        setTimeout(() => {
+          clearTimeout(coverTimer);
+          curTrack = t;
+          // launcher selection
+          const NAS = statics.find(s => s.id === 'NASAMS');
+          const inNAS = NAS && distNm(NAS, t) <= 20;
+          const fu = inNAS ? NAS : closestFu(t);
+          const distFu = distNm(fu, t);
+          if (fu.id === 'NASAMS') {
+            if (checkNASAMSStatus(inNAS)) return;
+          } else {
+            if (!processPatriotEngagement(fu, distFu)) return;
+          }
+          const speedPxPerSec = ((t.isTbm ? 5000 : 3600) / 3600) / CFG.nmPerPixel;
+          const ttlMs = 70 * 1000;
+          let target = t;
+          if (!t.isCruise) {
+            const nearbyF = tracks.find(o => o.friendly && distNm(o, t) <= 5);
+            if (nearbyF) target = nearbyF;
+          }
+          // fire two missiles
+          missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
+          setTimeout(() => {
+            missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
+          }, 2000);
+          scheduleImpactCheck(t);
+        }, delay);
+      }
+      // KILL
+      else if (key === 'k') {
+        clearTimeout(coverTimer);
+        t.tag     = '#';
+        t.tagTime = Date.now();
+        setTimeout(() => {
+          t.tag       = null;
+          t.destroyed = true;
+        }, 5000);
+      }
+    });
+
+    // keep the cards up (or call clearMultiCards() if you prefer)
+    return;
+  }
+
+  // ─── ‘O’ arms the next tap to reorient the selected radar ───
+  if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
+    e.preventDefault();
+    pendingReorient = true;
+    pendingStatic   = selectedStatic;
+    statusEl.textContent   = `Tap on the scope to orient Launcher ${selectedStatic.id}`;
+    feedbackEl.textContent = '';
+    return;
+  }
+
+  // ─── SINGLE‑TRACK PRACTICE KEYS ─────────────────────────────────
+  if (mode !== 'practice' || !['a','n','w','k'].includes(key)) return;
+  e.preventDefault();
+  feedbackEl.textContent = '';
+  if (!selectedTrack) return;
 
   // ─── practice keys only when in practice mode ──────────────────
   if (mode !== 'practice' || !['a','n','w','k'].includes(k)) return;
