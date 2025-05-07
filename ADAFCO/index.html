@@ -428,7 +428,7 @@ let missiles = [];   // track all in‑flight missile dots
   // 1) If we’re still in a reload interval, block and show ETIC
   if (now < NASAMDisabledUntil) {
     const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
-    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     return true;
@@ -438,7 +438,7 @@ let missiles = [];   // track all in‑flight missile dots
   if (NASAMMissiles <= 1) {
     NASAMDisabledUntil = now + 15 * 60 * 1000;
     const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
-    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     setTimeout(() => { NASAMMissiles = 18; }, 15 * 60 * 1000);
@@ -869,7 +869,7 @@ function engageTbmWithNasam(tbm) {
   // 1) If we’re still in reload, block
   if (now < NASAMDisabledUntil) {
     const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
-    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     return;
@@ -879,7 +879,7 @@ function engageTbmWithNasam(tbm) {
  if (NASAMMissiles <= 1) {
     NASAMDisabledUntil = now + 15 * 60 * 1000;
     const mins = Math.ceil((NASAMDisabledUntil - now) / 60000);
-    const msg  = `ADAFCO, TD, NASAM reload ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     setTimeout(() => { NASAMMissiles = 6; }, 5 * 60 * 1000);
@@ -2344,7 +2344,7 @@ window.addEventListener('keydown', e => {
   t.tagTime = Date.now();
   phase     = 'affirm';
   statusEl.textContent =
-    `ADAFCO, SL, AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
+    `SL, ADAFCO, BIRDS AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
 
   // remember it (no dupes)
   if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
@@ -2488,7 +2488,7 @@ const isInsideCircle = nasam && distNm(nasam, t) <= 15;
 // ─── All AWAY shots now go to intercept schedule ──────────────────
  
   statusEl.textContent =
-    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+    `SL, ADAFCO, BIRDS AWAY Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
     // only penalize birds‑away if SL never requested ENGAGE
   if (t.tag !== 'ENGAGE' && !t.everEngaged) {
