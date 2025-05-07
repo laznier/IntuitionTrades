@@ -452,6 +452,14 @@ let missiles = [];   // track all in‑flight missile dots
   return false;
 }
 
+// ─── altitude → detection range mapping ──────────────────────
+function getDetectionRange(alt) {
+  if (alt < 50)   return 60;
+  if (alt < 100)  return 70;
+  if (alt < 200)  return 100;
+  if (alt < 300)  return 140;
+  return 180;
+}
 
 
     // ─── SETUP ──────────────────────────────────────────────────────────
@@ -488,8 +496,8 @@ mapBtn.addEventListener('click', () => {
     : '/images/island3.png';
   // (optional) update button text to show which style:
   mapBtn.textContent = altMap 
-    ? 'Map: Style 2' 
-    : 'Map: Style 1';
+    ? 'Map: SAT' 
+    : 'Map';
 });
 
 /* Helper: centre view so a 200 NM radius fits the mobile screen */
@@ -1052,21 +1060,41 @@ function impactDecision(track) {
   }
 
    // ---------------- VALID kill ----------------
-   if (inRing || inAnyWedgeGeom) {
+if (inRing || inAnyWedgeGeom) {
+  // 1) score the kill
   changeScore(1, `Track ${track.id} Vanished: +1`);
+
+// 2) fratricide check: for non‑TBM, non‑Cruise kills
+if (!track.isTbm && !track.isCruise) {
+  console.log(`☠️ Valid kill of ${track.id} — checking friendlies`);
+  tracks.forEach(f => {
+    if (f.friendly && !f.destroyed) {
+      const d = distNm(f, track);
+      console.log(`   • friendly ${f.id} is ${d} NM away`);
+      if (d <= 5) {
+        console.log(`   → FRATRICIDE: destroying ${f.id}`);
+        f.destroyed = true;
+        changeScore(-20, `Fratricide! Friendly ${f.id} within ${d} NM of ${track.id}`);
+      }
+    }
+  });
+}
+
+  // 3) vanish the bird
   track.destroyed = true;
   track.tag       = null;
 
-  // advance practice queue as usual
+  // 4) advance the queue
   nextQueueTrack();
 
-  // now check for level completion
+  // 5) level‑complete?
   const hostilesLeft = tracks.some(t =>
     !t.destroyed && !t.friendly && !t.isTbm
   );
   if (!hostilesLeft) {
     showLevelComplete();
   }
+
 } else {
   // ---------------- TRASHED ----------------
   markShotTrashed(track);
@@ -1417,24 +1445,27 @@ function drawTracks(now) {
 
   // 3) draw each track
   tracks.forEach(o => {
-    if (o.destroyed) return;  // skip dead
+    // altitude‐based detection: skip if beyond radar range
+    const d    = distNm(bullseye, o),
+          visR = getDetectionRange(o.alt);
+    if (o.destroyed || d > visR) return;
 
     // 3a) special TBM icon
     if (o.isTbm) {
       for (let i = 0; i < 4; i++) {
         ctx.save();
-          ctx.translate(o.x, o.y);
-          ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180); // spinning effect
-          ctx.beginPath();
-            ctx.moveTo(0, -6);
-            ctx.lineTo(3, 0);
-            ctx.lineTo(-3, 0);
-          ctx.closePath();
-          ctx.fillStyle = 'red';
-          ctx.fill();
+        ctx.translate(o.x, o.y);
+        ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180);
+        ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(3, 0);
+        ctx.lineTo(-3, 0);
+        ctx.closePath();
+        ctx.fillStyle = 'red';
+        ctx.fill();
         ctx.restore();
       }
-      return;  // done with TBMs
+      return;
     }
 
     // 3b) normal hostile/friendly fill color
@@ -1522,17 +1553,15 @@ function drawTracks(now) {
 
   });
 
+// ─── overlay TAGS ──────────────────────────────────────────
+if (tagMode) {
+  tracks.forEach(o => {
+    // altitude‐based detection: skip dead or beyond radar range
+    const d    = distNm(bullseye, o),
+          visR = getDetectionRange(o.alt);
+    if (o.destroyed || d > visR) return;
 
-
-
-
-  // optional overlay tags in practice mode
-   // ─── overlay TAGS ──────────────────────────────────────────
-   if (tagMode) {
-    tracks.forEach(o => {
-      if (o.destroyed) return;
-
-      const lines = [];
+    const lines = [];
 
       // ① B/E range
       if ([1, 4].includes(tagMode)) {
@@ -2191,6 +2220,11 @@ function renderCard(obj, type, side) {
       </div>
       <div>ID: ${obj.friendly?'Friendly':'Hostile'}</div>
     `;
+    if (obj.isCruise) {
+  html += `<div style="font-size:0.9rem; color: var(--yellow);">
+             Cruise Missile
+           </div>`;
+}
 } else { 
   // static
   const now = Date.now();
@@ -2457,7 +2491,7 @@ window.addEventListener('keydown', e => {
   t.tagTime = Date.now();
   phase     = 'affirm';
   statusEl.textContent =
-    `ADAFCO, SL, AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
+    `SL, ADAFCO, BIRDS AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
 
   // remember it (no dupes)
   if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
@@ -2474,8 +2508,12 @@ window.addEventListener('keydown', e => {
 
 
    // ───── AWAY (Birds Away) ──────────────────────────────────
-    if (k === 'w') {
-   e.preventDefault();
+   if (k === 'w') {
+  e.preventDefault();
+  const st = selectedTrack;
+  if (!st) return;
+
+  // 0.5 Immediate W feedback
    t.tag     = 'AWAY';
    t.tagTime = Date.now();
    // delay between 2–5 seconds
@@ -2504,11 +2542,15 @@ if (fu.id === 'NASAMS') {
 const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
 const ttlMs         = 70 * 1000;
 
-// 2) if any friendly sits within 5 NM of the hostile, missiles will chase that friendly instead
-const nearbyFriendly = tracks.find(o =>
-  o.friendly && distNm(o, t) <= 5
-);
-const assignedTarget = nearbyFriendly || t;
+// 2) if any friendly sits within 5 NM, only re‑target *non‑cruise* tracks
+let assignedTarget = t;
+if (!t.isCruise) {
+  const nearbyFriendly = tracks.find(o =>
+    o.friendly && distNm(o, t) <= 5
+  );
+  if (nearbyFriendly) assignedTarget = nearbyFriendly;
+}
+
 
 // ─── 3) launch two missiles, 1 s apart
 // → first missile immediately
@@ -2543,7 +2585,7 @@ scheduleImpactCheck(t);
 
    // ─── now do the level‑scaled jinking for any non‑friendly ─────────
    const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
-   if (!t.friendly && !t.isTbm && Math.random() < jinkProb) {
+   if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
      const waitMs = (10 + Math.random()*20)*1000;
      setTimeout(() => {
        const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
@@ -2601,7 +2643,7 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
 // ─── All AWAY shots now go to intercept schedule ──────────────────
  
   statusEl.textContent =
-    `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+    `SL, ADAFCO, BIRDS AWAY Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
     // only penalize birds‑away if SL never requested ENGAGE
   if (t.tag !== 'ENGAGE' && !t.everEngaged) {
@@ -2701,10 +2743,13 @@ function nextQueueTrack() {
   if (mode !== 'practice') return;
   clearTimeout(coverTimer);
 
-  // 1) Gather remaining hostiles
-  const hostiles = tracks.filter(t =>
-    !t.destroyed && !t.friendly && !t.isTbm
-  );
+  // only hostiles that are alive, non‑friendly, non‑TBM **and** in detection range
+  const hostiles = tracks.filter(t => {
+    if (t.destroyed || t.friendly || t.isTbm) return false;
+    const d = distNm(bullseye, t),
+          r = getDetectionRange(t.alt);
+    return d <= r;
+  });
   if (hostiles.length === 0) {
     showLevelComplete();
     return;
@@ -2748,10 +2793,11 @@ function nextQueueTrack() {
 
 // ─── finishEngage: scoring, negations & queue-advance ─────────────────────
 function finishEngage() {
-  // destroy & score
+  // 1) destroy & score
   curTrack.destroyed = true;
   curTrack.tagTime   = Date.now();
   score++;
+
 
   // who's still alive?
   const remaining = trackQueue.filter(t => !t.destroyed);
@@ -2864,6 +2910,40 @@ function showLevelComplete() {
       }
     }
 
+    // LEVEL 2 → spawn one cruise‑missile group
+    if (level >= 2) {
+      const icc     = statics.find(s => s.type === 'icc');
+      const cmCount = rand(3, 9);                     // 3–8 missiles
+      // pick a random ring 60–120 NM from ICC
+      const ringDist = rand(60, 120);
+      const ringAng  = Math.random() * 2 * Math.PI;
+      const cx       = icc.x + Math.cos(ringAng) * (ringDist / CFG.nmPerPixel);
+      const cy       = icc.y + Math.sin(ringAng) * (ringDist / CFG.nmPerPixel);
+
+      for (let i = 0; i < cmCount; i++) {
+        // cluster within 15 NM
+        const r    = Math.random() * (15 / CFG.nmPerPixel);
+        const ang2 = Math.random() * 2 * Math.PI;
+        tracks.push({
+          id:           ('00000' + rand(1000, 7776)).slice(-5),
+          x:            cx + Math.cos(ang2) * r,
+          y:            cy + Math.sin(ang2) * r,
+          heading:      bearing({ x: cx, y: cy }, icc),
+          speed:        rand(450, 550),    // 450–550 kts
+          alt:          rand(50, 100),     // 5 000–10 000 ft
+          destAlt:      0,
+          friendly:     false,
+          tag:          null,
+          tagTime:      0,
+          destroyed:    false,
+          everEngaged:  false,
+          isTbm:        false,
+          isCruise:     true             // custom flag
+        });
+      }
+    }
+
+
     // LEVEL 3 → schedule TBM wave
     if (level >= 3) {
       const delay = Math.random() * 2 * 60 * 1000;
@@ -2894,7 +2974,9 @@ function showLevelComplete() {
 
     // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
     // 1) pull out all the friendlies and TBMs we want to keep
-    const keepers = tracks.filter(t => t.friendly || t.isTbm);
+    const keepers = tracks.filter(t =>
+  t.friendly || t.isTbm || t.isCruise
+);
 
 // 1.5) force every friendly to start at 200 MSL
 keepers.forEach(t => {
