@@ -198,23 +198,24 @@
 @media (max-width: 768px) {
   #controls {
     display: flex;
-    width: 100%;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    justify-content: center;
   }
 
   #controls button {
-    body header #controls button {
-    flex: 1 1 0;
-    min-width: 0;
-    line-height: 1.2 !important;}
-    /* shrink font between 0.6rem and 0.9rem based on viewport width */
-    font-size: clamp(0.6rem, 3vw, 1rem) !important;
-    padding: 0.3rem 0.5rem;
-    white-space: nowrap;
+    flex: 1 1 auto;       /* allow buttons to shrink */
+    min-width: 0;         /* required for flex shrinking */
+    white-space: nowrap;  /* keep text on one line */
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 0.3rem 0.5rem;
+
+    /* shrink text between .5rem and .9rem based on viewport */
+    font-size: clamp(0.5rem, 2.5vw, 0.9rem);
   }
 }
+
 
 
   </style>
@@ -542,8 +543,8 @@ function buildStatics(){
   { type:'fu',  id:'PATRIOT', x:cx + p10 + ro + 15,  y:cy + p10 + ro   },
 
   // launcher 4 (NW)
-  { type:'rad', id:'00173', x:cx - p10/2,       y:cy - p10        },
-  { type:'fu',  id:'PATRIOT', x:cx - p10/2 - ro, y:cy - p10 - ro  },
+  { type:'rad', id:'00173', x:cx - p10 ,       y:cy - p10        },
+  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro, y:cy - p10 - ro  },
 ];
 
 // ── C2 (friendly) icon ─────────────────────
