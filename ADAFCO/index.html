@@ -2256,14 +2256,23 @@ window.addEventListener('keydown', e => {
   const r  = distNm(bullseye, t);
 
   /* ───── NEGATE ───────────────────────────────────────────── */
-   if (k === 'n') {
-    clearTimeout(coverTimer);
-    t.tag     = 'NEGATE';
-    t.tagTime = Date.now();
-    negatedStack.push(t);
-    nextQueueTrack();            // move straight to next COVER
-    return;
-  }
+  if (k === 'n') {
+  e.preventDefault();
+  clearTimeout(coverTimer);
+
+  t.tag     = 'NEGATE';
+  t.tagTime = Date.now();
+  negatedStack.push(t);
+
+  // wait a random 5–10 s, then advance
+  const delay = 5000 + Math.random() * 5000;
+  coverTimer = setTimeout(() => {
+    nextQueueTrack();
+  }, delay);
+
+  return;
+}
+
 
   // ───── AFFIRM → QUEUE & PEND ─────────────────────────────────
   if (k === 'a') {
