@@ -198,23 +198,24 @@
 @media (max-width: 768px) {
   #controls {
     display: flex;
-    width: 100%;
+    flex-wrap: wrap;
     gap: 0.5rem;
+    justify-content: center;
   }
 
   #controls button {
-    body header #controls button {
-    flex: 1 1 0;
-    min-width: 0;
-    line-height: 1.2 !important;}
-    /* shrink font between 0.6rem and 0.9rem based on viewport width */
-    font-size: clamp(0.6rem, 3vw, 1rem) !important;
-    padding: 0.3rem 0.5rem;
-    white-space: nowrap;
+    flex: 1 1 auto;       /* allow buttons to shrink */
+    min-width: 0;         /* required for flex shrinking */
+    white-space: nowrap;  /* keep text on one line */
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 0.3rem 0.5rem;
+
+    /* shrink text between .5rem and .9rem based on viewport */
+    font-size: clamp(0.5rem, 2.5vw, 0.9rem);
   }
 }
+
 
 
   </style>
@@ -542,8 +543,8 @@ function buildStatics(){
   { type:'fu',  id:'PATRIOT', x:cx + p10 + ro + 15,  y:cy + p10 + ro   },
 
   // launcher 4 (NW)
-  { type:'rad', id:'00173', x:cx - p10/2,       y:cy - p10        },
-  { type:'fu',  id:'PATRIOT', x:cx - p10/2 - ro, y:cy - p10 - ro  },
+  { type:'rad', id:'00173', x:cx - p10 ,       y:cy - p10        },
+  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro, y:cy - p10 - ro  },
 ];
 
 // ── C2 (friendly) icon ─────────────────────
@@ -612,7 +613,7 @@ statics
   // 1) If currently reloading → block
   if (now < fu.disabledUntilFu) {
     const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
-    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, CANTCO, ${label} Reload, ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     return false;
@@ -633,7 +634,7 @@ statics
   if (!chosen) {
     fu.disabledUntilFu = now + 15*60*1000;
     const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
-    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, CANTCO, ${label} Reload, ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     // refill after 15 min
@@ -650,9 +651,9 @@ statics
 
   // 5) Warnings at thresholds
   if (fu.engagementsRemaining === 10) {
-    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Yellow`;
+    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
   } else if (fu.engagementsRemaining === 4) {
-    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Red`;
+    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Red`;
   }
 
   return true;
@@ -735,7 +736,7 @@ function checkPatriotStatus(fu) {
   // still reloading?
     if (now < fu.disabledUntilFu) {
    const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
-    const msg  = `ADAFCO, ICC, CANTCO, ${label} Reload, ETIC ${mins} min`;
+    const msg  = `ADAFCO, TD, CANTCO, ${label} Reload, ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
     return true;
@@ -743,7 +744,7 @@ function checkPatriotStatus(fu) {
   // empty magazine → start reload
   if (fu.missilesRemaining <= 0) {
         fu.disabledUntilFu = now + 15*60*1000;
-    feedbackEl.textContent = `ADAFCO, ICC, ${label} Reloading. Down for 15 minutes`;
+    feedbackEl.textContent = `ADAFCO, TD, ${label} Reloading. Down for 15 minutes`;
     // ─── turn its paired radar red for the same duration ─────────────────
     const radars = statics.filter(s => s.type === 'rad');
     const paired = radars.reduce((best, s) =>
@@ -758,9 +759,9 @@ function checkPatriotStatus(fu) {
   fu.missilesRemaining--;
   // warnings
   if (fu.missilesRemaining === 4) {
-    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Yellow`;
+    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
   } else if (fu.missilesRemaining === 2) {
-    feedbackEl.textContent = `ADAFCO, ICC, ${label} Weapons Red`;
+    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Red`;
   }
   return false;
 }
@@ -1676,7 +1677,7 @@ if (o.isTbm) {
          const nmDist = distNm(bullseye, o);
          if (!o.cratered && nmDist <= 1) {
         o.cratered = true;
-        changeScore(-5, 'ADAFCO, ICC, CRATER at BULLSEYE -5');
+        changeScore(-5, 'ADAFCO, TD, CRATER at BULLSEYE -5');
         updateScoreDisplay();
         o.destroyed = true;
         return;    // skip any further per‑track logic
@@ -1741,33 +1742,64 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
   // ─── 2) update track positions, spawns, etc. ────────────
   updateTracks(dt);
 
-  // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ────
-  {
-    const icc = statics.find(s => s.type === 'icc');
-    // Filter & handle only those still tagged AFFIRM
-    pendingEngagements = pendingEngagements.filter(trk => {
-      // drop if destroyed or re‑tagged
-      if (trk.destroyed || trk.tag !== 'AFFIRM') return false;
+  // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ─────────
+{
+  const icc = statics.find(s => s.type === 'icc');
+  pendingEngagements = pendingEngagements.filter(trk => {
+    // drop if destroyed or re‑tagged
+    if (trk.destroyed || trk.tag !== 'AFFIRM') return false;
 
-      // check distance
-      const d = distNm(icc, trk);
-      if (d <= 65) {
-  // issue ENGAGE
-  trk.tag           = 'ENGAGE';
-  trk.tagTime       = Date.now();
-  trk.everEngaged   = true;       // ← mark it approved by SL
-  phase             = 'engage';
-        const be2   = ('000' + bearing(bullseye, trk)).slice(-3);
-        const r2    = distNm(bullseye, trk);
-        statusEl.textContent = `… ENGAGE Track ${trk.id} …`;
+    // assign a per‑track random engage distance if not set
+    if (trk.engageThreshold == null) {
+      trk.engageThreshold = 55 + Math.random() * 20; // random [50,70) NM
+    }
 
-  nextQueueTrack();
-  return false;
+    // check distance from ICC
+    const d = distNm(icc, trk);
+    if (d <= trk.engageThreshold) {
+      // issue ENGAGE
+      trk.tag         = 'ENGAGE';
+      trk.tagTime     = Date.now();
+      trk.everEngaged = true;   // mark it approved by SL
+      phase           = 'engage';
+
+      const be = ('000' + bearing(bullseye, trk)).slice(-3);
+      const r  = distNm(bullseye, trk);
+      statusEl.textContent =
+        `ADAFCO, SL, ENGAGE Track ${trk.id}, B/E ${be}/${r}`;
+
+      nextQueueTrack();
+      return false;  // remove from pending list
+    }
+
+    return true;     // keep waiting
+  });
+  // 3b) Now auto‑ENGAGE any other un‑engaged hostiles at 40 NM
+  tracks.forEach(trk => {
+    if (
+      trk.destroyed ||
+      trk.friendly ||
+      trk.tag === 'AWAY' ||
+      trk.tag === 'ENGAGE' ||
+      trk.everEngaged
+    ) return;
+
+    const d = distNm(icc, trk);
+    if (d <= 40) {
+      trk.tag         = 'ENGAGE';
+      trk.tagTime     = Date.now();
+      trk.everEngaged = true;
+      phase           = 'engage';
+
+      const be = ('000' + bearing(bullseye, trk)).slice(-3);
+      statusEl.textContent =
+        `ADAFCO, SL, ENGAGE Track ${trk.id}, B/E ${be}/${d}`;
+
+      nextQueueTrack();
+    }
+  });
 }
 
-      return true;     // keep waiting
-    });
-  }
 
   updateMissiles(dt);
 
@@ -1814,21 +1846,44 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
   const imgW = imgH * ratio;   // keeps w/h = original
 
 
-// DRAW THE ISLAND, CENTERED ON ICC:
+  // ─── DRAW THE ISLAND, CENTERED ON ICC ─────────────────────────
 if (bgImg.complete) {
   const ratio = bgImg.width / bgImg.height;
-  // Choose a world‑space height for your island (for example 1/2 the viewport):
-  const imgH = worldHeight * 1.3;
-  const imgW = imgH * ratio;
-  // Now draw it so its center is at (bullseye.x, bullseye.y)
+
+  // 1) choose real‑world diameter in NM (e.g. twice your max spawn radius)
+  const diameterNm = CFG.maxSpawnNm * 2;
+
+  // 2) convert that to world‑px (independent of viewport size)
+  const diameterPx = diameterNm / CFG.nmPerPixel;
+
+  // 3) preserve aspect ratio
+  const imgW = diameterPx;
+  const imgH = diameterPx / ratio;
+
+  // 4) where in the *source* image is your ICC/hill‑top?
+  //    → measure once in Photoshop (or your image‑viewer).
+  //    Say the ICC is at pixel (iccPxX, iccPxY) in the original bgImg.
+  const iccPxX =670;  // ← replace with your measured X
+  const iccPxY = 500;  // ← replace with your measured Y
+
+  // 5) convert that to [0…1] anchor ratios
+  const anchorX = iccPxX / bgImg.width;
+  const anchorY = iccPxY / bgImg.height;
+
+  // 6) compute draw position so that that image‑pixel lands on bullseye
+  const drawX = bullseye.x - imgW * anchorX;
+  const drawY = bullseye.y - imgH * anchorY;
+
+  // finally, draw
   ctx.drawImage(
     bgImg,
     0, 0, bgImg.width, bgImg.height,
-    bullseye.x - imgW/2.35,
-    bullseye.y - imgH/2,
+    drawX, drawY,
     imgW, imgH
   );
-}}
+}
+
+}
 
 
 
@@ -1917,10 +1972,23 @@ requestAnimationFrame(animate);
       const dx=Math.abs(mouse.sx-rubber.cx)*2,
             dy=Math.abs(mouse.sy-rubber.cy)*2;
       if(dx>10&&dy>10){
-        const w0=scrToWorld(rubber.cx-dx/2, rubber.cy-dy/2),
-              w1=scrToWorld(rubber.cx+dx/2, rubber.cy+dy/2);
-        const newScale=Math.min(worldWidth/(w1.x-w0.x), worldHeight/(w1.y-w0.y));
-        scale=newScale; offX=w0.x; offY=w0.y;
+        // new: center the selected world‐region in the middle of the screen
+const w0 = scrToWorld(rubber.cx - dx/2, rubber.cy - dy/2),
+      w1 = scrToWorld(rubber.cx + dx/2, rubber.cy + dy/2);
+const newScale = Math.min(
+  worldWidth  / (w1.x - w0.x),
+  worldHeight / (w1.y - w0.y)
+);
+scale = newScale;
+
+// compute the world‐coordinates of the region’s center
+const worldCenterX = (w0.x + w1.x) / 2;
+const worldCenterY = (w0.y + w1.y) / 2;
+
+// offset so that this world‐center maps to screen center
+offX = worldCenterX - (worldWidth  / 2) / scale;
+offY = worldCenterY - (worldHeight / 2) / scale;
+
       }
       rubber=null;
     });
@@ -2256,23 +2324,14 @@ window.addEventListener('keydown', e => {
   const r  = distNm(bullseye, t);
 
   /* ───── NEGATE ───────────────────────────────────────────── */
-  if (k === 'n') {
-  e.preventDefault();
-  clearTimeout(coverTimer);
-
-  t.tag     = 'NEGATE';
-  t.tagTime = Date.now();
-  negatedStack.push(t);
-
-  // wait a random 5–10 s, then advance
-  const delay = 5000 + Math.random() * 5000;
-  coverTimer = setTimeout(() => {
-    nextQueueTrack();
-  }, delay);
-
-  return;
-}
-
+   if (k === 'n') {
+    clearTimeout(coverTimer);
+    t.tag     = 'NEGATE';
+    t.tagTime = Date.now();
+    negatedStack.push(t);
+    nextQueueTrack();            // move straight to next COVER
+    return;
+  }
 
   // ───── AFFIRM → QUEUE & PEND ─────────────────────────────────
   if (k === 'a') {
@@ -2302,10 +2361,15 @@ window.addEventListener('keydown', e => {
 
 
    // ───── AWAY (Birds Away) ──────────────────────────────────
-if (k === 'w') {
-  e.preventDefault();
-  clearTimeout(coverTimer);
-  curTrack = t;
+    if (k === 'w') {
+   e.preventDefault();
+   t.tag     = 'AWAY';
+   t.tagTime = Date.now();
+   // delay between 2–5 seconds
+   const delay = 2000 + Math.random() * 3000;
+   setTimeout(() => {
+     clearTimeout(coverTimer);
+     curTrack = t;
 
 // NEW:
 // 1) decide which launcher to use:
@@ -2422,8 +2486,7 @@ const isInsideCircle = nasam && distNm(nasam, t) <= 15;
   }
 
 // ─── All AWAY shots now go to intercept schedule ──────────────────
-  t.tag     = 'AWAY';
-  t.tagTime = Date.now();
+ 
   statusEl.textContent =
     `SL, ADAFCO, Birds Away Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
 
@@ -2438,7 +2501,9 @@ const isInsideCircle = nasam && distNm(nasam, t) <= 15;
 
  
 
+   }, delay);
   return;
+ 
 
     // ─── 50% chance for a hostile to evade ────────────────────────
   if (!t.friendly && !t.isTbm && Math.random() < 0.5) {
@@ -2449,8 +2514,7 @@ const isInsideCircle = nasam && distNm(nasam, t) <= 15;
     setTimeout(() => {
       t.heading = bearing(t, bullseye);
     }, 60000);
-  }
-  };
+  }};
 
 
 
@@ -2524,41 +2588,48 @@ function nextQueueTrack() {
   if (mode !== 'practice') return;
   clearTimeout(coverTimer);
 
-  // 1) Are there any remaining hostiles? (ignore friendlies & TBMs)
+  // 1) Gather remaining hostiles
   const hostiles = tracks.filter(t =>
     !t.destroyed && !t.friendly && !t.isTbm
   );
-
-  // 2) If none remain, complete the level
   if (hostiles.length === 0) {
     showLevelComplete();
     return;
   }
 
-  // 3) Otherwise, pick only un‑tagged hostiles closest to BE
+  // 2) Pick the closest un‑tagged one
   const blanks = hostiles
     .filter(t => !t.tag)
-    .sort((a, b) => distNm(bullseye, a) - distNm(bullseye, b));
+    .sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
+  if (!blanks.length) return;
+  const next = blanks[0];
 
-  // 4) If there are no blanks, just wait for user input
-  if (blanks.length === 0) {
+  // 3) Compute distance from ICC
+  const icc = statics.find(s => s.type === 'icc');
+  const d   = distNm(icc, next);
+
+  // 4) Gate at a random threshold between 75–95 NM
+  //    and retry every 3 s if still outside
+  const threshold = 75 + Math.random() * 20;  // random in [75,95)
+  if (d > threshold) {
+    console.log(`SL: Track ${next.id} at ${d} NM (>${threshold.toFixed(0)}), retry in 3s`);
+    coverTimer = setTimeout(nextQueueTrack, 3000);
     return;
   }
 
-  // 5) Issue the next COVER command
+  // 5) Issue COVER once inside the threshold
   phase    = 'cover';
-  curTrack = blanks[0];
+  curTrack = next;
   curTrack.tag     = 'COVER';
   curTrack.tagTime = Date.now();
-  const b2 = ('000' + bearing(bullseye, curTrack)).slice(-3);
+  const b2 = ('000' + bearing(bullseye, next)).slice(-3);
   statusEl.textContent =
-    `ADAFCO, SL, COVER Track ${curTrack.id}, B/E ${b2}/${distNm(bullseye,curTrack)}`;
+    `ADAFCO, SL, COVER Track ${next.id}, B/E ${b2}/${d}`;
   feedbackEl.textContent = '';
 
-  // 6) Start the 25 s timer to auto‑cycle
+  // 6) Auto‑advance again after 25 s
   coverTimer = setTimeout(nextQueueTrack, 25000);
 }
-
 
 
 
@@ -2702,7 +2773,7 @@ function showLevelComplete() {
       nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
 
       // notify the user
-      const msg = 'ADAFCO, ICC, system reset, launcher down for 5 minutes';
+      const msg = 'ADAFCO, TD, system reset, launcher down for 5 minutes';
       feedbackEl.textContent = msg;
       statusEl.textContent   = msg;
     }, delayMs);
