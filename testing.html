@@ -665,24 +665,37 @@ function buildStatics(){
 
 
         statics = [
-  { type:'icc', id:'ICC', x:cx,            y:cy           },
+  // ─── ICC at center ───────────────────────────────────────────
+  { type: 'icc',   id: 'ICC',            x: cx,                  y: cy },
 
+  // ─── Patriot MPQ‑53 radars + launchers ───────────────────────
   // launcher 1 (NE)
-  { type:'rad', id:'00170', x:cx + p10 -30,         y:cy - p10 + 25       },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro -30,  y:cy - p10 - ro +30  },
+  { type: 'rad',   id: '00170', system: 'MPQ‑53',     label:         'FRIEND', x: cx + p10 - 30, y: cy - p10 + 25 },
+  { type: 'fu',    id: 'PATRIOT',         x: cx + p10 + ro - 30, y: cy - p10 - ro + 30 },
 
   // launcher 2 (SW)
-  { type:'rad', id:'00171', x:cx - p10 +20,         y:cy + p10 - 15       },
-  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro +20,  y:cy + p10 + ro - 15  },
+  { type: 'rad',   id: '00171', system: 'MPQ‑53',     label:         'FRIEND', x: cx - p10 + 20, y: cy + p10 - 15 },
+  { type: 'fu',    id: 'PATRIOT',         x: cx - p10 - ro + 20, y: cy + p10 + ro - 15 },
 
   // launcher 3 (SE)
-  { type:'rad', id:'00172', x:cx + p10 -23,         y:cy + p10 -15        },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro - 30,  y:cy + p10 + ro   },
+  { type: 'rad',   id: '00172', system: 'MPQ‑53',     label:         'FRIEND',  x: cx + p10 - 23, y: cy + p10 - 15 },
+  { type: 'fu',    id: 'PATRIOT',         x: cx + p10 + ro - 30, y: cy + p10 + ro },
 
   // launcher 4 (NW)
-  { type:'rad', id:'00173', x:cx - p10 +20,       y:cy - p10 + 20        },
-  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro +25, y:cy - p10 - ro + 20 },
+  { type: 'rad',   id: '00173', system: 'MPQ‑53',     label:         'FRIEND', x: cx - p10 + 20, y: cy - p10 + 20 },
+  { type: 'fu',    id: 'PATRIOT',         x: cx - p10 - ro + 25, y: cy - p10 - ro + 20 },
+
+  // ─── TPS‑75 Radar next to C2/HHQ ─────────────────────────────
+  { 
+    type:          'c2Rad', 
+    id:            '00069 JTN',       // JTN label
+    system:        'TPS‑75',          // distinct system
+    label:         'FRIEND',          // ID field for card
+    x:             cx,                // tweak as needed
+    y:             cy + 3 / CFG.nmPerPixel 
+  },
 ];
+
 
 // ── C2 (friendly) icon ─────────────────────
   statics.push({
@@ -691,6 +704,7 @@ function buildStatics(){
     x:    cx - 3 / CFG.nmPerPixel,  
     y:    cy + 4 / CFG.nmPerPixel, 
   });
+
 
   // ── HHQ (friendly) icon ─────────────────────
   statics.push({
@@ -1438,6 +1452,16 @@ function drawStatics() {
     ctx.fillRect(-4, 10, 8, 3);
   ctx.restore();
 
+}
+    else if (s.type === 'c2Rad') {
+      // rectangular icon for TPS‑75
+      ctx.save();
+        ctx.strokeStyle = '#0ea5e9';  // or any C2‑blue
+        ctx.lineWidth   = 2;
+        const w = 24, h = 12;
+        ctx.strokeRect(s.x - w/2, s.y - h/2, w, h);
+      ctx.restore();
+    
     /* ─── NASAMS launcher & 15 NM ring ─────────────────────────── */
 } else if (s.id === 'NASAMS') {
     // 15 NM NASAMS ring: red if weapons disabled, else yellow
@@ -1604,25 +1628,61 @@ function drawStatics() {
 
 // ─── DRAW TRACKS ─────────────────────────────────────────────────────
 function drawTracks(now) {
-  // 1) expire any stale tags
+  // ── EXPIRE STALE TAGS ────────────────────────────────────────
   tracks.forEach(o => {
-    if (o.tag && now - o.tagTime > CFG.destroyMs) {
-      o.tag = null;
-    }
+    if (o.tag && now - o.tagTime > CFG.destroyMs) o.tag = null;
   });
 
-  // 2) precompute common colors
+  // ── PREPARE COMMON COLORS ────────────────────────────────────
   const colHostile   = getComputedStyle(document.documentElement).getPropertyValue('--track');
   const colText      = getComputedStyle(document.documentElement).getPropertyValue('--text');
   const colTag       = getComputedStyle(document.documentElement).getPropertyValue('--braa');
   const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
 
-  // 3) draw each track
+  // ── SENSOR VISIBILITY FILTER ─────────────────────────────────
+  const nasams   = statics.find(s => s.id === 'NASAMS');
+  const tps75    = statics.find(s => s.type === 'c2Rad');
+  const patriots = statics.filter(s => s.type === 'rad' && s.system === 'MPQ‑53');
+
   tracks.forEach(o => {
-    // altitude‐based detection: skip if beyond radar range
-    const d    = distNm(bullseye, o),
-          visR = getDetectionRange(o.alt);
-    if (o.destroyed || d > visR) return;
+    if (o.destroyed) return;
+
+    let visible = false;
+
+    // 1) Patriot wedges (only active if not forced‑out)
+    patriots.forEach(r => {
+      if (now >= r.disabledUntil && r.animFrom == null && insideWedge(r, o)) {
+        visible = true;
+      }
+    });
+
+// 2) NASAMS SENTINEL detection circle (30 NM) for track visibility
+if (!visible && nasams) {
+  const dNas = distNm(nasams, o);
+  if (dNas <= 30) {
+    visible = true;
+  }
+}
+
+    // 3) TPS‑75 coverage (190 NM max, limited by altitude detection)
+    if (!visible && tps75) {
+      const d = distNm(tps75, o);
+      const altLimit = getDetectionRange(o.alt);
+      if (d <= 190 && d <= altLimit) {
+        // you can add `&& now >= (tps75.disabledUntil||0)` if you ever disable TPS‑75
+        visible = true;
+      }
+    }
+
+    // 4) Bullseye fallback (if you still want ICC to see them)
+    if (!visible) {
+      const dBE = distNm(bullseye, o);
+      const beLimit = getDetectionRange(o.alt);
+      if (dBE <= beLimit) visible = true;
+    }
+
+    if (!visible) return;
+
 
     // 3a) special TBM icon
     if (o.isTbm) {
@@ -2522,10 +2582,11 @@ function renderCard(obj, type, side) {
       status = now < NASAMSDisabledUntil ? 'Weapons Red' : 'Ready';
     }
     html += `
-      <h3>${side==='right'?'2️⃣ ':''}${obj.type.toUpperCase()}</h3>
-      <div>ID: ${obj.id}</div>
-      <div>Status: ${status}</div>
-    `;
+  <h3>Radar</h3>
+  <div>JTN: ${obj.id}</div>
+  <div>ID:  ${obj.label}</div>
+  <div>Status: Active</div>
+`;
   }
 
 }
