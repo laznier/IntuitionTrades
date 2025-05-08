@@ -849,6 +849,49 @@ function newTrack() {
     everEngaged:  false
   };
 }
+/**
+ * Returns the “NE Quadrant”, “SW Quadrant”, etc., for a track
+ * based on its closest Patriot FU or NASAMS ring.
+ */
+ function getQuadrant(track) {
+  const fu = closestFu(track);
+  // getFuLabel(fu) returns e.g. "NE PATRIOT" or "SE NASAMS"
+  const hemi = getFuLabel(fu).split(' ')[0];
+  return `${hemi} Quadrant`;
+}
+
+/** 
+ * Returns zero‑padded bearing/distance string like "123/45"
+ */
+function formatBE(track) {
+  const b = ('000' + bearing(bullseye, track)).slice(-3);
+  const r = distNm(bullseye, track);
+  return `${b}/${r}`;
+}
+
+/**
+ * Tag the given track and any other hostiles within 5 NM as ENGAGE.
+ * @param {object} mainTrack – the track the SL just engaged
+ * @returns {Array<object>}  – the array of all tracks just engaged
+ */
+ function engageCluster(mainTrack) {
+  const now     = Date.now();
+  // find all hostiles (not friendly, not destroyed) within 5 NM of mainTrack
+  const cluster = tracks.filter(t =>
+    !t.friendly &&
+    !t.destroyed &&
+    t !== mainTrack &&
+    distNm(mainTrack, t) <= 5
+  );
+  // always include the main track itself
+  const all = [ mainTrack, ...cluster ];
+  all.forEach(t => {
+    t.tag      = 'ENGAGE';
+    t.tagTime  = now;
+    t.everEngaged = true;      // if you want to prevent ROE penalties later
+  });
+  return all;
+}
 
 // Helper to label each FU by quadrant
 function getFuLabel(fu) {
@@ -2024,20 +2067,31 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
     // check distance from ICC
     const d = distNm(icc, trk);
     if (d <= trk.engageThreshold) {
-      // issue ENGAGE
-      trk.tag         = 'ENGAGE';
-      trk.tagTime     = Date.now();
-      trk.everEngaged = true;   // mark it approved by SL
-      phase           = 'engage';
+  phase = 'engage';
+  // tag the main track + any within 5 NM
+  const engaged   = engageCluster(trk);
+const ids       = engaged.map(t => t.id).join(', ');
+const quadrant  = getQuadrant(trk);
+const beString  = formatBE(trk);
 
-      const be = ('000' + bearing(bullseye, trk)).slice(-3);
-      const r  = distNm(bullseye, trk);
-      statusEl.textContent =
-        `ADAFCO, SL, ENGAGE Track ${trk.id}, B/E ${be}/${r}`;
+// single vs. cluster message
+if (engaged.length > 1) {
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE ${quadrant}, ` +
+    `Tracks ${ids}, ` +
+    `Group B/E ${beString}, Hostile`;
+} else {
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE ${quadrant}, ` +
+    `Track ${ids}, ` +
+    `B/E ${beString}, Hostile`;
+}
 
-      nextQueueTrack();
-      return false;  // remove from pending list
-    }
+nextQueueTrack();  // or whatever follows
+
+  return false;
+}
+
 
     return true;     // keep waiting
   });
@@ -2053,17 +2107,29 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const d = distNm(icc, trk);
     if (d <= 40) {
-      trk.tag         = 'ENGAGE';
-      trk.tagTime     = Date.now();
-      trk.everEngaged = true;
-      phase           = 'engage';
+  phase = 'engage';
+  // tag the main track + neighbors
+  const engaged   = engageCluster(trk);
+const ids       = engaged.map(t => t.id).join(', ');
+const quadrant  = getQuadrant(trk);
+const beString  = formatBE(trk);
 
-      const be = ('000' + bearing(bullseye, trk)).slice(-3);
-      statusEl.textContent =
-        `ADAFCO, SL, ENGAGE Track ${trk.id}, B/E ${be}/${d}`;
+// single vs. cluster message
+if (engaged.length > 1) {
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE ${quadrant}, ` +
+    `Tracks ${ids}, ` +
+    `Group B/E ${beString}, Hostile`;
+} else {
+  statusEl.textContent =
+    `ADAFCO, SL, ENGAGE ${quadrant}, ` +
+    `Track ${ids}, ` +
+    `B/E ${beString}, Hostile`;
+}
 
-      nextQueueTrack();
-    }
+nextQueueTrack(); 
+}
+
   });
 }
 
@@ -2667,6 +2733,8 @@ window.addEventListener('keydown', e => {
       // AWAY
       else if (key === 'w') {
         // duplicate your existing “W” logic, replacing `selectedTrack` with `t`
+        const quadrant = getQuadrant(multiSelect[0]);  // assume same quadrant
+        statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
         t.tag     = 'AWAY';
         t.tagTime = Date.now();
 
