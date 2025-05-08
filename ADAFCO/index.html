@@ -540,6 +540,30 @@ mapBtn.addEventListener('click', () => {
     : 'Map';
 });
 
+/**
+ * Tag the given track and any other hostiles within 5 NM as ENGAGE.
+ * @param {object} mainTrack – the track the SL just engaged
+ * @returns {Array<object>}  – the array of all tracks just engaged
+ */
+function engageCluster(mainTrack) {
+  const now     = Date.now();
+  // find all hostiles (not friendly, not destroyed) within 5 NM of mainTrack
+  const cluster = tracks.filter(t =>
+    !t.friendly &&
+    !t.destroyed &&
+    t !== mainTrack &&
+    distNm(mainTrack, t) <= 5
+  );
+  // always include the main track itself
+  const all = [ mainTrack, ...cluster ];
+  all.forEach(t => {
+    t.tag      = 'ENGAGE';
+    t.tagTime  = now;
+    t.everEngaged = true;      // if you want to prevent ROE penalties later
+  });
+  return all;
+}
+
 /* Helper: centre view so a 200 NM radius fits the mobile screen */
 function fitMobileView() {
   if (!isMobile) return;                       // uses your existing isMobile
@@ -644,20 +668,20 @@ function buildStatics(){
   { type:'icc', id:'ICC', x:cx,            y:cy           },
 
   // launcher 1 (NE)
-  { type:'rad', id:'00170', x:cx + p10 -10,         y:cy - p10 - 5       },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro -10,  y:cy - p10 - ro +10  },
+  { type:'rad', id:'00170', x:cx + p10 -30,         y:cy - p10 + 25       },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro -30,  y:cy - p10 - ro +30  },
 
   // launcher 2 (SW)
-  { type:'rad', id:'00171', x:cx - p10,         y:cy + p10        },
-  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro,  y:cy + p10 + ro   },
+  { type:'rad', id:'00171', x:cx - p10 +20,         y:cy + p10 - 15       },
+  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro +20,  y:cy + p10 + ro - 15  },
 
   // launcher 3 (SE)
-  { type:'rad', id:'00172', x:cx + p10 +10,         y:cy + p10 -5        },
-  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro + 15,  y:cy + p10 + ro   },
+  { type:'rad', id:'00172', x:cx + p10 -23,         y:cy + p10 -15        },
+  { type:'fu',  id:'PATRIOT', x:cx + p10 + ro - 30,  y:cy + p10 + ro   },
 
   // launcher 4 (NW)
-  { type:'rad', id:'00173', x:cx - p10 ,       y:cy - p10        },
-  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro, y:cy - p10 - ro  },
+  { type:'rad', id:'00173', x:cx - p10 +20,       y:cy - p10 + 20        },
+  { type:'fu',  id:'PATRIOT', x:cx - p10 - ro +25, y:cy - p10 - ro + 20 },
 ];
 
 // ── C2 (friendly) icon ─────────────────────
@@ -1059,13 +1083,14 @@ fireballBtn.addEventListener('click', () => {
       return Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     }
 /**
- * Returns true if track `t` lies within the 60 NM / ±60° wedge of radar `s`.
+ * Returns true if track `t` lies within the 80 NM / ±60° wedge of radar `s`. 
+ * This allows room for missiles with longer legs to still impact
  */
  function insideWedge(s, t) {
   const dx = (t.x - s.x) * CFG.nmPerPixel;
   const dy = (t.y - s.y) * CFG.nmPerPixel;
   const d  = Math.hypot(dx, dy);
-  if (d > 60) return false;
+  if (d > 80) return false;
 
   const θ  = (s.wedgeDir - 90) * Math.PI/180;
   const ax = Math.cos(θ);
@@ -2644,6 +2669,12 @@ window.addEventListener('keydown', e => {
         // duplicate your existing “W” logic, replacing `selectedTrack` with `t`
         t.tag     = 'AWAY';
         t.tagTime = Date.now();
+
+              // ─── INSERT THE ROE PENALTY HERE ────────────────────────
+      if (t.tag !== 'ENGAGE' && !t.everEngaged) {
+        changeScore(-5, 'ROE Violation: -5');
+        t.everEngaged = true;
+      }
         const delay = 2000 + Math.random() * 3000;
         setTimeout(() => {
           clearTimeout(coverTimer);
@@ -2759,9 +2790,6 @@ window.addEventListener('keydown', e => {
   return;
 }
 
-
-
-
    // ───── AWAY (Birds Away) ──────────────────────────────────
    if (k === 'w') {
   e.preventDefault();
@@ -2807,7 +2835,7 @@ if (!t.isCruise) {
 }
 
 
-// ─── 3) launch two missiles, 1 s apart
+// ─── 3) launch two missiles, 2 s apart
 // → first missile immediately
 missiles.push({
   x:           fu.x,
@@ -2819,7 +2847,7 @@ missiles.push({
 });
 
 
-// → second missile after 1 s
+// → second missile after 2 s
 setTimeout(() => {
   missiles.push({
     x:           fu.x,
@@ -2830,8 +2858,6 @@ setTimeout(() => {
     expire:      Date.now() + ttlMs
   });
 }, 2000);
-
-
 
 
 // 4) schedule the impact check on the original hostile
