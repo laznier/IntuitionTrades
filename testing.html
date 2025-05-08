@@ -388,6 +388,7 @@
 window.addEventListener('keydown', e => { if (e.key === 'Shift') shiftDown = true; });
 window.addEventListener('keyup',   e => { if (e.key === 'Shift') shiftDown = false; });
 
+
 // ─── TAG MODES ─────────────────────────────────────────────
 let tagMode   = 0,
     tagLabels = ['OFF','B/E','JTN','INFO','ALL','ALT']; 
@@ -415,6 +416,8 @@ let pendingEngagements = [];
 //missile
 
 let missiles = [];   // track all in‑flight missile dots
+// alongside your `missiles = []`:
+let bombs = [];
 
 /**
  * Build `numGroups` of hostile tracks whose sizes sum to `totalHostiles`.
@@ -688,7 +691,7 @@ function buildStatics(){
   // ─── TPS‑75 Radar next to C2/HHQ ─────────────────────────────
   { 
     type:          'c2Rad', 
-    id:            '00069 JTN',       // JTN label
+    id:            '00069',       // JTN label
     system:        'TPS‑75',          // distinct system
     label:         'FRIEND',          // ID field for card
     x:             cx,                // tweak as needed
@@ -862,6 +865,11 @@ function newTrack() {
     destroyed:    false,
     everEngaged:  false
   };
+  return {
+  // … existing props …
+  bombLaunched: false,   // <- track whether it’s already dropped its bomb
+};
+
 }
 /**
  * Returns the “NE Quadrant”, “SW Quadrant”, etc., for a track
@@ -1246,6 +1254,19 @@ function impactDecision(track) {
     track.destroyed = true;
     return;
   }
+
+  // check if this position lies inside any Patriot wedge
+const covering = statics
+  .filter(s => s.type==='rad' && s.system==='MPQ‑53')
+  .filter(r => insideWedge(r, { x:ix, y:iy }));
+
+// if any cover exists but _all_ are disabled or animating, trash:
+if (covering.length &&
+    covering.every(r => now < r.disabledUntil || r.animFrom != null)
+) {
+  markShotTrashed(track);
+  return;
+}
 
    // ---------------- VALID kill ----------------
 if (inRing || inAnyWedgeGeom) {
@@ -1640,47 +1661,32 @@ function drawTracks(now) {
   const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
 
   // ── SENSOR VISIBILITY FILTER ─────────────────────────────────
-  const nasams   = statics.find(s => s.id === 'NASAMS');
-  const tps75    = statics.find(s => s.type === 'c2Rad');
-  const patriots = statics.filter(s => s.type === 'rad' && s.system === 'MPQ‑53');
-
+    const nasams = statics.find(s => s.id === 'NASAMS');
+  // only those radars (Patriots + TPS‑75) which are up right now:
+  const activeRadars = statics.filter(s =>
+    (s.type === 'rad' || s.type === 'c2Rad') &&
+    now >= (s.disabledUntil || 0) &&
+    s.animFrom == null
+  );
   tracks.forEach(o => {
     if (o.destroyed) return;
 
     let visible = false;
-
-    // 1) Patriot wedges (only active if not forced‑out)
-    patriots.forEach(r => {
-      if (now >= r.disabledUntil && r.animFrom == null && insideWedge(r, o)) {
-        visible = true;
+    // 1) any active radar (Patriot wedge or TPS‑75 box)
+    activeRadars.forEach(r => {
+      const d = distNm(r, o),
+            altLim = getDetectionRange(o.alt);
+      if (r.type === 'rad') {
+        if (insideWedge(r, o) && d <= altLim) visible = true;
+      } else {
+        // c2Rad → TPS‑75
+        if (d <= Math.min(190, altLim)) visible = true;
       }
     });
-
-// 2) NASAMS SENTINEL detection circle (30 NM) for track visibility
-if (!visible && nasams) {
-  const dNas = distNm(nasams, o);
-  if (dNas <= 30) {
-    visible = true;
-  }
-}
-
-    // 3) TPS‑75 coverage (190 NM max, limited by altitude detection)
-    if (!visible && tps75) {
-      const d = distNm(tps75, o);
-      const altLimit = getDetectionRange(o.alt);
-      if (d <= 190 && d <= altLimit) {
-        // you can add `&& now >= (tps75.disabledUntil||0)` if you ever disable TPS‑75
-        visible = true;
-      }
-    }
-
-    // 4) Bullseye fallback (if you still want ICC to see them)
-    if (!visible) {
-      const dBE = distNm(bullseye, o);
-      const beLimit = getDetectionRange(o.alt);
-      if (dBE <= beLimit) visible = true;
-    }
-
+    // 2) NASAMS circle
+    if (!visible && nasams && distNm(nasams, o) <= 30) visible = true;
+    // 3) ICC/Bullseye fallback
+    if (!visible && distNm(bullseye, o) <= getDetectionRange(o.alt)) visible = true;
     if (!visible) return;
 
 
@@ -1789,11 +1795,26 @@ if (!visible && nasams) {
 
 // ─── overlay TAGS ──────────────────────────────────────────
 if (tagMode) {
-  tracks.forEach(o => {
-    // altitude‐based detection: skip dead or beyond radar range
-    const d    = distNm(bullseye, o),
-          visR = getDetectionRange(o.alt);
-    if (o.destroyed || d > visR) return;
+       const now      = Date.now();
+   // collect active Patriot radars
+   const patriots = statics.filter(s =>
+     s.type === 'rad' &&
+     s.system === 'MPQ‑53' &&
+     now >= s.disabledUntil &&
+     s.animFrom == null
+   );
+   tracks.forEach(o => {
+     if (o.destroyed) return;
+     // ① ICC/Bullseye visibility
+     const dBE   = distNm(bullseye, o),
+           beVis = dBE <= getDetectionRange(o.alt);
+     // ② Patriot wedge visibility (also obeys altitude limit)
+     const inPat  = patriots.some(r => {
+       const dr = distNm(r, o);
+       return dr <= getDetectionRange(o.alt) && insideWedge(r, o);
+     });
+     // only draw tags if seen by ICC or by any Patriot radar
+     if (!(beVis || inPat)) return;
 
     const lines = [];
 
@@ -1918,6 +1939,44 @@ function drawRubber() {
       }
     }
 
+    function updateBombs(dt) {
+  const now = Date.now();
+  bombs = bombs.filter(b => b.expire > now);
+  bombs.forEach(b => {
+    // move toward its target
+    const dx = b.target.x - b.x, dy = b.target.y - b.y;
+    const d  = Math.hypot(dx, dy);
+    if (d < 4) {
+      // impact!
+      if (b.target.system === 'TPS‑75') {
+        changeScore(-10, 'CREW, SL, TPS‑75 was damaged. Loss of sensor coverage for 10 min.');
+        b.target.disabledUntil = now + 10 * 60 * 1000;
+      } else if (b.target.system === 'MPQ‑53') {
+        const quad = getQuadrant({ x: b.target.x, y: b.target.y });
+        changeScore(-7, `ADAFCO, ICC, ${quad} radar was damaged. Down for 10 min.`);
+        b.target.disabledUntil = now + 10 * 60 * 1000;
+      }
+      b.expire = 0; // remove
+      return;
+    }
+    const ux = dx / d, uy = dy / d;
+    b.x += ux * b.speedPxPerSec * dt;
+    b.y += uy * b.speedPxPerSec * dt;
+  });
+}
+
+function drawBombs() {
+  bombs.forEach(b => {
+    ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.fillStyle = 'red';
+      ctx.beginPath();
+      ctx.arc(0, 0, 2, 0, Math.PI*2);  // radius = 2px
+      ctx.fill();
+    ctx.restore();
+  });
+}
+
 
     function drawMissiles() {
   missiles.forEach(m => {
@@ -2006,6 +2065,46 @@ missiles.forEach(m => {
   tracks.forEach(o => {
     if (o.destroyed) return;
 
+    // ─── CRUISE MISSILE IMPACT HANDLER ───────────────────────────
+    if (o.isCruise) {
+  // 1) assign a random static target once
+  if (!o.cruiseTarget) {
+    // filter out only the ICC so everything else can be hit
+    const allTargets = statics.filter(s => s.type !== 'icc');
+    o.cruiseTarget = allTargets[
+      Math.floor(Math.random() * allTargets.length)
+    ];
+  }
+
+  // 2) steer straight at it
+  o.heading = bearing(o, o.cruiseTarget);
+
+  // 3) move normally (your existing movement code will apply it)
+
+  // 4) when within 1 NM → impact
+  const d = distNm(o, o.cruiseTarget);
+  if (d <= 1) {
+    const tgt = o.cruiseTarget;
+    // radar damage same as bombs
+    if (tgt.system === 'MPQ‑53' || tgt.system === 'TPS‑75') {
+      const pts = tgt.system === 'TPS‑75' ? -10 : -7;
+      const msg = tgt.system === 'TPS‑75'
+        ? 'CREW, SL, TPS‑75 was damaged. Loss of sensor coverage for 10 min.'
+        : `ADAFCO, ICC, ${getQuadrant(tgt)} radar was damaged. Down for 10 min.`;
+      changeScore(pts, msg);
+      // disable for 10 min
+      tgt.disabledUntil = Date.now() + 10*60*1000;
+    } else {
+      // non‑radar static
+      changeScore(-10, `Crew, SL, Quail Impact ${tgt.id}`);
+    }
+    // remove the cruise missile track
+    o.destroyed = true;
+    return;
+  }
+}
+// ─── end CRUISE block ──────────────────────────────────────────
+
    // ─── Friendly descent: start at 200 MSL, linearly descend 200→0 over 20 NM ───
     if (o.friendly) {
       const icc    = statics.find(s => s.type === 'icc');
@@ -2057,10 +2156,16 @@ if (o.isTbm) {
 
 }
 
-    // only force‑to‑bullseye when *not* in jink‑mode
-    if (mode === 'practice' && !o.isEvading) {
-      o.heading = bearing(o, bullseye);
-    }
+// only force‑to‑bullseye if they haven't dropped their bomb yet
+if (
+  mode === 'practice' &&
+  !o.isEvading &&
+  !o.bombLaunched &&
+  !o.isCruise
+) {
+  o.heading = bearing(o, bullseye);
+}
+
 
 
 
@@ -2073,16 +2178,52 @@ if (o.isTbm) {
     o.x += vx;
     o.y += vy;
 
-// Center collision → hostiles still kill the game, friendlies/TBMs just vanish
-if (mode === 'practice' && Math.hypot(o.x - bullseye.x, o.y - bullseye.y) < 6) {
-  if (!o.friendly && !o.isTbm) {
-    // only hostiles cause game over
-    showGameOver('center');
-    return;
-  } else {
-    // friendly or TBM: just disappear and keep going
-    o.destroyed = true;
-    return;
+    // when a hostile (non‑cruise) hits 5 NM → drop one bomb & reverse heading
+if (!o.friendly && !o.isTbm && !o.isCruise) {
+  const dBE = distNm(bullseye, o);
+
+  if (dBE <= 5 && !o.bombLaunched) {
+    o.bombLaunched = true;
+
+    // spawn bomb at 5 NM ring:
+    const brgRad  = d2r(bearing(bullseye, o));
+    const ringPx  = 5 / CFG.nmPerPixel;
+    const bombX   = bullseye.x + Math.sin(brgRad)*ringPx;
+    const bombY   = bullseye.y - Math.cos(brgRad)*ringPx;
+
+ // 1) Build the list of all four Patriot radars + the TPS‑75
+const radars = statics.filter(s =>
+  s.type === 'rad'   ||  // MPQ‑53s
+  s.type === 'c2Rad'    // TPS‑75
+);
+
+// 2) Make sure we actually found some before indexing into it
+if (radars.length > 0) {
+  // pick one at random
+  const tgt = radars[
+    Math.floor(Math.random() * radars.length)
+  ];
+
+  // 3) spawn the bomb pointing at tgt…
+  bombs.push({
+    x: bombX,
+    y: bombY,
+    target:        tgt,
+    speedPxPerSec: (3000/3600)/CFG.nmPerPixel,
+    expire:        Date.now() + 60_000
+  });
+}
+    // reverse heading to run out
+    o.heading = (bearing(bullseye, o) + 180) % 360;
+  }
+
+  // once bomb dropped, vanish at 190 NM
+  if (o.bombLaunched) {
+    const distOut = distNm(bullseye, o);
+    if (distOut >= 190) {
+      o.destroyed = true;
+      return;
+    }
   }
 }
 
@@ -2195,6 +2336,7 @@ nextQueueTrack();
 
 
   updateMissiles(dt);
+  updateBombs(dt);
 
 
 
@@ -2368,7 +2510,8 @@ if (bgImg.complete) {
     ctx.stroke();
   });
 
-  drawMissiles();   
+  drawMissiles(); 
+  drawBombs();  
   drawDragLine();
   drawRubber();
   drawSelectBox();  
