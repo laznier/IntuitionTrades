@@ -1131,7 +1131,8 @@ function newTrack() {
   };
   return {
   // … existing props …
-  bombLaunched: false,   // <- track whether it’s already dropped its bomb
+  bombLaunched10: false,
+  bombLaunched5:  false,   // <- track whether it’s already dropped its bomb
 };
 
 }
@@ -2483,15 +2484,12 @@ if (o.isTbm) {
 if (
   mode === 'practice' &&
   !o.isEvading &&
-  !o.bombLaunched &&
+  !o.bombLaunched5 &&
+  !o.bombLaunched10 &&
   !o.isCruise
 ) {
   o.heading = bearing(o, bullseye);
 }
-
-
-
-
 
 
     // Move at base speed × level multiplier
@@ -2501,47 +2499,54 @@ if (
     o.x += vx;
     o.y += vy;
 
-    // when a hostile (non‑cruise) hits 5 NM → drop one bomb & reverse heading
+    // ─── hostiles drop bombs at 10 NM and 5 NM, then reverse ─────────────────
 if (!o.friendly && !o.isTbm && !o.isCruise) {
   const dBE = distNm(bullseye, o);
 
-  if (dBE <= 5 && !o.bombLaunched) {
-    o.bombLaunched = true;
+  // ① first bomb at 10 NM
+  if (dBE <= 10 && !o.bombLaunched10) {
+    o.bombLaunched10 = true;
+    const brgRad   = d2r(bearing(bullseye, o));
+    const ringPx   = 10 / CFG.nmPerPixel;
+    const bombX    = bullseye.x + Math.sin(brgRad) * ringPx;
+    const bombY    = bullseye.y - Math.cos(brgRad) * ringPx;
+    const radars   = statics.filter(s => s.type === 'rad' || s.type === 'c2Rad');
+    if (radars.length > 0) {
+      const tgt = radars[Math.floor(Math.random() * radars.length)];
+      bombs.push({
+        x:             bombX,
+        y:             bombY,
+        target:        tgt,
+        speedPxPerSec: (3000/3600) / CFG.nmPerPixel,
+        expire:        Date.now() + 60_000
+      });
+    }
+  }
 
-    // spawn bomb at 5 NM ring:
-    const brgRad  = d2r(bearing(bullseye, o));
-    const ringPx  = 5 / CFG.nmPerPixel;
-    const bombX   = bullseye.x + Math.sin(brgRad)*ringPx;
-    const bombY   = bullseye.y - Math.cos(brgRad)*ringPx;
-
- // 1) Build the list of all four Patriot radars + the TPS‑75
-const radars = statics.filter(s =>
-  s.type === 'rad'   ||  // MPQ‑53s
-  s.type === 'c2Rad'    // TPS‑75
-);
-
-// 2) Make sure we actually found some before indexing into it
-if (radars.length > 0) {
-  // pick one at random
-  const tgt = radars[
-    Math.floor(Math.random() * radars.length)
-  ];
-
-  // 3) spawn the bomb pointing at tgt…
-  bombs.push({
-    x: bombX,
-    y: bombY,
-    target:        tgt,
-    speedPxPerSec: (3000/3600)/CFG.nmPerPixel,
-    expire:        Date.now() + 60_000
-  });
-}
-    // reverse heading to run out
+  // ② second bomb at 5 NM → then reverse heading
+  if (dBE <= 5 && !o.bombLaunched5) {
+    o.bombLaunched5 = true;
+    const brgRad   = d2r(bearing(bullseye, o));
+    const ringPx   = 5 / CFG.nmPerPixel;
+    const bombX    = bullseye.x + Math.sin(brgRad) * ringPx;
+    const bombY    = bullseye.y - Math.cos(brgRad) * ringPx;
+    const radars   = statics.filter(s => s.type === 'rad' || s.type === 'c2Rad');
+    if (radars.length > 0) {
+      const tgt = radars[Math.floor(Math.random() * radars.length)];
+      bombs.push({
+        x:             bombX,
+        y:             bombY,
+        target:        tgt,
+        speedPxPerSec: (3000/3600) / CFG.nmPerPixel,
+        expire:        Date.now() + 60_000
+      });
+    }
+    // reverse course to run back out
     o.heading = (bearing(bullseye, o) + 180) % 360;
   }
 
-  // once bomb dropped, vanish at 190 NM
-  if (o.bombLaunched) {
+  // ③ vanish once both bombs are out and track reaches 190 NM
+  if (o.bombLaunched10 && o.bombLaunched5) {
     const distOut = distNm(bullseye, o);
     if (distOut >= 190) {
       o.destroyed = true;
@@ -2549,6 +2554,7 @@ if (radars.length > 0) {
     }
   }
 }
+
 
 
   });
@@ -3289,7 +3295,7 @@ window.addEventListener('keydown', e => {
   const key = k.toLowerCase();
 
   // ─── MULTI‑SELECT A/N/W/K HANDLER ─────────────────────────────
-  if (mode === 'practice' && multiSelect.length && ['a','n','w','k'].includes(key)) {
+  if (mode === 'practice' && multiSelect.length && ['a','n','w','k','h'].includes(key)) {
     e.preventDefault();
     multiSelect.forEach(t => {
       // NEGATE
@@ -3410,11 +3416,83 @@ scheduleImpactCheck(t);
         }
       }, 5000);
       }
+// ─── HOLD FIRE ─────────────────────────────────────────────
+else if (key === 'h') {
+  if (multiSelect.length) {
+    // group HOLD FIRE
+    const ids = multiSelect.map(o => o.id).join(', ');
+    statusEl.textContent =
+      `ICC, ADAFCO, HOLD FIRE Tracks ${ids}`;
+    multiSelect.forEach(o => {
+      const pendingTimer = o.mslTimer;
+      setTimeout(() => {
+        // cancel intercept if still pending
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          o.mslTimer = null;
+        }
+        // self‑destruct any inbound missiles
+        missiles = missiles.filter(m => m.target !== o);
+      }, 5000);
     });
+  } else {
+    // single‑track HOLD FIRE
+    const b    = ('000' + bearing(bullseye, t)).slice(-3);
+    const r    = distNm(bullseye, t);
+    const quad = getQuadrant(t);
+    statusEl.textContent =
+      `ICC, ADAFCO, HOLD FIRE Track ${t.id} Group B/E ${b}/${r}, ${quad}`;
+    const pendingTimer = t.mslTimer;
+    setTimeout(() => {
+      // cancel intercept if still pending
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        t.mslTimer = null;
+      }
+      // self‑destruct any inbound missiles
+      missiles = missiles.filter(m => m.target !== t);
+    }, 5000);
+  }
+}
+
+  });
 
     // keep the cards up (or call clearMultiCards() if you prefer)
     return;
   }
+
+// ─── HOLD‑FIRE HOTKEY (H) ──────────────────────────────────────
+if (key === 'h') {
+  e.preventDefault();
+  if (selectedTrack) {
+    const t    = selectedTrack;
+    const b    = ('000' + bearing(bullseye, t)).slice(-3);
+    const r    = distNm(bullseye, t);
+    const quad = getQuadrant(t);
+
+    // 1) Show HOLD FIRE message immediately
+    statusEl.textContent =
+      `ICC, ADAFCO, HOLD FIRE Track ${t.id} Group B/E ${b}/${r}, ${quad}`;
+
+    // 2) Grab and defer the intercept timer cancellation
+    const pendingTimer = t.mslTimer;
+
+    // 3) Find all missiles currently inbound on that track
+    const inbound = missiles.filter(m => m.target === t);
+
+    // 4) After 5 s, cancel the intercept and self‑destruct missiles
+    setTimeout(() => {
+      // cancel scheduled impactDecision if still pending
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        t.mslTimer = null;
+      }
+      // remove all those inbound missiles
+      missiles = missiles.filter(m => m.target !== t);
+    }, 5000);
+  }
+}
+
 
   // ─── ‘O’ arms the next tap to reorient the selected radar ───
   if (k === 'o' && selectedStatic && selectedStatic.type === 'rad') {
