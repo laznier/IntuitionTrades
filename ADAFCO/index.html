@@ -1358,10 +1358,34 @@ function drawWedge(ctx, p, startDeg, endDeg, radiusNm) {
   ctx.restore();
 }
 
+function damageLauncherAmmo (fu) {
+  /* — NASAMS ——————————————————————— */
+  if (fu.id === 'NASAMS') {
+    const lost = Math.ceil(NASAMSMissiles * 0.33);       // 33 %
+    NASAMSMissiles = Math.max(0, NASAMSMissiles - lost);
+    feedbackEl.textContent = `NASAMS launcher damaged – lost ${lost} AIM-120s`;
+    return;
+  }
+
+  /* — Patriot FU ———————————————————— */
+  const bundleLoss = { pac2: 4, mse: 12, pac3: 16 };
+  const choices    = Object.keys(bundleLoss).filter(t => fu.ammo[t] > 0);
+  if (!choices.length) return;        // nothing left to lose
+
+  const pick = choices[Math.floor(Math.random() * choices.length)];
+  fu.ammo[pick] = Math.max(0, fu.ammo[pick] - bundleLoss[pick]);
+
+  // engagementsRemaining = total rounds ÷ 2
+  fu.engagementsRemaining = Math.max(
+    0,
+    Math.floor((fu.ammo.pac2 + fu.ammo.mse + fu.ammo.pac3) / 2)
+  );
+
+  feedbackEl.textContent =
+    `${getFuLabel(fu)} damaged – lost ${bundleLoss[pick]} ${pick.toUpperCase()}`;
+}
+
     // ─── DRAW ───────────────────────────────────────────────────────────
-
-
-
 
     function drawCompass(){
       if(!compassOn) return;
@@ -1964,8 +1988,20 @@ function drawRubber() {
         b.target.disabledUntil = now + 10 * 60 * 1000;
       } else if (b.target.system === 'MPQ‑53') {
         const quad = getQuadrant({ x: b.target.x, y: b.target.y });
-        changeScore(-7, `ADAFCO, ICC, ${quad} radar was damaged. Down for 10 min.`);
+        changeScore(-7, `ADAFCO, ICC, ${quad} radar and one launcher damaged. Down for 10 min.`);
         b.target.disabledUntil = now + 10 * 60 * 1000;
+      // ➋ NEW – find the paired FU and remove ammo
+  const fu = statics
+    .filter(s => s.type === 'fu')
+    .reduce((best, s) =>
+      !best || distNm(s, b.target) < distNm(best, b.target) ? s : best,
+    null);
+  if (fu) damageLauncherAmmo(fu);
+
+} else if (b.target.type === 'fu') {
+  // bomb hit a launcher directly → just drain ammo
+  damageLauncherAmmo(b.target);
+
       }
       b.expire = 0; // remove
       return;
@@ -2109,6 +2145,10 @@ missiles.forEach(m => {
       // non‑radar static
       changeScore(-10, `Crew, SL, Quail Impact ${tgt.id}`);
     }
+    /* ammo knock-down ---------------------------------------------- */
+    if (tgt.type === 'fu') {
+  damageLauncherAmmo(tgt);   // launcher or NASAMS takes the ammo loss
+}
     // remove the cruise missile track
     o.destroyed = true;
     return;
