@@ -598,13 +598,6 @@ resize();
 let multiDrag   = null;
 let multiSelect = [];
 
-// helper to update multiSelect from the current box
-function isTrackVisible(t) {
-  if (t.destroyed) return false;
-  const d    = distNm(bullseye, t);
-  const visR = getDetectionRange(t.alt);
-  return d <= visR;
-}
 
 function updateMultiSelect() {
   const { x0, y0, x1, y1 } = multiDrag;
@@ -613,8 +606,8 @@ function updateMultiSelect() {
         top    = Math.min(y0, y1),
         bottom = Math.max(y0, y1);
 
-  multiSelect = tracks.filter(t => {
-    if (!isTrackVisible(t)) return false;     // ← NEW
+    multiSelect = tracks.filter(t => {
+     if (!isTrackVisible(t)) return false; // new unified one
     const sx = (t.x - offX) * scale;
     const sy = (t.y - offY) * scale;
     return sx >= left && sx <= right && sy >= top && sy <= bottom;
@@ -703,7 +696,9 @@ function buildStatics(){
 // ── C2 (friendly) icon ─────────────────────
   statics.push({
     type:'C2',
-    id:   'C2',            // label it “BIGFOOT”
+    id:   'CRC',            // label it “BIGFOOT”
+    system:        'TPS‑75',          // distinct system
+    label:         'FRIEND',          // ID field for card
     x:    cx - 3 / CFG.nmPerPixel,  
     y:    cy + 4 / CFG.nmPerPixel, 
   });
@@ -711,8 +706,9 @@ function buildStatics(){
 
   // ── HHQ (friendly) icon ─────────────────────
   statics.push({
-    type:'C2',
+    type:'AOC',
     id:   'HHQ',            // label it “BIGFOOT”
+    label:         'FRIEND',          // ID field for card
     x:    cx + 3 / CFG.nmPerPixel,  
     y:    cy + 1 / CFG.nmPerPixel, 
   });
@@ -721,8 +717,8 @@ function buildStatics(){
   statics.push({
     type:'fu',
     id:   'NASAMS',            // label it “NASAMS”
-    x:    cx + 2 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
-    y:    cy + 4 / CFG.nmPerPixel, 
+    x:    cx - 3 / CFG.nmPerPixel,  // 1 NM east of the bullseye (ICC)
+    y:    cy + 3 / CFG.nmPerPixel, 
   });
 
 
@@ -969,8 +965,9 @@ function checkPatriotStatus(fu) {
 }
 
 
-function initTracks(){
-  tracks = Array.from({length:CFG.trackCount}, newTrack);
+function initTracks () {
+  tracks = Array.from({ length: CFG.trackCount }, newTrack);
+  updateVisibility();          // first pass for splash-screen
 }
 initTracks();
 
@@ -1125,6 +1122,16 @@ fireballBtn.addEventListener('click', () => {
   feedbackEl.textContent = 'Crew, ADAFCO, FIREBALL FIREBALL FIREBALL!';
 });
 
+/**
+ * Unified visibility gate.  
+ * A track is selectable / hoverable / taggable iff
+ *   – it isn’t destroyed **and**
+ *   – the coverage scanner hasn’t marked it “hidden”.
+ * `t._visible` is *undefined* until the first scan → treat that as **true**
+ */
+function isTrackVisible(t){
+  return !t.destroyed && (t._visible !== false);
+}
 
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
@@ -1474,14 +1481,44 @@ function drawStatics() {
   ctx.restore();
 
 }
-    else if (s.type === 'c2Rad') {
-      // rectangular icon for TPS‑75
-      ctx.save();
-        ctx.strokeStyle = '#0ea5e9';  // or any C2‑blue
-        ctx.lineWidth   = 2;
-        const w = 24, h = 12;
-        ctx.strokeRect(s.x - w/2, s.y - h/2, w, h);
-      ctx.restore();
+else if (s.type === 'c2Rad') {
+  // ─── TPS‑75: green rectangle + central spinner (6 RPM) ─────────────────
+  const now = Date.now();
+  // init spinner state
+  if (s._spinLast == null) {
+    s._spinLast  = now;
+    s._spinAngle = 0;
+  }
+  // only advance when radar is up
+  const active = now >= (s.disabledUntil || 0) && s.animFrom == null;
+  const Δms    = now - s._spinLast;
+  s._spinLast  = now;
+  if (active) {
+    // 6 rev/min → 360°×6/60s = 36°/s → 0.036°/ms
+    s._spinAngle = (s._spinAngle + Δms * 0.036) % 360;
+  }
+  const w = 24, h = 12;
+
+  // 1) draw green rectangle
+  ctx.save();
+    ctx.strokeStyle = 'limegreen';
+    ctx.lineWidth   = 2;
+    ctx.strokeRect(s.x - w/2, s.y - h/2, w, h);
+  ctx.restore();
+
+  // 2) draw spinner line
+  const ang = s._spinAngle * Math.PI / 180;
+  ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(ang);
+    ctx.strokeStyle = 'limegreen';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+      ctx.moveTo(0, -h/2 + 2);
+      ctx.lineTo(0,  h/2 - 2);
+    ctx.stroke();
+  ctx.restore();
+
     
     /* ─── NASAMS launcher & 15 NM ring ─────────────────────────── */
 } else if (s.id === 'NASAMS') {
@@ -1497,16 +1534,20 @@ function drawStatics() {
       ctx.fill();
     ctx.restore();
 
-      // launcher icon (same style as Patriot FU)
-      ctx.fillStyle = colICC;
-      ctx.save();
-        ctx.translate(s.x, s.y);
-        ctx.fillRect(-3, -12, 6, 12);               // body
-        ctx.beginPath();                            // nose
-          ctx.moveTo(-4, -12); ctx.lineTo(0, -20); ctx.lineTo(4, -12);
-        ctx.closePath(); ctx.fill();
-      ctx.restore();
-
+// launcher icon (unfilled)
+    ctx.strokeStyle = colICC;
+    ctx.lineWidth   = 1;
+    ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.strokeRect(-3, -12, 6, 12);             // outline body
+      ctx.beginPath();                            // outline nose
+        ctx.moveTo(-4, -12);
+        ctx.lineTo(0, -20);
+        ctx.lineTo(4, -12);
+      ctx.closePath();
+      ctx.stroke();
+    ctx.restore();
+   
 
  
 } else if (s.type === 'fu') {
@@ -1660,34 +1701,14 @@ function drawTracks(now) {
   const colTag       = getComputedStyle(document.documentElement).getPropertyValue('--braa');
   const colHighlight = getComputedStyle(document.documentElement).getPropertyValue('--yellow');
 
-  // ── SENSOR VISIBILITY FILTER ─────────────────────────────────
-    const nasams = statics.find(s => s.id === 'NASAMS');
-  // only those radars (Patriots + TPS‑75) which are up right now:
-  const activeRadars = statics.filter(s =>
-    (s.type === 'rad' || s.type === 'c2Rad') &&
-    now >= (s.disabledUntil || 0) &&
-    s.animFrom == null
-  );
-  tracks.forEach(o => {
-    if (o.destroyed) return;
+ // ── SENSOR VISIBILITY FILTER ─────────────────────────────────
+const nasams = statics.find(s => s.id === 'NASAMS');
+const tps75  = statics.find(s => s.type === 'c2Rad');
 
-    let visible = false;
-    // 1) any active radar (Patriot wedge or TPS‑75 box)
-    activeRadars.forEach(r => {
-      const d = distNm(r, o),
-            altLim = getDetectionRange(o.alt);
-      if (r.type === 'rad') {
-        if (insideWedge(r, o) && d <= altLim) visible = true;
-      } else {
-        // c2Rad → TPS‑75
-        if (d <= Math.min(190, altLim)) visible = true;
-      }
-    });
-    // 2) NASAMS circle
-    if (!visible && nasams && distNm(nasams, o) <= 30) visible = true;
-    // 3) ICC/Bullseye fallback
-    if (!visible && distNm(bullseye, o) <= getDetectionRange(o.alt)) visible = true;
-    if (!visible) return;
+tracks.forEach(o => {
+  // vanish if destroyed or explicitly marked invisible
+  if (o.destroyed || o._visible === false) return;
+
 
 
     // 3a) special TBM icon
@@ -1804,17 +1825,7 @@ if (tagMode) {
      s.animFrom == null
    );
    tracks.forEach(o => {
-     if (o.destroyed) return;
-     // ① ICC/Bullseye visibility
-     const dBE   = distNm(bullseye, o),
-           beVis = dBE <= getDetectionRange(o.alt);
-     // ② Patriot wedge visibility (also obeys altitude limit)
-     const inPat  = patriots.some(r => {
-       const dr = distNm(r, o);
-       return dr <= getDetectionRange(o.alt) && insideWedge(r, o);
-     });
-     // only draw tags if seen by ICC or by any Patriot radar
-     if (!(beVis || inPat)) return;
+     if (!isTrackVisible(o)) return;   // single early-out does all the work
 
     const lines = [];
 
@@ -2240,8 +2251,56 @@ ctx.setTransform(1,0,0,1,0,0);
 ctx.fillStyle = altMap ? oceanColor : darkColor;
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-// then your usual world‑transform and drawImage(bgImg,…)
+/// ─── 10 s visibility updater with 10 s persistence ──────────────────
+function updateVisibility(){
+  const now       = Date.now();
+  const nasams    = statics.find(s => s.id === 'NASAMS');
+  const tps75     = statics.find(s => s.type === 'c2Rad');
+  const activeRad = statics.filter(s =>
+    (s.type === 'rad' || s.type === 'c2Rad') &&
+    now >= (s.disabledUntil||0) &&
+    s.animFrom == null
+  );
 
+  tracks.forEach(o => {
+    const altLim = getDetectionRange(o.alt);
+    let covered = false;
+
+    // 1) Patriot wedge
+    for (const r of activeRad) {
+      const d = distNm(r, o);
+      if (r.type === 'rad'   && insideWedge(r, o) && d <= altLim ||
+          r.type === 'c2Rad' && d <= Math.min(190, altLim)) {
+        covered = true;
+        break;
+      }
+    }
+
+    // 2) NASAMS ring
+    if (!covered && nasams && distNm(nasams, o) <= 30) covered = true;
+
+     // 3) TPS-75 fallback  **only if the TPS-75 is actually up**
+    if (
+      !covered &&
+      tps75 &&
+      now >= (tps75.disabledUntil || 0) &&          // <- honour downtime
+      distNm(tps75, o) <= altLim
+    ) covered = true;
+ 
+     // ── 10 s persistence after last good hit ───────────────
+         /* ---------------- persistence ---------------- */
+    // first time we meet a brand-new track, _lastSeen is undefined.
+    if (covered)            o._lastSeen = now;
+    o._lastSeen ??= -1;                     // initialise once
+
+    o._visible = covered || (now - o._lastSeen) <= 10_000;
+   });
+
+   }
+updateVisibility();          
+
+// first pass before anyone draws
+setInterval(updateVisibility,1000);
 
     let lastTime=performance.now();
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
@@ -2375,15 +2434,9 @@ if (shiftDown) {
     ctx.arc(mouse.sx, mouse.sy, rScreen, 0, Math.PI*2);
   ctx.stroke();
 
-  // 2) find hovered tracks
-  function isTrackVisible(t) {
-  if (t.destroyed) return false;
-  const d = distNm(bullseye, t);
-  return d <= getDetectionRange(t.alt);
-}
 
 const hovered = tracks.filter(t => {
-  if (!isTrackVisible(t)) return false;               // hidden → ignore
+ if (!isTrackVisible(t)) return false;
   return distNm({ x: mouse.wx, y: mouse.wy }, t) <= 3;  // ≤ 3 NM bubble
 });
 
@@ -2716,24 +2769,35 @@ function renderCard(obj, type, side) {
         <li>Engagements Left: ${Math.floor(NASAMSMissiles/2)}</li>
       </ul>
         `;
-      } else {
-    // Other statics (radars, ICC, etc.)
-    let status = 'Active';
-    if (obj.type==='rad') {
-      status = now < obj.disabledUntil ? 'Disabled (red)' : 'Active';
-    } else if (obj.type==='icc') {
-      status = now < NASAMSDisabledUntil ? 'Weapons Red' : 'Ready';
+    } else {
+        // Distinguish MPQ‑53, TPS‑75 vs. everything else
+    const now = Date.now();
+    if (obj.type === 'rad' || obj.type === 'c2Rad') {
+      const name = obj.system === 'TPS‑75'
+        ? 'TPS‑75' : 'Patriot MPQ‑53';
+      const isUp  = now >= (obj.disabledUntil || 0);
+      html += `
+        <h3>${name} Radar</h3>
+        <div>JTN:   ${obj.id}</div>
+        <div>ID:    ${obj.label || '—'}</div>
+        <div>Status:${isUp ? ' Active' : ' Inactive'}</div>
+      `;
+    } else {
+      // non‑radar statics
+      const titleMap = {
+        fu:  'Patriot Launcher',
+        icc: 'ICC',
+        C2:  'C2',
+        // add HHQ here if needed
+      };
+      const title = titleMap[obj.type] || obj.type.toUpperCase();
+      html += `
+        <h3>${title}</h3>
+        <div>ID: ${obj.id}</div>
+        <div>Status: Active</div>
+      `;
     }
-    html += `
-  <h3>Radar</h3>
-  <div>JTN: ${obj.id}</div>
-  <div>ID:  ${obj.label}</div>
-  <div>Status: Active</div>
-`;
-  }
-
-}
-
+    }}
 
 html += `<button class="close-btn">×</button>`;
   d.innerHTML = html;
@@ -3543,6 +3607,7 @@ keepers.forEach(t => {
 const totalH    = 10 + (level - 1) * 5;                    // lvl1=10, lvl2=15, lvl3=20…
 const newHostiles = newHostileGroups(CFG.trackCount, totalH);
 tracks = newHostiles.concat(keepers);
+updateVisibility();            // ensure no flash on level load
 
 
     // ─── RE‑QUEUE EVERYTHING ───────────────────────────────────
