@@ -303,6 +303,33 @@
   border-radius: 6px !important;
   cursor: pointer  !important;
 }
+/* ───────────────────────────────────────────────────────────────
+   SHRINK ACTION-BAR CONTROLS
+   (override must come after earlier #redwoodBtn / #fireballBtn)
+──────────────────────────────────────────────────────────────── */
+
+/* main buttons */
+#redwoodBtn,
+#fireballBtn{
+  width: 100px !important;   /* ↓ narrower  (was 120) */
+  height: 32px !important;   /* ↓ shorter   (was 40)  */
+  padding: 0 .65rem !important;
+  font-size: .9rem !important;   /* dial text down a hair */
+}
+
+/* quadrant squares */
+#redwoodMenu button{
+  height: 32px !important;   /* match main-button height */
+}
+/* in your <style> */
+    #redwoodMenu button.cold {
+  background: var(--icc);   /* green */
+  color: #000;
+}
+#redwoodMenu button.hot {
+  background: var(--warn);  /* red */
+  color: #fff;
+}
 
   </style>
 </head>
@@ -519,15 +546,42 @@ let missiles = [];   // track all in‑flight missile dots
 // alongside your `missiles = []`:
 let bombs = [];
 
+// — right after you grab your DOM refs — 
+const quadrantStates = {
+  NW: false,
+  NE: false,
+  SW: false,
+  SE: false
+};
 
+// helper to re‑paint one button:
+function updateQuadrantButton(q) {
+  const btn = redwoodMenu.querySelector(`button[data-q="${q}"]`);
+  if (!btn) return;
+  btn.classList.toggle('hot',  quadrantStates[q]);
+  btn.classList.toggle('cold', !quadrantStates[q]);
+}
+
+// collapse menu only if _all_ are cold:
+function collapseIfAllCold() {
+  if (!Object.values(quadrantStates).some(v => v)) {
+    redwoodWrap.classList.remove('open');
+  }
+}
 
 
 /* ──────────────────────────────────────────────────────────────
    REDWOOD  – single source of truth
 ──────────────────────────────────────────────────────────────── */
-const redwoodWrap  = document.getElementById('redwoodWrap');
-const redwoodBtn   = document.getElementById('redwoodBtn');
-const redwoodMenu  = document.getElementById('redwoodMenu');
+const redwoodBtn  = document.getElementById('redwoodBtn');
+const redwoodWrap = document.getElementById('redwoodWrap');
+const redwoodMenu = document.getElementById('redwoodMenu');
+
+redwoodBtn.addEventListener('click', () => {
+  console.log('🔴 Redwood button clicked');
+  redwoodWrap.classList.toggle('open');
+});
+
 
 /* state flags */
 let redwoodOpen     = false;
@@ -538,64 +592,81 @@ let redwoodTimerId  = null;
 /* master toggle (button click) */
 function toggleRedwoodMenu () {
   redwoodOpen = !redwoodOpen;
-
   redwoodWrap.classList.toggle('open', redwoodOpen);
 }
 redwoodBtn.addEventListener('click', toggleRedwoodMenu);
 
 /* turn COLD / HOT just manipulate button colour */
-function setRedwoodCold () {
-  redwoodActive   = false;
-  redwoodQuadrant = null;
-  redwoodBtn.classList.remove('hot');
-  redwoodBtn.classList.add   ('cold');
+function setRedwoodHot(q) {
+  redwoodActive     = true;
+  redwoodQuadrant   = q;
+  quadrantStates[q] = true;
+  updateQuadrantButton(q);
 }
-function setRedwoodHot (q) {
-  redwoodActive   = true;
-  redwoodQuadrant = q;
-  redwoodBtn.classList.remove('cold');
-  redwoodBtn.classList.add   ('hot');
+
+function setRedwoodCold(q) {
+  quadrantStates[q] = false;
+  updateQuadrantButton(q);
+  collapseIfAllCold();
 }
+
 
 /* — the rest of your existing HOT-assessment logic stays the same — */
 
-/* collapse & handle quadrant pick */
 redwoodMenu.querySelectorAll('button').forEach(btn => {
   btn.addEventListener('click', () => {
     const q = btn.dataset.q;
-    toggleRedwoodMenu();   // collapse
-    statusEl.textContent =
-      `SL, ADAFCO, Request REDWOOD HOT ${q} Quadrant`;
+    statusEl.textContent = `SL, ADAFCO, Request REDWOOD HOT ${q} Quadrant`;
     setTimeout(() => initialAssess(q), 2000);
   });
 });
 
+
 /* call on level reset / game reset */
 function resetRedwood () {
   clearInterval(redwoodTimerId);
-  setRedwoodCold();
-  if (redwoodOpen) toggleRedwoodMenu();
+  Object.keys(quadrantStates).forEach(q => {
+    quadrantStates[q] = false;
+    updateQuadrantButton(q);
+  });
+  redwoodActive   = false;
+  redwoodQuadrant = null;
+  redwoodWrap.classList.remove('open');
 }
 
+/**
+ * Returns true if object o lies in quadrant q (one of "NW","NE","SW","SE")
+ */
+function inQuadrant(o, q) {
+  const dx = o.x - bullseye.x;
+  const dy = o.y - bullseye.y;
+  switch (q) {
+    case 'NW': return dx < 0 && dy < 0;
+    case 'NE': return dx > 0 && dy < 0;
+    case 'SW': return dx < 0 && dy > 0;
+    case 'SE': return dx > 0 && dy > 0;
+  }
+  return false;
+}
 
 // 2s assessment
 function initialAssess(q) {
   if (checkHotCondition(q)) {
     statusEl.textContent = `ADAFCO, SL, REDWOOD HOT Approved ${q} Quadrant`;
     setRedwoodHot(q);
-    // every 5 min re‑check
-    redwoodTimerId = setInterval(reAssess, 5 * 60 * 1000);
+    redwoodTimerId = setInterval(() => reAssess(q), 1 * 60 * 1000);
   } else {
     statusEl.textContent = `ADAFCO, SL, REDWOOD HOT Denied ${q} Quadrant`;
+    setRedwoodCold(q);
   }
 }
 
 // 5‑minute reassess
-function reAssess() {
-  if (!checkHotCondition(redwoodQuadrant)) {
+function reAssess(q) {
+  if (!checkHotCondition(q)) {
     clearInterval(redwoodTimerId);
-    statusEl.textContent = `ADAFCO, SL, REDWOOD COLD ${redwoodQuadrant} Quadrant`;
-    setRedwoodCold();
+    statusEl.textContent = `ADAFCO, SL, REDWOOD COLD ${q} Quadrant`;
+    setRedwoodCold(q);
   }
 }
 
@@ -615,23 +686,6 @@ function roePenaltyAllowed(track) {
   return !(redwoodActive && inQuadrant(track, redwoodQuadrant));
 }
 
-/* collapse & handle quadrant pick */
-redwoodMenu.querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const q = btn.dataset.q;
-    toggleRedwoodMenu();   // collapse
-    statusEl.textContent =
-      `SL, ADAFCO, Request REDWOOD HOT ${q} Quadrant`;
-    setTimeout(() => initialAssess(q), 2000);
-  });
-});
-
-/* call on level reset / game reset */
-function resetRedwood () {
-  clearInterval(redwoodTimerId);
-  setRedwoodCold();
-  if (redwoodOpen) toggleRedwoodMenu();
-}
 
 /**
  * Build `numGroups` of hostile tracks whose sizes sum to `totalHostiles`.
@@ -3297,7 +3351,42 @@ window.addEventListener('keydown', e => {
           setTimeout(() => {
             missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
           }, 2000);
-          scheduleImpactCheck(t);
+                 const interceptMs = scheduleImpactCheck(t);
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+// **NEW**: fire off the jink helper exactly as you do for single-track:
+       if (!t.friendly && !t.isTbm && !t.isCruise) {
+         const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+         if (Math.random() < jinkProb && interceptMs > 200) {
+          const leadTime = interceptMs - 5000;  // jink 5s before hit
+           setTimeout(() => {
+             const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+             t.heading = (t.heading + turn + 360) % 360;
+             t.isEvading = true;
+             setTimeout(() => {
+               t.isEvading = false;
+               t.heading   = bearing(t, bullseye);
+             }, 5000);
+           }, leadTime);
+         }
+       }
         }, delay);
       }
       // KILL

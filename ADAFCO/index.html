@@ -214,9 +214,122 @@
     /* shrink text between .5rem and .9rem based on viewport */
     font-size: clamp(0.5rem, 2.5vw, 0.9rem);
   }
+}/* ────────────────────────────────────────────────────────────────
+   ACTION BAR – bottom–right container for REDWOOD + FIREBALL
+───────────────────────────────────────────────────────────────── */
+#actionBar{
+  position:fixed;
+  bottom:3rem;
+  right:1rem;
+  display:flex;
+  align-items:flex-end;   /* keep bottoms aligned */
+  gap:.5rem;
+  z-index:10;
 }
 
+/* wrapper gives a local positioning context */
+#redwoodWrap{ position:relative; }
 
+/* main REDWOOD button – same footprint as FIREBALL */
+#redwoodBtn{
+  min-width:120px;
+  height:40px;
+  padding:0 .75rem;
+  display:flex;           /* perfect label centering */
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  transition:background .2s;
+}
+#redwoodBtn.cold{ background:var(--icc);  color:#000; }  /* green */
+#redwoodBtn.hot { background:var(--warn); color:#fff; }  /* red   */
+
+/* 2 × 2 quadrant grid – hidden by default, appears above the button */
+#redwoodMenu{
+  position:absolute;
+  bottom:100%;            /* tucks up against the button’s top edge */
+  left:0;
+  width:100%;
+  transform:translateY(-4px);  /* tiny gap */
+  background:#111;
+  padding:.4rem;
+  border-radius:6px 6px 0 0;
+  display:none;           /* collapsed */
+  grid-template-columns:repeat(2,1fr);
+  gap:4px;
+}
+/* show when wrapper has .open */
+#redwoodWrap.open #redwoodMenu{ display:grid; }
+
+/* quadrant squares */
+#redwoodMenu button{
+  height:40px;
+  border:none;
+  border-radius:4px;
+  background:#333;
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+}
+/* ─── FORCE FIREBALL TO MATCH REDWOOD ───────────────────────── */
+#fireballBtn{
+  /* kill any earlier “position: fixed” or odd offsets */
+  position: static !important;
+
+  /* identical footprint to #redwoodBtn */
+  width: 120px  !important;   /* keep in sync with REDWOOD */
+  height: 40px  !important;
+  padding: 0 .75rem !important;
+
+  /* same visual formatting guarantees centred label */
+  display: flex  !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 700 !important;
+
+  /* preserve your colour scheme */
+  background: var(--warn) !important;
+  color: #fff !important;
+
+  /* keep default border-radius / borderless look */
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer  !important;
+}
+/* ───────────────────────────────────────────────────────────────
+   SHRINK ACTION-BAR CONTROLS
+   (override must come after earlier #redwoodBtn / #fireballBtn)
+──────────────────────────────────────────────────────────────── */
+
+/* main buttons */
+#redwoodBtn,
+#fireballBtn{
+  width: 100px !important;   /* ↓ narrower  (was 120) */
+  height: 32px !important;   /* ↓ shorter   (was 40)  */
+  padding: 0 .65rem !important;
+  font-size: .9rem !important;   /* dial text down a hair */
+}
+
+/* quadrant squares */
+#redwoodMenu button{
+  height: 32px !important;   /* match main-button height */
+}
+/* in your <style> */
+    #redwoodMenu button.cold {
+  background: var(--icc);   /* green */
+  color: #000;
+}
+#redwoodMenu button.hot {
+  background: var(--warn);  /* red */
+  color: #fff;
+}
 
   </style>
 </head>
@@ -235,9 +348,23 @@
     <div id="feedback"></div>
   </header>
 
-  <button id="fireballBtn" disabled>FIREBALL</button>
-
-
+  <!-- Action bar (bottom-right) -->
+<div id="actionBar">
+    <div id="redwoodWrap">
+      <button id="redwoodBtn" class="cold">REDWOOD</button>
+      <div id="redwoodMenu">
+        <button data-q="NW">NW</button>
+        <button data-q="NE">NE</button>
+        <button data-q="SW">SW</button>
+        <button data-q="SE">SE</button>
+      </div>
+    </div>
+  
+    <button id="fireballBtn" disabled>FIREBALL</button>
+  </div>
+  
+  
+  
   <canvas id="scope"></canvas>
   
     <div id="helpOverlay">
@@ -418,6 +545,147 @@ let pendingEngagements = [];
 let missiles = [];   // track all in‑flight missile dots
 // alongside your `missiles = []`:
 let bombs = [];
+
+// — right after you grab your DOM refs — 
+const quadrantStates = {
+  NW: false,
+  NE: false,
+  SW: false,
+  SE: false
+};
+
+// helper to re‑paint one button:
+function updateQuadrantButton(q) {
+  const btn = redwoodMenu.querySelector(`button[data-q="${q}"]`);
+  if (!btn) return;
+  btn.classList.toggle('hot',  quadrantStates[q]);
+  btn.classList.toggle('cold', !quadrantStates[q]);
+}
+
+// collapse menu only if _all_ are cold:
+function collapseIfAllCold() {
+  if (!Object.values(quadrantStates).some(v => v)) {
+    redwoodWrap.classList.remove('open');
+  }
+}
+
+
+/* ──────────────────────────────────────────────────────────────
+   REDWOOD  – single source of truth
+──────────────────────────────────────────────────────────────── */
+const redwoodBtn  = document.getElementById('redwoodBtn');
+const redwoodWrap = document.getElementById('redwoodWrap');
+const redwoodMenu = document.getElementById('redwoodMenu');
+
+redwoodBtn.addEventListener('click', () => {
+  console.log('🔴 Redwood button clicked');
+  redwoodWrap.classList.toggle('open');
+});
+
+
+/* state flags */
+let redwoodOpen     = false;
+let redwoodActive   = false;
+let redwoodQuadrant = null;
+let redwoodTimerId  = null;
+
+/* master toggle (button click) */
+function toggleRedwoodMenu () {
+  redwoodOpen = !redwoodOpen;
+  redwoodWrap.classList.toggle('open', redwoodOpen);
+}
+redwoodBtn.addEventListener('click', toggleRedwoodMenu);
+
+/* turn COLD / HOT just manipulate button colour */
+function setRedwoodHot(q) {
+  redwoodActive     = true;
+  redwoodQuadrant   = q;
+  quadrantStates[q] = true;
+  updateQuadrantButton(q);
+}
+
+function setRedwoodCold(q) {
+  quadrantStates[q] = false;
+  updateQuadrantButton(q);
+  collapseIfAllCold();
+}
+
+
+/* — the rest of your existing HOT-assessment logic stays the same — */
+
+redwoodMenu.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const q = btn.dataset.q;
+    statusEl.textContent = `SL, ADAFCO, Request REDWOOD HOT ${q} Quadrant`;
+    setTimeout(() => initialAssess(q), 2000);
+  });
+});
+
+
+/* call on level reset / game reset */
+function resetRedwood () {
+  clearInterval(redwoodTimerId);
+  Object.keys(quadrantStates).forEach(q => {
+    quadrantStates[q] = false;
+    updateQuadrantButton(q);
+  });
+  redwoodActive   = false;
+  redwoodQuadrant = null;
+  redwoodWrap.classList.remove('open');
+}
+
+/**
+ * Returns true if object o lies in quadrant q (one of "NW","NE","SW","SE")
+ */
+function inQuadrant(o, q) {
+  const dx = o.x - bullseye.x;
+  const dy = o.y - bullseye.y;
+  switch (q) {
+    case 'NW': return dx < 0 && dy < 0;
+    case 'NE': return dx > 0 && dy < 0;
+    case 'SW': return dx < 0 && dy > 0;
+    case 'SE': return dx > 0 && dy > 0;
+  }
+  return false;
+}
+
+// 2s assessment
+function initialAssess(q) {
+  if (checkHotCondition(q)) {
+    statusEl.textContent = `ADAFCO, SL, REDWOOD HOT Approved ${q} Quadrant`;
+    setRedwoodHot(q);
+    redwoodTimerId = setInterval(() => reAssess(q), 1 * 60 * 1000);
+  } else {
+    statusEl.textContent = `ADAFCO, SL, REDWOOD HOT Denied ${q} Quadrant`;
+    setRedwoodCold(q);
+  }
+}
+
+// 5‑minute reassess
+function reAssess(q) {
+  if (!checkHotCondition(q)) {
+    clearInterval(redwoodTimerId);
+    statusEl.textContent = `ADAFCO, SL, REDWOOD COLD ${q} Quadrant`;
+    setRedwoodCold(q);
+  }
+}
+
+// >10 hostiles && no friendlies
+function checkHotCondition(q) {
+  const hostiles = tracks.filter(t =>
+    !t.destroyed && !t.friendly && inQuadrant(t, q)
+  ).length;
+  const anyFriendly = tracks.some(t =>
+    !t.destroyed && t.friendly && inQuadrant(t, q)
+  );
+  return hostiles > 10 && !anyFriendly;
+}
+
+// suppress ROE penalty inside HOT quadrant
+function roePenaltyAllowed(track) {
+  return !(redwoodActive && inQuadrant(track, redwoodQuadrant));
+}
+
 
 /**
  * Build `numGroups` of hostile tracks whose sizes sum to `totalHostiles`.
@@ -1256,8 +1524,10 @@ function impactDecision(track) {
       changeScore(-20, 'Fratricide! –20 points');
     } else {
       // outside geometry: birds trashed + ROE
+        // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
+  if ( roePenaltyAllowed(t) ) {
       changeScore(-6, 'Birds Trashed: –1; ROE Violation: –5');
-    }
+  }}
     track.destroyed = true;
     return;
   }
@@ -1309,6 +1579,8 @@ if (!track.isTbm && !track.isCruise) {
   );
   if (!hostilesLeft) {
     showLevelComplete();
+    resetRedwood();
+
   }
 
 } else {
@@ -3048,9 +3320,11 @@ window.addEventListener('keydown', e => {
 
               // ─── INSERT THE ROE PENALTY HERE ────────────────────────
       if (t.tag !== 'ENGAGE' && !t.everEngaged) {
+          // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
+  if ( roePenaltyAllowed(t) ) {
         changeScore(-5, 'ROE Violation: -5');
         t.everEngaged = true;
-      }
+      }}
         const delay = 2000 + Math.random() * 3000;
         setTimeout(() => {
           clearTimeout(coverTimer);
@@ -3077,7 +3351,42 @@ window.addEventListener('keydown', e => {
           setTimeout(() => {
             missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
           }, 2000);
-          scheduleImpactCheck(t);
+                 const interceptMs = scheduleImpactCheck(t);
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+// **NEW**: fire off the jink helper exactly as you do for single-track:
+       if (!t.friendly && !t.isTbm && !t.isCruise) {
+         const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+         if (Math.random() < jinkProb && interceptMs > 200) {
+          const leadTime = interceptMs - 5000;  // jink 5s before hit
+           setTimeout(() => {
+             const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+             t.heading = (t.heading + turn + 360) % 360;
+             t.isEvading = true;
+             setTimeout(() => {
+               t.isEvading = false;
+               t.heading   = bearing(t, bullseye);
+             }, 5000);
+           }, leadTime);
+         }
+       }
         }, delay);
       }
       // KILL
@@ -3094,6 +3403,8 @@ window.addEventListener('keydown', e => {
         );
         if (alive.length === 0) {
           showLevelComplete();
+          resetRedwood();
+
         } else {
           nextQueueTrack();
         }
@@ -3304,9 +3615,11 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
 
     // only penalize birds‑away if SL never requested ENGAGE
   if (t.tag !== 'ENGAGE' && !t.everEngaged) {
+      // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
+  if ( roePenaltyAllowed(t) ) {
     changeScore(-5, 'ROE Violation: -5');
     t.everEngaged = true;
-  }
+  }}
 
   // schedule the impact check (inside or outside will be decided there)
   scheduleImpactCheck(t);
@@ -3352,6 +3665,8 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
       if (mode === 'practice') {
         if (trackQueue.every(tr => tr.destroyed)) {
           showLevelComplete();
+          resetRedwood();
+
         } else {
           nextQueueTrack();
         }
@@ -3409,6 +3724,8 @@ function nextQueueTrack() {
   });
   if (hostiles.length === 0) {
     showLevelComplete();
+    resetRedwood();
+
     return;
   }
 
@@ -3462,6 +3779,8 @@ function finishEngage() {
   // if none → level complete
   if (remaining.length === 0) {
     showLevelComplete();
+    resetRedwood();
+
     return;
   }
   if (curTrack.mslTimer) clearTimeout(curTrack.mslTimer);
@@ -3534,6 +3853,8 @@ tracks = hostiles.concat(keepers);
 
 // ─── showLevelComplete: rebuild hostiles only, preserve friendlies & TBMs ─────────────────
 function showLevelComplete() {
+    resetRedwood();
+
   mode = 'paused';
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
