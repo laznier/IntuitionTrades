@@ -330,14 +330,64 @@
   background: var(--warn);  /* red */
   color: #fff;
 }
+.overlay {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.85); display:flex;
+  align-items:center; justify-content:center; z-index:2000;
+}
+.overlayBox {
+  background:#111; color:#f8f8f8; padding:2rem; border-radius:8px;
+  max-width:400px; text-align:center;
+}
+.overlayBox button {
+  margin-top:1rem; padding:.5rem 1rem; font-size:1rem;
+  background:var(--icc); color:#000; border:none; border-radius:4px;
+  cursor:pointer;
+}
+#modeSelectOverlay button { 
+  display:block; width:100%; margin:0.5rem 0;
+  padding:.75rem; font-size:1rem; 
+  background:var(--braa); color:#000; 
+  border:none; border-radius:4px; cursor:pointer;
+}
+#gameControls button {
+  margin:0 .25rem; padding:.3rem .6rem; font-size:1rem;
+  background: var(--icc); color:#000; border:none; border-radius:4px;
+  cursor:pointer;
+}
 
   </style>
 </head>
 <body>
-
+    <div id="disclaimerOverlay" class="overlay">
+        <div class="overlayBox">
+          <h2>Disclaimer</h2>
+          <p>
+            This simulator uses unclassified data only. Do NOT use any ranges, procedures
+            or contracts shown here for real mission planning. This software is not
+            endorsed by, nor affiliated with, the U.S. Department of Defense.
+          </p>
+          <button id="ackDisclaimer">I Understand</button>
+        </div>
+      </div>
+      
+      <div id="modeSelectOverlay" class="overlay" style="display:none;">
+        <div class="overlayBox">
+          <h2>Select Mode</h2>
+          <button id="btnBullseye">BULLSEYE Practice</button>
+          <button id="btnAirBattle">Fight Air Battle</button>
+        </div>
+      </div>
+      
   <header>
     <div id="controls">
-      <button id="practiceBtn">Practice Mode</button>
+        <div id="gameControls" style="display:none;">
+            <button id="pauseBtn">❚❚</button>
+            <button id="stepBtn">›</button>
+            <button id="ffBtn">››</button>
+            <button id="skipBtn">Next Level»</button>
+          </div>
+          
       <button id="tagsBtn">TAGS: OFF</button>
       <button id="compassBtn">Compass: OFF</button>
       <button id="mapBtn">Map</button>
@@ -480,6 +530,115 @@
 
   <div id="cursorLabel"></div>
   <script>
+
+  /* -------------------------------------------------------------
+     GLOBAL RUN-STATE FLAGS – must be declared before animate()
+  ------------------------------------------------------------- */
+  let paused       = false;   // true ⇒ physics/update loop is frozen
+  let fastForward  = false;   // true while the ›› button is held
+  const FF_FACTOR  = 4;       // 4× speed-up when fast-forwarding
+
+  // *** 1) Capture all the new UI elements ***
+  const disclaimer  = document.getElementById('disclaimerOverlay');
+  const ackBtn      = document.getElementById('ackDisclaimer');
+  const modeSelect  = document.getElementById('modeSelectOverlay');
+  const btnBullseye = document.getElementById('btnBullseye');
+  const btnAir      = document.getElementById('btnAirBattle');
+  const controls    = document.getElementById('gameControls');
+  const pauseBtn = document.getElementById('pauseBtn');
+const stepBtn  = document.getElementById('stepBtn');
+const ffBtn    = document.getElementById('ffBtn');
+const skipBtn  = document.getElementById('skipBtn');
+
+  
+
+  /* ─── GAME-TIME CONTROLS (Pause / Step / FF / Skip) ──────────────────── */
+
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? '▶' : '❚❚';
+  });
+
+// speed factors
+const DOUBLE_FACTOR = 2;
+const QUAD_FACTOR   = 4;
+
+
+let fastFactor  = 1;       // NEW – 1 ×, 2 ×, or 4 ×
+
+// ›  (2 ×) while you hold it
+stepBtn.addEventListener('mousedown',  () => { fastForward = true; fastFactor = DOUBLE_FACTOR; });
+stepBtn.addEventListener('touchstart', () => { fastForward = true; fastFactor = DOUBLE_FACTOR; }, {passive:true});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
+  stepBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
+);
+
+// ›› (4 ×) while you hold it
+ffBtn .addEventListener('mousedown',  () => { fastForward = true; fastFactor = QUAD_FACTOR; });
+ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = QUAD_FACTOR; }, {passive:true});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
+  ffBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
+);
+/* ── dynamic label / action ──────────────────────────────────────────── */
+function refreshSkipBtn () {
+  if (mode === 'free') {                       // Bullseye practice
+    skipBtn.textContent = 'Fight Air Battle';
+    skipBtn.onclick     = startPracticeMode;   // jump into battle
+  } else {                                     // Air-Battle practice
+    skipBtn.textContent = 'Next Level»';
+    skipBtn.onclick     = () => showLevelComplete();
+  }
+}
+  // *** 2) Helper to show in‑game controls ***
+  function onGameStart() {
+    controls.style.display = 'block';
+    // hide whatever “Practice” button you once had:
+    const oldPractice = document.getElementById('practiceBtn');
+    if (oldPractice) oldPractice.style.display = 'none';
+  }
+
+  // *** 3) Free‑mode = unstructured “Bullseye Practice” ***
+  function startFreeMode() {
+    mode = 'free';
+    resize.didInit = false;   // force rebuild of statics
+    resize();                 // lays out canvas, statics, etc.
+    initTracks();             // your routine that populates `tracks`
+    updateVisibility();       // let your 10 s persistence run
+    onGameStart();
+    refreshSkipBtn();          // ← update label / action
+  }
+
+  // *** 4) Air‑Battle = your existing Practice‑mode logic ***
+  function startPracticeMode() {
+    mode = 'practice';
+    round = 0; score = 0;     // reset score
+    // you can either call nextQueueTrack() directly...
+    nextQueueTrack();
+    // …or just invoke your old button handler:
+    // document.getElementById('practiceBtn').click();
+    onGameStart();
+    refreshSkipBtn();          // ← update label / action
+  
+
+  // one initial call so the button is correct on page-load
+ refreshSkipBtn();
+  }
+  // *** 5) Wire up the overlays ***
+  ackBtn.addEventListener('click', () => {
+    disclaimer.style.display = 'none';
+    modeSelect.style.display = 'flex';
+  });
+
+  btnBullseye.addEventListener('click', () => {
+    modeSelect.style.display = 'none';
+    startFreeMode();
+  });
+
+  btnAir.addEventListener('click', () => {
+    modeSelect.style.display = 'none';
+    startPracticeMode();
+  });
+
     // ─── CONFIG & STATE ─────────────────────────────────────────────────
     const CFG = {
       trackCount: 10,
@@ -2625,9 +2784,11 @@ setInterval(updateVisibility,1000);
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
   function animate(now) {
   // ─── 1) compute delta ─────────────────────────────────────
-  const dt = (now - lastTime) / 1000;
+   let dt = (now - lastTime) / 1000;
   lastTime = now;
 
+    if (paused)           dt = 0;                 // freeze when paused
+    else if (fastForward) dt *= fastFactor;       // scale by 2 × or 4 ×
   // ─── 2) update track positions, spawns, etc. ────────────
   updateTracks(dt);
 
@@ -2889,6 +3050,11 @@ if (bgImg.complete) {
   drawSelectBox();  
 
   requestAnimationFrame(animate);
+}
+// one-frame tick used by the “Step” button
+function gameStep() {
+  const fakeNow = performance.now();
+  animate(fakeNow);
 }
 requestAnimationFrame(animate);
 
@@ -3757,37 +3923,11 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
   }
 });
 
-const practiceBtn = document.getElementById('practiceBtn');
 
 
     // ─── PRACTICE MODE INITIALIZER & QUEUE ───────────────────────────────
 let trackQueue = [], queueIndex = 0, negatedStack = [];
 
-document.getElementById('practiceBtn').onclick = function(){
-  if (mode === 'free' || mode === 'gameover') {
-    // Start practice
-    mode = 'practice';
-    round = 0;
-    score = 0;
-    this.textContent = 'Free Mode';
-    statusEl.textContent = '';
-
-    // Initialize queue
-    trackQueue = tracks.filter(t => !t.destroyed);
-    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
-    queueIndex = 0;
-    negatedStack = [];
-
-    nextQueueTrack();
-  } else {
-    // Exit practice
-    mode = 'free';
-    this.textContent = 'Practice Mode';
-    statusEl.textContent = 'Free mode';
-    feedbackEl.textContent = '';
-    clearTimeout(coverTimer);
-  }
-};
 
 // ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────────
 function nextQueueTrack() {
@@ -4166,7 +4306,7 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
+    </script>
 
-  </script>
 </body>
 </html>
