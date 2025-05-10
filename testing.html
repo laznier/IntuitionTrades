@@ -1075,12 +1075,16 @@ function resize () {
   const hdr   = document.querySelector('header').offsetHeight;
   worldHeight = canvas.height = window.innerHeight - hdr;
 
+  // Build statics only once
   if (!resize.didInit) {
     buildStatics();
     resize.didInit = true;
-    fitMobileView();           // first‑time mobile fit
   }
+
+  // 👉 always recenter / rescale for the current viewport
+  fitMobileView();
 }
+
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
