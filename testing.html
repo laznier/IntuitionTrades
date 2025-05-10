@@ -663,43 +663,51 @@ ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = Q
 ───────────────────────────────────────────────────────────── */
 
 /* ===== CONFIG ===== */
-const BE_ROUNDS   = 10;        // questions per level
-const BE_START_MS = 10_000;    // L-1 time limit
-const BE_STEP_MS  = 2_000;     // subtract per level
-const BE_LEVELS   = 5;         // total timed levels
+const BE_ROUNDS   = 10;                         // 10 hostiles per level
+const BE_TIME_MS  = [20_000, 15_000, 10_000, 5_000]; // level limits
+const BE_LEVELS   = BE_TIME_MS.length;          // = 4
+
 
 /* ===== STATE ===== */
 let beLevel     = 1;
 let beRound     = 0;
-let beScore     = 0;
+let beLevelScore = 0;       // NEW – resets every level
+let beTotalScore = 0;       // NEW – accumulates across all levels
 let beTarget    = null;
-let beTimerMs   = BE_START_MS;
+let beTimerMs   = BE_TIME_MS[0];        // 20 000 ms for Level 1
 let beTimeoutId = null;
 let beTickerId  = null;
 let beStartT    = null;
 let beSumT      = 0;           // cumulative reaction time this level
+let beActive    = false;       // ⇐ true only when we are listening for hits
+const beHistory = [];          // store {level, hits, avg} for summary
+
+/* helper: build exactly ten hostiles all inside current radar cover */
+function rebuildBullseyeTracks () {
+  // keep friendlies / TBMs if any, remove old hostiles
+  tracks = tracks.filter(t => t.friendly || t.isTbm || t.isCruise);
+
+  while (tracks.filter(t => !t.friendly && !t.destroyed).length < 10) {
+    const h = spawnVisibleHostile();        // helper from earlier patch
+    if (!h) break;                          // safety
+  }
+}
+
 const beAvgs    = [];          // avg time per level (for improvement)
 
 /* ===== DOM ===== */
 const timerEl   = document.getElementById('timerDisplay');
 const menuBtn   = document.getElementById('btnBullseye'); // existing button
 
-/* ====== ENTRY POINT – called from the overlay menu ===== */
-function startBullseyePractice () {
-  mode          = 'free';          // reuse your “free” mode flag
-  beLevel       = 1;
-  beScore       = 0;
-  beAvgs.length = 0;
-  buildStatics();                  // fresh statics / tracks
-  initTracks();
-  beginBeLevel();
-}
+
 
 /* --------------------------------------------------------- */
 function beginBeLevel () {
   beRound   = 0;
   beSumT    = 0;
-  beTimerMs = Math.max(2_000, BE_START_MS - (beLevel-1)*BE_STEP_MS);
+  beTimerMs = BE_TIME_MS[beLevel - 1];      // 20→15→10→5
+  beActive  = true;                              /* enable hit-test */
+  rebuildBullseyeTracks();                  /* new set of ten */
   timerEl.textContent = (beTimerMs/1000).toFixed(1)+' s';
   nextBeRound();
 }
@@ -728,6 +736,7 @@ function nextBeRound () {
 
   // Level finished?
   if (beRound >= BE_ROUNDS) {
+    beActive = false;            /* disable hit-test until next level */
     finishBeLevel();
     return;
   }
@@ -772,32 +781,41 @@ function onBeSuccess () {
   clearInterval(beTickerId);
   const rt = Date.now() - beStartT;
   beSumT  += rt;
-  beScore += 1;
+  beLevelScore += 1;
+  updateScoreDisplay();
   feedbackEl.textContent = `+1  (${(rt/1000).toFixed(2)} s)`;
   nextBeRound();
 }
 
 function onBeTimeout () {
   clearInterval(beTickerId);
-  beScore -= 1;
+  beLevelScore -= 1;
+  updateScoreDisplay();   
   feedbackEl.textContent = '-1  (Timed out)';
   nextBeRound();
 }
 
 function finishBeLevel () {
-  // store average RT
-  const avg = beSumT / BE_ROUNDS;
+  /// store average RT
+ const avg = beSumT / BE_ROUNDS;
   beAvgs.push(avg);
+  beHistory.push({ level: beLevel, hits: beLevelScore, avg });
+
+  // accumulate into the grand total
+  beTotalScore += beLevelScore;
 
   // build overlay
   const ov = document.createElement('div');
   ov.className = 'overlay';
+  // still show _this level’s_ score out of 10
   ov.innerHTML = `
     <div class="overlayBox">
       <h2>Level ${beLevel} Complete</h2>
-      <p>Score this level: <strong>${beScore}</strong></p>
-      <p>Avg reaction: ${avg.toFixed(2)} s</p>
-      <button id="beNext">${beLevel < BE_LEVELS ? 'Next Level »' : 'Show Summary'}</button>
+      <p>Score: <strong>${beLevelScore}/${BE_ROUNDS}</strong></p>
+      <p>Avg reaction: ${(avg/1000).toFixed(2)} s</p>
+      <button id="beNext">
+        ${beLevel < BE_LEVELS ? 'Next Level »' : 'Show Summary'}
+      </button>
     </div>`;
   document.body.appendChild(ov);
 
@@ -806,6 +824,7 @@ function finishBeLevel () {
     ov.remove();
     if (beLevel < BE_LEVELS) {
       beLevel++;
+      beActive = true;          /* re-enable hit-test for new level */
       beginBeLevel();
     } else {
       showBeSummary();
@@ -814,6 +833,33 @@ function finishBeLevel () {
 }
 
 function showBeSummary () {
+    beActive = false;
+
+  /* Build a very small performance chart on the game canvas */
+  const chartH = 60, chartW = 180, pad = 8;
+  const maxT   = Math.max(...beHistory.map(o => o.avg));
+  ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,chartW+pad*2,chartH+pad*2);
+    ctx.translate(pad, pad);
+    ctx.strokeStyle = '#0ea5e9';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    beHistory.forEach((o,i)=>{
+      const x = (i/(BE_LEVELS-1))*chartW;
+      const y = chartH - (o.avg / maxT)*chartH;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px monospace';
+    beHistory.forEach((o,i)=>{
+      const x = (i/(BE_LEVELS-1))*chartW;
+      const y = chartH + 12;
+      ctx.fillText(`L${o.level}`, x-6, y);
+    });
+  ctx.restore();
+
   let improvement = 0;
   const lines = beAvgs.map((a,i)=>{
     if(i){ improvement += beAvgs[i-1]-a; }
@@ -825,13 +871,14 @@ function showBeSummary () {
   ov.innerHTML = `
     <div class="overlayBox">
       <h2>Timed Practice Summary</h2>
-      <p>Total score: <strong>${beScore}</strong></p>
+      <p>Total score: <strong>${beTotalScore}/${BE_ROUNDS*BE_LEVELS}</strong></p>
       <p>${lines}</p>
       <p><em>Overall improvement: ${improvement.toFixed(2)} s</em></p>
       <button id="beClose">Close</button>
     </div>`;
   document.body.appendChild(ov);
   ov.querySelector('#beClose').onclick = () => ov.remove();
+
 }
 
 /* ---------------------------------------------------------
@@ -839,10 +886,21 @@ function showBeSummary () {
    (Add this once near the end of your pointerup / click logic)
 --------------------------------------------------------- */
 function checkBeSelection () {
-  if (mode !== 'free' || !beTarget || !selectedTrack) return;
+    if (!beActive || mode !== 'free' || !beTarget || !selectedTrack) return;
   if (selectedTrack === beTarget) onBeSuccess();
 }
 window.addEventListener('pointerup', checkBeSelection);
+
+
+
+function startBullseyePractice() {
+  mode          = 'free';
+  beLevelScore  = 0;      // reset the Bullseye score
+  beTotalScore  = 0;      // if you want to track total over levels
+  // …rest unchanged…
+  updateScoreDisplay();
+  beginBeLevel();
+}
 
 /* ---------------------------------------------------------
    WIRE THE OVERLAY MENU BUTTON
@@ -852,7 +910,6 @@ btnBullseye.onclick = () => {
   modeSelect.style.display = 'none';
   startBullseyePractice();
 };
-
 
   /* ————— Skip-button label toggler ————— */
 function refreshSkipBtn() {
@@ -887,10 +944,10 @@ function refreshSkipBtn() {
     modeSelect.style.display = 'flex';
   });
 
-  btnBullseye.addEventListener('click', () => {
-    modeSelect.style.display = 'none';
-    startFreeMode();
-  });
+btnAir.addEventListener('click', () => {
+  modeSelect.style.display = 'none';
+  startPracticeMode();
+});
 
   btnAir.addEventListener('click', () => {
     modeSelect.style.display = 'none';
@@ -3144,7 +3201,7 @@ setInterval(updateVisibility,1000);
   updateTracks(dt);
 
   // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ─────────
-{
+  if (mode === 'practice') {      // ← run this block ONLY in Air-Battle
   const icc = statics.find(s => s.type === 'icc');
   pendingEngagements = pendingEngagements.filter(trk => {
     // drop if destroyed or re‑tagged
@@ -4774,8 +4831,13 @@ function showGameOver(reason) {
 
     //help with scoring TBMs
     const scoreEl = document.getElementById('score');
-function updateScoreDisplay() {
-  scoreEl.textContent = `Score: ${score}`;
+    function updateScoreDisplay() {
+  // In Bullseye (“free”) show the Bullseye score,
+  // otherwise show the main “score” for Air Battle.
+  const val = (mode === 'free')
+    ? beLevelScore
+    : score;
+  scoreEl.textContent = `Score: ${val}`;
 }
 // initialize
 updateScoreDisplay();
