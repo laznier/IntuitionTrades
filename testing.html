@@ -868,6 +868,7 @@ function refreshSkipBtn() {
   function startPracticeMode() {
     mode = 'practice';
     round = 0; score = 0;     // reset score
+    fitMobileView();          // keep mobile tap alignment perfect
     // you can either call nextQueueTrack() directly...
     nextQueueTrack();
     // …or just invoke your old button handler:
@@ -4447,6 +4448,7 @@ tracks = hostiles.concat(keepers);
     const practiceBtn = document.getElementById('practiceBtn');
    if (practiceBtn) practiceBtn.textContent = 'Free Mode';
 
+   fitMobileView();      // recalc scale/offX/offY for the new level ✅
   // 5) Start
   nextQueueTrack();
 }
