@@ -550,7 +550,25 @@ const stepBtn  = document.getElementById('stepBtn');
 const ffBtn    = document.getElementById('ffBtn');
 const skipBtn  = document.getElementById('skipBtn');
 
-  
+
+// ─── PER-LEVEL METRICS ─────────────────────────────────────────────
+const STATS = {
+  missilesUsed : { pac2:0, pac3:0, mse:0, aim120:0 },
+    engagementsGood : 0,
+    engagementsBad  : 0,
+  assetsHit    : 0,
+  roeViolations: 0,
+  fratricide   : 0,
+  radarDowntime: 0      // seconds
+};
+
+function resetStats () {
+  for (const k in STATS.missilesUsed) STATS.missilesUsed[k] = 0;
+  STATS.engagementsGood = STATS.engagementsBad =
+  STATS.assetsHit      = STATS.roeViolations =
+  STATS.fratricide     = STATS.radarDowntime = 0;
+}
+
 
   /* ─── GAME-TIME CONTROLS (Pause / Step / FF / Skip) ──────────────────── */
 
@@ -1188,6 +1206,8 @@ statics
   const now   = Date.now();
   const label = getFuLabel(fu);
 
+  
+
   // 1) If currently reloading → block
   if (now < fu.disabledUntilFu) {
     const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
@@ -1227,6 +1247,8 @@ statics
   fu.ammo[chosen]         -= 2;
   fu.engagementsRemaining -= 1;
 
+  // stats
+  STATS.missilesUsed[chosen] += 2;
   // 5) Warnings at thresholds
   if (fu.engagementsRemaining === 10) {
     feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
@@ -1516,6 +1538,7 @@ function engageTbmWithNASAMS(tbm) {
 
     // 3) Consume two AIM‑120s then launch two missiles, 1s apart
   NASAMSMissiles -= 2;
+  STATS.missilesUsed.aim120 += 2;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
       if (!tbm.destroyed) {
@@ -1683,11 +1706,18 @@ function impactDecision(track) {
     // only inside geometry is fratricide
     if (inRing || inAnyWedgeGeom) {
       changeScore(-20, 'Fratricide! –20 points');
+      STATS.fratricide++;
     } else {
       // outside geometry: birds trashed + ROE
         // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
       changeScore(-6, 'Birds Trashed: –1; ROE Violation: –5');
+     
+       if (!t._outcomeLogged) {
+   t._outcomeLogged = true;
+   STATS.engagementsBad++;
+STATS.roeViolations++;
+  }
   }}
     track.destroyed = true;
     return;
@@ -1710,6 +1740,10 @@ if (covering.length &&
 if (inRing || inAnyWedgeGeom) {
   // 1) score the kill
   changeScore(1, `Track ${track.id} Vanished: +1`);
+    if (!track._outcomeLogged) {
+    track._outcomeLogged = true;
+    STATS.engagementsGood++;
+  }
 
 // 2) fratricide check: for non‑TBM, non‑Cruise kills
 if (!track.isTbm && !track.isCruise) {
@@ -1753,7 +1787,11 @@ if (!track.isTbm && !track.isCruise) {
 
 /** Apply the trashed penalty & revert to ENGAGE at current position. */
 function markShotTrashed(t) {
-  changeScore(-1, 'Birds Trashed: -1 point');
+  changeScore(-1, 'BIRDS TRASHED: -1 point');
+  if (!t._outcomeLogged) {
+   t._outcomeLogged = true;
+    STATS.engagementsBad++;
+  }
   t.tag           = 'ENGAGE';
   t.tagTime       = Date.now();
   t.everEngaged   = true;
@@ -2631,6 +2669,7 @@ if (o.isTbm) {
          if (!o.cratered && nmDist <= 1) {
         o.cratered = true;
         changeScore(-5, 'ADAFCO, TD, CRATER at BULLSEYE -5');
+        +STATS.assetsHit++;
         updateScoreDisplay();
         o.destroyed = true;
         return;    // skip any further per‑track logic
@@ -3489,6 +3528,10 @@ window.addEventListener('keydown', e => {
         const quadrant = getQuadrant(multiSelect[0]);  // assume same quadrant
         statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
         t.tag     = 'AWAY';
+          if (!t._engagementLogged) {          // first time this track is engaged
+    t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
         t.tagTime = Date.now();
 
               // ─── INSERT THE ROE PENALTY HERE ────────────────────────
@@ -3496,6 +3539,7 @@ window.addEventListener('keydown', e => {
           // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
         changeScore(-5, 'ROE Violation: -5');
+        STATS.roeViolations++;
         t.everEngaged = true;
       }}
         const delay = 2000 + Math.random() * 3000;
@@ -3730,6 +3774,10 @@ if (key === 'h') {
 
   // 0.5 Immediate W feedback
    t.tag     = 'AWAY';
+     if (!t._engagementLogged) {          // first time this track is engaged
+   t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
    t.tagTime = Date.now();
    // delay between 2–5 seconds
    const delay = 2000 + Math.random() * 3000;
@@ -3863,6 +3911,7 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
       // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
     changeScore(-5, 'ROE Violation: -5');
+    STATS.roeViolations++;
     t.everEngaged = true;
   }}
 
@@ -4041,6 +4090,7 @@ function finishEngage() {
   score            = 0;
   level            = lv;
   speedMultiplier  = 1 + 0.1 * (lv - 1);
+  resetStats();               // ← add this line
 
    // ── Reset NASAMS ───────────────────────────────────────────────
  NASAMSMissiles      = 6;
@@ -4070,22 +4120,66 @@ tracks = hostiles.concat(keepers);
   nextQueueTrack();
 }
 
-// ─── showLevelComplete: rebuild hostiles only, preserve friendlies & TBMs ─────────────────
-function showLevelComplete() {
-    resetRedwood();
+function showReviewOverlay () {
+  const r = document.createElement('div');
+  r.className = 'overlay';
+  r.innerHTML = `
+    <div class="overlayBox" style="max-width:450px;">
+      <h2>Level&nbsp;${level} Debrief</h2>
+      <pre style="text-align:left; font-size:0.9rem;">
+Missiles fired
+  PAC-2 : ${STATS.missilesUsed.pac2}
+  PAC-3 : ${STATS.missilesUsed.pac3}
+  MSE   : ${STATS.missilesUsed.mse}
+  AIM-120: ${STATS.missilesUsed.aim120}
 
+Effective engagements : ${STATS.engagementsGood}
+Ineffective engagements: ${STATS.engagementsBad}
+
+Asset impacts   : ${STATS.assetsHit}
+ROE violations  : ${STATS.roeViolations}
+Fratricide      : ${STATS.fratricide}
+Radar downtime  : ${(STATS.radarDowntime/60)|0} min
+      </pre>
+      <button id="closeReview">Close</button>
+    </div>`;
+  document.body.appendChild(r);
+  document.getElementById('closeReview').onclick = () => r.remove();
+}
+
+function showLevelComplete () {
   mode = 'paused';
   clearTimeout(coverTimer);
-  clearTimeout(killTimer);
 
-  // show level overlay
+  // 1) decide pass / fail
+  const pass = score >= 0;
+
+  // 2) overlay markup
   const ov = document.createElement('div');
   ov.id = 'levelOverlay';
   ov.innerHTML = `
     <div id="levelBox">
-      <h2>Level ${level} Completed!</h2>
+      <h2>
+        Level&nbsp;${level}&nbsp;—
+        ${pass ? 'Mission&nbsp;Success' : 'Mission&nbsp;Fail'}
+      </h2>
+      <p>Score: ${score}</p>
+      <button id="nextBtn">${pass ? 'Next&nbsp;Level' : 'Retry&nbsp;Level'}</button>
+      <button id="reviewBtn">Review&nbsp;Data</button>
+      <button id="retryGameBtn">Try&nbsp;Again</button>
     </div>`;
   document.body.appendChild(ov);
+
+  // 3) wiring
+  document.getElementById('nextBtn').onclick = () => {
+    ov.remove();
+    if (pass) level++;          // advance only on success
+    setupLevel(level);
+  };
+
+  document.getElementById('retryGameBtn').onclick = () => location.reload();
+
+  document.getElementById('reviewBtn').onclick = () => showReviewOverlay();
 
   setTimeout(() => {
     ov.remove();
@@ -4159,8 +4253,10 @@ function showLevelComplete() {
       const s        = rads[Math.floor(Math.random() * rads.length)];
       // disable it for 5 minutes
       s.disabledUntil = then + 5 * 60 * 1000;
+      STATS.radarDowntime += 5*60;
       // schedule next allowed outage 2 min after this one ends
       nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
+      
 
       // notify the user
       const msg = 'ADAFCO, TD, system reset, launcher down for 5 minutes';
@@ -4199,7 +4295,7 @@ updateVisibility();            // ensure no flash on level load
     mode = 'practice';
     nextQueueTrack();
 
-  }, 2000);
+  }, 300000);
 }
 
 
