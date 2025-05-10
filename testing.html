@@ -1338,7 +1338,7 @@ function updateMultiSelect() {
     multiSelect = tracks.filter(t => {
      if (!isTrackVisible(t)) return false; // new unified one
     const sx = (t.x - offX) * scale;
-    const sy = (t.y - offY) * scale;
+    sy = (t.y - offY) * scale - 6 * scale;   // ← raise hit-point ↑
     return sx >= left && sx <= right && sy >= top && sy <= bottom;
   });
 }
@@ -3411,19 +3411,31 @@ requestAnimationFrame(animate);
 
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
-    function storeMouse(e) {
-      const rect = canvas.getBoundingClientRect();
-      let pageX = 'pageX' in e ? e.pageX : e.clientX;
-      let pageY = 'pageY' in e ? e.pageY : e.clientY;
-      mouse.sx = pageX - rect.left;
-      mouse.sy = pageY - rect.top;
-      mouse.px = pageX;
-      mouse.py = pageY;
-      const w = scrToWorld(mouse.sx, mouse.sy);
-      mouse.wx = w.x;
-      mouse.wy = w.y;
-      updateCursorLabel();
-    }
+    function storeMouse(ev) {
+  const rect = canvas.getBoundingClientRect();
+
+  /* always work in viewport (client) pixels */
+  let cx, cy;
+  if (ev.clientX != null) {                // Pointer / Mouse
+    cx = ev.clientX;
+    cy = ev.clientY;
+  } else if (ev.touches && ev.touches.length) { // Touch
+    cx = ev.touches[0].clientX;
+    cy = ev.touches[0].clientY;
+  } else {
+    return;                                // unexpected event object
+  }
+
+  mouse.sx = cx - rect.left;
+  mouse.sy = cy - rect.top;
+  mouse.px = cx;
+  mouse.py = cy;
+
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x;
+  mouse.wy = w.y;
+  updateCursorLabel();
+}
 
     //let lastTap = null;                                   // ⬅️ remembers last canvas tap
     canvas.addEventListener('touchstart', e=>{
@@ -3450,7 +3462,7 @@ requestAnimationFrame(animate);
         offX=pinch.center.x-cx/scale;
         offY=pinch.center.y-cy/scale;
       } else if(e.touches.length===1){
-        storeMouse(e.touches[0]);
+        storeMouse(e);
         if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
       }
     },{passive:false});
@@ -3651,10 +3663,13 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
     // ─── PICK-OBJECT helper ──────────────────────────────
     function pickObject() {
   // Try selecting an air track under the mouse
+    const HIT_R = 10;             // world-px radius
+  const Y_OFF = 6;              // raise sensor 6 px in world coords
+
   selectedTrack = tracks.find(t => {
-    const sx = (t.x - offX) * scale,
-          sy = (t.y - offY) * scale;
-    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+    const dx = mouse.wx - t.x;
+    const dy = mouse.wy - (t.y - Y_OFF);
+    return Math.hypot(dx, dy) < HIT_R;
   }) || null;
 
   if (selectedTrack) {
@@ -3750,9 +3765,11 @@ canvas.addEventListener('contextmenu', e => {
 
   // Try picking an air track for right selection
   selectedTrack2 = tracks.find(t => {
-    const sx = (t.x - offX) * scale,
-          sy = (t.y - offY) * scale;
-    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+    const HIT_R = 10;
+    const Y_OFF = 6;
+    const dx = mouse.wx - t.x;
+    const dy = mouse.wy - (t.y - Y_OFF);
+    return Math.hypot(dx, dy) < HIT_R;
   }) || null;
 
   if (selectedTrack2) {
