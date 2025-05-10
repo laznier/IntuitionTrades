@@ -563,7 +563,8 @@ const STATS = {
   assetsHit    : 0,
   roeViolations: 0,
   fratricide   : 0,
-  radarDowntime: 0      // seconds
+  radarDowntime: 0,          // seconds
+  impacts      : []          // ← NEW – list of what got hit
 };
 
 function resetStats () {
@@ -571,6 +572,7 @@ function resetStats () {
   STATS.engagementsGood = STATS.engagementsBad =
   STATS.assetsHit      = STATS.roeViolations =
   STATS.fratricide     = STATS.radarDowntime = 0;
+  STATS.impacts.length = 0;
 }
 
 
@@ -884,6 +886,31 @@ function roePenaltyAllowed(track) {
   return !(redwoodActive && inQuadrant(track, redwoodQuadrant));
 }
 
+function showLogsOverlay(parent) {
+  parent.style.display = 'none';               // hide the menu
+
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.innerHTML = `
+    <div class="overlayBox" style="max-width:600px; max-height:80vh; overflow:auto;">
+      <h2>Mission Logs</h2>
+      <pre style="text-align:left; font-family:monospace;"
+           id="missionLogPre"></pre>
+      <button id="closeLogs">Close</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // dump the log
+  const pre  = ov.querySelector('#missionLogPre');
+  pre.textContent = MISSION_LOG
+    .map(o => `[${o.z}] ${o.msg}`)
+    .join('\n');
+
+  ov.querySelector('#closeLogs').onclick = () => {
+    ov.remove();
+    parent.style.display = 'flex';             // bring the menu back
+  };
+}
 
 /**
  * Build `numGroups` of hostile tracks whose sizes sum to `totalHostiles`.
@@ -1217,6 +1244,26 @@ statics
     }
   });
 }
+
+/* ─── MISSION LOG (auto-captured) ───────────────────────────────── */
+const MISSION_LOG = [];            // { z:'HH:MM:SSZ', msg:'…' }
+
+function recordLog(msg) {
+  if (!msg) return;                // ignore blanks
+  const z = new Date().toISOString().slice(11, 19) + 'Z';
+  MISSION_LOG.push({ z, msg });
+}
+
+/* 1 observer instance that we reuse for both elements */
+const logObserver = new MutationObserver(muts => {
+  muts.forEach(m => recordLog(m.target.textContent.trim()));
+});
+
+/* start watching both on-screen “chat” areas */
+logObserver.observe(statusEl,   { childList:true, subtree:true, characterData:true });
+logObserver.observe(feedbackEl, { childList:true, subtree:true, characterData:true });
+
+
 /**
  * Decide which missile type to fire (based on range), consume 2 rounds,
  * decrement engagementsRemaining, and handle reload warnings/outage.
@@ -1558,7 +1605,7 @@ function engageTbmWithNASAMS(tbm) {
 
     // 3) Consume two AIM‑120s then launch two missiles, 1s apart
   NASAMSMissiles -= 2;
-  STATS.missilesUsed.aim120 += 2;
+  STATS.missilesUsed.aim120 -= 2;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
       if (!tbm.destroyed) {
@@ -2477,10 +2524,14 @@ function drawRubber() {
       if (b.target.system === 'TPS‑75') {
         changeScore(-10, 'CREW, SL, TPS‑75 was damaged. Loss of sensor coverage for 10 min.');
         b.target.disabledUntil = now + 10 * 60 * 1000;
+         STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push('TPS-75');
       } else if (b.target.system === 'MPQ‑53') {
         const quad = getQuadrant({ x: b.target.x, y: b.target.y });
         changeScore(-7, `ADAFCO, ICC, ${quad} radar and one launcher damaged. Down for 10 min.`);
         b.target.disabledUntil = now + 10 * 60 * 1000;
+         STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push(`${getFuLabel(b.target)} Radar`);
       // ➋ NEW – find the paired FU and remove ammo
   const fu = statics
     .filter(s => s.type === 'fu')
@@ -2492,6 +2543,7 @@ function drawRubber() {
 } else if (b.target.type === 'fu') {
   // bomb hit a launcher directly → just drain ammo
   damageLauncherAmmo(b.target);
+  STATS.impacts.push(`${getFuLabel(b.target)}`);
 
       }
       b.expire = 0; // remove
@@ -2632,6 +2684,8 @@ missiles.forEach(m => {
       changeScore(pts, msg);
       // disable for 10 min
       tgt.disabledUntil = Date.now() + 10*60*1000;
+       STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push('TPS-75');
     } else {
       // non‑radar static
       changeScore(-10, `Crew, SL, Quail Impact ${tgt.id}`);
@@ -2639,6 +2693,7 @@ missiles.forEach(m => {
     /* ammo knock-down ---------------------------------------------- */
     if (tgt.type === 'fu') {
   damageLauncherAmmo(tgt);   // launcher or NASAMS takes the ammo loss
+   STATS.impacts.push(`${getFuLabel(tgt)}`);
 }
     // remove the cruise missile track
     o.destroyed = true;
@@ -2690,6 +2745,7 @@ if (o.isTbm) {
         o.cratered = true;
         changeScore(-5, 'ADAFCO, TD, CRATER at BULLSEYE -5');
         +STATS.assetsHit++;
+        STATS.impacts.push('CRATER at BULLSEYE');
         updateScoreDisplay();
         o.destroyed = true;
         return;    // skip any further per‑track logic
@@ -3816,6 +3872,7 @@ const distFu = distNm(fu, t);
 if (fu.id === 'NASAMS') {
   // NASAMS uses checkNASAMSStatus (unchanged)
   if (checkNASAMSStatus(inNASAMSRing)) return;
+  STATS.missilesUsed.aim120 += 2;   //  ← add this
 } else {
   // Patriot uses our new mixed‑mag logic
   if (!processPatriotEngagement(fu, distFu)) return;
@@ -4103,13 +4160,15 @@ function finishEngage() {
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
   clearTimeoutAnyPendingTbmTimers();  // if you’ve stored them
+  MISSION_LOG.length = 0;
+
 
     // --- pull forward the units you want to survive the level change ----
     const keepers = tracks      // <-- tracks is the global array
         ? tracks.filter(t =>
             t.friendly || t.isTbm || t.isCruise)
         : [];
-        
+
   /* ————— clean up any TBM wave timers so they don’t fire after a reset ————— */
 function clearTimeoutAnyPendingTbmTimers() {
   if (!Array.isArray(tbmWaves)) return;
@@ -4170,19 +4229,20 @@ function showReviewOverlay (menuEl) {           // <-- accept overlay
       <h2>Level&nbsp;${level} Debrief</h2>
       <pre style="text-align:left; font-size:0.9rem;">
 Missiles fired
-  PAC-2 : ${STATS.missilesUsed.pac2}
-  PAC-3 : ${STATS.missilesUsed.pac3}
-  MSE   : ${STATS.missilesUsed.mse}
+  PAC-2  : ${STATS.missilesUsed.pac2}
+  PAC-3  : ${STATS.missilesUsed.pac3}
+  MSE    : ${STATS.missilesUsed.mse}
   AIM-120: ${STATS.missilesUsed.aim120}
 
-Effective engagements : ${STATS.engagementsGood}
-Ineffective engagements: ${STATS.engagementsBad}
+Effective engagements   : ${STATS.engagementsGood}
+Ineffective engagements : ${STATS.engagementsBad}
 
-Asset impacts   : ${STATS.assetsHit}
-ROE violations  : ${STATS.roeViolations}
-Fratricide      : ${STATS.fratricide}
-Radar downtime  : ${(STATS.radarDowntime/60)|0} min
-      </pre>
+Asset impacts           : ${STATS.assetsHit}
+Radar downtime          : ${(STATS.radarDowntime/60)|0} min
+
+Impacted:
+  ${STATS.impacts.length ? STATS.impacts.join(', ') : '—'}
+</pre>
       <button id="closeReview">Close</button>
     </div>`;
   document.body.appendChild(r);
@@ -4216,6 +4276,8 @@ function hardResetCurrentLevel () {
 function showLevelComplete(forceFail = false) {
       mode   = 'paused';
   paused = true;     // freeze the world as soon as the overlay comes up
+    // ⬅️ ADD THIS
+    const success = !forceFail && score > 0;
 // ─── make sure we never keep duplicates ─────────────────────
 const old = document.getElementById('levelOverlay');
 if (old) old.remove();
@@ -4227,45 +4289,36 @@ if (old) old.remove();
 
   // 2) overlay markup
   const ov = document.createElement('div');
-  ov.id = 'levelOverlay';
-  const success = score > 0 && !forceFail;
-  ov.innerHTML = `
-    <div id="levelBox">
-      <h2>Level ${level} – ${ success ? 'Mission Success' : 'Mission Fail'}</h2>
-      <p>Score: ${score}</p>
-      <button id="nextBtn">Next Level »</button>
-     <button id="reviewBtn">Review Data</button>
-     <button id="contBtn">Don’t Give Up</button>
-      <button id="retryBtn">Try Again?</button>
-    </div>`;
-    
-// NEW – keep a handle to this overlay
-const levelOverlay = ov;          // <-- add this line
-  document.body.appendChild(ov);
+ov.id = 'levelOverlay';
+ov.innerHTML = `
+  <div id="levelBox">
+    <h2>Level ${level} – ${success ? 'Mission Success' : 'Mission Fail'}</h2>
+    <p>Score: ${score}</p>
+    <button id="nextBtn">Next Level »</button>
+    <button id="reviewBtn">Review Data</button>
+    <button id="logsBtn">Mission Logs</button>
+    <button id="contBtn">Keep Fighting</button>
+    <button id="retryBtn">Try Again?</button>
+  </div>`;
 
-  // Don’t Give Up (resume right where you left off)
-  document.getElementById('contBtn').onclick = () => {
-    ov.remove();
-    paused = false;   // un‑pause
-    // mode is already 'practice', so the loop just continues
-  };
+/* 1️⃣ append first … */
+document.body.appendChild(ov);
 
-  // Try Again? (restart this same level)
-  document.getElementById('retryBtn').onclick = () => {
-    ov.remove();
-    paused = false;      // un‑pause
-    hardResetCurrentLevel();  // full rebuild of the current level
-  };
+/* 2️⃣ …then hook up all the buttons *inside* the overlay */
+ov.querySelector('#logsBtn')
+  .addEventListener('click', () => showLogsOverlay(ov));
 
-  // Next Level »
-  document.getElementById('nextBtn').onclick = () => {
-    ov.remove();      // close the overlay
-    paused = false;   // un‑pause
-    level++;          // advance
-    setupLevel(level);
-  };
+ov.querySelector('#nextBtn')
+  .addEventListener('click', () => { ov.remove(); paused = false; level++; setupLevel(level); });
 
-  ov.querySelector('#reviewBtn').onclick = () => showReviewOverlay(levelOverlay);
+ov.querySelector('#contBtn')
+  .addEventListener('click', () => { ov.remove(); paused = false; });
+
+ov.querySelector('#retryBtn')
+  .addEventListener('click', () => { ov.remove(); paused = false; hardResetCurrentLevel(); });
+
+ov.querySelector('#reviewBtn')
+  .addEventListener('click', () => showReviewOverlay(ov));
 
   setTimeout(() => {
     ov.remove();
