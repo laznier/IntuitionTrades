@@ -538,6 +538,9 @@
   let fastForward  = false;   // true while the ›› button is held
   const FF_FACTOR  = 4;       // 4× speed-up when fast-forwarding
 
+  let assetHits        = 0;   // ++ every time we take a hit
+let fratricideFatal  = false;
+
   // *** 1) Capture all the new UI elements ***
   const disclaimer  = document.getElementById('disclaimerOverlay');
   const ackBtn      = document.getElementById('ackDisclaimer');
@@ -1711,7 +1714,7 @@ function impactDecision(track) {
       // outside geometry: birds trashed + ROE
         // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
-      changeScore(-6, 'Birds Trashed: –1; ROE Violation: –5');
+      changeScore(-6, 'BIRDS TRASHED: –1; ROE Violation: –5');
      
        if (!t._outcomeLogged) {
    t._outcomeLogged = true;
@@ -4113,8 +4116,8 @@ tracks = hostiles.concat(keepers);
   negatedStack= [];
 
   // 4) Update button text & status
-  practiceBtn.textContent = 'Free Mode';
-  statusEl.textContent   = '';
+    const practiceBtn = document.getElementById('practiceBtn');
+   if (practiceBtn) practiceBtn.textContent = 'Free Mode';
 
   // 5) Start
   nextQueueTrack();
@@ -4147,7 +4150,12 @@ Radar downtime  : ${(STATS.radarDowntime/60)|0} min
   document.getElementById('closeReview').onclick = () => r.remove();
 }
 
-function showLevelComplete () {
+
+function showLevelComplete(forceFail = false) {
+// ─── make sure we never keep duplicates ─────────────────────
+const old = document.getElementById('levelOverlay');
+if (old) old.remove();
+
   mode = 'paused';
   clearTimeout(coverTimer);
 
@@ -4157,18 +4165,30 @@ function showLevelComplete () {
   // 2) overlay markup
   const ov = document.createElement('div');
   ov.id = 'levelOverlay';
+  const success = score > 0 && !forceFail;
   ov.innerHTML = `
     <div id="levelBox">
-      <h2>
-        Level&nbsp;${level}&nbsp;—
-        ${pass ? 'Mission&nbsp;Success' : 'Mission&nbsp;Fail'}
-      </h2>
+      <h2>Level ${level} – ${ success ? 'Mission Success' : 'Mission Fail'}</h2>
       <p>Score: ${score}</p>
-      <button id="nextBtn">${pass ? 'Next&nbsp;Level' : 'Retry&nbsp;Level'}</button>
-      <button id="reviewBtn">Review&nbsp;Data</button>
-      <button id="retryGameBtn">Try&nbsp;Again</button>
+      <button id="nextBtn">Next Level »</button>
+     <button id="reviewBtn">Review Data</button>
+     <button id="contBtn">Don’t Give Up</button>
+      <button id="retryBtn">Try Again?</button>
     </div>`;
   document.body.appendChild(ov);
+
+  document.getElementById('contBtn').onclick = () => {
+  ov.remove();                     // close overlay
+  mode = 'practice';               // resume
+};
+
+document.getElementById('retryBtn').onclick = () => {
+  ov.remove();
+  // FULL reset of the current level
+  assetHits       = 0;
+  fratricideFatal = false;
+  setupLevel(level);               // you already wrote this helper
+};
 
   // 3) wiring
   document.getElementById('nextBtn').onclick = () => {
@@ -4177,10 +4197,10 @@ function showLevelComplete () {
     setupLevel(level);
   };
 
-  document.getElementById('retryGameBtn').onclick = () => location.reload();
-
-  document.getElementById('reviewBtn').onclick = () => showReviewOverlay();
-
+    document.getElementById('reviewBtn').onclick = () => {
+    ov.remove();                 // hide Level-Complete box
+    showReviewOverlay();         // then show the debrief
+  };
   setTimeout(() => {
     ov.remove();
     round = 0;
@@ -4395,6 +4415,13 @@ updateScoreDisplay();
   score += delta;
   updateScoreDisplay();
   feedbackEl.textContent = msg;
+    // ── fatal-event bookkeeping ─────────────────
+  if (msg.includes('Fratricide'))               fratricideFatal = true;
+  if (msg.match(/damaged|Impact|CRATER/))       assetHits++;
+
+  // auto-end level if rules crossed
+  if (fratricideFatal || assetHits >= 3) showLevelComplete(true);
+
 }
 
     // COMPASS toggle
