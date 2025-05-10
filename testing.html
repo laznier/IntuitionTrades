@@ -552,6 +552,7 @@ let fratricideFatal  = false;
 const stepBtn  = document.getElementById('stepBtn');
 const ffBtn    = document.getElementById('ffBtn');
 const skipBtn  = document.getElementById('skipBtn');
+skipBtn.addEventListener('click', goNextLevel);
 
 
 // ─── PER-LEVEL METRICS ─────────────────────────────────────────────
@@ -600,16 +601,7 @@ ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = Q
 ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
   ffBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
 );
-/* ── dynamic label / action ──────────────────────────────────────────── */
-function refreshSkipBtn () {
-  if (mode === 'free') {                       // Bullseye practice
-    skipBtn.textContent = 'Fight Air Battle';
-    skipBtn.onclick     = startPracticeMode;   // jump into battle
-  } else {                                     // Air-Battle practice
-    skipBtn.textContent = 'Next Level»';
-    skipBtn.onclick     = () => showLevelComplete();
-  }
-}
+
   // *** 2) Helper to show in‑game controls ***
   function onGameStart() {
     controls.style.display = 'block';
@@ -628,6 +620,17 @@ function refreshSkipBtn () {
     onGameStart();
     refreshSkipBtn();          // ← update label / action
   }
+
+  /* ————— Skip-button label toggler ————— */
+function refreshSkipBtn() {
+  if (mode === 'free') {               // Bullseye practice
+    skipBtn.textContent   = 'Fight Air Battle';
+    skipBtn.dataset.action = 'practice';
+  } else {                             // Air-battle levels
+    skipBtn.textContent   = 'Next Level»';
+    skipBtn.dataset.action = 'next';
+  }
+}
 
   // *** 4) Air‑Battle = your existing Practice‑mode logic ***
   function startPracticeMode() {
@@ -659,6 +662,14 @@ function refreshSkipBtn () {
     modeSelect.style.display = 'none';
     startPracticeMode();
   });
+// immediately advance to the next level, tearing down & rebuilding
+function goNextLevel() {
+  paused = false;       // un‑freeze the game loop
+  level++;              // bump the level counter
+  setupLevel(level);    // full rebuild for that level
+}
+skipBtn.addEventListener('click', goNextLevel);
+
 
     // ─── CONFIG & STATE ─────────────────────────────────────────────────
     const CFG = {
@@ -750,6 +761,12 @@ function collapseIfAllCold() {
   }
 }
 
+// jump immediately to the next level
+function goNextLevel() {
+  paused = false;      // resume the physics loop
+  level++;             // bump the level counter
+  setupLevel(level);   // full rebuild for that level
+}
 
 /* ──────────────────────────────────────────────────────────────
    REDWOOD  – single source of truth
@@ -4087,6 +4104,24 @@ function finishEngage() {
   clearTimeout(killTimer);
   clearTimeoutAnyPendingTbmTimers();  // if you’ve stored them
 
+    // --- pull forward the units you want to survive the level change ----
+    const keepers = tracks      // <-- tracks is the global array
+        ? tracks.filter(t =>
+            t.friendly || t.isTbm || t.isCruise)
+        : [];
+        
+  /* ————— clean up any TBM wave timers so they don’t fire after a reset ————— */
+function clearTimeoutAnyPendingTbmTimers() {
+  if (!Array.isArray(tbmWaves)) return;
+  tbmWaves.forEach(w => {
+    if (w.spawnTimer)  clearTimeout(w.spawnTimer);
+    if (w.impactTimer) clearTimeout(w.impactTimer);
+    // add other per-wave timer handles here if you store them
+  });
+  // Optional: start the list over so the old wave objects are GC-eligible
+  tbmWaves = [];
+}
+
   // Reset state
   mode             = 'practice';
   round            = 0;
@@ -4123,7 +4158,11 @@ tracks = hostiles.concat(keepers);
   nextQueueTrack();
 }
 
-function showReviewOverlay () {
+function showReviewOverlay (menuEl) {           // <-- accept overlay
+  // 1) hide the post-level menu
+  menuEl.style.display = 'none';
+
+  // 2) build the Debrief overlay
   const r = document.createElement('div');
   r.className = 'overlay';
   r.innerHTML = `
@@ -4147,16 +4186,40 @@ Radar downtime  : ${(STATS.radarDowntime/60)|0} min
       <button id="closeReview">Close</button>
     </div>`;
   document.body.appendChild(r);
-  document.getElementById('closeReview').onclick = () => r.remove();
+
+  // 3) when the user closes it, bring the menu back
+  r.querySelector('#closeReview').onclick = () => {
+    r.remove();                       // discard Debrief
+    menuEl.style.display = 'flex';    // show post-level menu again
+  };
+}
+function hardResetCurrentLevel () {
+  /*  wipe every transient array & timer  */
+  clearTimeout(coverTimer);
+  clearTimeout(killTimer);
+  tbmWaves        = [];
+  pendingEngagements.length = 0;
+  missiles.length = 0;
+  bombs.length    = 0;
+
+  /*  restore score-keeping & state flags  */
+  assetHits        = 0;
+  fratricideFatal  = false;
+  resetRedwood();          // close HOT quadrants, reset colours
+  resetStats();            // zero the debrief counters
+
+  /*  build the level exactly like the first time  */
+  setupLevel(level);       // you already wrote this routine
 }
 
 
 function showLevelComplete(forceFail = false) {
+      mode   = 'paused';
+  paused = true;     // freeze the world as soon as the overlay comes up
 // ─── make sure we never keep duplicates ─────────────────────
 const old = document.getElementById('levelOverlay');
 if (old) old.remove();
 
-  mode = 'paused';
   clearTimeout(coverTimer);
 
   // 1) decide pass / fail
@@ -4175,32 +4238,35 @@ if (old) old.remove();
      <button id="contBtn">Don’t Give Up</button>
       <button id="retryBtn">Try Again?</button>
     </div>`;
+    
+// NEW – keep a handle to this overlay
+const levelOverlay = ov;          // <-- add this line
   document.body.appendChild(ov);
 
+  // Don’t Give Up (resume right where you left off)
   document.getElementById('contBtn').onclick = () => {
-  ov.remove();                     // close overlay
-  mode = 'practice';               // resume
-};
-
-document.getElementById('retryBtn').onclick = () => {
-  ov.remove();
-  // FULL reset of the current level
-  assetHits       = 0;
-  fratricideFatal = false;
-  setupLevel(level);               // you already wrote this helper
-};
-
-  // 3) wiring
-  document.getElementById('nextBtn').onclick = () => {
     ov.remove();
-    if (pass) level++;          // advance only on success
+    paused = false;   // un‑pause
+    // mode is already 'practice', so the loop just continues
+  };
+
+  // Try Again? (restart this same level)
+  document.getElementById('retryBtn').onclick = () => {
+    ov.remove();
+    paused = false;      // un‑pause
+    hardResetCurrentLevel();  // full rebuild of the current level
+  };
+
+  // Next Level »
+  document.getElementById('nextBtn').onclick = () => {
+    ov.remove();      // close the overlay
+    paused = false;   // un‑pause
+    level++;          // advance
     setupLevel(level);
   };
 
-    document.getElementById('reviewBtn').onclick = () => {
-    ov.remove();                 // hide Level-Complete box
-    showReviewOverlay();         // then show the debrief
-  };
+  ov.querySelector('#reviewBtn').onclick = () => showReviewOverlay(levelOverlay);
+
   setTimeout(() => {
     ov.remove();
     round = 0;
@@ -4287,9 +4353,9 @@ document.getElementById('retryBtn').onclick = () => {
 
     // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
     // 1) pull out all the friendlies and TBMs we want to keep
-    const keepers = tracks.filter(t =>
-  t.friendly || t.isTbm || t.isCruise
-);
+     const keepers = tracks.filter(t =>
+   t.friendly || t.isTbm || t.isCruise
+ );
 
 // 1.5) force every friendly to start at 200 MSL
 keepers.forEach(t => {
