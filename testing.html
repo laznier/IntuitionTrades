@@ -571,7 +571,8 @@
 
   <div id="cursorLabel"></div>
   <script>
-
+// at the top of your script, pick whatever on‑screen radius you like:
+const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
      GLOBAL RUN-STATE FLAGS – must be declared before animate()
   ------------------------------------------------------------- */
@@ -616,6 +617,8 @@ function resetStats () {
   STATS.impacts.length = 0;
 }
 
+// will gate automatic mission‑fail on fratricide or too many hits
+let allowMissionFail = true;
 
   /* ─── GAME-TIME CONTROLS (Pause / Step / FF / Skip) ──────────────────── */
 
@@ -697,12 +700,16 @@ const beAvgs    = [];          // avg time per level (for improvement)
 
 /* ===== DOM ===== */
 const timerEl   = document.getElementById('timerDisplay');
+
 const menuBtn   = document.getElementById('btnBullseye'); // existing button
 
 
 
 /* --------------------------------------------------------- */
 function beginBeLevel () {
+    beLevelScore = 0;        // ← reset this level’s score
+  updateScoreDisplay();    // so the UI shows “0/10”
+  
   beRound   = 0;
   beSumT    = 0;
   beTimerMs = BE_TIME_MS[beLevel - 1];      // 20→15→10→5
@@ -771,10 +778,16 @@ function nextBeRound () {
 }
 
 
-function updateBeClock () {
-  const left = Math.max(0, beTimerMs - (Date.now()-beStartT));
-  timerEl.textContent = (left/1000).toFixed(1)+' s';
-}
+function updateBeClock() {
+  // only show a timer during Bullseye practice
+  if (mode === 'free') {
+    const left = Math.max(0, beTimerMs - (Date.now() - beStartT));
+    timerEl.textContent = (left/1000).toFixed(1) + ' s';
+  } else {
+    // no timer in Air‑Battle
+    timerEl.textContent = '';
+  }}
+
 
 function onBeSuccess () {
   clearTimeout(beTimeoutId);
@@ -871,14 +884,43 @@ function showBeSummary () {
   ov.innerHTML = `
     <div class="overlayBox">
       <h2>Timed Practice Summary</h2>
+      <canvas id="beReactionChart" width="200" height="200"
+              style="border:1px solid #444; margin-bottom:.5rem;"></canvas>
       <p>Total score: <strong>${beTotalScore}/${BE_ROUNDS*BE_LEVELS}</strong></p>
-      <p>${lines}</p>
-      <p><em>Overall improvement: ${improvement.toFixed(2)} s</em></p>
+      ${lines.replace(/<br>/g,'<br>')}
+      <p><em>Overall improvement: ${(improvement/1000).toFixed(2)} s</em></p>
       <button id="beClose">Close</button>
     </div>`;
   document.body.appendChild(ov);
   ov.querySelector('#beClose').onclick = () => ov.remove();
 
+  // — draw the reaction‑time line in red —
+  const chart = ov.querySelector('#beReactionChart');
+  const ctx2  = chart.getContext('2d');
+  const dataS = beAvgs.map(a => a/1000);         // convert to seconds
+  const maxY  = Math.max(...dataS) * 1.1;        // a little headroom
+  const w     = chart.width,  h = chart.height;
+  ctx2.clearRect(0,0,w,h);
+  ctx2.beginPath();
+  dataS.forEach((val, i) => {
+    const x = (i / (dataS.length - 1)) * (w - 20) + 10;
+    const y = h - ((val / maxY) * (h - 20)) - 10;
+    if (i === 0) ctx2.moveTo(x,y);
+    else         ctx2.lineTo(x,y);
+  });
+  ctx2.strokeStyle = 'red';
+  ctx2.lineWidth   = 2;
+  ctx2.stroke();
+
+  // draw small dots
+  dataS.forEach((val, i) => {
+    const x = (i / (dataS.length - 1)) * (w - 20) + 10;
+    const y = h - ((val / maxY) * (h - 20)) - 10;
+    ctx2.beginPath();
+    ctx2.arc(x,y,3,0,Math.PI*2);
+    ctx2.fillStyle = 'red';
+    ctx2.fill();
+  });
 }
 
 /* ---------------------------------------------------------
@@ -926,6 +968,7 @@ function refreshSkipBtn() {
   function startPracticeMode() {
     mode = 'practice';
     round = 0; score = 0;     // reset score
+    timerEl.textContent = '';      // ← ADD THIS LINE
     fitMobileView();          // keep mobile tap alignment perfect
     // you can either call nextQueueTrack() directly...
     nextQueueTrack();
@@ -1892,13 +1935,13 @@ function engageTbmWithNASAMS(tbm) {
     const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
-    setTimeout(() => { NASAMSMissiles = 6; }, 5 * 60 * 1000);
+    setTimeout(() => { NASAMSMissiles = 18; }, 5 * 60 * 1000);
     return;
   }
 
     // 3) Consume two AIM‑120s then launch two missiles, 1s apart
   NASAMSMissiles -= 2;
-  STATS.missilesUsed.aim120 -= 2;
+  STATS.missilesUsed.aim120 += 2;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
       if (!tbm.destroyed) {
@@ -2031,6 +2074,9 @@ function scheduleImpactCheck(t) {
   const ipX = t.x + (vtx / 3600) * tMs / CFG.nmPerPixel;
   const ipY = t.y + (vty / 3600) * tMs / CFG.nmPerPixel;
 
+  // ✦ record exactly **when** that intercept will happen
+t.interceptTimestamp = Date.now() + tMs;
+
   // 4) schedule the decision
   t.mslTimer = setTimeout(() => impactDecision(t), tMs);
 }
@@ -2067,6 +2113,7 @@ function impactDecision(track) {
     if (inRing || inAnyWedgeGeom) {
       changeScore(-20, 'Fratricide! –20 points');
       STATS.fratricide++;
+  STATS.impacts.push(`Fratricide on friendly ${track.id}`);
     } else {
       // outside geometry: birds trashed + ROE
         // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
@@ -2195,6 +2242,7 @@ function damageLauncherAmmo (fu) {
     const lost = Math.ceil(NASAMSMissiles * 0.33);       // 33 %
     NASAMSMissiles = Math.max(0, NASAMSMissiles - lost);
     feedbackEl.textContent = `NASAMS launcher damaged – lost ${lost} AIM-120s`;
+    STATS.impacts.push(`NASAMS lost ${lost} AIM‑120s`);
     return;
   }
 
@@ -2204,6 +2252,7 @@ function damageLauncherAmmo (fu) {
   if (!choices.length) return;        // nothing left to lose
 
   const pick = choices[Math.floor(Math.random() * choices.length)];
+  const lost = bundleLoss[pick];
   fu.ammo[pick] = Math.max(0, fu.ammo[pick] - bundleLoss[pick]);
 
   // engagementsRemaining = total rounds ÷ 2
@@ -2214,6 +2263,7 @@ function damageLauncherAmmo (fu) {
 
   feedbackEl.textContent =
     `${getFuLabel(fu)} damaged – lost ${bundleLoss[pick]} ${pick.toUpperCase()}`;
+    STATS.impacts.push(`${getFuLabel(fu)} lost ${lost} ${pick.toUpperCase()} missiles`);
 }
 
     // ─── DRAW ───────────────────────────────────────────────────────────
@@ -3036,9 +3086,9 @@ if (o.isTbm) {
          const nmDist = distNm(bullseye, o);
          if (!o.cratered && nmDist <= 1) {
         o.cratered = true;
-        changeScore(-5, 'ADAFCO, TD, CRATER at BULLSEYE -5');
+        changeScore(-5, 'ADAFCO, TD, CRATER Runway -5');
         +STATS.assetsHit++;
-        STATS.impacts.push('CRATER at BULLSEYE');
+        STATS.impacts.push('Runway Cratered');
         updateScoreDisplay();
         o.destroyed = true;
         return;    // skip any further per‑track logic
@@ -3717,11 +3767,10 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 
 
-    // ─── PICK-OBJECT helper ──────────────────────────────
-    function pickObject() {
-  // Try selecting an air track under the mouse
-    const HIT_R = 10;             // world-px radius
-  const Y_OFF = 6;              // raise sensor 6 px in world coords
+function pickObject() {
+  // translate that 12 px into world‑space by dividing by your current scale:
+  const HIT_R = CLICK_RADIUS_SCREEN / scale;
+  const Y_OFF = 6;  // unchanged
 
   selectedTrack = tracks.find(t => {
     const dx = mouse.wx - t.x;
@@ -3807,6 +3856,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
    pickObject();
  });
 // ─── 4) Right-click handler on the canvas ───────────────────────────────
+
 canvas.addEventListener('contextmenu', e => {
   e.preventDefault();
 
@@ -3816,14 +3866,16 @@ canvas.addEventListener('contextmenu', e => {
   mouse.px = e.clientX;
   mouse.py = e.clientY;
   const w = scrToWorld(mouse.sx, mouse.sy);
-  mouse.wx = w.x; mouse.wy = w.y;
+  mouse.wx = w.x; 
+  mouse.wy = w.y;
   updateCursorLabel();
-  
+
+  // convert screen‑px into world‑px at current zoom:
+  const HIT_R = CLICK_RADIUS_SCREEN / scale;
+  const Y_OFF = 6;
 
   // Try picking an air track for right selection
   selectedTrack2 = tracks.find(t => {
-    const HIT_R = 10;
-    const Y_OFF = 6;
     const dx = mouse.wx - t.x;
     const dy = mouse.wy - (t.y - Y_OFF);
     return Math.hypot(dx, dy) < HIT_R;
@@ -3837,9 +3889,9 @@ canvas.addEventListener('contextmenu', e => {
 
   // Try picking a static for right selection
   selectedStatic2 = statics.find(s => {
-    const dx = s.x - mouse.wx,
-          dy = s.y - mouse.wy;
-    return Math.hypot(dx, dy) < 12;
+    const dx = s.x - mouse.wx;
+    const dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;  // statics still use a fixed 12 px world‑space radius
   }) || null;
 
   if (selectedStatic2) {
@@ -3853,6 +3905,7 @@ canvas.addEventListener('contextmenu', e => {
   selectedStatic2 = null;
   document.querySelectorAll('.card2').forEach(c => c.remove());
 });
+
 
     // ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
 window.addEventListener('keydown', e => {
@@ -4466,6 +4519,7 @@ function finishEngage() {
  * and kicks off practice mode on that level.
  */
  function setupLevel(lv) {
+allowMissionFail = true;
   // Clear any timers
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
@@ -4496,11 +4550,11 @@ function clearTimeoutAnyPendingTbmTimers() {
   round            = 0;
   score            = 0;
   level            = lv;
-  speedMultiplier  = 1 + 0.1 * (lv - 1);
+  speedMultiplier  = 1;
   resetStats();               // ← add this line
 
    // ── Reset NASAMS ───────────────────────────────────────────────
- NASAMSMissiles      = 6;
+ NASAMSMissiles      = 18;
  NASAMSDisabledUntil = 0;
 
  // ── Reset FIREBALL ────────────────────────────────────────────
@@ -4509,9 +4563,74 @@ function clearTimeoutAnyPendingTbmTimers() {
 
 // 2) Spawn 10 groups totalling 10 + 5*(level-1) hostiles
 const groups   = CFG.trackCount;                // still 10 groups
-const totalH   = 10 + (lv - 1) * 5;             // lvl1=10, lvl2=15, lvl3=20…
+// cap difficulty growth at level 4
+ const effectiveLv = Math.min(lv, 4);
+ const totalH      = 10 + (effectiveLv - 1) * 5;
 const hostiles = newHostileGroups(groups, totalH);
 tracks = hostiles.concat(keepers);
+
+ // ───────── LEVEL‑BASED ADDITIONS ───────────────
+
+
+  // 1) Level 2+: add 3 friendlies
+  if (lv >= 2) {
+    const icc = statics.find(s => s.type === 'icc');
+    for (let i = 0; i < 3; i++) {
+      const t = newTrack();
+      t.friendly = true;
+      t.alt      = 200;
+      t.destAlt  = 0;
+      t.speed    = 500;
+      t.heading  = bearing(t, icc);
+      tracks.push(t);
+    }
+  }
+
+  // 2) Level 2+: add cruise‐missile raid
+  if (lv >= 2) {
+    const icc     = statics.find(s => s.type === 'icc');
+    const cmCount = rand(3, 9);
+    const ringNm  = rand(60, 120);
+    const ang     = Math.random() * Math.PI * 2;
+    const cx      = icc.x + Math.cos(ang) * (ringNm / CFG.nmPerPixel);
+    const cy      = icc.y + Math.sin(ang) * (ringNm / CFG.nmPerPixel);
+    for (let i = 0; i < cmCount; i++) {
+      const t       = newTrack();
+      const offset  = Math.random() * 15 / CFG.nmPerPixel;
+      const theta   = Math.random() * Math.PI * 2;
+      t.x           = cx + Math.cos(theta) * offset;
+      t.y           = cy + Math.sin(theta) * offset;
+      t.isCruise    = true;
+      t.friendly    = false;
+      t.alt         = rand(50, 100);
+      t.speed       = rand(450, 550);
+      t.destAlt     = 0;
+      t.heading     = bearing({ x: cx, y: cy }, icc);
+      tracks.push(t);
+    }
+  }
+
+  // 3) Level 3+: schedule a TBM wave
+  if (lv >= 3) {
+    setTimeout(spawnTbmWave, Math.random() * 2 * 60 * 1000);
+  }
+
+  // 4) Level 4+: forced radar outages
+  if (lv >= 4) {
+    const now   = Date.now();
+    const delay = Math.max(60_000, nextOutageAllowed - now);
+    setTimeout(() => {
+      const radars = statics.filter(s => s.type === 'rad');
+      const s      = radars[Math.floor(Math.random() * radars.length)];
+      s.disabledUntil = Date.now() + 5 * 60 * 1000;
+      STATS.radarDowntime += 5 * 60;
+      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
+      const msg = 'ADAFCO, TD, system reset, launcher down for 5 min';
+      feedbackEl.textContent = msg;
+      statusEl.textContent   = msg;
+    }, delay);
+  }
+  // ───────── END LEVEL‑BASED ADDITIONS ───────────
 
   // 3) Reset the practice queue
   trackQueue  = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
@@ -4549,11 +4668,12 @@ Effective engagements   : ${STATS.engagementsGood}
 Ineffective engagements : ${STATS.engagementsBad}
 
 TBM impacts           : ${STATS.assetsHit}
-Radar downtime          : ${(STATS.radarDowntime/60)|0} min
+Radar downtime        : ${(STATS.radarDowntime/60)|0} min
 
 Damaged Assets:
-  ${STATS.impacts.length ? STATS.impacts.join(', ') : '—'}
-</pre>
+<li>${STATS.impacts.length ? STATS.impacts.join(',<li> ')
+: '—'}
+  </pre>
       <button id="closeReview">Close</button>
     </div>`;
   document.body.appendChild(r);
@@ -4622,8 +4742,20 @@ ov.querySelector('#logsBtn')
 ov.querySelector('#nextBtn')
   .addEventListener('click', () => { ov.remove(); paused = false; level++; setupLevel(level); });
 
-ov.querySelector('#contBtn')
-  .addEventListener('click', () => { ov.remove(); paused = false; });
+  ov.querySelector('#contBtn')
+  .addEventListener('click', () => {
+    ov.remove();
+    paused = false;
+    mode = 'practice';         // go back into practice mode
+    allowMissionFail = false;  // disable mission‑fail triggers
+
+    // rebuild the hostiles queue so input works and level can end naturally
+    trackQueue   = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+    queueIndex   = 0;
+    negatedStack = [];
+
+    nextQueueTrack();
+  });
 
 ov.querySelector('#retryBtn')
   .addEventListener('click', () => { ov.remove(); paused = false; hardResetCurrentLevel(); });
@@ -4634,86 +4766,9 @@ ov.querySelector('#reviewBtn')
   setTimeout(() => {
     ov.remove();
     round = 0;
-    speedMultiplier += 0.1;
     level++;
 
-    // LEVEL 2 → spawn 3 friendlies
-    if (level >= 2) {
-      const icc = statics.find(s => s.type === 'icc');
-      for (let i = 0; i < 3; i++) {
-        const t = newTrack();
-        t.friendly = true;
-        t.heading  = bearing(t, icc);
-        t.alt      = 200;
-        t.speed    = 500;
-        t.destAlt  = 0;
-        tracks.push(t);
-      }
-    }
-
-    // LEVEL 2 → spawn one cruise‑missile group
-    if (level >= 2) {
-      const icc     = statics.find(s => s.type === 'icc');
-      const cmCount = rand(3, 9);                     // 3–8 missiles
-      // pick a random ring 60–120 NM from ICC
-      const ringDist = rand(60, 120);
-      const ringAng  = Math.random() * 2 * Math.PI;
-      const cx       = icc.x + Math.cos(ringAng) * (ringDist / CFG.nmPerPixel);
-      const cy       = icc.y + Math.sin(ringAng) * (ringDist / CFG.nmPerPixel);
-
-      for (let i = 0; i < cmCount; i++) {
-        // cluster within 15 NM
-        const r    = Math.random() * (15 / CFG.nmPerPixel);
-        const ang2 = Math.random() * 2 * Math.PI;
-        tracks.push({
-          id:           ('00000' + rand(1000, 7776)).slice(-5),
-          x:            cx + Math.cos(ang2) * r,
-          y:            cy + Math.sin(ang2) * r,
-          heading:      bearing({ x: cx, y: cy }, icc),
-          speed:        rand(450, 550),    // 450–550 kts
-          alt:          rand(50, 100),     // 5 000–10 000 ft
-          destAlt:      0,
-          friendly:     false,
-          tag:          null,
-          tagTime:      0,
-          destroyed:    false,
-          everEngaged:  false,
-          isTbm:        false,
-          isCruise:     true             // custom flag
-        });
-      }
-    }
-
-
-    // LEVEL 3 → schedule TBM wave
-    if (level >= 3) {
-      const delay = Math.random() * 2 * 60 * 1000;
-      setTimeout(spawnTbmWave, delay);
-    }
-
-      // ─── forced radar outage on Level 4+, with 2 min cooldown ─────────────────
-  if (level >= 4) {
-    const now       = Date.now();
-    // compute delay: at least 60 s from now, but also ensure we're past nextOutageAllowed
-    const delayMs   = Math.max(60 * 1000, nextOutageAllowed - now);
-    setTimeout(() => {
-      const then     = Date.now();
-      // pick a random Patriot radar
-      const rads     = statics.filter(s => s.type === 'rad');
-      const s        = rads[Math.floor(Math.random() * rads.length)];
-      // disable it for 5 minutes
-      s.disabledUntil = then + 5 * 60 * 1000;
-      STATS.radarDowntime += 5*60;
-      // schedule next allowed outage 2 min after this one ends
-      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
-      
-
-      // notify the user
-      const msg = 'ADAFCO, TD, system reset, launcher down for 5 minutes';
-      feedbackEl.textContent = msg;
-      statusEl.textContent   = msg;
-    }, delayMs);
-  }
+    
 
     // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
     // 1) pull out all the friendlies and TBMs we want to keep
@@ -4855,8 +4910,9 @@ updateScoreDisplay();
   if (msg.match(/damaged|Impact|CRATER/))       assetHits++;
 
   // auto-end level if rules crossed
-  if (fratricideFatal || assetHits >= 3) showLevelComplete(true);
-
+   if (allowMissionFail && (fratricideFatal || assetHits >= 5)) {
+   showLevelComplete(true);
+ }
 }
 
     // COMPASS toggle
