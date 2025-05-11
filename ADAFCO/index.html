@@ -450,7 +450,7 @@
       <strong>VANISH / HOLD FIRE</strong><br>
       Hits remove the track automatically. 
       To abort an intercept, press <kbd>H</kbd>
-      (<em>HOLD FIRE</em>) within 5 s of launch.
+      (<em>HOLD FIRE</em>) with the engaged track selected.
     </li>
   </ol>
 
@@ -505,11 +505,12 @@
   <ul>
     <li><strong>+1</strong> Valid missile kill</li>
     <li><strong>+2</strong> FIREBALL intercept</li>
-    <li><strong>–1</strong> Birds trashed (miss if no geometry)</li>
-    <li><strong>–5</strong> ROE violation (invalid target)</li>
-    <li><strong>–6</strong> Friendly fire outside geometry</li>
-    <li><strong>–20</strong> Fratricide inside geometry</li>
-    <li><strong>–5</strong> TBM crater on island</li>
+    <li><strong>–1</strong> Birds/shots trashed (miss if no geometry)</li>
+    <li><strong>–5</strong> ROE violation (engaged without authority)</li>
+    <li><strong>–6</strong> Friendly fire (miss)</li>
+    <li><strong>–20</strong> Fratricide</li>
+    <li><strong>–5</strong> TBM craters island</li>
+    <li><strong>–7</strong> ABT damages an asset</li>
   </ul>
 
   <!-- ───────────────────────────────────────────────── Radar & Weapons -->
@@ -518,11 +519,11 @@
     <dt>Patriot FUs × 4</dt>
     <dd>
       Magazine per FU: 12 PAC-2, 16 PAC-3, 24 MSE  
-      <br>Reload: 15 min (weapons-red)  
+      <br>Reload: 15 min 
       <br>Radar wedge: 60 NM / ±60° &nbsp;(<kbd>O</kbd> to slew, 90 s red)
     </dd>
 
-    <dt>NASAMS</dt>
+    <dt>NASAMS FU x 1</dt>
     <dd>
       18 × AIM-120, 15 NM ring. Reload 15 min.  
       Auto-fires on TBM at 20 NM if FIREBALL armed.
@@ -530,17 +531,17 @@
 
     <dt>TPS-75</dt>
     <dd>
-      Island-wide search radar. May be damaged by bombs/cruise missiles
+      Island-wide search radar. Can detect out to ~200 NM (depending on track altitude). May be damaged by bombs/cruise missiles
       (10 min downtime).</dd>
   </dl>
 
   <!-- ─────────────────────────────────────────────────── Threat Types -->
   <h4>Threat Types</h4>
   <ul>
-    <li><strong>Hostile aircraft</strong> – maneuver, drop bombs at 10 NM &amp; 5 NM.</li>
-    <li><strong>TBM waves</strong> – groups of 3 ballistic missiles. Use FIREBALL.</li>
-    <li><strong>Cruise missiles</strong> – low-alt clustered shots from Level 2+.</li>
-    <li><strong>Friendlies</strong> – descend from 20 NM / 200 MSL; no shooting!</li>
+    <li><strong>Hostile aircraft</strong> – maneuver, drop precision bombs at 10 NM &amp; 5 NM. Heavy groups start at Level 3+</li>
+    <li><strong>TBM waves</strong> – groups of 1 to 3 ballistic missiles start at Level 3+. Use FIREBALL to prime auto-engage.</li>
+    <li><strong>Cruise missiles</strong> – low-alt clustered shots start at Level 2+.</li>
+    <li><strong>Friendlies</strong> – Returning to the Island on Procedural MRR. Descend from 20 NM / 200 MSL; IDENT, Do not engage!</li>
   </ul>
 
   <!-- ────────────────────────────────────────────────────────── Levels -->
@@ -549,7 +550,7 @@
     <li><strong>Level 1</strong> – 10 hostiles.</li>
     <li><strong>Level 2</strong> – +5 hostiles, adds cruise-missile raid.</li>
     <li><strong>Level 3</strong> – TBM wave ‎(+ FIREBALL).</li>
-    <li><strong>Level 4+</strong> – Random radar outages, faster tracks.</li>
+    <li><strong>Level 4+</strong> – Random radar outages.</li>
   </ol>
 
   <!-- ───────────────────────────────────────────────────────── Closing -->
