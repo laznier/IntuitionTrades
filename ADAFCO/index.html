@@ -330,14 +330,64 @@
   background: var(--warn);  /* red */
   color: #fff;
 }
+.overlay {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: rgba(0,0,0,0.85); display:flex;
+  align-items:center; justify-content:center; z-index:2000;
+}
+.overlayBox {
+  background:#111; color:#f8f8f8; padding:2rem; border-radius:8px;
+  max-width:400px; text-align:center;
+}
+.overlayBox button {
+  margin-top:1rem; padding:.5rem 1rem; font-size:1rem;
+  background:var(--icc); color:#000; border:none; border-radius:4px;
+  cursor:pointer;
+}
+#modeSelectOverlay button { 
+  display:block; width:100%; margin:0.5rem 0;
+  padding:.75rem; font-size:1rem; 
+  background:var(--braa); color:#000; 
+  border:none; border-radius:4px; cursor:pointer;
+}
+#gameControls button {
+  margin:0 .25rem; padding:.3rem .6rem; font-size:1rem;
+  background: var(--icc); color:#000; border:none; border-radius:4px;
+  cursor:pointer;
+}
 
   </style>
 </head>
 <body>
-
+    <div id="disclaimerOverlay" class="overlay">
+        <div class="overlayBox">
+          <h2>Disclaimer</h2>
+          <p>
+            This simulator uses unclassified data only. Do NOT use any ranges, procedures
+            or contracts shown here for real mission planning. This software is not
+            endorsed by, nor affiliated with, the U.S. Department of Defense.
+          </p>
+          <button id="ackDisclaimer">I Understand</button>
+        </div>
+      </div>
+      
+      <div id="modeSelectOverlay" class="overlay" style="display:none;">
+        <div class="overlayBox">
+          <h2>Select Mode</h2>
+          <button id="btnBullseye">Bullseye Practice</button>
+          <button id="btnAirBattle">Fight Air Battle</button>
+        </div>
+      </div>
+      
   <header>
     <div id="controls">
-      <button id="practiceBtn">Practice Mode</button>
+        <div id="gameControls" style="display:none;">
+            <button id="pauseBtn">❚❚</button>
+            <button id="stepBtn">›</button>
+            <button id="ffBtn">››</button>
+            <button id="skipBtn">Next Level»</button>
+          </div>
+          
       <button id="tagsBtn">TAGS: OFF</button>
       <button id="compassBtn">Compass: OFF</button>
       <button id="mapBtn">Map</button>
@@ -366,106 +416,147 @@
   
   
   <canvas id="scope"></canvas>
-  
+  <span id="timerDisplay" style="margin-left:1rem;">10.0&nbsp;s</span>
+
     <div id="helpOverlay">
      
         <h3>How to Play</h3>
         <p>
-          You are the ADAFCO, operating from the TOC (co-located with the DAL) at the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
+          You are the ADAFCO, operating from the C2 Building TOC, which is part of the DAL near the island’s center. Your mission is to execute a 360° Point-Defense operation: prevent fratricide, manage track engagement, and prosecute hostile air threats as directed by the SL. Success requires speed, judgment, and decisive task prioritization.
         </p>
       
-        <h4>Mission Flow</h4>
-        <ol>
-          <li>
-            <strong>COVER</strong><br>
-            The SL will order: “COVER Track 12345, B/E 123/45.”<br>
-            Primary select (left-click) the correct track, assess ID, flight profile, and probability of kill (PK), then acknowledge with:<br>
-            <em>“Copy Track 12345.”</em>
-          </li>
-          
-          <li>
-            <strong>ICC/TD Coordination</strong><br>
-            Relay the COVER command to the ICC/TD via simulated radio:<br>
-            <em>“GUARDIAN, BIGFOOT, Cover Group B/E 123/45, 27k, Track South, Hostile, NW Quadrant.”</em><br>
-            • If PK is high (inside Patriot wedge or NASAMS ring), press <strong>A</strong> (Affirm).<br>
-            • If no solution exists, press <strong>N</strong> (Negate). You may update to <strong>A</strong> later if conditions change.
-          </li>
-      
-          <li>
-            <strong>Engagement</strong><br>
-            When the track is within range:<br>
-            • TX: <em>“GUARDIAN, BIGFOOT, Engage Group B/E 123/23, 27k, Track South, Hostile, NW Quadrant.”</em><br>
-            • Press <strong>W</strong> to fire. The track must be inside a valid Patriot wedge or NASAMS ring, or else the shot is considered <strong>trashed</strong>.
-          </li>
-      
-          <li>
-            <strong>VANISH</strong><br>
-            Tracks vanish automatically if the ADA shots make contact after a valid engagement. You may also press <strong>K</strong> to manually remove a track early.
-          </li>
-        </ol>
-      
-        <h4>Track Identification</h4>
-        <p>Use the <strong>TAGS</strong> button to cycle through display modes:</p>
-        <ul>
-          <li><strong>OFF</strong> – Clean scope</li>
-          <li><strong>B/E</strong> – Bearing and distance from Bullseye</li>
-          <li><strong>JTN</strong> – Track number labels</li>
-          <li><strong>INFO</strong> – Heading, altitude, speed</li>
-          <li><strong>ALL</strong> – Full info overlay</li>
-          <li><strong>ALT</strong> – Altitude only</li>
-        </ul>
-      
-        <h4>Rules of Engagement & Friendly Fire</h4>
-        <ul>
-          <li>Friendlies may appear at any time.</li>
-          <li>Firing on a friendly <strong>inside</strong> firing geometry: <strong>–20</strong> pts (Fratricide).</li>
-          <li>Firing on a friendly <strong>outside</strong> geometry: <strong>–1</strong> (Birds trashed) + <strong>–5</strong> (ROE violation) = <strong>–6</strong> pts.</li>
-          <li>SL should not issue COVER on friendly tracks — but errors are possible.</li>
-          <li>The risk of fraticide exists, so be careful not to engage on hostiles that are within 5 NM of friendly tracks.</li>
-        </ul>
-      
-        <h4>TBM & FIREBALL Events</h4>
-        <ul>
-          <li>TBMs appear in triangular waves.</li>
-          <li>Click the <strong>FIREBALL</strong> button before impact to ensure Patriot and/or NASAMS auto fires on TBMs.</li>
-          <li>If TBMs impact without interception: <strong>–5</strong> points.</li>
-        </ul>
-      
-        <h4>Cards & Track Interactions</h4>
-        <ul>
-          <li><strong>Left-click</strong> a unit to view its status card.</li>
-          <li><strong>Right-click</strong> to pin the card in the top-right corner.</li>
-          <li>Cards display ID, heading, altitude, speed, system status, and current missile count.</li>
-        </ul>
-        <ul>
-            <li>Each Patriot FU contains 5 launchers with a total loadout of 12xPAC-2, 16xPAC-3, and 24xMSE.</li>
-            <li>A NASAMSS FU has been deployed to the island to provice layered defense with 3 Missile Launchers with a total loadlout of 18xAIM-120.</li>
-            <li>Magazine reloads take 15 minutes and Patriot GTL re-orienting takes 90 seconds.</li>
-            <li>There is a high probability of maintenace issues arrising if there is a prolonged attack.</li>
-          </ul>
-        <h4>Scoring</h4>
-        <ul>
-          <li><strong>+1</strong> – Valid missile kill</li>
-          <li><strong>+2</strong> – FIREBALL intercept</li>
-          <li><strong>–1</strong> – Birds/Shots trashed (fired with no coverage or defeated)</li>
-          <li><strong>–5</strong> – ROE violation (invalid target)</li>
-          <li><strong>–6</strong> – Friendly fire outside geometry</li>
-          <li><strong>–20</strong> – Fratricide inside geometry</li>
-          <li><strong>–5</strong> – TBM impact</li>
-        </ul>
-      
-        <h4>Controls & Hotkeys</h4>
-        <ul>
-          <li><strong>A</strong> – AFFIRM</li>
-          <li><strong>N</strong> – NEGATE</li>
-          <li><strong>W</strong> – AWAY (engage)</li>
-          <li><strong>K</strong> – KILL (manual vanish)</li>
-          <li><strong>O</strong> – Aim selected radar wedge</li>
-          <li><strong>Arrow Keys</strong> / <strong>+</strong> / <strong>–</strong> – Pan and zoom</li>
-        </ul>
-      
-        <button id="closeHelp">Close</button>
-      </div>
+        <!-- ───────────────────────────────────────────────────── Mission Flow -->
+  <h4>Mission Flow</h4>
+  <ol>
+    <li><strong>For best training value:</strong> All internal and exteranl calls should be simulated before pressing each corresponding button.<br></li>
+    <li>
+      <strong>COVER&nbsp;Phase</strong><br>
+      The Senior Director (SL) calls:
+      <em>“COVER Track 12345, B/E&nbsp;123/45.”</em><br>
+      • <kbd>Left-click</kbd> the track.<br>
+      • Evaluate geometry &amp; ID, then press
+        <kbd>A</kbd> (<em>AFFIRM</em>) or <kbd>N</kbd> (<em>NEGATE</em>).
+    </li>
+
+    <li>
+      <strong>AFFIRM&nbsp;→ ENGAGE</strong><br>
+      When the track closes, SL will
+      order <em>ENGAGE</em> automatically or after your AFFIRM.<br>
+      When tagged <code>ENGAGE</code>, press <kbd>W</kbd> (<em>AWAY</em>) to fire.
+      Two missiles are launched from the nearest in-geometry unit.
+    </li>
+
+    <li>
+      <strong>VANISH / HOLD FIRE</strong><br>
+      Hits remove the track automatically. 
+      To abort an intercept, press <kbd>H</kbd>
+      (<em>HOLD FIRE</em>) within 5 s of launch.
+    </li>
+  </ol>
+
+  <!-- ───────────────────────────────────────────────────────── Controls -->
+  <h4>Controls &amp; Hotkeys</h4>
+  <table>
+    <tr><th colspan="2">Action keys</th></tr>
+    <tr><td><kbd>A</kbd></td><td>AFFIRM COVER</td></tr>
+    <tr><td><kbd>N</kbd></td><td>NEGATE COVER</td></tr>
+    <tr><td><kbd>W</kbd></td><td>BIRDS AWAY (fire)</td></tr>
+    <tr><td><kbd>H</kbd></td><td>HOLD FIRE (cancel shot)</td></tr>
+    <tr><td><kbd>K</kbd></td><td>KILL (manual vanish)</td></tr>
+    <tr><td><kbd>O</kbd></td><td>Re-orient selected Patriot radar<br>
+        &nbsp;&nbsp;– Click the new azimuth on scope</td></tr>
+
+    <tr><th colspan="2">Navigation</th></tr>
+    <tr><td><kbd>↑ ↓ ← →</kbd></td><td>Pan map</td></tr>
+    <tr><td><kbd>+</kbd>/<kbd>–</kbd></td><td>Zoom in / out</td></tr>
+    <tr><td><kbd>Shift + Drag</kbd></td><td>Multi-select box</td></tr>
+    <tr><td><kbd>Double-drag</kbd></td><td>Zoom window to box</td></tr>
+
+    <tr><th colspan="2">Mobile toolbar<br>(shows automatically ≤ 768 px)</th></tr>
+    <tr><td colspan="2">
+      <code>A&nbsp;N&nbsp;W&nbsp;H&nbsp;O&nbsp;K</code> buttons replicate the keys.  
+      Pinch-zoom and one-finger drag pan the map.
+    </td></tr>
+  </table>
+
+  <!-- ───────────────────────────────────────────────────────── UI Buttons -->
+  <h4>Top Bar Buttons</h4>
+  <ul>
+    <li><strong>TAGS</strong> – cycle scope overlays
+      (OFF → B/E → JTN → INFO → ALL → ALT)</li>
+    <li><strong>Compass</strong> – overlay fixed 8-point compass rings</li>
+    <li><strong>Map</strong> – toggle sat/outline background</li>
+    <li><strong>Help</strong> – you’re here</li>
+  </ul>
+
+  <h4>Action Bar (bottom-right)</h4>
+  <ul>
+    <li><strong>REDWOOD</strong> – arms “weapons-hot” in a quadrant<br>
+        • Tap <em>REDWOOD</em> → choose <em>NW NE SW SE</em>.<br>
+        • Hot for 5 min or until friendlies enter.<br>
+        • Suppresses ROE penalties in that sector.</li>
+    <li><strong>FIREBALL</strong> – global TBM defense switch<br>
+        Arms Patriots (50 NM gate) and NASAMS (20 NM gate) for
+        all incoming TBM waves.</li>
+  </ul>
+
+  <!-- ───────────────────────────────────────────────────────── Scoring -->
+  <h4>Scoring</h4>
+  <ul>
+    <li><strong>+1</strong> Valid missile kill</li>
+    <li><strong>+2</strong> FIREBALL intercept</li>
+    <li><strong>–1</strong> Birds trashed (miss if no geometry)</li>
+    <li><strong>–5</strong> ROE violation (invalid target)</li>
+    <li><strong>–6</strong> Friendly fire outside geometry</li>
+    <li><strong>–20</strong> Fratricide inside geometry</li>
+    <li><strong>–5</strong> TBM crater on island</li>
+  </ul>
+
+  <!-- ───────────────────────────────────────────────── Radar & Weapons -->
+  <h4>Weapon Systems</h4>
+  <dl>
+    <dt>Patriot FUs × 4</dt>
+    <dd>
+      Magazine per FU: 12 PAC-2, 16 PAC-3, 24 MSE  
+      <br>Reload: 15 min (weapons-red)  
+      <br>Radar wedge: 60 NM / ±60° &nbsp;(<kbd>O</kbd> to slew, 90 s red)
+    </dd>
+
+    <dt>NASAMS</dt>
+    <dd>
+      18 × AIM-120, 15 NM ring. Reload 15 min.  
+      Auto-fires on TBM at 20 NM if FIREBALL armed.
+    </dd>
+
+    <dt>TPS-75</dt>
+    <dd>
+      Island-wide search radar. May be damaged by bombs/cruise missiles
+      (10 min downtime).</dd>
+  </dl>
+
+  <!-- ─────────────────────────────────────────────────── Threat Types -->
+  <h4>Threat Types</h4>
+  <ul>
+    <li><strong>Hostile aircraft</strong> – maneuver, drop bombs at 10 NM &amp; 5 NM.</li>
+    <li><strong>TBM waves</strong> – groups of 3 ballistic missiles. Use FIREBALL.</li>
+    <li><strong>Cruise missiles</strong> – low-alt clustered shots from Level 2+.</li>
+    <li><strong>Friendlies</strong> – descend from 20 NM / 200 MSL; no shooting!</li>
+  </ul>
+
+  <!-- ────────────────────────────────────────────────────────── Levels -->
+  <h4>Levels &amp; Progression</h4>
+  <ol>
+    <li><strong>Level 1</strong> – 10 hostiles.</li>
+    <li><strong>Level 2</strong> – +5 hostiles, adds cruise-missile raid.</li>
+    <li><strong>Level 3</strong> – TBM wave ‎(+ FIREBALL).</li>
+    <li><strong>Level 4+</strong> – Random radar outages, faster tracks.</li>
+  </ol>
+
+  <!-- ───────────────────────────────────────────────────────── Closing -->
+  <p style="text-align:center">
+    <button id="closeHelp">Close</button>
+  </p>
+</div>
       
 
   <div id="mobileControls">
@@ -480,6 +571,463 @@
 
   <div id="cursorLabel"></div>
   <script>
+// at the top of your script, pick whatever on‑screen radius you like:
+const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
+  /* -------------------------------------------------------------
+     GLOBAL RUN-STATE FLAGS – must be declared before animate()
+  ------------------------------------------------------------- */
+  let paused       = false;   // true ⇒ physics/update loop is frozen
+  let fastForward  = false;   // true while the ›› button is held
+  const FF_FACTOR  = 4;       // 4× speed-up when fast-forwarding
+
+  let assetHits        = 0;   // ++ every time we take a hit
+let fratricideFatal  = false;
+
+  // *** 1) Capture all the new UI elements ***
+  const disclaimer  = document.getElementById('disclaimerOverlay');
+  const ackBtn      = document.getElementById('ackDisclaimer');
+  const modeSelect  = document.getElementById('modeSelectOverlay');
+  const btnBullseye = document.getElementById('btnBullseye');
+  const btnAir      = document.getElementById('btnAirBattle');
+  const controls    = document.getElementById('gameControls');
+  const pauseBtn = document.getElementById('pauseBtn');
+const stepBtn  = document.getElementById('stepBtn');
+const ffBtn    = document.getElementById('ffBtn');
+const skipBtn  = document.getElementById('skipBtn');
+skipBtn.addEventListener('click', goNextLevel);
+
+
+// ─── PER-LEVEL METRICS ─────────────────────────────────────────────
+const STATS = {
+  missilesUsed : { pac2:0, pac3:0, mse:0, aim120:0 },
+    engagementsGood : 0,
+    engagementsBad  : 0,
+  assetsHit    : 0,
+  roeViolations: 0,
+  fratricide   : 0,
+  radarDowntime: 0,          // seconds
+  impacts      : []          // ← NEW – list of what got hit
+};
+
+function resetStats () {
+  for (const k in STATS.missilesUsed) STATS.missilesUsed[k] = 0;
+  STATS.engagementsGood = STATS.engagementsBad =
+  STATS.assetsHit      = STATS.roeViolations =
+  STATS.fratricide     = STATS.radarDowntime = 0;
+  STATS.impacts.length = 0;
+}
+
+// will gate automatic mission‑fail on fratricide or too many hits
+let allowMissionFail = true;
+
+  /* ─── GAME-TIME CONTROLS (Pause / Step / FF / Skip) ──────────────────── */
+
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? '▶' : '❚❚';
+  });
+
+// speed factors
+const QUAD_FACTOR = 4;
+const TEN_FACTOR   = 10;
+
+
+let fastFactor  = 1;       // NEW – 1 ×, 2 ×, or 4 ×
+
+// ›  (2 ×) while you hold it
+stepBtn.addEventListener('mousedown',  () => { fastForward = true; fastFactor = QUAD_FACTOR; });
+stepBtn.addEventListener('touchstart', () => { fastForward = true; fastFactor = QUAD_FACTOR; }, {passive:true});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
+  stepBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
+);
+
+// ›› (4 ×) while you hold it
+ffBtn .addEventListener('mousedown',  () => { fastForward = true; fastFactor = TEN_FACTOR; });
+ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = TEN_FACTOR; }, {passive:true});
+['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
+  ffBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
+);
+
+  // *** 2) Helper to show in‑game controls ***
+  function onGameStart() {
+    controls.style.display = 'block';
+    // hide whatever “Practice” button you once had:
+    const oldPractice = document.getElementById('practiceBtn');
+    if (oldPractice) oldPractice.style.display = 'none';
+  }
+
+  /* ────────────────────────────────────────────────────────────
+   TIMED BULLSEYE-PRACTICE MODULE
+   ------------------------------------------------------------
+   • Ten rounds per level.
+   • Level-1 time limit = 10 s, –2 s each level (min 2 s).
+   • +1 if correct within the limit, -1 if wrong / timed-out.
+   • After 10 rounds ⇒ level overlay.  Five levels total.
+───────────────────────────────────────────────────────────── */
+
+/* ===== CONFIG ===== */
+const BE_ROUNDS   = 10;                         // 10 hostiles per level
+const BE_TIME_MS  = [20_000, 15_000, 10_000, 5_000]; // level limits
+const BE_LEVELS   = BE_TIME_MS.length;          // = 4
+
+
+/* ===== STATE ===== */
+let beLevel     = 1;
+let beRound     = 0;
+let beLevelScore = 0;       // NEW – resets every level
+let beTotalScore = 0;       // NEW – accumulates across all levels
+let beTarget    = null;
+let beTimerMs   = BE_TIME_MS[0];        // 20 000 ms for Level 1
+let beTimeoutId = null;
+let beTickerId  = null;
+let beStartT    = null;
+let beSumT      = 0;           // cumulative reaction time this level
+let beActive    = false;       // ⇐ true only when we are listening for hits
+const beHistory = [];          // store {level, hits, avg} for summary
+
+/* helper: build exactly ten hostiles all inside current radar cover */
+function rebuildBullseyeTracks () {
+  // keep friendlies / TBMs if any, remove old hostiles
+  tracks = tracks.filter(t => t.friendly || t.isTbm || t.isCruise);
+
+  while (tracks.filter(t => !t.friendly && !t.destroyed).length < 10) {
+    const h = spawnVisibleHostile();        // helper from earlier patch
+    if (!h) break;                          // safety
+  }
+}
+
+const beAvgs    = [];          // avg time per level (for improvement)
+
+/* ===== DOM ===== */
+const timerEl   = document.getElementById('timerDisplay');
+
+const menuBtn   = document.getElementById('btnBullseye'); // existing button
+
+/* ─── FULL-RESET FOR RADARS + LAUNCHERS ───────────────────────── */
+function resetLaunchersAndRadars () {
+  statics.forEach(s => {
+    /* Patriot & TPS-75 radars */
+    if (s.type === 'rad' || s.type === 'c2Rad') {
+      s.disabledUntil = 0;          // back to green
+      s.animFrom = s.animTo = null; // cancel any wedge animation
+    }
+
+    /* NASAMS launcher */
+    if (s.id === 'NASAMS') {
+      NASAMSMissiles      = 18;
+      NASAMSDisabledUntil = 0;
+    }
+
+    /* Patriot FUs */
+    if (s.type === 'fu' && s.id !== 'NASAMS') {
+      s.ammo = { pac2:12, pac3:16, mse:24 }; // full load-out
+      s.engagementsRemaining = 28;           // 2 rounds = 14 shots
+      s.disabledUntilFu      = 0;            // clear reload timer
+    }
+  });
+}
+
+
+/* --------------------------------------------------------- */
+function beginBeLevel () {
+    beLevelScore = 0;        // ← reset this level’s score
+  updateScoreDisplay();    // so the UI shows “0/10”
+  
+  beRound   = 0;
+  beSumT    = 0;
+  beTimerMs = BE_TIME_MS[beLevel - 1];      // 20→15→10→5
+  beActive  = true;                              /* enable hit-test */
+  rebuildBullseyeTracks();                  /* new set of ten */
+  timerEl.textContent = (beTimerMs/1000).toFixed(1)+' s';
+  nextBeRound();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Ensure the prompt is ONLY for tracks currently detectable
+─────────────────────────────────────────────────────────────── */
+
+/* helper: spawn hostiles until at least one is immediately visible */
+function spawnVisibleHostile() {
+  let tries = 0;
+  while (tries < 40) {                     // safety cap
+    const t = newTrack();                  // random hostile
+    tracks.push(t);
+    updateVisibility();                    // refresh _visible flags
+    if (isTrackVisible(t)) return t;       // good – we can use it
+    tries++;
+  }
+  return null;                             // fallback (shouldn’t happen)
+}
+
+/* replacement for the old nextBeRound() */
+function nextBeRound () {
+  clearTimeout(beTimeoutId);
+  clearInterval(beTickerId);
+
+  // Level finished?
+  if (beRound >= BE_ROUNDS) {
+    beActive = false;            /* disable hit-test until next level */
+    finishBeLevel();
+    return;
+  }
+
+  /* ----- pick a target that is visible RIGHT NOW ----- */
+  updateVisibility();   // make sure _visible flags are current
+
+  let candidates = tracks.filter(t =>
+    !t.friendly && !t.destroyed && isTrackVisible(t)
+  );
+
+  // If none are visible, spawn until we get one
+  if (!candidates.length) {
+    const visT = spawnVisibleHostile();
+    if (visT) candidates = [visT];
+    else {   // catastrophic fall-back: just skip this round
+      onBeTimeout();
+      return;
+    }
+  }
+
+  beTarget = candidates[Math.floor(Math.random() * candidates.length)];
+
+  // Announce
+  statusEl.textContent = `Select Group Bullseye ${formatBE(beTarget)}`;
+  beRound++;
+
+  // Start timers
+  beStartT    = Date.now();
+  beTickerId  = setInterval(updateBeClock, 100);
+  beTimeoutId = setTimeout(onBeTimeout, beTimerMs);
+}
+
+
+function updateBeClock() {
+  // only show a timer during Bullseye practice
+  if (mode === 'free') {
+    const left = Math.max(0, beTimerMs - (Date.now() - beStartT));
+    timerEl.textContent = (left/1000).toFixed(1) + ' s';
+  } else {
+    // no timer in Air‑Battle
+    timerEl.textContent = '';
+  }}
+
+
+function onBeSuccess () {
+  clearTimeout(beTimeoutId);
+  clearInterval(beTickerId);
+  const rt = Date.now() - beStartT;
+  beSumT  += rt;
+  beLevelScore += 1;
+  updateScoreDisplay();
+  feedbackEl.textContent = `+1  (${(rt/1000).toFixed(2)} s)`;
+  nextBeRound();
+}
+
+function onBeTimeout () {
+  clearInterval(beTickerId);
+  beLevelScore -= 1;
+  updateScoreDisplay();   
+  feedbackEl.textContent = '-1  (Timed out)';
+  nextBeRound();
+}
+
+function finishBeLevel () {
+  /// store average RT
+ const avg = beSumT / BE_ROUNDS;
+  beAvgs.push(avg);
+  beHistory.push({ level: beLevel, hits: beLevelScore, avg });
+
+  // accumulate into the grand total
+  beTotalScore += beLevelScore;
+
+  // build overlay
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  // still show _this level’s_ score out of 10
+  ov.innerHTML = `
+    <div class="overlayBox">
+      <h2>Level ${beLevel} Complete</h2>
+      <p>Score: <strong>${beLevelScore}/${BE_ROUNDS}</strong></p>
+      <p>Avg reaction: ${(avg/1000).toFixed(2)} s</p>
+      <button id="beNext">
+        ${beLevel < BE_LEVELS ? 'Next Level »' : 'Show Summary'}
+      </button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // wire up button
+  ov.querySelector('#beNext').onclick = () => {
+    ov.remove();
+    if (beLevel < BE_LEVELS) {
+      beLevel++;
+      beActive = true;          /* re-enable hit-test for new level */
+      beginBeLevel();
+    } else {
+      showBeSummary();
+    }
+  };
+}
+
+function showBeSummary () {
+    beActive = false;
+
+  /* Build a very small performance chart on the game canvas */
+  const chartH = 60, chartW = 180, pad = 8;
+  const maxT   = Math.max(...beHistory.map(o => o.avg));
+  ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,chartW+pad*2,chartH+pad*2);
+    ctx.translate(pad, pad);
+    ctx.strokeStyle = '#0ea5e9';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    beHistory.forEach((o,i)=>{
+      const x = (i/(BE_LEVELS-1))*chartW;
+      const y = chartH - (o.avg / maxT)*chartH;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px monospace';
+    beHistory.forEach((o,i)=>{
+      const x = (i/(BE_LEVELS-1))*chartW;
+      const y = chartH + 12;
+      ctx.fillText(`L${o.level}`, x-6, y);
+    });
+  ctx.restore();
+
+  let improvement = 0;
+  const lines = beAvgs.map((a,i)=>{
+    if(i){ improvement += beAvgs[i-1]-a; }
+    return `L${i+1}: ${(a/1000).toFixed(2)} s`;
+  }).join('<br>');
+
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.innerHTML = `
+    <div class="overlayBox">
+      <h2>Timed Practice Summary</h2>
+      <canvas id="beReactionChart" width="200" height="200"
+              style="border:1px solid #444; margin-bottom:.5rem;"></canvas>
+      <p>Total score: <strong>${beTotalScore}/${BE_ROUNDS*BE_LEVELS}</strong></p>
+      ${lines.replace(/<br>/g,'<br>')}
+      <p><em>Overall improvement: ${(improvement/1000).toFixed(2)} s</em></p>
+      <button id="beClose">Close</button>
+    </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#beClose').onclick = () => ov.remove();
+
+  // — draw the reaction‑time line in red —
+  const chart = ov.querySelector('#beReactionChart');
+  const ctx2  = chart.getContext('2d');
+  const dataS = beAvgs.map(a => a/1000);         // convert to seconds
+  const maxY  = Math.max(...dataS) * 1.1;        // a little headroom
+  const w     = chart.width,  h = chart.height;
+  ctx2.clearRect(0,0,w,h);
+  ctx2.beginPath();
+  dataS.forEach((val, i) => {
+    const x = (i / (dataS.length - 1)) * (w - 20) + 10;
+    const y = h - ((val / maxY) * (h - 20)) - 10;
+    if (i === 0) ctx2.moveTo(x,y);
+    else         ctx2.lineTo(x,y);
+  });
+  ctx2.strokeStyle = 'red';
+  ctx2.lineWidth   = 2;
+  ctx2.stroke();
+
+  // draw small dots
+  dataS.forEach((val, i) => {
+    const x = (i / (dataS.length - 1)) * (w - 20) + 10;
+    const y = h - ((val / maxY) * (h - 20)) - 10;
+    ctx2.beginPath();
+    ctx2.arc(x,y,3,0,Math.PI*2);
+    ctx2.fillStyle = 'red';
+    ctx2.fill();
+  });
+}
+
+/* ---------------------------------------------------------
+   HOOK INTO THE NORMAL POINTER-SELECTION ROUTINE
+   (Add this once near the end of your pointerup / click logic)
+--------------------------------------------------------- */
+function checkBeSelection () {
+    if (!beActive || mode !== 'free' || !beTarget || !selectedTrack) return;
+  if (selectedTrack === beTarget) onBeSuccess();
+}
+window.addEventListener('pointerup', checkBeSelection);
+
+
+
+function startBullseyePractice() {
+  mode          = 'free';
+  beLevelScore  = 0;      // reset the Bullseye score
+  beTotalScore  = 0;      // if you want to track total over levels
+  // …rest unchanged…
+  updateScoreDisplay();
+  beginBeLevel();
+}
+
+/* ---------------------------------------------------------
+   WIRE THE OVERLAY MENU BUTTON
+   (replace the old handler for btnBullseye)
+--------------------------------------------------------- */
+btnBullseye.onclick = () => {
+  modeSelect.style.display = 'none';
+  startBullseyePractice();
+};
+
+  /* ————— Skip-button label toggler ————— */
+function refreshSkipBtn() {
+  if (mode === 'free') {               // Bullseye practice
+    skipBtn.textContent   = 'Fight Air Battle';
+    skipBtn.dataset.action = 'practice';
+  } else {                             // Air-battle levels
+    skipBtn.textContent   = 'Next Level»';
+    skipBtn.dataset.action = 'next';
+  }
+}
+
+  // *** 4) Air‑Battle = your existing Practice‑mode logic ***
+  function startPracticeMode() {
+    mode = 'practice';
+    round = 0; score = 0;     // reset score
+    timerEl.textContent = '';      // ← ADD THIS LINE
+    fitMobileView();          // keep mobile tap alignment perfect
+    // you can either call nextQueueTrack() directly...
+    nextQueueTrack();
+    // …or just invoke your old button handler:
+    // document.getElementById('practiceBtn').click();
+    onGameStart();
+    refreshSkipBtn();          // ← update label / action
+  
+
+  // one initial call so the button is correct on page-load
+ refreshSkipBtn();
+  }
+  // *** 5) Wire up the overlays ***
+  ackBtn.addEventListener('click', () => {
+    disclaimer.style.display = 'none';
+    modeSelect.style.display = 'flex';
+  });
+
+btnAir.addEventListener('click', () => {
+  modeSelect.style.display = 'none';
+  startPracticeMode();
+});
+
+  btnAir.addEventListener('click', () => {
+    modeSelect.style.display = 'none';
+    startPracticeMode();
+  });
+// immediately advance to the next level, tearing down & rebuilding
+function goNextLevel() {
+  paused = false;       // un‑freeze the game loop
+  level++;              // bump the level counter
+  setupLevel(level);    // full rebuild for that level
+}
+skipBtn.addEventListener('click', goNextLevel);
+
+
     // ─── CONFIG & STATE ─────────────────────────────────────────────────
     const CFG = {
       trackCount: 10,
@@ -570,6 +1118,12 @@ function collapseIfAllCold() {
   }
 }
 
+// jump immediately to the next level
+function goNextLevel() {
+  paused = false;      // resume the physics loop
+  level++;             // bump the level counter
+  setupLevel(level);   // full rebuild for that level
+}
 
 /* ──────────────────────────────────────────────────────────────
    REDWOOD  – single source of truth
@@ -687,6 +1241,31 @@ function roePenaltyAllowed(track) {
   return !(redwoodActive && inQuadrant(track, redwoodQuadrant));
 }
 
+function showLogsOverlay(parent) {
+  parent.style.display = 'none';               // hide the menu
+
+  const ov = document.createElement('div');
+  ov.className = 'overlay';
+  ov.innerHTML = `
+    <div class="overlayBox" style="max-width:600px; max-height:80vh; overflow:auto;">
+      <h2>Mission Logs</h2>
+      <pre style="text-align:left; font-family:monospace;"
+           id="missionLogPre"></pre>
+      <button id="closeLogs">Close</button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  // dump the log
+  const pre  = ov.querySelector('#missionLogPre');
+  pre.textContent = MISSION_LOG
+    .map(o => `[${o.z}] ${o.msg}`)
+    .join('\n');
+
+  ov.querySelector('#closeLogs').onclick = () => {
+    ov.remove();
+    parent.style.display = 'flex';             // bring the menu back
+  };
+}
 
 /**
  * Build `numGroups` of hostile tracks whose sizes sum to `totalHostiles`.
@@ -851,12 +1430,16 @@ function resize () {
   const hdr   = document.querySelector('header').offsetHeight;
   worldHeight = canvas.height = window.innerHeight - hdr;
 
+  // Build statics only once
   if (!resize.didInit) {
     buildStatics();
     resize.didInit = true;
-    fitMobileView();           // first‑time mobile fit
   }
+
+  // 👉 always recenter / rescale for the current viewport
+  fitMobileView();
 }
+
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', resize);
@@ -878,7 +1461,7 @@ function updateMultiSelect() {
     multiSelect = tracks.filter(t => {
      if (!isTrackVisible(t)) return false; // new unified one
     const sx = (t.x - offX) * scale;
-    const sy = (t.y - offY) * scale;
+    sy = (t.y - offY) * scale - 6 * scale;   // ← raise hit-point ↑
     return sx >= left && sx <= right && sy >= top && sy <= bottom;
   });
 }
@@ -1020,6 +1603,26 @@ statics
     }
   });
 }
+
+/* ─── MISSION LOG (auto-captured) ───────────────────────────────── */
+const MISSION_LOG = [];            // { z:'HH:MM:SSZ', msg:'…' }
+
+function recordLog(msg) {
+  if (!msg) return;                // ignore blanks
+  const z = new Date().toISOString().slice(11, 19) + 'Z';
+  MISSION_LOG.push({ z, msg });
+}
+
+/* 1 observer instance that we reuse for both elements */
+const logObserver = new MutationObserver(muts => {
+  muts.forEach(m => recordLog(m.target.textContent.trim()));
+});
+
+/* start watching both on-screen “chat” areas */
+logObserver.observe(statusEl,   { childList:true, subtree:true, characterData:true });
+logObserver.observe(feedbackEl, { childList:true, subtree:true, characterData:true });
+
+
 /**
  * Decide which missile type to fire (based on range), consume 2 rounds,
  * decrement engagementsRemaining, and handle reload warnings/outage.
@@ -1028,6 +1631,8 @@ statics
  function processPatriotEngagement(fu, rangeNm) {
   const now   = Date.now();
   const label = getFuLabel(fu);
+
+  
 
   // 1) If currently reloading → block
   if (now < fu.disabledUntilFu) {
@@ -1068,6 +1673,8 @@ statics
   fu.ammo[chosen]         -= 2;
   fu.engagementsRemaining -= 1;
 
+  // stats
+  STATS.missilesUsed[chosen] += 2;
   // 5) Warnings at thresholds
   if (fu.engagementsRemaining === 10) {
     feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
@@ -1351,12 +1958,13 @@ function engageTbmWithNASAMS(tbm) {
     const msg  = `ADAFCO, TD, NASAMS reload ETIC ${mins} min`;
     statusEl.textContent   = msg;
     feedbackEl.textContent = msg;
-    setTimeout(() => { NASAMSMissiles = 6; }, 5 * 60 * 1000);
+    setTimeout(() => { NASAMSMissiles = 18; }, 5 * 60 * 1000);
     return;
   }
 
     // 3) Consume two AIM‑120s then launch two missiles, 1s apart
   NASAMSMissiles -= 2;
+  STATS.missilesUsed.aim120 += 2;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
       if (!tbm.destroyed) {
@@ -1489,6 +2097,9 @@ function scheduleImpactCheck(t) {
   const ipX = t.x + (vtx / 3600) * tMs / CFG.nmPerPixel;
   const ipY = t.y + (vty / 3600) * tMs / CFG.nmPerPixel;
 
+  // ✦ record exactly **when** that intercept will happen
+t.interceptTimestamp = Date.now() + tMs;
+
   // 4) schedule the decision
   t.mslTimer = setTimeout(() => impactDecision(t), tMs);
 }
@@ -1524,11 +2135,19 @@ function impactDecision(track) {
     // only inside geometry is fratricide
     if (inRing || inAnyWedgeGeom) {
       changeScore(-20, 'Fratricide! –20 points');
+      STATS.fratricide++;
+  STATS.impacts.push(`Fratricide on friendly ${track.id}`);
     } else {
       // outside geometry: birds trashed + ROE
         // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
-      changeScore(-6, 'Birds Trashed: –1; ROE Violation: –5');
+      changeScore(-6, 'BIRDS TRASHED: –1; ROE Violation: –5');
+     
+       if (!t._outcomeLogged) {
+   t._outcomeLogged = true;
+   STATS.engagementsBad++;
+STATS.roeViolations++;
+  }
   }}
     track.destroyed = true;
     return;
@@ -1551,6 +2170,10 @@ if (covering.length &&
 if (inRing || inAnyWedgeGeom) {
   // 1) score the kill
   changeScore(1, `Track ${track.id} Vanished: +1`);
+    if (!track._outcomeLogged) {
+    track._outcomeLogged = true;
+    STATS.engagementsGood++;
+  }
 
 // 2) fratricide check: for non‑TBM, non‑Cruise kills
 if (!track.isTbm && !track.isCruise) {
@@ -1594,7 +2217,11 @@ if (!track.isTbm && !track.isCruise) {
 
 /** Apply the trashed penalty & revert to ENGAGE at current position. */
 function markShotTrashed(t) {
-  changeScore(-1, 'Birds Trashed: -1 point');
+  changeScore(-1, 'BIRDS TRASHED: -1 point');
+  if (!t._outcomeLogged) {
+   t._outcomeLogged = true;
+    STATS.engagementsBad++;
+  }
   t.tag           = 'ENGAGE';
   t.tagTime       = Date.now();
   t.everEngaged   = true;
@@ -1638,6 +2265,7 @@ function damageLauncherAmmo (fu) {
     const lost = Math.ceil(NASAMSMissiles * 0.33);       // 33 %
     NASAMSMissiles = Math.max(0, NASAMSMissiles - lost);
     feedbackEl.textContent = `NASAMS launcher damaged – lost ${lost} AIM-120s`;
+    STATS.impacts.push(`NASAMS lost ${lost} AIM‑120s`);
     return;
   }
 
@@ -1647,6 +2275,7 @@ function damageLauncherAmmo (fu) {
   if (!choices.length) return;        // nothing left to lose
 
   const pick = choices[Math.floor(Math.random() * choices.length)];
+  const lost = bundleLoss[pick];
   fu.ammo[pick] = Math.max(0, fu.ammo[pick] - bundleLoss[pick]);
 
   // engagementsRemaining = total rounds ÷ 2
@@ -1657,6 +2286,7 @@ function damageLauncherAmmo (fu) {
 
   feedbackEl.textContent =
     `${getFuLabel(fu)} damaged – lost ${bundleLoss[pick]} ${pick.toUpperCase()}`;
+    STATS.impacts.push(`${getFuLabel(fu)} lost ${lost} ${pick.toUpperCase()} missiles`);
 }
 
     // ─── DRAW ───────────────────────────────────────────────────────────
@@ -2260,10 +2890,14 @@ function drawRubber() {
       if (b.target.system === 'TPS‑75') {
         changeScore(-10, 'CREW, SL, TPS‑75 was damaged. Loss of sensor coverage for 10 min.');
         b.target.disabledUntil = now + 10 * 60 * 1000;
+         STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push('TPS-75');
       } else if (b.target.system === 'MPQ‑53') {
         const quad = getQuadrant({ x: b.target.x, y: b.target.y });
         changeScore(-7, `ADAFCO, ICC, ${quad} radar and one launcher damaged. Down for 10 min.`);
         b.target.disabledUntil = now + 10 * 60 * 1000;
+         STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push(`${getFuLabel(b.target)} Radar`);
       // ➋ NEW – find the paired FU and remove ammo
   const fu = statics
     .filter(s => s.type === 'fu')
@@ -2275,6 +2909,7 @@ function drawRubber() {
 } else if (b.target.type === 'fu') {
   // bomb hit a launcher directly → just drain ammo
   damageLauncherAmmo(b.target);
+  STATS.impacts.push(`${getFuLabel(b.target)}`);
 
       }
       b.expire = 0; // remove
@@ -2415,6 +3050,8 @@ missiles.forEach(m => {
       changeScore(pts, msg);
       // disable for 10 min
       tgt.disabledUntil = Date.now() + 10*60*1000;
+       STATS.radarDowntime += 10 * 60;
+ STATS.impacts.push('TPS-75');
     } else {
       // non‑radar static
       changeScore(-10, `Crew, SL, Quail Impact ${tgt.id}`);
@@ -2422,6 +3059,7 @@ missiles.forEach(m => {
     /* ammo knock-down ---------------------------------------------- */
     if (tgt.type === 'fu') {
   damageLauncherAmmo(tgt);   // launcher or NASAMS takes the ammo loss
+   STATS.impacts.push(`${getFuLabel(tgt)}`);
 }
     // remove the cruise missile track
     o.destroyed = true;
@@ -2471,7 +3109,9 @@ if (o.isTbm) {
          const nmDist = distNm(bullseye, o);
          if (!o.cratered && nmDist <= 1) {
         o.cratered = true;
-        changeScore(-5, 'ADAFCO, TD, CRATER at BULLSEYE -5');
+        changeScore(-5, 'ADAFCO, TD, CRATER Runway -5');
+        +STATS.assetsHit++;
+        STATS.impacts.push('Runway Cratered');
         updateScoreDisplay();
         o.destroyed = true;
         return;    // skip any further per‑track logic
@@ -2625,14 +3265,16 @@ setInterval(updateVisibility,1000);
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
   function animate(now) {
   // ─── 1) compute delta ─────────────────────────────────────
-  const dt = (now - lastTime) / 1000;
+   let dt = (now - lastTime) / 1000;
   lastTime = now;
 
+    if (paused)           dt = 0;                 // freeze when paused
+    else if (fastForward) dt *= fastFactor;       // scale by 2 × or 4 ×
   // ─── 2) update track positions, spawns, etc. ────────────
   updateTracks(dt);
 
   // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ─────────
-{
+  if (mode === 'practice') {      // ← run this block ONLY in Air-Battle
   const icc = statics.find(s => s.type === 'icc');
   pendingEngagements = pendingEngagements.filter(trk => {
     // drop if destroyed or re‑tagged
@@ -2890,23 +3532,40 @@ if (bgImg.complete) {
 
   requestAnimationFrame(animate);
 }
+// one-frame tick used by the “Step” button
+function gameStep() {
+  const fakeNow = performance.now();
+  animate(fakeNow);
+}
 requestAnimationFrame(animate);
 
 
     // ─── INPUT HANDLING ─────────────────────────────────────────────────
-    function storeMouse(e) {
-      const rect = canvas.getBoundingClientRect();
-      let pageX = 'pageX' in e ? e.pageX : e.clientX;
-      let pageY = 'pageY' in e ? e.pageY : e.clientY;
-      mouse.sx = pageX - rect.left;
-      mouse.sy = pageY - rect.top;
-      mouse.px = pageX;
-      mouse.py = pageY;
-      const w = scrToWorld(mouse.sx, mouse.sy);
-      mouse.wx = w.x;
-      mouse.wy = w.y;
-      updateCursorLabel();
-    }
+    function storeMouse(ev) {
+  const rect = canvas.getBoundingClientRect();
+
+  /* always work in viewport (client) pixels */
+  let cx, cy;
+  if (ev.clientX != null) {                // Pointer / Mouse
+    cx = ev.clientX;
+    cy = ev.clientY;
+  } else if (ev.touches && ev.touches.length) { // Touch
+    cx = ev.touches[0].clientX;
+    cy = ev.touches[0].clientY;
+  } else {
+    return;                                // unexpected event object
+  }
+
+  mouse.sx = cx - rect.left;
+  mouse.sy = cy - rect.top;
+  mouse.px = cx;
+  mouse.py = cy;
+
+  const w = scrToWorld(mouse.sx, mouse.sy);
+  mouse.wx = w.x;
+  mouse.wy = w.y;
+  updateCursorLabel();
+}
 
     //let lastTap = null;                                   // ⬅️ remembers last canvas tap
     canvas.addEventListener('touchstart', e=>{
@@ -2933,7 +3592,7 @@ requestAnimationFrame(animate);
         offX=pinch.center.x-cx/scale;
         offY=pinch.center.y-cy/scale;
       } else if(e.touches.length===1){
-        storeMouse(e.touches[0]);
+        storeMouse(e);
         if(rubber){ rubber.ex=mouse.sx; rubber.ey=mouse.sy; }
       }
     },{passive:false});
@@ -3131,13 +3790,15 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 
 
-    // ─── PICK-OBJECT helper ──────────────────────────────
-    function pickObject() {
-  // Try selecting an air track under the mouse
+function pickObject() {
+  // translate that 12 px into world‑space by dividing by your current scale:
+  const HIT_R = CLICK_RADIUS_SCREEN / scale;
+  const Y_OFF = 6;  // unchanged
+
   selectedTrack = tracks.find(t => {
-    const sx = (t.x - offX) * scale,
-          sy = (t.y - offY) * scale;
-    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+    const dx = mouse.wx - t.x;
+    const dy = mouse.wy - (t.y - Y_OFF);
+    return Math.hypot(dx, dy) < HIT_R;
   }) || null;
 
   if (selectedTrack) {
@@ -3169,7 +3830,8 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
     // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
     canvas.addEventListener('pointerup', e => {
-  if (e.button !== 0 || e.target !== canvas) return;
+          const primary = (e.button === 0 || e.button === -1);   // -1 = touch
+          if (!primary || e.target !== canvas) return;
     // *before* you call pickObject(), bail if we just did a drag:
     if (multiDrag) {
     // we’ll clear multiDrag & show cards in the mouseup that handles the box
@@ -3207,7 +3869,8 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
     // ─── DESKTOP CLICK fallback ────────────────────────────────
     canvas.addEventListener('click', e => {
-  if (e.button !== 0 || e.target !== canvas) return;
+          const primary = (e.button === 0 || e.button === -1);   // -1 = touch
+          if (!primary || e.target !== canvas) return;
   e.preventDefault();
    mouse.sx = e.offsetX; mouse.sy = e.offsetY;
    mouse.px = e.clientX; mouse.py = e.clientY;
@@ -3218,6 +3881,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
    pickObject();
  });
 // ─── 4) Right-click handler on the canvas ───────────────────────────────
+
 canvas.addEventListener('contextmenu', e => {
   e.preventDefault();
 
@@ -3227,15 +3891,19 @@ canvas.addEventListener('contextmenu', e => {
   mouse.px = e.clientX;
   mouse.py = e.clientY;
   const w = scrToWorld(mouse.sx, mouse.sy);
-  mouse.wx = w.x; mouse.wy = w.y;
+  mouse.wx = w.x; 
+  mouse.wy = w.y;
   updateCursorLabel();
-  
+
+  // convert screen‑px into world‑px at current zoom:
+  const HIT_R = CLICK_RADIUS_SCREEN / scale;
+  const Y_OFF = 6;
 
   // Try picking an air track for right selection
   selectedTrack2 = tracks.find(t => {
-    const sx = (t.x - offX) * scale,
-          sy = (t.y - offY) * scale;
-    return Math.hypot(sx - mouse.sx, sy - mouse.sy) < 12;
+    const dx = mouse.wx - t.x;
+    const dy = mouse.wy - (t.y - Y_OFF);
+    return Math.hypot(dx, dy) < HIT_R;
   }) || null;
 
   if (selectedTrack2) {
@@ -3246,9 +3914,9 @@ canvas.addEventListener('contextmenu', e => {
 
   // Try picking a static for right selection
   selectedStatic2 = statics.find(s => {
-    const dx = s.x - mouse.wx,
-          dy = s.y - mouse.wy;
-    return Math.hypot(dx, dy) < 12;
+    const dx = s.x - mouse.wx;
+    const dy = s.y - mouse.wy;
+    return Math.hypot(dx, dy) < 12;  // statics still use a fixed 12 px world‑space radius
   }) || null;
 
   if (selectedStatic2) {
@@ -3262,6 +3930,7 @@ canvas.addEventListener('contextmenu', e => {
   selectedStatic2 = null;
   document.querySelectorAll('.card2').forEach(c => c.remove());
 });
+
 
     // ─── GLOBAL KEY HANDLER ───────────────────────────────────────────────
 window.addEventListener('keydown', e => {
@@ -3323,6 +3992,10 @@ window.addEventListener('keydown', e => {
         const quadrant = getQuadrant(multiSelect[0]);  // assume same quadrant
         statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
         t.tag     = 'AWAY';
+          if (!t._engagementLogged) {          // first time this track is engaged
+    t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
         t.tagTime = Date.now();
 
               // ─── INSERT THE ROE PENALTY HERE ────────────────────────
@@ -3330,6 +4003,7 @@ window.addEventListener('keydown', e => {
           // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
         changeScore(-5, 'ROE Violation: -5');
+        STATS.roeViolations++;
         t.everEngaged = true;
       }}
         const delay = 2000 + Math.random() * 3000;
@@ -3564,6 +4238,10 @@ if (key === 'h') {
 
   // 0.5 Immediate W feedback
    t.tag     = 'AWAY';
+     if (!t._engagementLogged) {          // first time this track is engaged
+   t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
    t.tagTime = Date.now();
    // delay between 2–5 seconds
    const delay = 2000 + Math.random() * 3000;
@@ -3582,6 +4260,7 @@ const distFu = distNm(fu, t);
 if (fu.id === 'NASAMS') {
   // NASAMS uses checkNASAMSStatus (unchanged)
   if (checkNASAMSStatus(inNASAMSRing)) return;
+  STATS.missilesUsed.aim120 += 2;   //  ← add this
 } else {
   // Patriot uses our new mixed‑mag logic
   if (!processPatriotEngagement(fu, distFu)) return;
@@ -3697,6 +4376,7 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
       // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
   if ( roePenaltyAllowed(t) ) {
     changeScore(-5, 'ROE Violation: -5');
+    STATS.roeViolations++;
     t.everEngaged = true;
   }}
 
@@ -3757,37 +4437,11 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
   }
 });
 
-const practiceBtn = document.getElementById('practiceBtn');
 
 
     // ─── PRACTICE MODE INITIALIZER & QUEUE ───────────────────────────────
 let trackQueue = [], queueIndex = 0, negatedStack = [];
 
-document.getElementById('practiceBtn').onclick = function(){
-  if (mode === 'free' || mode === 'gameover') {
-    // Start practice
-    mode = 'practice';
-    round = 0;
-    score = 0;
-    this.textContent = 'Free Mode';
-    statusEl.textContent = '';
-
-    // Initialize queue
-    trackQueue = tracks.filter(t => !t.destroyed);
-    trackQueue.sort((a,b) => distNm(bullseye,a) - distNm(bullseye,b));
-    queueIndex = 0;
-    negatedStack = [];
-
-    nextQueueTrack();
-  } else {
-    // Exit practice
-    mode = 'free';
-    this.textContent = 'Practice Mode';
-    statusEl.textContent = 'Free mode';
-    feedbackEl.textContent = '';
-    clearTimeout(coverTimer);
-  }
-};
 
 // ─── QUEUE ADVANCEMENT WITH COVER TIMER ───────────────────────────────
 function nextQueueTrack() {
@@ -3890,20 +4544,42 @@ function finishEngage() {
  * and kicks off practice mode on that level.
  */
  function setupLevel(lv) {
+allowMissionFail = true;
   // Clear any timers
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
   clearTimeoutAnyPendingTbmTimers();  // if you’ve stored them
+  MISSION_LOG.length = 0;
+
+
+    // --- pull forward the units you want to survive the level change ----
+    const keepers = tracks      // <-- tracks is the global array
+        ? tracks.filter(t =>
+            t.friendly || t.isTbm || t.isCruise)
+        : [];
+
+  /* ————— clean up any TBM wave timers so they don’t fire after a reset ————— */
+function clearTimeoutAnyPendingTbmTimers() {
+  if (!Array.isArray(tbmWaves)) return;
+  tbmWaves.forEach(w => {
+    if (w.spawnTimer)  clearTimeout(w.spawnTimer);
+    if (w.impactTimer) clearTimeout(w.impactTimer);
+    // add other per-wave timer handles here if you store them
+  });
+  // Optional: start the list over so the old wave objects are GC-eligible
+  tbmWaves = [];
+}
 
   // Reset state
   mode             = 'practice';
   round            = 0;
   score            = 0;
   level            = lv;
-  speedMultiplier  = 1 + 0.1 * (lv - 1);
+  speedMultiplier  = 1;
+  resetStats();               // ← add this line
 
    // ── Reset NASAMS ───────────────────────────────────────────────
- NASAMSMissiles      = 6;
+ NASAMSMissiles      = 18;
  NASAMSDisabledUntil = 0;
 
  // ── Reset FIREBALL ────────────────────────────────────────────
@@ -3912,9 +4588,74 @@ function finishEngage() {
 
 // 2) Spawn 10 groups totalling 10 + 5*(level-1) hostiles
 const groups   = CFG.trackCount;                // still 10 groups
-const totalH   = 10 + (lv - 1) * 5;             // lvl1=10, lvl2=15, lvl3=20…
+// cap difficulty growth at level 4
+ const effectiveLv = Math.min(lv, 4);
+ const totalH      = 10 + (effectiveLv - 1) * 5;
 const hostiles = newHostileGroups(groups, totalH);
 tracks = hostiles.concat(keepers);
+
+ // ───────── LEVEL‑BASED ADDITIONS ───────────────
+
+
+  // 1) Level 2+: add 3 friendlies
+  if (lv >= 2) {
+    const icc = statics.find(s => s.type === 'icc');
+    for (let i = 0; i < 3; i++) {
+      const t = newTrack();
+      t.friendly = true;
+      t.alt      = 200;
+      t.destAlt  = 0;
+      t.speed    = 500;
+      t.heading  = bearing(t, icc);
+      tracks.push(t);
+    }
+  }
+
+  // 2) Level 2+: add cruise‐missile raid
+  if (lv >= 2) {
+    const icc     = statics.find(s => s.type === 'icc');
+    const cmCount = rand(3, 9);
+    const ringNm  = rand(60, 120);
+    const ang     = Math.random() * Math.PI * 2;
+    const cx      = icc.x + Math.cos(ang) * (ringNm / CFG.nmPerPixel);
+    const cy      = icc.y + Math.sin(ang) * (ringNm / CFG.nmPerPixel);
+    for (let i = 0; i < cmCount; i++) {
+      const t       = newTrack();
+      const offset  = Math.random() * 15 / CFG.nmPerPixel;
+      const theta   = Math.random() * Math.PI * 2;
+      t.x           = cx + Math.cos(theta) * offset;
+      t.y           = cy + Math.sin(theta) * offset;
+      t.isCruise    = true;
+      t.friendly    = false;
+      t.alt         = rand(50, 100);
+      t.speed       = rand(450, 550);
+      t.destAlt     = 0;
+      t.heading     = bearing({ x: cx, y: cy }, icc);
+      tracks.push(t);
+    }
+  }
+
+  // 3) Level 3+: schedule a TBM wave
+  if (lv >= 3) {
+    setTimeout(spawnTbmWave, Math.random() * 2 * 60 * 1000);
+  }
+
+  // 4) Level 4+: forced radar outages
+  if (lv >= 4) {
+    const now   = Date.now();
+    const delay = Math.max(60_000, nextOutageAllowed - now);
+    setTimeout(() => {
+      const radars = statics.filter(s => s.type === 'rad');
+      const s      = radars[Math.floor(Math.random() * radars.length)];
+      s.disabledUntil = Date.now() + 5 * 60 * 1000;
+      STATS.radarDowntime += 5 * 60;
+      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
+      const msg = 'ADAFCO, TD, system reset, launcher down for 5 min';
+      feedbackEl.textContent = msg;
+      statusEl.textContent   = msg;
+    }, delay);
+  }
+  // ───────── END LEVEL‑BASED ADDITIONS ───────────
 
   // 3) Reset the practice queue
   trackQueue  = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
@@ -3923,117 +4664,149 @@ tracks = hostiles.concat(keepers);
   negatedStack= [];
 
   // 4) Update button text & status
-  practiceBtn.textContent = 'Free Mode';
-  statusEl.textContent   = '';
+    const practiceBtn = document.getElementById('practiceBtn');
+   if (practiceBtn) practiceBtn.textContent = 'Free Mode';
 
+   fitMobileView();      // recalc scale/offX/offY for the new level ✅
   // 5) Start
   nextQueueTrack();
 }
 
-// ─── showLevelComplete: rebuild hostiles only, preserve friendlies & TBMs ─────────────────
-function showLevelComplete() {
-    resetRedwood();
+function showReviewOverlay (menuEl) {           // <-- accept overlay
+  // 1) hide the post-level menu
+  menuEl.style.display = 'none';
 
-  mode = 'paused';
+  // 2) build the Debrief overlay
+  const r = document.createElement('div');
+  r.className = 'overlay';
+  r.innerHTML = `
+    <div class="overlayBox" style="max-width:450px;">
+      <h2>Level&nbsp;${level} Debrief</h2>
+      <pre style="text-align:left; font-size:0.9rem;">
+Missiles fired
+  PAC-2  : ${STATS.missilesUsed.pac2}
+  PAC-3  : ${STATS.missilesUsed.pac3}
+  MSE    : ${STATS.missilesUsed.mse}
+  AIM-120: ${STATS.missilesUsed.aim120}
+
+Effective engagements   : ${STATS.engagementsGood}
+Ineffective engagements : ${STATS.engagementsBad}
+
+TBM impacts           : ${STATS.assetsHit}
+Radar downtime        : ${(STATS.radarDowntime/60)|0} min
+
+<h4>Damaged Assets</h4>
+<ul style="text-align:left; padding-left:1.2em; margin:0;">
+  ${
+    STATS.impacts.length
+      ? STATS.impacts                       // [ "SW PATRIOT Radar", … ]
+          .map(item => `<li>${item}</li>`)  // → <li>…</li><li>…</li>
+          .join('')
+      : '<li>—</li>'
+  }
+</ul>
+      <button id="closeReview">Close</button>
+    </div>`;
+  document.body.appendChild(r);
+
+  // 3) when the user closes it, bring the menu back
+  r.querySelector('#closeReview').onclick = () => {
+    r.remove();                       // discard Debrief
+    menuEl.style.display = 'flex';    // show post-level menu again
+  };
+}
+function hardResetCurrentLevel () {
+  /*  wipe every transient array & timer  */
   clearTimeout(coverTimer);
   clearTimeout(killTimer);
+  tbmWaves        = [];
+  pendingEngagements.length = 0;
+  missiles.length = 0;
+  bombs.length    = 0;
 
-  // show level overlay
+  /*  restore score-keeping & state flags  */
+  assetHits        = 0;
+  fratricideFatal  = false;
+  resetRedwood();          // close HOT quadrants, reset colours
+  resetStats();            // zero the debrief counters
+  resetLaunchersAndRadars();
+
+  /*  build the level exactly like the first time  */
+  setupLevel(level);       // you already wrote this routine
+}
+
+
+function showLevelComplete(forceFail = false) {
+      mode   = 'paused';
+  paused = true;     // freeze the world as soon as the overlay comes up
+    // ⬅️ ADD THIS
+    const success = !forceFail && score > 0;
+// ─── make sure we never keep duplicates ─────────────────────
+const old = document.getElementById('levelOverlay');
+if (old) old.remove();
+
+  clearTimeout(coverTimer);
+
+  // 1) decide pass / fail
+  const pass = score >= 0;
+
+  // 2) overlay markup
   const ov = document.createElement('div');
-  ov.id = 'levelOverlay';
-  ov.innerHTML = `
-    <div id="levelBox">
-      <h2>Level ${level} Completed!</h2>
-    </div>`;
-  document.body.appendChild(ov);
+ov.id = 'levelOverlay';
+ov.innerHTML = `
+  <div id="levelBox">
+    <h2>Level ${level} – ${success ? 'Mission Success' : 'Mission Fail'}</h2>
+    <p>Score: ${score}</p>
+    <button id="nextBtn">Next Level »</button>
+    <button id="reviewBtn">Review Data</button>
+    <button id="logsBtn">Mission Logs</button>
+    <button id="contBtn">Keep Fighting</button>
+    <button id="retryBtn">Try Again?</button>
+  </div>`;
+
+/* 1️⃣ append first … */
+document.body.appendChild(ov);
+
+/* 2️⃣ …then hook up all the buttons *inside* the overlay */
+ov.querySelector('#logsBtn')
+  .addEventListener('click', () => showLogsOverlay(ov));
+
+ov.querySelector('#nextBtn')
+  .addEventListener('click', () => { ov.remove(); paused = false; level++; setupLevel(level); });
+
+  ov.querySelector('#contBtn')
+  .addEventListener('click', () => {
+    ov.remove();
+    paused = false;
+    mode = 'practice';         // go back into practice mode
+    allowMissionFail = false;  // disable mission‑fail triggers
+
+    // rebuild the hostiles queue so input works and level can end naturally
+    trackQueue   = tracks.filter(t => !t.destroyed && !t.friendly && !t.isTbm);
+    queueIndex   = 0;
+    negatedStack = [];
+
+    nextQueueTrack();
+  });
+
+ov.querySelector('#retryBtn')
+  .addEventListener('click', () => { ov.remove(); paused = false; hardResetCurrentLevel(); });
+
+ov.querySelector('#reviewBtn')
+  .addEventListener('click', () => showReviewOverlay(ov));
 
   setTimeout(() => {
     ov.remove();
     round = 0;
-    speedMultiplier += 0.1;
     level++;
 
-    // LEVEL 2 → spawn 3 friendlies
-    if (level >= 2) {
-      const icc = statics.find(s => s.type === 'icc');
-      for (let i = 0; i < 3; i++) {
-        const t = newTrack();
-        t.friendly = true;
-        t.heading  = bearing(t, icc);
-        t.alt      = 200;
-        t.speed    = 500;
-        t.destAlt  = 0;
-        tracks.push(t);
-      }
-    }
-
-    // LEVEL 2 → spawn one cruise‑missile group
-    if (level >= 2) {
-      const icc     = statics.find(s => s.type === 'icc');
-      const cmCount = rand(3, 9);                     // 3–8 missiles
-      // pick a random ring 60–120 NM from ICC
-      const ringDist = rand(60, 120);
-      const ringAng  = Math.random() * 2 * Math.PI;
-      const cx       = icc.x + Math.cos(ringAng) * (ringDist / CFG.nmPerPixel);
-      const cy       = icc.y + Math.sin(ringAng) * (ringDist / CFG.nmPerPixel);
-
-      for (let i = 0; i < cmCount; i++) {
-        // cluster within 15 NM
-        const r    = Math.random() * (15 / CFG.nmPerPixel);
-        const ang2 = Math.random() * 2 * Math.PI;
-        tracks.push({
-          id:           ('00000' + rand(1000, 7776)).slice(-5),
-          x:            cx + Math.cos(ang2) * r,
-          y:            cy + Math.sin(ang2) * r,
-          heading:      bearing({ x: cx, y: cy }, icc),
-          speed:        rand(450, 550),    // 450–550 kts
-          alt:          rand(50, 100),     // 5 000–10 000 ft
-          destAlt:      0,
-          friendly:     false,
-          tag:          null,
-          tagTime:      0,
-          destroyed:    false,
-          everEngaged:  false,
-          isTbm:        false,
-          isCruise:     true             // custom flag
-        });
-      }
-    }
-
-
-    // LEVEL 3 → schedule TBM wave
-    if (level >= 3) {
-      const delay = Math.random() * 2 * 60 * 1000;
-      setTimeout(spawnTbmWave, delay);
-    }
-
-      // ─── forced radar outage on Level 4+, with 2 min cooldown ─────────────────
-  if (level >= 4) {
-    const now       = Date.now();
-    // compute delay: at least 60 s from now, but also ensure we're past nextOutageAllowed
-    const delayMs   = Math.max(60 * 1000, nextOutageAllowed - now);
-    setTimeout(() => {
-      const then     = Date.now();
-      // pick a random Patriot radar
-      const rads     = statics.filter(s => s.type === 'rad');
-      const s        = rads[Math.floor(Math.random() * rads.length)];
-      // disable it for 5 minutes
-      s.disabledUntil = then + 5 * 60 * 1000;
-      // schedule next allowed outage 2 min after this one ends
-      nextOutageAllowed = s.disabledUntil + 2 * 60 * 1000;
-
-      // notify the user
-      const msg = 'ADAFCO, TD, system reset, launcher down for 5 minutes';
-      feedbackEl.textContent = msg;
-      statusEl.textContent   = msg;
-    }, delayMs);
-  }
+    
 
     // ─── REBUILD HOSTILES ONLY ─────────────────────────────────
     // 1) pull out all the friendlies and TBMs we want to keep
-    const keepers = tracks.filter(t =>
-  t.friendly || t.isTbm || t.isCruise
-);
+     const keepers = tracks.filter(t =>
+   t.friendly || t.isTbm || t.isCruise
+ );
 
 // 1.5) force every friendly to start at 200 MSL
 keepers.forEach(t => {
@@ -4059,7 +4832,7 @@ updateVisibility();            // ensure no flash on level load
     mode = 'practice';
     nextQueueTrack();
 
-  }, 2000);
+  }, 300000);
 }
 
 
@@ -4118,7 +4891,10 @@ function showGameOver(reason) {
 
   // 4) Try Again just reloads the page
   document.getElementById('tryAgainBtn').onclick = () => {
-    location.reload();
+    ov.remove();
+resetLaunchersAndRadars();
+hardResetCurrentLevel();
+
   };
 }
 
@@ -4145,8 +4921,13 @@ function showGameOver(reason) {
 
     //help with scoring TBMs
     const scoreEl = document.getElementById('score');
-function updateScoreDisplay() {
-  scoreEl.textContent = `Score: ${score}`;
+    function updateScoreDisplay() {
+  // In Bullseye (“free”) show the Bullseye score,
+  // otherwise show the main “score” for Air Battle.
+  const val = (mode === 'free')
+    ? beLevelScore
+    : score;
+  scoreEl.textContent = `Score: ${val}`;
 }
 // initialize
 updateScoreDisplay();
@@ -4159,6 +4940,14 @@ updateScoreDisplay();
   score += delta;
   updateScoreDisplay();
   feedbackEl.textContent = msg;
+    // ── fatal-event bookkeeping ─────────────────
+  if (msg.includes('Fratricide'))               fratricideFatal = true;
+  if (msg.match(/damaged|Impact|CRATER/))       assetHits++;
+
+  // auto-end level if rules crossed
+   if (allowMissionFail && (fratricideFatal || assetHits >= 5)) {
+   showLevelComplete(true);
+ }
 }
 
     // COMPASS toggle
@@ -4166,7 +4955,7 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
+    </script>
 
-  </script>
 </body>
 </html>

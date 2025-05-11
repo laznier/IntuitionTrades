@@ -628,22 +628,22 @@ pauseBtn.addEventListener('click', () => {
   });
 
 // speed factors
-const DOUBLE_FACTOR = 2;
-const QUAD_FACTOR   = 4;
+const QUAD_FACTOR = 4;
+const TEN_FACTOR   = 10;
 
 
 let fastFactor  = 1;       // NEW – 1 ×, 2 ×, or 4 ×
 
 // ›  (2 ×) while you hold it
-stepBtn.addEventListener('mousedown',  () => { fastForward = true; fastFactor = DOUBLE_FACTOR; });
-stepBtn.addEventListener('touchstart', () => { fastForward = true; fastFactor = DOUBLE_FACTOR; }, {passive:true});
+stepBtn.addEventListener('mousedown',  () => { fastForward = true; fastFactor = QUAD_FACTOR; });
+stepBtn.addEventListener('touchstart', () => { fastForward = true; fastFactor = QUAD_FACTOR; }, {passive:true});
 ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
   stepBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
 );
 
 // ›› (4 ×) while you hold it
-ffBtn .addEventListener('mousedown',  () => { fastForward = true; fastFactor = QUAD_FACTOR; });
-ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = QUAD_FACTOR; }, {passive:true});
+ffBtn .addEventListener('mousedown',  () => { fastForward = true; fastFactor = TEN_FACTOR; });
+ffBtn .addEventListener('touchstart', () => { fastForward = true; fastFactor = TEN_FACTOR; }, {passive:true});
 ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev =>
   ffBtn.addEventListener(ev, () => { fastForward = false; fastFactor = 1; }, {passive:true})
 );
@@ -703,6 +703,29 @@ const timerEl   = document.getElementById('timerDisplay');
 
 const menuBtn   = document.getElementById('btnBullseye'); // existing button
 
+/* ─── FULL-RESET FOR RADARS + LAUNCHERS ───────────────────────── */
+function resetLaunchersAndRadars () {
+  statics.forEach(s => {
+    /* Patriot & TPS-75 radars */
+    if (s.type === 'rad' || s.type === 'c2Rad') {
+      s.disabledUntil = 0;          // back to green
+      s.animFrom = s.animTo = null; // cancel any wedge animation
+    }
+
+    /* NASAMS launcher */
+    if (s.id === 'NASAMS') {
+      NASAMSMissiles      = 18;
+      NASAMSDisabledUntil = 0;
+    }
+
+    /* Patriot FUs */
+    if (s.type === 'fu' && s.id !== 'NASAMS') {
+      s.ammo = { pac2:12, pac3:16, mse:24 }; // full load-out
+      s.engagementsRemaining = 28;           // 2 rounds = 14 shots
+      s.disabledUntilFu      = 0;            // clear reload timer
+    }
+  });
+}
 
 
 /* --------------------------------------------------------- */
@@ -3807,7 +3830,8 @@ function pickObject() {
 
     // ─── UNIFIED TAP/CLICK via PointerEvents ────────────────────────
     canvas.addEventListener('pointerup', e => {
-  if (e.button !== 0 || e.target !== canvas) return;
+          const primary = (e.button === 0 || e.button === -1);   // -1 = touch
+          if (!primary || e.target !== canvas) return;
     // *before* you call pickObject(), bail if we just did a drag:
     if (multiDrag) {
     // we’ll clear multiDrag & show cards in the mouseup that handles the box
@@ -3845,7 +3869,8 @@ function pickObject() {
 
     // ─── DESKTOP CLICK fallback ────────────────────────────────
     canvas.addEventListener('click', e => {
-  if (e.button !== 0 || e.target !== canvas) return;
+          const primary = (e.button === 0 || e.button === -1);   // -1 = touch
+          if (!primary || e.target !== canvas) return;
   e.preventDefault();
    mouse.sx = e.offsetX; mouse.sy = e.offsetY;
    mouse.px = e.clientX; mouse.py = e.clientY;
@@ -4670,10 +4695,16 @@ Ineffective engagements : ${STATS.engagementsBad}
 TBM impacts           : ${STATS.assetsHit}
 Radar downtime        : ${(STATS.radarDowntime/60)|0} min
 
-Damaged Assets:
-<li>${STATS.impacts.length ? STATS.impacts.join(',<li> ')
-: '—'}
-  </pre>
+<h4>Damaged Assets</h4>
+<ul style="text-align:left; padding-left:1.2em; margin:0;">
+  ${
+    STATS.impacts.length
+      ? STATS.impacts                       // [ "SW PATRIOT Radar", … ]
+          .map(item => `<li>${item}</li>`)  // → <li>…</li><li>…</li>
+          .join('')
+      : '<li>—</li>'
+  }
+</ul>
       <button id="closeReview">Close</button>
     </div>`;
   document.body.appendChild(r);
@@ -4698,6 +4729,7 @@ function hardResetCurrentLevel () {
   fratricideFatal  = false;
   resetRedwood();          // close HOT quadrants, reset colours
   resetStats();            // zero the debrief counters
+  resetLaunchersAndRadars();
 
   /*  build the level exactly like the first time  */
   setupLevel(level);       // you already wrote this routine
@@ -4859,7 +4891,10 @@ function showGameOver(reason) {
 
   // 4) Try Again just reloads the page
   document.getElementById('tryAgainBtn').onclick = () => {
-    location.reload();
+    ov.remove();
+resetLaunchersAndRadars();
+hardResetCurrentLevel();
+
   };
 }
 
