@@ -3896,15 +3896,14 @@ canvas.addEventListener('contextmenu', e => {
   updateCursorLabel();
 
   // convert screen‑px into world‑px at current zoom:
-  const HIT_R = CLICK_RADIUS_SCREEN / scale;
-  const Y_OFF = 6;
+  const HIT_R_SCR = 20;                // 20 px ≈ 0.5 cm finger pad
+selectedTrack = tracks.find(t => {
+  /* project track to current screen coords */
+  const sx = (t.x - offX) * scale;
+  const sy = (t.y - offY) * scale - 6 * scale;   // keep the same visual offset
 
-  // Try picking an air track for right selection
-  selectedTrack2 = tracks.find(t => {
-    const dx = mouse.wx - t.x;
-    const dy = mouse.wy - (t.y - Y_OFF);
-    return Math.hypot(dx, dy) < HIT_R;
-  }) || null;
+  return Math.hypot(mouse.sx - sx, mouse.sy - sy) < HIT_R_SCR;
+}) || null;
 
   if (selectedTrack2) {
     selectedStatic2 = null;
