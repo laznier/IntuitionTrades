@@ -1510,7 +1510,7 @@ function doCover(arr){
 function doEngage(arr){
   arr.forEach(t=>{
     t.tag='ENGAGE'; t.tagTime=Date.now();
-    launch(t);              // missiles out
+    launchOnTrack(t);       // missiles out (real logic)
   });
   const be = formatBE(arr[0]);
  radioSay(`bigfoot guardian birds away track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
@@ -1605,16 +1605,7 @@ function inCov(o){
   if(nas&&distNm(nas,o)<=15) return true;
   return statics.some(r=>r.type==='rad'&&n>=r.disabledUntil
                       &&insideWedge(r,o)&&distNm(r,o)<=60);}
-function launch(t){
-  const nas=statics.find(s=>s.id==='NASAMS'); const inNas=nas&&distNm(nas,t)<=20;
-  const fu=inNas ? nas : closestFu(t); const d=distNm(fu,t);
-  if(fu.id==='NASAMS'){ if(checkNASAMSStatus(inNas)) return; }
-  else if(!processPatriotEngagement(fu,d)) return;
-  const v=((t.isTbm?5000:3600)/3600)/CFG.nmPerPixel;
-  [0,1000].forEach(o=>setTimeout(()=>missiles.push({
-    x:fu.x,y:fu.y,target:t,fu,speedPxPerSec:v,expire:Date.now()+7e4}),o));
-  scheduleImpactCheck(t);
-}
+
 function abort(t){
   missiles=missiles.filter(m=>m.target!==t);
   if(t.mslTimer){clearTimeout(t.mslTimer);t.mslTimer=null;}
@@ -4685,6 +4676,10 @@ if (key === 'h') {
    t.tagTime = Date.now();
    // delay between 2–5 seconds
    const delay = 2000 + Math.random() * 3000;
+   /*──────────────────────────────
+  Full launcher logic for voice
+──────────────────────────────*/
+function launchOnTrack(t){
    setTimeout(() => {
      clearTimeout(coverTimer);
      curTrack = t;
@@ -4840,7 +4835,7 @@ const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
     }, 60000);
   }};
 
-
+} delay
 
 
     /* ───── KILL (manual only) ─────────────────────────────────── */
