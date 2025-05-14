@@ -1466,7 +1466,11 @@ function getDetectionRange(alt) {
   }
 
   if(!targets.length){
-    return radioSay('bigfoot guardian confirm cover request');  // polite ask-again
+    // …only respond if the user included “bullseye” or a 3-5 digit number
+    if (/\bbullseye\b|\d{3,5}/.test(txt)) {
+      radioSay(`${ADAFCO}, ${ICC}, say track number`);
+    }
+    return;   // otherwise keep silent
   }
 
   /*--------------------------------------------------------------*
