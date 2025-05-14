@@ -576,6 +576,70 @@
 
   <div id="cursorLabel"></div>
   <script>
+    /* ---------------------------------------------------------------
+       1.  A single helper that initialises recognition exactly once
+    ---------------------------------------------------------------- */
+    let recog   = null;        // will hold the live recogniser
+    let listening = false;     // UI flag
+    
+    function initStt () {
+      if (recog) return recog;                    // already done
+    
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert('Speech-to-text not supported here'); return null; }
+    
+      recog = new SR();
+      recog.lang           = 'en-US';
+      recog.continuous     = true;
+      recog.interimResults = false;
+    
+      /* ── all event handlers BELOW the point where `recog` exists ── */
+      recog.onstart       = () => { console.log('🎤 mic hot');  micBtn.classList.add('live');  };
+      recog.onaudiostart  = () => console.log('📡 audio stream opened');
+      recog.onresult      = e  => {
+        const txt = e.results[e.resultIndex][0].transcript.trim().toLowerCase();
+        console.log('✅ heard:', txt);
+        processVoiceCommand(txt);
+      };
+      recog.onerror       = e  => console.error('🚫 speech error:', e.error);
+    
+      /*  Chrome stops after a few seconds of silence – auto-restart while
+          the UI is in “Mic ON” state                                         */
+      recog.onend         = () => {
+        console.log('🛑 recognition ended');
+        micBtn.classList.remove('live');
+        if (listening) recog.start();             // keep it alive
+      };
+    
+      return recog;
+    }
+    
+    /* ---------------------------------------------------------------
+       2.  Mic-button toggler
+    ---------------------------------------------------------------- */
+    const micBtn = document.getElementById('micBtn');
+    
+    micBtn.addEventListener('click', () => {
+      if (!recog) initStt();                      // create it first
+      if (!recog) return;                         // unsupported-browser escape
+    
+      if (!listening) {
+        /* ask for mic permission once, then start recognition       */
+        navigator.mediaDevices.getUserMedia({ audio:true }).then(() => {
+          recog.start();
+          listening = true;
+          micBtn.textContent = '🎙️ Mic ON';
+        }).catch(err => console.error('Mic permission denied', err));
+      } else {
+        recog.stop();
+        listening = false;
+        micBtn.textContent = '🎙️ Mic OFF';
+      }
+    });
+    </script>
+    
+<script>
+
     /*****************************************************************
  *  RADIO HELPERS (SL ↔ ADAFCO ↔ ICC)
  *****************************************************************/
@@ -5006,7 +5070,6 @@ updateScoreDisplay();
  *****************************************************************/
  const synth = window.speechSynthesis;
 const SR    = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recog   = null, listening = false;
 recog.onstart      = () => console.log('🎤 mic hot');
 recog.onaudiostart = () => console.log('📡 audio stream opened');
 recog.onresult     = e  => console.log('✅ heard:', e.results[0][0].transcript);
