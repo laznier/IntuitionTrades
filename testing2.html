@@ -1527,6 +1527,17 @@ function doHold(arr){
   const be = formatBE(arr[0]);
   radioSay(`bigfoot guardian hold fire track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
 }
+/* ——— hot-mike FIREBALL —————————————————————————————— */
+if (/fireball\s+fireball\s+fireball/.test(raw)) {
+  // only do something if at least one TBM wave is still un-armed
+  const liveWave = tbmWaves.some(w => !w.fireballArmed && !w.resolved);
+  if (liveWave) {
+    fireballBtn.click();           // reuse the real button-handler
+  } else {
+    speak(`${ADAFCO}, ${ICC}, no TBM threats active.`);
+  }
+  return;                          // stop further parsing
+}
 
 /*****************************************************************
  *  W-KEY PATCH  –  make W just mark “AWAY”, nothing more
@@ -1622,6 +1633,7 @@ function micInit(){
       if(pending && /affirm/.test(txt)){doAction(pending.act,pending.tracks);pending=null;return;}
       if(!(txt.includes(ICC)&&txt.includes(ADAFCO))) return;      // must address correctly
       parseCmd(txt);
+      
   };
   recog.onerror=e=>console.error(e);
   recog.start(); mic=true;
@@ -1642,6 +1654,17 @@ function parseCmd(raw){
   else if(/engage/.test(raw)) act='engage';
   else if(/hold\s+fire/.test(raw)) act='hold';
   if(!act){speak(`${ADAFCO}, ${ICC}, say again last.`);return;}
+  /* inside parseCmd — right after we decide act … */
+const groupReq = /\bgroup\b/.test(raw);   // true if caller said “group”
+
+  /* if ‘group’ was requested, expand out to anything ≤ 5 NM */
+if (groupReq && targets.length) {
+  const ref     = targets[0];                          // anchor
+  targets = tracks.filter(t =>
+    !t.destroyed && !t.friendly && distNm(ref, t) <= 5
+  );
+}
+
 
   /* explicit track number */
   const nMatch=raw.match(/\b(\d{3,5})\b/); const trackId=nMatch?nMatch[1]:null;
