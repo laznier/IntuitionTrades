@@ -392,10 +392,6 @@
       <button id="compassBtn">Compass: OFF</button>
       <button id="mapBtn">Map</button>
       <button id="helpBtn">Help</button>
-      <!-- put this next to the Help button -->
-<button id="micBtn">🎙️ Mic OFF</button>
-
-      
     </div>
     <div id="status">Free mode</div>
     <div id="score">Score: 0</div>
@@ -576,92 +572,6 @@
 
   <div id="cursorLabel"></div>
   <script>
-    /* ---------------------------------------------------------------
-       1.  A single helper that initialises recognition exactly once
-    ---------------------------------------------------------------- */
-    let recog   = null;        // will hold the live recogniser
-    let listening = false;     // UI flag
-    
-    function initStt () {
-      if (recog) return recog;                    // already done
-    
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) { alert('Speech-to-text not supported here'); return null; }
-    
-      recog = new SR();
-      recog.lang           = 'en-US';
-      recog.continuous     = true;
-      recog.interimResults = false;
-    
-      /* ── all event handlers BELOW the point where `recog` exists ── */
-      recog.onstart       = () => { console.log('🎤 mic hot');  micBtn.classList.add('live');  };
-      recog.onaudiostart  = () => console.log('📡 audio stream opened');
-      recog.onresult      = e  => {
-        const txt = e.results[e.resultIndex][0].transcript.trim().toLowerCase();
-        console.log('✅ heard:', txt);
-        processVoiceCommand(txt);
-      };
-      recog.onerror       = e  => console.error('🚫 speech error:', e.error);
-    
-      /*  Chrome stops after a few seconds of silence – auto-restart while
-          the UI is in “Mic ON” state                                         */
-      recog.onend         = () => {
-        console.log('🛑 recognition ended');
-        micBtn.classList.remove('live');
-        if (listening) recog.start();             // keep it alive
-      };
-    
-      return recog;
-    }
-    
-    /* ---------------------------------------------------------------
-       2.  Mic-button toggler
-    ---------------------------------------------------------------- */
-    const micBtn = document.getElementById('micBtn');
-    
-    micBtn.addEventListener('click', () => {
-      if (!recog) initStt();                      // create it first
-      if (!recog) return;                         // unsupported-browser escape
-    
-      if (!listening) {
-        /* ask for mic permission once, then start recognition       */
-        navigator.mediaDevices.getUserMedia({ audio:true }).then(() => {
-          recog.start();
-          listening = true;
-          micBtn.textContent = '🎙️ Mic ON';
-        }).catch(err => console.error('Mic permission denied', err));
-      } else {
-        recog.stop();
-        listening = false;
-        micBtn.textContent = '🎙️ Mic OFF';
-      }
-    });
-    </script>
-    
-<script>
-
-    /*****************************************************************
- *  RADIO HELPERS (SL ↔ ADAFCO ↔ ICC)
- *****************************************************************/
-const Chat = {
-  /** push a line to status + speak it */
-  sl   : txt => { statusEl.textContent   = `ADAFCO, SL, ${txt}`;   speak(statusEl.textContent); },
-  icc  : txt => { statusEl.textContent   = `ADAFCO, ICC, ${txt}`;  speak(statusEl.textContent); },
-  you  : txt => { feedbackEl.textContent = `ICC, ADAFCO, ${txt}`;  /* no speech */ },
-};
-
-const ENG_FLOW = {           // finite-state per current track
-  NONE   : 0,
-  COVER  : 1,
-  AFFIRM : 2,
-  ENGAGE : 3,
-  AWAY   : 4,
-};
-let curEngTrack   = null;    // pointer to the track we’re working
-let curEngState   = ENG_FLOW.NONE;
-
-
-
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
@@ -1455,6 +1365,223 @@ function getDetectionRange(alt) {
     const label      = document.getElementById('cursorLabel');
 
     // ─── CONFIG & STATE ─────────────────────────────────────────────
+
+/* ════════════════════════════════════════════════════════════════════
+   RADIO LINK  – Guardian (ICC) ⇄ Bigfoot (ADAFCO)
+   • SL talks:  “Guardian Bigfoot, Cover track 12345, Bullseye 123 45…”
+   • Game replies over the speakers and triggers the same logic that
+     your   A / W  keys used to.
+   • W  key is now cosmetic – it only flips the tag to “AWAY”.
+   ════════════════════════════════════════════════════════════════════ */
+
+const ICC_NAME     = 'guardian';
+const ADAFCO_NAME  = 'bigfoot';
+const SR           = window.SpeechRecognition || window.webkitSpeechRecognition;
+const synth        = window.speechSynthesis;
+
+/* ——— speech output ——— */
+function radioSay(txt){
+  if(!synth) return;
+  const u = new SpeechSynthesisUtterance(txt);
+  u.lang  = 'en-US';
+  u.rate  = 1;
+  synth.speak(u);
+}
+
+/* ——— speech input ——— */
+let recog = null, micLive = false;
+function startRadio(){
+  if(!SR){ alert('Speech-to-text not supported'); return; }
+  if(recog){ recog.start(); micLive = true; return; }
+
+  recog = new SR();
+  recog.lang           = 'en-US';
+  recog.continuous     = true;
+  recog.interimResults = false;
+
+  recog.onresult = ev=>{
+    const raw   = ev.results[ev.resultIndex][0].transcript.toLowerCase();
+    console.log('🗣️',raw);
+    onRadioHeard(raw);
+  };
+  recog.start();
+  micLive = true;
+}
+
+/* tiny toggle button (header, next to “Help”) */
+const micBtn = document.createElement('button');
+micBtn.id    = 'micBtn';
+micBtn.textContent = '🎙️ Mic OFF';
+micBtn.onclick = ()=>{
+  if(!micLive){ startRadio(); micBtn.textContent='🎙️ Mic ON'; }
+  else         { recog.stop(); micLive=false; micBtn.textContent='🎙️ Mic OFF'; }
+};
+document.querySelector('#controls').appendChild(micBtn);
+
+/* ————————————————————————————————————————————————————————————————
+   grammar helpers
+——————————————————————————————————————————————————————————————— */
+
+/* 1)  “one two three” → 123   (handles 0-19, 20-90 by tens, 100,000) */
+const WORD_DIG = {
+  zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8,
+  nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15,
+  sixteen:16, seventeen:17, eighteen:18, nineteen:19,
+  twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80,
+  ninety:90, hundred:100, thousand:1000
+};
+function wordsToNumber(str){
+  let n=0, acc=0;
+  str.trim().split(/\s+/).forEach(w=>{
+    const v = WORD_DIG[w];
+    if(v==null) return;
+    if(v===1000){ acc*=1000; n+=acc; acc=0; }
+    else if(v===100){ acc*=100; }
+    else if(v>=20){ acc+=v; }
+    else          { acc+=v; }
+  });
+  return n+acc;
+}
+
+/* 2)  pull {track,bearing,range} out of the sentence               */
+function parseCoverEngage(s){
+  /* track number */
+  const track = (s.match(/track\s+(\d{3,5})/)||[])[1];
+
+  /* bullseye ###/##  or “bullseye one two three forty five” */
+  let b=null,r=null;
+  const br  = s.match(/bullseye\s+(\d{3})\s*[,/ ]\s*(\d{1,3})/i);
+  if(br){ b=parseInt(br[1],10); r=parseInt(br[2],10); }
+  else{
+    const tail = s.split('bullseye')[1];
+    if(tail){
+      const words = tail.trim().split(/\s+/);
+      const first = words.slice(0,3).join(' ');        // up to three words      (bearing)
+      const rest  = words.slice(3).join(' ');          // remaining words -> rng
+      b = wordsToNumber(first);
+      r = wordsToNumber(rest);
+    }
+  }
+  return {track,bearing:b,range:r};
+}
+
+/* ————————————————————————————————————————————————————————————————
+   radio command dispatcher
+——————————————————————————————————————————————————————————————— */
+
+function onRadioHeard(raw){
+  if(!raw.includes(ICC_NAME) || !raw.includes(ADAFCO_NAME)) return;
+
+  /* COVER or ENGAGE? */
+  if(/cover\s+track/.test(raw)){
+    const {track,bearing,range} = parseCoverEngage(raw);
+    const tgt = pickTrack(track,bearing,range);
+    if(!tgt) return;
+
+    // inside geometry?
+    if(!trackInGeometry(tgt)) return;
+
+    /* reply */
+    radioSay(`${ADAFCO_NAME.charAt(0).toUpperCase()+ADAFCO_NAME.slice(1)}, `+
+             `${ICC_NAME.charAt(0).toUpperCase()+ICC_NAME.slice(1)}, `+
+             `Birds Affirm track ${tgt.id}, Bullseye ${formatBE(tgt)}.`);
+
+    /* do exactly what the “A” hot-key does */
+    fireKey('a');
+    return;
+  }
+
+  if(/engage\s+track/.test(raw)){
+    const {track,bearing,range} = parseCoverEngage(raw);
+    const tgt = pickTrack(track,bearing,range);
+    if(!tgt) return;
+
+    if(!trackInGeometry(tgt)) return;
+
+    /* birds AWAY + missile launch */
+    radioSay(`${ADAFCO_NAME.charAt(0).toUpperCase()+ADAFCO_NAME.slice(1)}, `+
+             `${ICC_NAME.charAt(0).toUpperCase()+ICC_NAME.slice(1)}, `+
+             `Birds away track ${tgt.id}, Bullseye ${formatBE(tgt)}.`);
+
+    /* do the real launch that used to live in the W handler */
+    launchOnTrack(tgt);
+
+    /* cosmetically tag it AWAY so the label changes */
+    tgt.tag='AWAY'; tgt.tagTime=Date.now();
+  }
+}
+
+/* ————————————————————————————————————————————————————————————————
+   utility: find best track
+——————————————————————————————————————————————————————————————— */
+function pickTrack(trackId,bearing,range){
+  /* 1) by explicit track number */
+  if(trackId){
+    const t = tracks.find(o=>o.id===trackId && !o.destroyed);
+    if(t) return t;
+  }
+  /* 2) fallback: any track within 5 NM of the spoken bullseye */
+  if(bearing!=null && range!=null){
+    return tracks.find(o=>{
+      if(o.destroyed) return false;
+      return Math.abs(bearingDiff(bearing,bearingBetween(bullseye,o)))<=6 &&
+             Math.abs(distNm(bullseye,o)-range)<=5;
+    });
+  }
+  return null;
+}
+function bearingBetween(a,b){ return bearing(a,b);}       // alias
+function bearingDiff(a,b){ let d=Math.abs(a-b)%360; return d>180?360-d:d; }
+
+/* ————————————————————————————————————————————————————————————————
+   geometry check  (Patriot wedge 60 NM ±60°  OR NASAMS  ≤15 NM)
+——————————————————————————————————————————————————————————————— */
+function trackInGeometry(t){
+  const now = Date.now();
+  const nas = statics.find(s=>s.id==='NASAMS');
+  if(nas && distNm(nas,t)<=15) return true;
+  return statics.some(rad=>
+    rad.type==='rad' &&
+    now >= rad.disabledUntil &&
+    insideWedge(rad,t) &&
+    distNm(rad,t)<=60
+  );
+}
+
+/* ————————————————————————————————————————————————————————————————
+   1-liner helper: dispatch virtual keypress so your existing hot-key
+   handlers run untouched.
+——————————————————————————————————————————————————————————————— */
+function fireKey(k){
+  window.dispatchEvent(new KeyboardEvent('keydown',{key:k}));
+}
+
+/* ————————————————————————————————————————————————————————————————
+   extract the missile-launching guts that were inside the old ‘W’ key
+   and make them callable from radio + from ‘W’ (cosmetic).
+——————————————————————————————————————————————————————————————— */
+function launchOnTrack(t){
+  /*  — put the EXACT contents of your old “W” handler’s
+       ‘launch two missiles’ block here —
+     (everything from closest-FU pick → scheduleImpactCheck)
+     You probably already have it factored as engageTbmWithPatriot()
+     etc.  Just call that same helper.
+  */
+  if(t.isTbm) engageTbmWithPatriot(t);          // example
+  else        fireKey('w');  // reuse existing code for conventional
+}
+
+/* ————————————————————————————————————————————————————————————————
+   finally: neuter the physical W key so it only paints “AWAY”
+——————————————————————————————————————————————————————————————— */
+window.addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()==='w' && selectedTrack){
+    e.preventDefault();
+    selectedTrack.tag='AWAY';
+    selectedTrack.tagTime=Date.now();
+    // NO missile launch here any more
+  }
+});
 
 
 // ↓↓↓  NEW – must be declared before fitMobileView() ever runs
@@ -2265,12 +2392,6 @@ if (inRing || inAnyWedgeGeom) {
     track._outcomeLogged = true;
     STATS.engagementsGood++;
   }
-  if (t === curEngTrack && curEngState >= ENG_FLOW.AWAY){
-  Chat.icc(`Splash Track ${t.id}, B/E ${formatBE(t)}`);
-  curEngTrack = null;
-  curEngState = ENG_FLOW.NONE;
-}
-
 
 // 2) fratricide check: for non‑TBM, non‑Cruise kills
 if (!track.isTbm && !track.isCruise) {
@@ -4080,12 +4201,7 @@ window.addEventListener('keydown', e => {
         statusEl.textContent =
           `SL, ADAFCO, BIRDS AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
         if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
-        coverTimer = setTimeout(nextQueueTrack, 60000);
-        if (key === 'a' && curEngState === ENG_FLOW.AFFIRM){
-  curEngState = ENG_FLOW.ENGAGE;
-  Chat.sl(`Engage Track ${curEngTrack.id}, B/E ${formatBE(curEngTrack)}`);
-}
-
+        coverTimer = setTimeout(nextQueueTrack, 5000);
       }
       // AWAY
       else if (key === 'w') {
@@ -4096,10 +4212,6 @@ window.addEventListener('keydown', e => {
           if (!t._engagementLogged) {          // first time this track is engaged
     t._engagementLogged = true;
     // we already added the missilesUsed counts—nothing else here
-    if (key === 'w' && curEngState === ENG_FLOW.AWAY){
-  /* missile launch already happened */
-}
-
   }
         t.tagTime = Date.now();
 
@@ -4583,7 +4695,7 @@ function nextQueueTrack() {
   const threshold = 75 + Math.random() * 20;  // random in [75,95)
   if (d > threshold) {
     console.log(`SL: Track ${next.id} at ${d} NM (>${threshold.toFixed(0)}), retry in 3s`);
-    coverTimer = setTimeout(nextQueueTrack, 60000);
+    coverTimer = setTimeout(nextQueueTrack, 3000);
     return;
   }
 
@@ -4595,13 +4707,10 @@ function nextQueueTrack() {
   const b2 = ('000' + bearing(bullseye, next)).slice(-3);
   statusEl.textContent =
     `ADAFCO, SL, COVER Track ${next.id}, B/E ${b2}/${d}`;
-    curEngTrack = next;
-curEngState = ENG_FLOW.COVER;
-Chat.sl(`COVER Track ${next.id}, B/E ${formatBE(next)}`);
-
   feedbackEl.textContent = '';
 
-
+  // 6) Auto‑advance again after 25 s
+  coverTimer = setTimeout(nextQueueTrack, 25000);
 }
 
 
@@ -5063,142 +5172,6 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
-
-/*****************************************************************
- *  VOICE ENGINE
- *****************************************************************/
- const synth = window.speechSynthesis;
-const SR    = window.SpeechRecognition || window.webkitSpeechRecognition;
-recog.onstart      = () => console.log('🎤 mic hot');
-recog.onaudiostart = () => console.log('📡 audio stream opened');
-recog.onresult     = e  => console.log('✅ heard:', e.results[0][0].transcript);
-recog.onerror      = e  => console.error('🚫 speech error', e.error);
-recog.onend        = () => console.log('🛑 recognition ended');
-
-/* --- set up recognition -------------------------------------- */
-function initStt() {
-  if (!SR) { alert('Speech-to-text not supported in this browser'); return; }
-  recog = new SR();
-  recog.lang            = 'en-US';
-  recog.continuous      = true;      // keep mic open until we say stop
-  recog.interimResults  = false;
-
-  recog.onresult = e => {
-    const txt = e.results[e.resultIndex][0].transcript.trim().toLowerCase();
-    console.log('🗣️ heard:', txt);
-    processVoiceCommand(txt);
-  };
-  recog.onerror   = err => console.error(err);
-}
-
-/*****************************************************************
- *  RADIO-PHONETIC SPEECH HELPER
- *  (drop-in replacement for your current `speak()` function)
- *****************************************************************/
- function speak(lineRaw) {
-  if (!window.speechSynthesis) return;
-
-  const digitWord = [
-    'zero','one','two','three','four',
-    'five','six','seven','eight','nine'
-  ];
-  const tensWord = [
-    '', '', 'twenty','thirty','forty','fifty',
-    'sixty','seventy','eighty','ninety'
-  ];
-
-  /* --- helpers ------------------------------------------------ */
-  const spellDigits = str =>                         // "123" → "one two three"
-      str.split('').map(d => digitWord[+d]).join(' ');
-  const twoDigit    = n => {                         // 45 → "forty five"
-    n = +n;
-    if (n < 10)            return digitWord[n];
-    if (n < 20)            // teens
-      return ({
-        10:'ten',11:'eleven',12:'twelve',13:'thirteen',14:'fourteen',
-        15:'fifteen',16:'sixteen',17:'seventeen',18:'eighteen',19:'nineteen'
-      })[n];
-    const t = Math.floor(n/10), u = n%10;
-    return tensWord[t] + (u ? ' ' + digitWord[u] : '');
-  };
-
-  /* --- 1) ADAFCO / SL / B/E tokens ---------------------------- */
-  let line = lineRaw
-    .replace(/\bADAFCO\b/gi, 'ay daff co')
-    .replace(/\bSL\b/gi, 'S L')
-    .replace(/\bB\s*\/\s*E\b/gi, 'bullseye');
-
-  /* --- 2) Bearing-slash-range  (###/##) ----------------------- */
-  // find every “… 123/45 …” pattern and phoneticise it
-  line = line.replace(/(\d{3})\s*\/\s*(\d{2})/g, (_, brg, rng) =>
-      `${spellDigits(brg)}, ${twoDigit(rng)}`);
-
-  /* --- speak the transformed text ----------------------------- */
-  const utt = new SpeechSynthesisUtterance(line);
-  utt.lang  = 'en-US';
-  utt.rate  = 1;
-  utt.pitch = 1;
-  window.speechSynthesis.speak(utt);
-}
-
-
-/* --- mic button --------------------------------------------- */
-document.getElementById('micBtn').onclick = () => {
-  if (!recog) initStt();
-  if (!recog) return;
-  const grammars = new webkitSpeechGrammarList();
-grammars.addFromString(
-  '#JSGF V1.0; grammar radio; public <cmd> = ' +
-  '(cover|engage|affirm|negative|birds away|hold fire|kill track)*;',
-  1
-);
-recog.grammars = grammars;
-
-  if (!listening) {
-    recog.start();
-    listening = true;
-    micBtn.textContent = '🎙️ Mic ON';
-    speak('Voice control enabled');
-  } else {
-    recog.stop();
-    listening = false;
-    micBtn.textContent = '🎙️ Mic OFF';
-    speak('Voice control disabled');
-  }
-};
-
-/*****************************************************************
- *  NATURAL-LANGUAGE MAPPER
- *  Map spoken phrases → simulated key presses or game calls
- *****************************************************************/
- function fireKey(key){           // tiny wrapper – re-uses your key handler
-  window.dispatchEvent(new KeyboardEvent('keydown', {key}));
-}
-
-function processVoiceCommand(t){
-  if (!curEngTrack) return;           // no active engagement
-
-  /* --------------------------------------------------------- PLAYER → COVER */
-  if (curEngState === ENG_FLOW.COVER &&
-      /cover track/i.test(t)){
-    Chat.you(`Cover Track ${curEngTrack.id}, B/E ${formatBE(curEngTrack)}`);
-    Chat.icc(`Birds Affirm Track ${curEngTrack.id}`);
-    curEngState = ENG_FLOW.AFFIRM;
-    fireKey('a');                     // fake the key so UI lights AFFIRM
-    return;
-  }
-
-  /* --------------------------------------------------------- PLAYER → ENGAGE */
-  if (curEngState === ENG_FLOW.ENGAGE &&
-      /engage track/i.test(t)){
-    Chat.you(`Engage Track ${curEngTrack.id}, B/E ${formatBE(curEngTrack)}, ${curEngTrack.alt} thousand, Hostile`);
-    Chat.icc(`Birds away on Track ${curEngTrack.id}, B/E ${formatBE(curEngTrack)}`);
-    curEngState = ENG_FLOW.AWAY;
-    fireKey('w');                     // fire shot
-    return;
-  }
-}
-
     </script>
 
 </body>
