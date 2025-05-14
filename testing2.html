@@ -1366,31 +1366,8 @@ function getDetectionRange(alt) {
 
     // ─── CONFIG & STATE ─────────────────────────────────────────────
 
-<!-- ──────────────────────────────────────────────────────────────
-     RADIO  v2
-     Guardian (ICC)  ↔  Bigfoot (ADAFCO)
-
-  • SL phrases recognised
-       "Guardian Bigfoot, cover …"
-       "Guardian Bigfoot, engage …"
-       "Guardian Bigfoot, hold fire …"
-
-  • The engine never presses A / W / H keys for the player.
-       - COVER ➜ only makes Guardian reply *Birds Affirm* (no tag change)
-       - ENGAGE ➜ Guardian says *Birds away* **and launches the missiles**
-         (player still presses W if they want the tag to show AWAY)
-       - HOLD FIRE ➜ cancels shots on the referenced track / bullseye
-
-  • Coverage check = inside ANY live Patriot wedge (60 NM ±60°) **or**
-                     inside NASAMS 15 NM ring.
-
-  • Track match:
-        –    exact spoken 3- to 5-digit number  → that track
-        – or nearest track ≤ 5 NM of the spoken Bullseye (≤ 10 NM if Hold-fire)
-
-  • Speech output rate is 1 .5 × normal.
-    Bullseye is voiced “one two three, forty five” (no word “slash”).
-────────────────────────────────────────────────────────────────── -->
+    <!-- RADIO --> 
+    
 
 /* ——————————————————————————————————————————————— constants — */
 const ICC_NAME    = 'guardian';
