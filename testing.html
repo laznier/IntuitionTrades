@@ -5092,15 +5092,56 @@ function initStt() {
   recog.onerror   = err => console.error(err);
 }
 
-/* --- helper: speak any string -------------------------------- */
-function speak(text){
-  if (!synth) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate  = 1;     // tweak as desired
-  u.pitch = 1;
-  u.lang  = 'en-US';
-  synth.speak(u);
+/*****************************************************************
+ *  RADIO-PHONETIC SPEECH HELPER
+ *  (drop-in replacement for your current `speak()` function)
+ *****************************************************************/
+ function speak(lineRaw) {
+  if (!window.speechSynthesis) return;
+
+  const digitWord = [
+    'zero','one','two','three','four',
+    'five','six','seven','eight','nine'
+  ];
+  const tensWord = [
+    '', '', 'twenty','thirty','forty','fifty',
+    'sixty','seventy','eighty','ninety'
+  ];
+
+  /* --- helpers ------------------------------------------------ */
+  const spellDigits = str =>                         // "123" → "one two three"
+      str.split('').map(d => digitWord[+d]).join(' ');
+  const twoDigit    = n => {                         // 45 → "forty five"
+    n = +n;
+    if (n < 10)            return digitWord[n];
+    if (n < 20)            // teens
+      return ({
+        10:'ten',11:'eleven',12:'twelve',13:'thirteen',14:'fourteen',
+        15:'fifteen',16:'sixteen',17:'seventeen',18:'eighteen',19:'nineteen'
+      })[n];
+    const t = Math.floor(n/10), u = n%10;
+    return tensWord[t] + (u ? ' ' + digitWord[u] : '');
+  };
+
+  /* --- 1) ADAFCO / SL / B/E tokens ---------------------------- */
+  let line = lineRaw
+    .replace(/\bADAFCO\b/gi, 'ay daff co')
+    .replace(/\bSL\b/gi, 'S L')
+    .replace(/\bB\s*\/\s*E\b/gi, 'bullseye');
+
+  /* --- 2) Bearing-slash-range  (###/##) ----------------------- */
+  // find every “… 123/45 …” pattern and phoneticise it
+  line = line.replace(/(\d{3})\s*\/\s*(\d{2})/g, (_, brg, rng) =>
+      `${spellDigits(brg)}, ${twoDigit(rng)}`);
+
+  /* --- speak the transformed text ----------------------------- */
+  const utt = new SpeechSynthesisUtterance(line);
+  utt.lang  = 'en-US';
+  utt.rate  = 1;
+  utt.pitch = 1;
+  window.speechSynthesis.speak(utt);
 }
+
 
 /* --- mic button --------------------------------------------- */
 document.getElementById('micBtn').onclick = () => {
