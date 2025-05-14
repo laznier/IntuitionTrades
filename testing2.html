@@ -1506,10 +1506,10 @@ function doCover(arr){
 function doEngage(arr){
   arr.forEach(t=>{
     t.tag='ENGAGE'; t.tagTime=Date.now();
+    launch(t);              // missiles out
   });
   const be = formatBE(arr[0]);
-  radioSay(`bigfoot guardian birds away track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
-  launchMissiles(arr);           // your existing missile-spawn logic
+ radioSay(`bigfoot guardian birds away track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
 }
 
 /* ---------- HOLD FIRE ---------- */
@@ -1562,7 +1562,7 @@ function toDigits(tok){                         /* "four"→"4", "forty-five"→
 function parseBE(tail){
   const tokens=tail.replace(/[,/]/g,' ').trim().split(/\s+/);       // kill commas “270, sixty”
   const d=tokens.map(toDigits).join('').split('');                  // flat digit array
-  if(d.length<4) return {};
+  while(d.length<4) d.unshift('0');   // pad “09060” → “009060”
   const brg=parseInt(d.slice(0,3).join(''));                        // first 3
   const rng=parseInt(d.slice(3).join(''));                          // rest
   if(isNaN(brg)||isNaN(rng)||brg<1||brg>360||rng<1) return {};
@@ -1694,6 +1694,7 @@ function doAction(act,arr){
 window.addEventListener('keydown',e=>{
   if(e.key.toLowerCase()==='w'&&selectedTrack){
     e.preventDefault();
+    e.stopImmediatePropagation();   // ← blocks the original launcher
     selectedTrack.tag='AWAY';
     selectedTrack.tagTime=Date.now();
   }
