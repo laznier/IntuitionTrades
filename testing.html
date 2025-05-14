@@ -4080,7 +4080,7 @@ window.addEventListener('keydown', e => {
         statusEl.textContent =
           `SL, ADAFCO, BIRDS AFFIRM Track ${t.id}, B/E ${('000'+bearing(bullseye,t)).slice(-3)}/${distNm(bullseye,t)}`;
         if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
-        coverTimer = setTimeout(nextQueueTrack, 5000);
+        coverTimer = setTimeout(nextQueueTrack, 60000);
         if (key === 'a' && curEngState === ENG_FLOW.AFFIRM){
   curEngState = ENG_FLOW.ENGAGE;
   Chat.sl(`Engage Track ${curEngTrack.id}, B/E ${formatBE(curEngTrack)}`);
@@ -4583,7 +4583,7 @@ function nextQueueTrack() {
   const threshold = 75 + Math.random() * 20;  // random in [75,95)
   if (d > threshold) {
     console.log(`SL: Track ${next.id} at ${d} NM (>${threshold.toFixed(0)}), retry in 3s`);
-    coverTimer = setTimeout(nextQueueTrack, 3000);
+    coverTimer = setTimeout(nextQueueTrack, 60000);
     return;
   }
 
@@ -4601,8 +4601,7 @@ Chat.sl(`COVER Track ${next.id}, B/E ${formatBE(next)}`);
 
   feedbackEl.textContent = '';
 
-  // 6) Auto‑advance again after 25 s
-  coverTimer = setTimeout(nextQueueTrack, 25000);
+
 }
 
 
