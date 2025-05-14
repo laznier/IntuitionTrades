@@ -1560,9 +1560,13 @@ function toDigits(tok){                         /* "four"→"4", "forty-five"→
   const v=WORD[tok]; if(v==null) return '';
   return v.toString();
 }
-console.log('BE tail →', tail);
-console.log('parseBE →', parseBE(tail));
-
+const bx = raw.match(/bullseye(.*)/i);
+if (bx) {
+  const tail = bx[1].trim();              // ← define tail here
+  console.log('BE tail →', tail);
+  console.log('parseBE →', parseBE(tail));
+  // now tail is defined
+}
 function parseBE(tail) {
   // 1) map “slash” → “/” already done upstream
   const parts = tail.split('/');
