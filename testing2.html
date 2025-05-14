@@ -1366,195 +1366,162 @@ function getDetectionRange(alt) {
 
     // ─── CONFIG & STATE ─────────────────────────────────────────────
 
-    <!-- RADIO --> 
-    
+  
+/* ──────────────────────────────────────────────────────────────
+   Guardian (ICC) ↔ Bigfoot (ADAFCO)  v3
+───────────────────────────────────────────────────────────────── */
+const ICC_NAME='guardian', ADAFCO_NAME='bigfoot';
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const synth=window.speechSynthesis;
 
-/* ——————————————————————————————————————————————— constants — */
-const ICC_NAME    = 'guardian';
-const ADAFCO_NAME = 'bigfoot';
-const SR          = window.SpeechRecognition || window.webkitSpeechRecognition;
-const synth       = window.speechSynthesis;
-
-/* ——————————————————————————————————————————— speech output — */
-function toWords(n){                 /* 0-99 → words */
-  const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine'];
-  const TEENS=['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen',
-               'seventeen','eighteen','nineteen'];
-  const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
-  if(n<10)  return ONES[n];
-  if(n<20)  return TEENS[n-10];
-  const ten = Math.floor(n/10), one=n%10;
-  return TENS[ten] + (one?(' '+ONES[one]):'');
-}
-function bullseyeWords(bearing,range){
-  const dig = String(bearing).padStart(3,'0').split('').map(d=>toWords(+d)).join(' ');
-  return `${dig}, ${toWords(range)}`;
-}
-function radioSay(txt){
+/* ——— helpers ——————————————————————————————————————————— */
+function speak(txt){
   if(!synth) return;
-  const u = new SpeechSynthesisUtterance(txt);
-  u.lang  = 'en-US';
-  u.rate  = 1.5;          /* 1️⃣  faster speech */
-  synth.speak(u);
+  const u=new SpeechSynthesisUtterance(txt);
+  u.lang='en-US'; u.rate=1.5; synth.speak(u);
 }
 
-/* ——————————————————————————————————————————— speech input — */
-let recog=null, micOn=false;
-function initMic(){
-  if(!SR){ alert('Speech-to-text not supported'); return; }
-  if(recog){ recog.start(); micOn=true; return; }
-
-  recog = new SR();
-  recog.continuous = true;
-  recog.interimResults = false;
-  recog.lang = 'en-US';
-  recog.onresult = e=>{
-    const txt=e.results[e.resultIndex][0].transcript.toLowerCase();
-    console.log('🗣️',txt);
-    if(txt.includes(ICC_NAME)&&txt.includes(ADAFCO_NAME)) parseCommand(txt);
-  };
-  recog.start(); micOn=true;
+/* number ↔ words */
+const WORD_VAL={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
+ ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,
+ eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,
+ eighty:80,ninety:90};
+function wordsToNumber(str){return str.trim().split(/\s+/)
+  .reduce((n,w)=>n+(WORD_VAL[w]??0),0);}
+function toWords(n){const O=['zero','one','two','three','four','five','six','seven','eight','nine'],
+ T=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'],
+ L=['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+ if(n<10)return O[n];if(n<20)return L[n-10];return T[Math.floor(n/10)]+' '+(n%10?O[n%10]:'');}
+function bullseyeWords(b,r){return `${String(b).padStart(3,'0').split('').map(d=>toWords(+d)).join(' ')}, ${toWords(r)}`;}
+function bearingDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
+function inCoverage(t){
+  const now=Date.now();const nas=statics.find(s=>s.id==='NASAMS');
+  if(nas&&distNm(nas,t)<=15)return true;
+  return statics.some(rad=>rad.type==='rad'&&now>=rad.disabledUntil&&insideWedge(rad,t)&&distNm(rad,t)<=60);
 }
-
-/* button in the top bar */
-const micBtn=document.createElement('button');
-micBtn.textContent='🎙️ Mic OFF';
-micBtn.onclick=()=>{
-  if(!micOn){ initMic(); micBtn.textContent='🎙️ Mic ON'; }
-  else       { recog.stop(); micOn=false; micBtn.textContent='🎙️ Mic OFF'; }
-};
-document.querySelector('#controls').appendChild(micBtn);
-
-/* ——————————————————————————————————————————— helpers — */
-/* convert spoken digit-words to number (0-999) */
-const WORD_VAL = {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
-  ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,
-  eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,
-  eighty:80,ninety:90};
-function wordsToNumber(words){
-  let n=0; words.trim().split(/\s+/).forEach(w=>{ const v=WORD_VAL[w]; if(v!=null) n+=v;});
-  return n;
+function launchOnTrack(t){
+  if(t.isTbm){engageTbmWithPatriot(t);return;}
+  const NAS=statics.find(s=>s.id==='NASAMS');const inNas=NAS&&distNm(NAS,t)<=20;
+  const fu=inNas?NAS:closestFu(t);const d=distNm(fu,t);
+  if(fu.id==='NASAMS'){if(checkNASAMSStatus(inNas))return;}
+  else if(!processPatriotEngagement(fu,d))return;
+  const spd=((t.isTbm?5000:3600)/3600)/CFG.nmPerPixel;
+  [0,1e3].forEach(off=>setTimeout(()=>missiles.push({
+      x:fu.x,y:fu.y,target:t,fu,speedPxPerSec:spd,expire:Date.now()+7e4}),off));
+  scheduleImpactCheck(t);
 }
-/* bearing difference 0-180 */
-function bearingDiff(a,b){ let d=Math.abs(a-b)%360; return d>180?360-d:d; }
-
-/* choose track by id OR nearest within ±5 NM (±10 NM for hold-fire) */
-function pickTrack(id,bear,range,radTolNm){
-  if(id){
-    const t=tracks.find(o=>o.id===id && !o.destroyed); if(t) return t;
-  }
-  if(bear!=null&&range!=null){
-    const candidates=tracks.filter(o=>{
-      if(o.destroyed) return false;
-      return bearingDiff(bear,bearing(bullseye,o))<=6 &&
-             Math.abs(distNm(bullseye,o)-range)<=radTolNm;
-    });
-    if(candidates.length) return candidates[0];
+function cancelShots(t){missiles=missiles.filter(m=>m.target!==t);
+  if(t.mslTimer){clearTimeout(t.mslTimer);t.mslTimer=null;}
+  setTimeout(()=>{t.tag='ENGAGE';t.tagTime=Date.now();},5e3);}
+function pickTrack(id,b,r,tol){
+  if(id){const t=tracks.find(o=>o.id===id&&!o.destroyed);if(t)return t;}
+  if(b!=null&&r!=null){
+    const c=tracks.filter(o=>!o.destroyed&&bearingDiff(b,bearing(bullseye,o))<=6
+                             &&Math.abs(distNm(bullseye,o)-r)<=tol);
+    if(c.length)return c[0];
   }
   return null;
 }
-/* coverage test */
-function inCoverage(t){
-  const now=Date.now();
-  const nas=statics.find(s=>s.id==='NASAMS');
-  if(nas && distNm(nas,t)<=15) return true;
-  return statics.some(rad=>
-     rad.type==='rad' &&
-     now>=rad.disabledUntil &&
-     insideWedge(rad,t) &&
-     distNm(rad,t)<=60);
+
+/* ——— speech recognition ———————————————————————————————— */
+let recog=null,micOn=false,pending=null; // pending={act:'cover',track:t}
+function initMic(){
+  if(!SR){alert('Speech-to-text not supported');return;}
+  if(recog){recog.start();micOn=true;return;}
+  recog=new SR();recog.continuous=true;recog.interimResults=false;recog.lang='en-US';
+  recog.onresult=e=>{
+    const txt=e.results[e.resultIndex][0].transcript.toLowerCase();
+    console.log('🗣️',txt);
+    if(!(txt.includes(ICC_NAME)&&txt.includes(ADAFCO_NAME))){
+      if(txt.includes('affirm')&&pending){executePending();return;}
+      return;
+    }
+    parseCmd(txt);
+  };
+  recog.onerror=err=>console.error(err);
+  recog.start();micOn=true;
 }
-/* — missile launcher extracted from old W key — */
-function launchOnTrack(t){
-  /*  call your existing Patriot / NASAMS launch helpers.
-      Example:                                                   */
-  if(t.isTbm) engageTbmWithPatriot(t);
-  else{
-    // reuse the same logic that sits in your old W hot-key
-    const NASAMS=statics.find(s=>s.id==='NASAMS');
-    const inNAS = NASAMS && distNm(NASAMS,t)<=20;
-    const fu    = inNAS?NASAMS:closestFu(t);
-    const dist  = distNm(fu,t);
-    if(fu.id==='NASAMS'){ if(checkNASAMSStatus(inNAS)) return; }
-    else                { if(!processPatriotEngagement(fu,dist)) return; }
+const micBtn=document.createElement('button');
+micBtn.textContent='🎙️ Mic OFF';
+micBtn.onclick=()=>{if(!micOn){initMic();micBtn.textContent='🎙️ Mic ON';}
+                    else{recog.stop();micOn=false;micBtn.textContent='🎙️ Mic OFF';}};
+document.querySelector('#controls').appendChild(micBtn);
 
-    const spd   = ((t.isTbm?5000:3600)/3600)/CFG.nmPerPixel;
-    [0,1000].forEach(off=>{
-      setTimeout(()=>{ missiles.push({
-        x:fu.x,y:fu.y,target:t,fu,speedPxPerSec:spd,expire:Date.now()+70000
-      });},off);
-    });
-    scheduleImpactCheck(t);
-  }
-}
+/* ——— main parser ——————————————————————————————————————— */
+function parseCmd(raw){
+  // clear previous pending if new order
+  pending=null;
 
-/* cancel inbound missiles (hold-fire) */
-function cancelShots(t){
-  // self destruct missiles
-  missiles = missiles.filter(m=>m.target!==t);
-  if(t.mslTimer){ clearTimeout(t.mslTimer); t.mslTimer=null;}
-  setTimeout(()=>{ t.tag='ENGAGE'; t.tagTime=Date.now(); },5000);
-}
+  // capture action
+  let act=null;if(/cover/.test(raw))act='cover';
+  else if(/engage/.test(raw))act='engage';
+  else if(/hold\s+fire/.test(raw))act='hold';
+  if(!act){speak(`${ADAFCO_NAME}, ${ICC_NAME}, say again last.`);return;}
 
-/* ——————————————————————————————————————————— command parser — */
-function parseCommand(raw){
-  /* grab 3-5 digit number if present */
-  const numId = (raw.match(/\b(\d{3,5})\b/)||[])[1];
+  // track number
+  const idMatch=raw.match(/\b(\d{3,5})\b/);const id=idMatch?idMatch[1]:null;
 
-  /* bullseye ###/## pattern */
+  // bullseye tokens
   let brg=null,rng=null;
-  const brRe = raw.match(/bullseye\s+(\d{3})\s*[,/ ]\s*(\d{1,3})/);
-  if(brRe){ brg=parseInt(brRe[1]), rng=parseInt(brRe[2]); }
+  const bx=raw.match(/bullseye\s+(\d{3})\s*[,/ ]\s*(\d{1,3})/);
+  if(bx){brg=parseInt(bx[1]);rng=parseInt(bx[2]);}
   else if(raw.includes('bullseye')){
-    const tail=raw.split('bullseye')[1];
-    const parts=tail.trim().split(/\s+/);
-    const bWords=parts.slice(0,3).join(' ');
-    const rWords=parts.slice(3).join(' ');
+    const tail=raw.split('bullseye')[1].trim();
+    const parts=tail.split(/[,/]/).map(s=>s.trim());
+    const bWords=parts[0]||'', rWords=parts[1]||'';
     brg=wordsToNumber(bWords); rng=wordsToNumber(rWords);
+    if(brg>360||rng>200){brg=null;rng=null;}
   }
 
-  /* COVER ---------------------------------------------------- */
-  if(/cover/.test(raw)){
-    const tgt=pickTrack(numId,brg,rng,5);
-    if(!tgt||!inCoverage(tgt)) return;
+  const tol=act==='hold'?10:5;
+  const track=pickTrack(id,brg,rng,tol);
 
-    const words=bullseyeWords(bearing(bullseye,tgt),distNm(bullseye,tgt));
-    radioSay(`Bigfoot, Guardian, birds affirm track ${tgt.id}, Bullseye ${words}.`);
-    return;                   /* no tag change – player presses A */
-  }
-
-  /* ENGAGE --------------------------------------------------- */
-  if(/engage/.test(raw)){
-    const tgt=pickTrack(numId,brg,rng,5);
-    if(!tgt||!inCoverage(tgt)) return;
-
-    const words=bullseyeWords(bearing(bullseye,tgt),distNm(bullseye,tgt));
-    radioSay(`Bigfoot, Guardian, birds away track ${tgt.id}, Bullseye ${words}.`);
-
-    /* missile launch & cosmetic tag */
-    tgt.tag='AWAY'; tgt.tagTime=Date.now();
-    launchOnTrack(tgt);
+  if(!track){
+    speak(`${ADAFCO_NAME}, ${ICC_NAME}, say again last.`);
     return;
   }
 
-  /* HOLD FIRE ----------------------------------------------- */
-  if(/hold\s+fire/.test(raw)){
-    const tgt=pickTrack(numId,brg,rng,10);
-    if(!tgt) return;
-
-    const words=bullseyeWords(bearing(bullseye,tgt),distNm(bullseye,tgt));
-    radioSay(`Bigfoot, Guardian, hold fire track ${tgt.id}, Bullseye ${words}.`);
-    cancelShots(tgt);
+  if(act!=='hold'&&!inCoverage(track)){
+    speak(`${ADAFCO_NAME}, ${ICC_NAME}, track not in coverage.`);
+    return;
   }
+
+  /* no ambiguity if id matched exactly */
+  if(id||act==='hold'||(brg!==null&&track&&Math.abs(distNm(bullseye,track)-rng)<=tol)){
+    executeAct(act,track);
+    return;
+  }
+
+  /* need confirmation (bullseye only, >5 NM offset) */
+  pending={act,track};
+  const words=bullseyeWords(bearing(bullseye,track),distNm(bullseye,track));
+  speak(`${ADAFCO_NAME}, ${ICC_NAME}, confirm ${act} request for track ${track.id}, Bullseye ${words}?`);
 }
 
-/* ————————————————————————————————————————— overwrite W key so it
-   only flips the tag (no launches)                              — */
+function executeAct(act,track){
+  const words=bullseyeWords(bearing(bullseye,track),distNm(bullseye,track));
+  if(act==='cover'){
+    speak(`Bigfoot, Guardian, birds affirm track ${track.id}, Bullseye ${words}.`);
+    // player still hits A if desired
+  }else if(act==='engage'){
+    speak(`Bigfoot, Guardian, birds away track ${track.id}, Bullseye ${words}.`);
+    track.tag='AWAY';track.tagTime=Date.now();
+    launchOnTrack(track);
+  }else{ // hold fire
+    speak(`Bigfoot, Guardian, hold fire track ${track.id}, Bullseye ${words}.`);
+    cancelShots(track);
+  }
+  pending=null;
+}
+function executePending(){
+  if(!pending)return;
+  executeAct(pending.act,pending.track);
+}
+
+/* ——— W key cosmetic only — */
 window.addEventListener('keydown',e=>{
-  if(e.key.toLowerCase()==='w' && selectedTrack){
-    e.preventDefault();
-    selectedTrack.tag='AWAY';
-    selectedTrack.tagTime=Date.now();
+  if(e.key.toLowerCase()==='w'&&selectedTrack){
+    e.preventDefault();selectedTrack.tag='AWAY';selectedTrack.tagTime=Date.now();
   }
 });
 
