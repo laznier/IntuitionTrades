@@ -1368,6 +1368,173 @@ function getDetectionRange(alt) {
 
   
 
+/*****************************************************************
+ *  SMART BULLSEYE MATCHER  –  replaces/augments processVoiceCommand()
+ *****************************************************************/
+ function processVoiceCommand(raw){
+  /*--------------------------------------------------------------*
+   * 1. Normalise speech → lowercase, single-spaced, digits only
+   *--------------------------------------------------------------*/
+  const txt = raw
+    .toLowerCase()
+    .replace(/,\s*/g,' ')  // strip commas
+    .replace(/\s+/g,' ')   // squeeze spaces
+    .trim();
+
+  /*--------------------------------------------------------------*
+   * 2. Must start with “guardian bigfoot”
+   *--------------------------------------------------------------*/
+  if(!txt.startsWith('guardian bigfoot')) return;        // ignore chatter
+  const words = txt.split(' ').slice(2);                 // lop the call-signs
+  if(!words.length) return;
+
+  /*--------------------------------------------------------------*
+   * 3. Decide which action the SL wants
+   *--------------------------------------------------------------*/
+  let action;                         // 'cover' | 'engage' | 'hold'
+  if(words[0]==='cover')   action='cover';
+  if(words[0]==='engage')  action='engage';
+  if(words[0]==='hold')    action='hold';
+  if(!action) return radioSay('bigfoot guardian say again last');
+
+  /* discard that keyword */
+  words.shift();
+
+  /*--------------------------------------------------------------*
+   * 4. Try to read an explicit track-number (five digits)
+   *--------------------------------------------------------------*/
+  const trackNum = words.find(w => /^\d{5}$/.test(w));
+
+  /*--------------------------------------------------------------*
+   * 5. Otherwise parse a B/E bearing-range pair
+   *    e.g. “bullseye 2 7 0 sixty”  ⇒  270 / 60
+   *--------------------------------------------------------------*/
+  let beBearing=null, beRange=null;
+  if(!trackNum){
+    const idx = words.indexOf('bullseye');
+    if(idx>=0){
+      const spoken = words.slice(idx+1).join(' ');
+      // tokenise & map words → digits
+      const n = w => (
+        {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,
+         eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,
+         fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,
+         nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,
+         seventy:70,eighty:80,ninety:90}[w] ?? parseInt(w,10)) || 0
+      
+      const tok = spoken.split(' ');
+      /* build an integer from successive words until we hit something
+         ≥1000  (cheap / cheerful) */
+      let nums=[];
+      tok.forEach(w=>{
+        if(/^\d+$/.test(w)){ nums.push(+w); return; }
+        if(w in {hundred:1,thousand:1}) return;          // ignore filler
+        const v=n(w); if(v) nums.push(v);
+      });
+      if(nums.length>=2){
+        beRange   = nums.pop();                 // last chunk = range
+        beBearing = +nums.join('');             // rest = bearing
+      }
+    }
+  }
+
+  /*--------------------------------------------------------------*
+   * 6. Resolve the “target list” once and for all
+   *--------------------------------------------------------------*/
+  /** helper – angular diff 0-180 **/
+  const angDiff = (a,b)=>Math.min(Math.abs(a-b),360-Math.abs(a-b));
+
+  let targets=[];
+  if(trackNum){
+    targets = tracks.filter(t=>t.id===trackNum && !t.destroyed);
+  }else if(beBearing!=null && beRange!=null){
+    // compute BE for every on-screen hostile
+    targets = tracks.filter(t=>{
+      if(t.destroyed||t.friendly) return false;
+      const brg = bearing(bullseye,t);
+      const rng = distNm(bullseye,t);
+      return angDiff(brg,beBearing)<=5 && Math.abs(rng-beRange)<=5;
+    });
+    // if >1 hostile, cluster any within 5 NM of the first pick
+    if(targets.length){
+      const ref = targets[0];
+      targets   = tracks.filter(t=>
+        !t.destroyed && !t.friendly &&
+        distNm(ref,t)<=5
+      );
+    }
+  }
+
+  if(!targets.length){
+    return radioSay('bigfoot guardian confirm cover request');  // polite ask-again
+  }
+
+  /*--------------------------------------------------------------*
+   * 7. Run the requested action
+   *--------------------------------------------------------------*/
+  switch(action){
+    case 'cover':   doCover(targets);   break;
+    case 'engage':  doEngage(targets);  break;
+    case 'hold':    doHold(targets);    break;
+  }
+}
+
+/*****************************************************************
+ *  ACTION HELPERS  (use your existing logic wherever possible)
+ *****************************************************************/
+function radioSay(line){
+  statusEl.textContent = line.replace(/\s+/g,' ').trim();
+  speakFast(statusEl.textContent);              // 1.5 × speed
+}
+function speakFast(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate  = 1.5;               // << 1️⃣.5×
+  u.lang  = 'en-US';
+  speechSynthesis.speak(u);
+}
+
+/* ---------- COVER ---------- */
+function doCover(arr){
+  arr.forEach(t=>{
+    t.tag='COVER'; t.tagTime=Date.now();
+  });
+  const be = formatBE(arr[0]);
+  radioSay(`bigfoot guardian birds affirm track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
+}
+
+/* ---------- ENGAGE ---------- */
+function doEngage(arr){
+  arr.forEach(t=>{
+    t.tag='ENGAGE'; t.tagTime=Date.now();
+  });
+  const be = formatBE(arr[0]);
+  radioSay(`bigfoot guardian birds away track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
+  launchMissiles(arr);           // your existing missile-spawn logic
+}
+
+/* ---------- HOLD FIRE ---------- */
+function doHold(arr){
+  arr.forEach(t=>{
+    t.tag='ENGAGE';              // return to ENGAGE
+    /* cancel missiles exactly like old H-key logic */
+    missiles = missiles.filter(m=>!arr.includes(m.target));
+    if(t.mslTimer){ clearTimeout(t.mslTimer); t.mslTimer=null; }
+  });
+  const be = formatBE(arr[0]);
+  radioSay(`bigfoot guardian hold fire track ${arr[0].id} bullseye ${be.replace('/',' ')}`);
+}
+
+/*****************************************************************
+ *  W-KEY PATCH  –  make W just mark “AWAY”, nothing more
+ *****************************************************************/
+window.addEventListener('keydown', e=>{
+  if(e.key.toLowerCase()==='w' && selectedTrack){
+    e.preventDefault();
+    selectedTrack.tag='AWAY';
+    selectedTrack.tagTime=Date.now();
+    e.stopImmediatePropagation();           // squash old missile-launch code
+  }
+});
 
 /* ───────── Guardian ↔ Bigfoot  v3.2 ───────── */
 const ICC='guardian', ADAFCO='bigfoot';
