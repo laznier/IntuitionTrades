@@ -1546,11 +1546,13 @@ function speak(t){ if(!synth) return;
   const u=new SpeechSynthesisUtterance(t); u.rate=1.5; u.lang='en-US'; synth.speak(u); }
 
 /* word→value map */
-const WORD={
-  zero:0,oh:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
-  ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,
-  seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,
-  sixty:60,seventy:70,eighty:80,ninety:90
+const WORD = {
+  zero:0, oh:0, one:1, two:2, three:3, four:4, five:5,
+  six:6, seven:7, eight:8, nine:9,
+  ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15,
+  sixteen:16, seventeen:17, eighteen:18, nineteen:19,
+  twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70,
+  eighty:80, ninety:90
 };
 function toDigits(tok){                         /* "four"→"4", "forty-five"→"45" */
   if(/^\d+$/.test(tok)) return tok;             /* already digits */
@@ -1558,15 +1560,56 @@ function toDigits(tok){                         /* "four"→"4", "forty-five"→
   const v=WORD[tok]; if(v==null) return '';
   return v.toString();
 }
-/* pull 3-digit bearing + 1-3-digit range from tail string */
-function parseBE(tail){
-  const tokens=tail.replace(/[,/]/g,' ').trim().split(/\s+/);       // kill commas “270, sixty”
-  const d=tokens.map(toDigits).join('').split('');                  // flat digit array
-  while(d.length<4) d.unshift('0');   // pad “09060” → “009060”
-  const brg=parseInt(d.slice(0,3).join(''));                        // first 3
-  const rng=parseInt(d.slice(3).join(''));                          // rest
-  if(isNaN(brg)||isNaN(rng)||brg<1||brg>360||rng<1) return {};
-  return {brg,rng};
+function parseBE(tail) {
+  // 1) map “slash” → “/” already done upstream
+  const parts = tail.split('/');
+  if (parts.length < 2) return {};
+  
+  // 2) bearing = first three single‑digit words
+  const brg = parseBearingWords(parts[0].trim().split(/\s+/));
+  // 3) range = natural‑language number up to 3 digits
+  const rng = parseNumberWords(parts[1].trim().split(/\s+/));
+  
+  if (Number.isInteger(brg) && Number.isInteger(rng)) {
+    // clamp 1–360 & 1+
+    return {
+      brg: ((brg - 1) % 360) + 1,
+      rng: Math.max(1, rng)
+    };
+  }
+  return {};
+}
+
+// exactly 3 digit‑words: e.g. ["three","three","zero"] → 330
+function parseBearingWords(words) {
+  const digits = words
+    .map(w => WORD[w.toLowerCase()])
+    .filter(n => Number.isInteger(n) && n >= 0 && n <= 9);
+  if (digits.length >= 3) {
+    return +digits.slice(0, 3).join('');
+  }
+  return NaN;
+}
+
+// sum tens & ones, but also allow individual digits:
+// ["forty","five"] → 40+5=45
+// ["six","zero"]   → 6*10+0=60
+function parseNumberWords(words) {
+  let val = 0, last = 0;
+  words.forEach(w => {
+    const v = WORD[w.toLowerCase()];
+    if (v == null) return;
+    // if it’s a multiple of 10 and val<10, treat as tens; else add
+    if (v >= 10 && v % 10 === 0 && val < 10) {
+      val = v;
+    } else {
+      // if previous was a ten and this is ones, add; else shift
+      if (last >= 10 && v < 10) val += v;
+      else                      val = val * 10 + v;
+    }
+    last = v;
+  });
+  return val;
 }
 function beToWorld(brg,rng){
   const ang=(brg-90)*Math.PI/180, rpx=rng/CFG.nmPerPixel;
