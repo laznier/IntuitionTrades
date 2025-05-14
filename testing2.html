@@ -1368,163 +1368,172 @@ function getDetectionRange(alt) {
 
   
 
-/* ───────────────── Guardian ↔ Bigfoot  v3.1 ───────────────── */
-const ICC_NAME='guardian', ADAFCO_NAME='bigfoot';
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-const synth=window.speechSynthesis;
 
-/* ---------- helpers -------------------------------------------------- */
-function speak(t){ if(!synth) return; const u=new SpeechSynthesisUtterance(t);
-  u.lang='en-US'; u.rate=1.5; synth.speak(u); }
+/* ───────── Guardian ↔ Bigfoot  v3.2 ───────── */
+const ICC='guardian', ADAFCO='bigfoot';
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const synth = window.speechSynthesis;
 
-/* word→value map (0-90 + “oh”) */
-const WVAL={zero:0,oh:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,
- nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,
- sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,
- fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
-/* turn a token (“5” or “forty-five”) into digit-string "45" */
-function toDigits(tok){
-  if(/^\d+$/.test(tok)) return tok;                       // plain digits
-  if(tok.includes('-')){                                 // forty-five
-     return tok.split('-').map(toDigits).join('');
-  }
-  const val=WVAL[tok]; if(val==null) return '';
-  return val<10?''+val:val.toString().split('').join('');
+/* ========== helpers ========== */
+function speak(t){ if(!synth) return;
+  const u=new SpeechSynthesisUtterance(t); u.rate=1.5; u.lang='en-US'; synth.speak(u); }
+
+/* word→value map */
+const WORD={
+  zero:0,oh:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
+  ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,
+  seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,
+  sixty:60,seventy:70,eighty:80,ninety:90
+};
+function toDigits(tok){                         /* "four"→"4", "forty-five"→"45" */
+  if(/^\d+$/.test(tok)) return tok;             /* already digits */
+  if(tok.includes('-')) return tok.split('-').map(toDigits).join('');
+  const v=WORD[tok]; if(v==null) return '';
+  return v.toString();
 }
-/* parse Bullseye words AFTER the keyword */
-function parseBullseyeTail(tail){
-  const tokens=tail.replace(/[,/]/g,' ').trim().split(/\s+/);
-  const digits=tokens.map(toDigits).join('').split('');
-  if(digits.length<4) return {};                         // need 3+1 digits
-  const brg=parseInt(digits.slice(0,3).join(''));        // first 3
-  const rng=parseInt(digits.slice(3).join(''));          // rest
+/* pull 3-digit bearing + 1-3-digit range from tail string */
+function parseBE(tail){
+  const tokens=tail.replace(/[,/]/g,' ').trim().split(/\s+/);       // kill commas “270, sixty”
+  const d=tokens.map(toDigits).join('').split('');                  // flat digit array
+  if(d.length<4) return {};
+  const brg=parseInt(d.slice(0,3).join(''));                        // first 3
+  const rng=parseInt(d.slice(3).join(''));                          // rest
+  if(isNaN(brg)||isNaN(rng)||brg<1||brg>360||rng<1) return {};
   return {brg,rng};
 }
-/* distance helpers (existing ones already in global) */
-function bearingDiff(a,b){let d=Math.abs(a-b)%360;return d>180?360-d:d;}
-function inCoverage(t){const n=Date.now(),nas=statics.find(s=>s.id==='NASAMS');
-  if(nas&&distNm(nas,t)<=15)return true;
-  return statics.some(rad=>rad.type==='rad'&&n>=rad.disabledUntil&&
-                        insideWedge(rad,t)&&distNm(rad,t)<=60);}
-/* cluster ≤5 NM */
-function clusterAround(pt){return tracks.filter(o=>!o.destroyed&&!o.friendly&&
-                           distNm(pt,o)<=5);}
-function launchOnTrack(t){               /* unchanged from v3 */ 
-  const NAS=statics.find(s=>s.id==='NASAMS');
-  const inNas=NAS&&distNm(NAS,t)<=20; const fu=inNas?NAS:closestFu(t);
-  const d=distNm(fu,t);
-  if(fu.id==='NASAMS'){if(checkNASAMSStatus(inNas))return;}
-  else if(!processPatriotEngagement(fu,d))return;
+function beToWorld(brg,rng){
+  const ang=(brg-90)*Math.PI/180, rpx=rng/CFG.nmPerPixel;
+  return {x:bullseye.x+Math.cos(ang)*rpx, y:bullseye.y+Math.sin(ang)*rpx};
+}
+function wordsBE(t){                         /* pretty “one two three, forty five” */
+  const b=(''+bearing(bullseye,t)).padStart(3,'0');
+  const r=distNm(bullseye,t).toString();
+  const digitWord=n=>'zero one two three four five six seven eight nine'.split(' ')[n];
+  const brgw=b.split('').map(d=>digitWord(+d)).join(' ');
+  const rngw=r.split('').map(d=>digitWord(+d)).join(' ');
+  return `${brgw}, ${rngw}`;
+}
+/* cluster & coverage */
+function cluster(pt){return tracks.filter(o=>!o.destroyed&&!o.friendly
+                                  &&distNm(pt,o)<=5);}
+function inCov(o){
+  const n=Date.now(), nas=statics.find(s=>s.id==='NASAMS');
+  if(nas&&distNm(nas,o)<=15) return true;
+  return statics.some(r=>r.type==='rad'&&n>=r.disabledUntil
+                      &&insideWedge(r,o)&&distNm(r,o)<=60);}
+function launch(t){
+  const nas=statics.find(s=>s.id==='NASAMS'); const inNas=nas&&distNm(nas,t)<=20;
+  const fu=inNas ? nas : closestFu(t); const d=distNm(fu,t);
+  if(fu.id==='NASAMS'){ if(checkNASAMSStatus(inNas)) return; }
+  else if(!processPatriotEngagement(fu,d)) return;
   const v=((t.isTbm?5000:3600)/3600)/CFG.nmPerPixel;
-  [0,1e3].forEach(o=>setTimeout(()=>missiles.push({
+  [0,1000].forEach(o=>setTimeout(()=>missiles.push({
     x:fu.x,y:fu.y,target:t,fu,speedPxPerSec:v,expire:Date.now()+7e4}),o));
-  scheduleImpactCheck(t);}
-function cancelShots(t){missiles=missiles.filter(m=>m.target!==t);
+  scheduleImpactCheck(t);
+}
+function abort(t){
+  missiles=missiles.filter(m=>m.target!==t);
   if(t.mslTimer){clearTimeout(t.mslTimer);t.mslTimer=null;}
-  setTimeout(()=>{t.tag='ENGAGE';t.tagTime=Date.now();},5e3);}
-/* sentences */
-function bullText(t){const b=(''+bearing(bullseye,t)).padStart(3,'0');
-  const r=distNm(bullseye,t);return `${b.split('').map(n=>['zero','one','two',
-  'three','four','five','six','seven','eight','nine'][n]).join(' ')}, ${
-  ['zero','one','two','three','four','five','six','seven','eight','nine'][Math.floor(r/10)]} ${
-  ['zero','one','two','three','four','five','six','seven','eight','nine'][r%10]}`;}
-/* -------- recognition ------------------------------------------------ */
-let recog=null,micOn=false,pending=null;                 // {act,tracks}
-function initMic(){
-  if(!SR){alert('Speech to text unsupported');return;}
-  if(recog){recog.start();micOn=true;return;}
-  recog=new SR();recog.continuous=true;recog.interimResults=false;recog.lang='en-US';
-  recog.onresult=e=>{const txt=e.results[e.resultIndex][0].transcript.toLowerCase();
-    console.log('🗣️',txt);
-    if(txt.includes('affirm')&&pending){executePending();return;}
-    if(!(txt.includes(ICC_NAME)&&txt.includes(ADAFCO_NAME))) return;
-    parseCmd(txt);};
-  recog.onerror=err=>console.error(err);
-  recog.start();micOn=true;}
-/* add mic button if not already */
-if(!document.getElementById('micButton')){
-  const mb=document.createElement('button');mb.id='micButton';
-  mb.textContent='🎙️ Mic OFF';mb.onclick=()=>{
-    if(!micOn){initMic();mb.textContent='🎙️ Mic ON';}
-    else{recog.stop();micOn=false;mb.textContent='🎙️ Mic OFF';}};
-  document.getElementById('controls').appendChild(mb);}
+  setTimeout(()=>{t.tag='ENGAGE';t.tagTime=Date.now();},5e3);
+}
+
+/* ========== recognition ========== */
+let recog=null,mic=false,pending=null;        // pending = {act,tracks}
+function micInit(){
+  if(!SR){alert('Speech-to-text not supported');return;}
+  if(recog){recog.start();mic=true;return;}
+  recog=new SR(); recog.lang='en-US'; recog.continuous=true; recog.interimResults=false;
+  recog.onresult=e=>{
+      const txt=e.results[e.resultIndex][0].transcript.toLowerCase();
+      console.log('🗣',txt);
+      if(pending && /affirm/.test(txt)){doAction(pending.act,pending.tracks);pending=null;return;}
+      if(!(txt.includes(ICC)&&txt.includes(ADAFCO))) return;      // must address correctly
+      parseCmd(txt);
+  };
+  recog.onerror=e=>console.error(e);
+  recog.start(); mic=true;
+}
+/* mic button */
+(()=>{if(document.getElementById('micBtnRadio'))return;
+  const btn=document.createElement('button');btn.id='micBtnRadio';
+  btn.textContent='🎙️ Mic OFF';btn.onclick=()=>{
+    if(!mic){micInit();btn.textContent='🎙️ Mic ON';}
+    else{recog.stop();mic=false;btn.textContent='🎙️ Mic OFF';}};
+  document.getElementById('controls').appendChild(btn);
+})();
+
+/* parse voice command */
 function parseCmd(raw){
-  pending=null;
-  let act=null;if(/cover/.test(raw))act='cover';
-  else if(/engage/.test(raw))act='engage';
-  else if(/hold\s+fire/.test(raw))act='hold';
-  if(!act){speak(`${ADAFCO_NAME}, ${ICC_NAME}, say again last.`);return;}
+  let act=null;
+  if(/cover/.test(raw)) act='cover';
+  else if(/engage/.test(raw)) act='engage';
+  else if(/hold\s+fire/.test(raw)) act='hold';
+  if(!act){speak(`${ADAFCO}, ${ICC}, say again last.`);return;}
 
-  /* track number (digits only) */
-  const idMatch=raw.match(/\b(\d{3,5})\b/);const id=idMatch?idMatch[1]:null;
+  /* explicit track number */
+  const nMatch=raw.match(/\b(\d{3,5})\b/); const trackId=nMatch?nMatch[1]:null;
 
-  /* bullseye parsing */
-  let brg=null,rng=null;
-  const bx=raw.match(/bullseye([^]*)/);           // everything after the word
-  if(bx){
-    const {brg:b,rng:r}=parseBullseyeTail(bx[1]);
-    brg=b;rng=r;
-  }
+  /* bullseye part */
+  const bx=raw.match(/bullseye([^]*)/); let brg=null,rng=null,pt=null;
+  if(bx){({brg,rng}=parseBE(bx[1])); if(brg) pt=beToWorld(brg,rng);}
 
-  /* build point if any */
-  let pt=null;if(brg!=null&&rng!=null){
-    const ang=(brg-90)*Math.PI/180;
-    const rpx=rng/CFG.nmPerPixel;
-    pt={x:bullseye.x+Math.cos(ang)*rpx,y:bullseye.y+Math.sin(ang)*rpx};}
-
-  /* candidate tracks */
+  /* find targets */
   let targets=[];
-  if(id){
-     const t=tracks.find(o=>o.id===id&&!o.destroyed);if(t)targets=[t];
-  }else if(pt){
-     targets=clusterAround(pt);
+  if(trackId){
+    const t=tracks.find(o=>o.id===trackId&&!o.destroyed); if(t) targets=[t];
+  }
+  if(!targets.length && pt) targets=cluster(pt);
+
+  if(!targets.length){speak(`${ADAFCO}, ${ICC}, say again last.`);return;}
+
+  /* coverage check for cover / engage */
+  if(act!=='hold' && !targets.some(inCov)){
+    speak(`${ADAFCO}, ${ICC}, track not in coverage.`);return;
   }
 
-  if(!targets.length){
-    speak(`${ADAFCO_NAME}, ${ICC_NAME}, say again last.`);
-    return;
-  }
-
-  /* coverage check (for cover / engage) */
-  if(act!=='hold'&&!targets.some(inCoverage)){
-     speak(`${ADAFCO_NAME}, ${ICC_NAME}, track not in coverage.`);
-     return;
-  }
-
-  /* confirmation needed only when bullseye used & >5 NM error */
-  if(!id&&pt){
+  /* confirmation when off by >5 NM and derived from bullseye */
+  if(!trackId && pt){
     const d=distNm(pt,targets[0]);
     if(d>5){
       pending={act,tracks:targets};
-      speak(`${ADAFCO_NAME}, ${ICC_NAME}, confirm ${act} request for track ${
-        targets[0].id}, Bullseye ${bullText(targets[0])}?`);
+      speak(`${ADAFCO}, ${ICC}, confirm ${act} request for track ${targets[0].id}, bullseye ${wordsBE(targets[0])}?`);
       return;
     }
   }
 
-  executeAct(act,targets);
+  doAction(act,targets);
 }
-function executePending(){ if(!pending)return; executeAct(pending.act,pending.tracks);}
-function executeAct(act,tracksArr){
-  tracksArr.forEach(t=>{
-    const txt=bullText(t);
+/* execute */
+function doAction(act,arr){
+  arr.forEach(t=>{
+    const txt=wordsBE(t);
     if(act==='cover'){
-      speak(`Bigfoot, Guardian, birds affirm track ${t.id}, Bullseye ${txt}.`);
-    }else if(act==='engage'){
-      speak(`Bigfoot, Guardian, birds away track ${t.id}, Bullseye ${txt}.`);
-      t.tag='AWAY';t.tagTime=Date.now();launchOnTrack(t);
-    }else{ // hold
-      speak(`Bigfoot, Guardian, hold fire track ${t.id}, Bullseye ${txt}.`);
-      cancelShots(t);
+      speak(`Bigfoot, Guardian, birds affirm track ${t.id}, bullseye ${txt}.`);
+      /* tag stays COVER until you hit A manually – no auto change */
+    }
+    else if(act==='engage'){
+      speak(`Bigfoot, Guardian, birds away track ${t.id}, bullseye ${txt}.`);
+      launch(t);               // missiles out
+      /* NO automatic tag change — user will press W */
+    }
+    else{ // hold fire
+      speak(`Bigfoot, Guardian, hold fire track ${t.id}, bullseye ${txt}.`);
+      abort(t);
     }
   });
-  pending=null;
 }
 
-/* cosmetic W-key only */
+/* ----- W hot-key is tag-only now ----- */
 window.addEventListener('keydown',e=>{
-  if(e.key.toLowerCase()==='w'&&selectedTrack){e.preventDefault();
-    selectedTrack.tag='AWAY';selectedTrack.tagTime=Date.now();}});
+  if(e.key.toLowerCase()==='w'&&selectedTrack){
+    e.preventDefault();
+    selectedTrack.tag='AWAY';
+    selectedTrack.tagTime=Date.now();
+  }
+});
+
+
+
 
 
 
