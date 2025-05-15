@@ -355,23 +355,7 @@
   background: var(--icc); color:#000; border:none; border-radius:4px;
   cursor:pointer;
 }
- /* basic look – tweak to match your other buttons */
- #ptBtn {
-    font: 600 1rem/1 'Arial',sans-serif;
-    padding: .45em .8em;
-    margin-right: .35em;
-    border: none;
-    border-radius: .35em;
-    background:#333; color:#fff;
-    cursor:pointer;
-    user-select:none;
-    transition:background .15s;
-  }
-  #ptBtn.live { background:#c62828; }          /* red while hot-mic */
-  /* hide on large screens (desktop) if you like */
-  @media (min-width: 768px){
-    #ptBtn { display:none; }
-  }
+
   </style>
 </head>
 <body>
@@ -587,34 +571,6 @@
   
 
   <div id="cursorLabel"></div>
-  <script>
-    (() => {
-      if (document.getElementById('ptBtn')) return;       // guard against dups
-    
-      /* create button */
-      const btn = document.createElement('button');
-      btn.id        = 'ptBtn';
-      btn.textContent = 'P/T';
-    
-      /* insert it as the **first** child so it’s left-most */
-      const controls = document.getElementById('controls');
-      controls.insertBefore(btn, controls.firstChild);
-    
-      /* click = toggle mic (same logic as Ctrl key) */
-      btn.addEventListener('click', () => {
-        if (!window.mic) {                // ① start listening
-          if (speechSynthesis.speaking) speechSynthesis.cancel();
-          micInit();                      // re-uses your existing init
-          window.mic = true;
-          btn.classList.add('live');
-        } else {                          // ② stop listening
-          if (window.recog) window.recog.stop();
-          window.mic = false;
-          btn.classList.remove('live');
-        }
-      });
-    })();
-    </script>
   <script>
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
@@ -1233,6 +1189,24 @@ function resetRedwood () {
   redwoodQuadrant = null;
   redwoodWrap.classList.remove('open');
 }
+/* ─── dynamic pick radius based on zoom ─────────────────────── */
+function getPickRadiusPx() {
+  // visible NM across the canvas right now
+  const visibleNm = canvas.width * CFG.nmPerPixel;   // ⬅ uses your globals
+  let r = 12;      // ← your current click cloud in pixels ─ adjust if needed
+  if (visibleNm <= 100) r *= 2;   // zoomed-in: double
+  if (visibleNm <=  50) r *= 3;   // super-tight: triple
+  return r;
+}
+// dynamic tap radius (in *screen* pixels)
+function dynamicClickRadius() {
+  const visibleNm = canvas.width * CFG.nmPerPixel / scale;   // current view-width
+  let r = CLICK_RADIUS_SCREEN;          // 15 px baseline
+  if (visibleNm <= 100) r *= 2;         // zoom-in ≤100 NM  → double
+  if (visibleNm <=  50) r *= 3;         // super-tight ≤50 NM → triple
+  return r;
+}
+
 
 /**
  * Returns true if object o lies in quadrant q (one of "NW","NE","SW","SE")
@@ -1351,6 +1325,27 @@ function showLogsOverlay(parent) {
   return hostiles;
 }
 
+// helper – cancel every shot currently aimed at a track, after a 5 min delay
+function abortTrack(t) {
+  // Schedule the abort logic to run in 5 minutes
+  setTimeout(() => {
+    // 1) cancel any scheduled intercept timer
+    if (t.mslTimer) {
+      clearTimeout(t.mslTimer);
+      t.mslTimer = null;
+    }
+    // 2) remove any in‑flight missiles targeting this track
+    missiles = missiles.filter(m => m.target !== t);
+    // 3) revert the tag to ENGAGE so it can be re-shot later
+    t.tag     = 'ENGAGE';
+    t.tagTime = Date.now();
+  }, 5 * 1000);  // 5 sec ms
+}
+
+// alias if you’re calling `abort()` elsewhere
+const abort = abortTrack;
+
+
 
 /**
  * Returns `true` if the shot should be blocked by NASAMS‐weapons‐red,
@@ -1431,7 +1426,122 @@ function fireKey(k){
  let lastVoiceAction  = null;      // reuse these globals
 let lastVoiceTargets = null;
 
+function parseCmd(raw) {
+  /* 1 ─ normalise */
+  const txt = raw.toLowerCase()
+                 .replace(/[,/]/g, ' ')
+                 .replace(/\s+/g, ' ')
+                 .trim();
 
+  /* 2 ─ must start with the callsigns */
+  if (!txt.startsWith('guardian bigfoot ')) return;
+
+  /* 3 ─ split into tokens AFTER the callsigns */
+  const words = txt.split(' ').slice(2);          // drop “guardian bigfoot”
+  if (!words.length) return;
+
+  /* 4 ─ verb MUST be the next word(s)  */
+  let action = null;
+  if (words[0] === 'cover') {
+    action = 'cover';
+    words.shift();
+  } else if (words[0] === 'engage') {
+    action = 'engage';
+    words.shift();
+  } else if (words[0] === 'hold' && words[1] === 'fire') {
+    action = 'hold';
+    words.shift();   // remove 'hold'
+    words.shift();   // remove 'fire'
+  } else {
+    /* heard “guardian bigfoot …” but no valid verb → stay silent */
+    return;
+  }
+
+  /* 5 ─ explicit 5-digit track id (anywhere after the verb) */
+  const trackNum = words.find(w => /^\d{5}$/.test(w));
+
+  /* 6 ─ bullseye parsing (only if no trackNum) */
+  let beBearing = null, beRange = null;
+  if (!trackNum) {
+    const bi = words.indexOf('bullseye');
+    if (bi >= 0) {
+      const spoken = words.slice(bi + 1).join(' ');
+      const word2num = w =>
+        ({zero:0,oh:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,
+          eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,
+          fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,
+          twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,
+          eighty:80,ninety:90}[w] ?? parseInt(w,10)) || 0;
+
+      const nums = [];
+      spoken.split(' ').forEach(w => {
+        if (/^\d+$/.test(w))                 { nums.push(+w); return; }
+        if (w === 'hundred' || w === 'thousand')             return;
+        const v = word2num(w); if (v) nums.push(v);
+      });
+      if (nums.length >= 2) {
+        beRange   = nums.pop();              // last block = range
+        beBearing = +nums.join('');          // rest      = bearing
+      }
+    }
+  }
+
+  /* 7 ─ resolve targets */
+  const angDiff = (a,b) => Math.min(Math.abs(a-b), 360 - Math.abs(a-b));
+  let targets = [];
+
+  if (trackNum) {
+    targets = tracks.filter(t => t.id === trackNum && !t.destroyed);
+  } else if (beBearing !== null && beRange !== null) {
+    targets = tracks.filter(t => {
+      if (t.destroyed || t.friendly) return false;
+      const brg = bearing(bullseye, t);
+      const rng = distNm(bullseye, t);
+      return angDiff(brg, beBearing) <= 5 && Math.abs(rng - beRange) <= 5;
+    });
+    if (targets.length) {
+      const ref = targets[0];
+      targets = tracks.filter(t =>
+        !t.destroyed && !t.friendly && distNm(ref, t) <= 5
+      );
+    }
+  }
+
+  /* 8 ─ verb but no ID yet → prompt once */
+  if (!targets.length) {
+    radioSay(`${ADAFCO}, ${ICC}, say track number`);
+    return;                     // duplicate-line guard prevents spam
+  }
+
+  /* 9 ─ coverage gate for cover/engage */
+  if (action !== 'hold' && !targets.some(inCov)) {
+    radioSay(`${ADAFCO}, ${ICC}, birds negate track ${targets[0].id}`);
+    return;
+  }
+
+  /* 10 ─ execute */
+  switch (action) {
+    case 'cover':  doCover(targets);  break;
+    case 'engage':
+  doEngage(targets);
+// ← right here, fire your “W” logic:
+  // either simulate the keypress:
+  window.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'w', code: 'KeyW', keyCode: 87, which: 87
+  }));
+// or if you have a helper fireKey(k):
+// fireKey('w');
+  break;
+
+
+    case 'hold':   doHold(targets);   break;
+  }
+
+  /* 11 ─ remember for “follow-up number only” */
+  lastVoiceAction  = action;
+  lastVoiceTargets = targets;
+
+}
 
 /*****************************************************************
  *  RADIO-SAY  (duplicate-line guard)
@@ -1464,7 +1574,7 @@ function radioSay(line) {
 }
 function speakFast(text){
   const u = new SpeechSynthesisUtterance(text);
-  u.rate  = 1.7;               // << 1️⃣.5×
+  u.rate  = 2;               // << 2×
   u.lang  = 'en-US';
   speechSynthesis.speak(u);
 }
@@ -1749,7 +1859,7 @@ function parseCmd(raw){
   chunks.forEach(({act,ids})=>{
     const targets = tracks.filter(t => ids.includes(t.id) && !t.destroyed);
     if(!targets.length){
-      speak(`${ADAFCO}, ${ICC}, Stepped on, say track number.`);
+      speak(`${ADAFCO}, ${ICC}, say track number.`);
       return;
     }
     if(act==='cover')  doCover(targets);
@@ -1784,6 +1894,12 @@ function micInit(){
   recog.onresult=e=>{
     const txt = e.results[e.resultIndex][0].transcript.toLowerCase();
     console.log('🗣',txt);
+    // ── NEW: if user says "fireball" anywhere, trigger the button
+  if (txt.includes('fireball')) {
+    // simulate click (or call whatever handler you already have)
+    fireballBtn.click();
+    return;  // don’t run the normal parseCmd logic
+  }
     if(repeatLastIfNumberOnly(txt)) return;   // quick follow-up
     if(!(txt.includes(ICC)&&txt.includes(ADAFCO))) return;
     parseCmd(txt);
@@ -1816,66 +1932,47 @@ window.addEventListener('keyup',e=>{
 
 
 
-/* ===== MAIN PARSER (v3.3.1 — multi-ID bug-fixed) ===== */
+/* parse voice command */
 function parseCmd(raw){
-  /* 1 ─ normalise & verify callsigns */
-  const txt = raw.toLowerCase()
-                 .replace(/[,/]/g,' ')
-                 .replace(/\s+/g,' ')
-                 .trim();
-  if(!txt.startsWith('guardian bigfoot ')) return;
-  const tok = txt.split(' ').slice(2);              // strip callsigns
-  if(!tok.length) return;
+  let act=null;
+  if(/cover/.test(raw)) act='cover';
+  else if(/engage/.test(raw)) act='engage';
+  else if(/hold\s+fire/.test(raw)) act='hold';
 
-  /* helper: is a verb at index i? */
-  const isVerb = (w,i)=> w==='cover' || w==='engage' ||
-                          (w==='hold' && tok[i+1]==='fire');
+  /* explicit track number */
+  const nMatch=raw.match(/\b(\d{3,5})\b/); const trackId=nMatch?nMatch[1]:null;
 
-  const chunks = [];                                // {act, ids[]}[]
-  let i = 0;
-  while(i < tok.length){
-    if(!isVerb(tok[i],i)){ i++; continue; }
+  /* bullseye part */
+  const bx=raw.match(/bullseye([^]*)/); let brg=null,rng=null,pt=null;
+  if(bx){({brg,rng}=parseBE(bx[1])); if(brg) pt=beToWorld(brg,rng);}
 
-    /* 2 ─ identify verb */
-    let act = null;
-    if(tok[i] === 'cover')      { act = 'cover';  i++; }
-    else if(tok[i] === 'engage'){ act = 'engage'; i++; }
-    else                        { act = 'hold';   i += 2; }  // skip “hold fire”
-
-    /* 3 ─ skip optional “track(s)” */
-    if(tok[i] === 'track' || tok[i] === 'tracks') i++;
-
-    /* 4 ─ collect everything until the next verb */
-    const block = [];
-    let j = i;
-    while(j < tok.length && !isVerb(tok[j],j)){ block.push(tok[j]); j++; }
-    i = j;                                         // advance outer loop
-
-    /* 5 ─ pull every 3- to 5-digit number in that block */
-    const ids = (block.join(' ').match(/\b\d{3,5}\b/g) || []);
-    if(ids.length) chunks.push({ act, ids });
+  /* find targets */
+  let targets=[];
+  if(trackId){
+    const t=tracks.find(o=>o.id===trackId&&!o.destroyed); if(t) targets=[t];
   }
-  if(!chunks.length) return;
+  if(!targets.length && pt) targets=cluster(pt);
 
-  /* 6 ─ execute each chunk */
-  chunks.forEach(({act, ids})=>{
-    const idSet   = new Set(ids.map(String));      // normalise to strings
-    const targets = tracks.filter(t => idSet.has(String(t.id)) && !t.destroyed);
 
-    if(!targets.length){
-      speak(`${ADAFCO}, ${ICC}, Stepped on, say track number.`);
+/* coverage check for cover / engage */
+if (act !== 'hold' && !targets.some(inCov)) {
+  const id = targets[0].id;
+  speak(`${ADAFCO}, ${ICC}, BIRDS NEGATE track ${id}`);
+  return;
+}
+
+
+  /* confirmation when off by >5 NM and derived from bullseye */
+  if(!trackId && pt){
+    const d=distNm(pt,targets[0]);
+    if(d>5){
+      pending={act,tracks:targets};
+      speak(`${ADAFCO}, ${ICC}, confirm ${act} request for track ${targets[0].id}, bullseye ${wordsBE(targets[0])}?`);
       return;
     }
+  }
 
-    if(act === 'cover')      doCover(targets);
-    else if(act === 'engage')doEngage(targets);
-    else                     doHold (targets);
-
-    lastVoiceAction  = act;        // remember for follow-up “12345”
-    lastVoiceTargets = targets;
-  });
-
-
+  doAction(act,targets);
 }
 /* execute */
 function doAction(act,arr){
@@ -1892,7 +1989,7 @@ function doAction(act,arr){
     }
     else{ // hold fire
       speak(`Bigfoot, Guardian, hold fire track ${t.id}, bullseye ${txt}.`);
-      abort(t);
+      abortTrack(t);
     }
   });
 }
@@ -2617,24 +2714,6 @@ fireballBtn.addEventListener('click', () => {
  */
 function isTrackVisible(t){
   return !t.destroyed && (t._visible !== false);
-}
-
-/* ─── dynamic pick radius based on zoom ─────────────────────── */
-function getPickRadiusPx() {
-  // visible NM across the canvas right now
-  const visibleNm = canvas.width * CFG.nmPerPixel;   // ⬅ uses your globals
-  let r = 12;      // ← your current click cloud in pixels ─ adjust if needed
-  if (visibleNm <= 100) r *= 2;   // zoomed-in: double
-  if (visibleNm <=  50) r *= 3;   // super-tight: triple
-  return r;
-}
-// dynamic tap radius (in *screen* pixels)
-function dynamicClickRadius() {
-  const visibleNm = canvas.width * CFG.nmPerPixel / scale;   // current view-width
-  let r = CLICK_RADIUS_SCREEN;          // 15 px baseline
-  if (visibleNm <= 100) r *= 2;         // zoom-in ≤100 NM  → double
-  if (visibleNm <=  50) r *= 3;         // super-tight ≤50 NM → triple
-  return r;
 }
 
     // ─── UTILS ──────────────────────────────────────────────────────────
@@ -4419,6 +4498,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 function pickObject() {
   // translate that 12 px into world‑space by dividing by your current scale:
   const HIT_R = dynamicClickRadius() / scale;
+
   const Y_OFF = 6;  // unchanged
 
   selectedTrack = tracks.find(t => {
