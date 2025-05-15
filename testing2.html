@@ -1572,113 +1572,79 @@ function doHold(arr){
 }
 
 
-window.addEventListener('keydown', e => {
-  // only hijack *real* user presses, not our synthetic ones:
-  if (e.key.toLowerCase() === 'w' && selectedTrack) {
-    
+// ① Extract all of your “W” logic into one helper:
+function engageTrack(t) {
+  // 1) immediate SL/AWAY call‑out
+  const quad = getQuadrant(t);
+  statusEl.textContent    = `SL, ADAFCO, BIRDS AWAY ${quad}`;
 
-    // ───── BIRDS AWAY (hold “W”) ──────────────────────────────────
-window.addEventListener('keydown', e => {
-  if (e.key.toLowerCase() !== 'w' || e.repeat) return;
-  e.preventDefault();
-
-  const t = selectedTrack;
-  if (!t) return;
-
-  // 0) Immediate feedback—no t.tag or t.tagTime changes here
-  const quadrant = getQuadrant(t);
-  statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
-
-  // 0.5) Engagement log
+  // 2) tag + ROE bookkeeping
+  t.tag = 'ENGAGE';
   if (!t._engagementLogged) {
-    t._engagementLogged = true;
-    // missilesUsed was already incremented elsewhere
+    t._engagementLogged = true;   // first‑time engagement
   }
-
-  // 1) ROE penalty if never ENGAGE’d
+  t.tagTime = Date.now();
   if (t.tag !== 'ENGAGE' && !t.everEngaged && roePenaltyAllowed(t)) {
     changeScore(-5, 'ROE Violation: -5');
     STATS.roeViolations++;
     t.everEngaged = true;
   }
 
-  // 2) Delay (2–5 s) then launch sequence
-  const delay = 2000 + Math.random() * 3000;
+  // 3) delay then actually fire
+  const delay = 2000 + Math.random()*3000;
   setTimeout(() => {
-    clearTimeout(coverTimer);
     curTrack = t;
 
-    // 2a) Choose launcher
-    const NASAMS = statics.find(s => s.id === 'NASAMS');
-    const inNAS    = NASAMS && distNm(NASAMS, t) <= 20;
-    const fu       = inNAS ? NASAMS : closestFu(t);
-    const distFu   = distNm(fu, t);
-
-    // 2b) Check reload/ammo
-    if (fu.id === 'NASAMS') {
-      if (checkNASAMSStatus(inNAS)) return;
+    // pick the correct FU / NASAMS
+    const nas = statics.find(s=>s.id==='NASAMS');
+    const inNas = nas && distNm(nas,t) <= 20;
+    const fu = inNas ? nas : closestFu(t);
+    const distFu = distNm(fu,t);
+    if (fu.id==='NASAMS') {
+      if (checkNASAMSStatus(inNas)) return;
       STATS.missilesUsed.aim120 += 2;
     } else {
-      if (!processPatriotEngagement(fu, distFu)) return;
+      if (!processPatriotEngagement(fu,distFu)) return;
     }
 
-    // 2c) Assign actual target (friendly override if within 5 NM)
-    let target = t;
-    if (!t.isCruise) {
-      const friendlyNearby = tracks.find(o => o.friendly && distNm(o, t) <= 5);
-      if (friendlyNearby) target = friendlyNearby;
-    }
+    // build two missiles, 2 s apart
+    const speed = ((t.isTbm?5000:3600)/3600) / CFG.nmPerPixel;
+    const ttl   = Date.now() + 70_000;
+    [0,2000].forEach(offset => setTimeout(()=>{
+      missiles.push({ x:fu.x, y:fu.y, target:t, fu, speedPxPerSec: speed, expire: ttl });
+    }, offset));
 
-    // 2d) Fire two missiles, 2 s apart
-    const speedPxPerSec = ((t.isTbm ? 5000 : 3600) / 3600) / CFG.nmPerPixel;
-    const ttlMs = 70 * 1000;
-    missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now() + ttlMs });
-    setTimeout(() => {
-      missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now() + ttlMs });
-    }, 2000);
-
-    // 3) Schedule the impact check on the original hostile
+    // schedule intercept decision
     const interceptMs = scheduleImpactCheck(t);
 
-    // 4) Level‑scaled jinking
-    const jinkProb = Math.min(1, 0.5 + 0.1 * (level - 1));
-    if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
-      const waitMs = (10 + Math.random() * 20) * 1000;
-      setTimeout(() => {
-        const turn = (90 + Math.random() * 90) * (Math.random() < 0.5 ? 1 : -1);
-        t.heading = (t.heading + turn + 360) % 360;
+    // level‑scaled evasion
+    const jinkProb = Math.min(1,0.5 + 0.1*(level-1));
+    if (!t.friendly && !t.isTbm && !t.isCruise && Math.random()<jinkProb) {
+      setTimeout(()=>{
+        const turn = (90 + Math.random()*90)*(Math.random()<0.5?1:-1);
+        t.heading = (t.heading + turn + 360)%360;
         t.isEvading = true;
-        setTimeout(() => {
+        setTimeout(()=>{
           t.isEvading = false;
-          t.heading   = bearing(t, bullseye);
-        }, 60000);
-      }, waitMs);
-    }
-
-    // 5) Lead‑time jink helper (5 s before intercept)
-    if (!t.friendly && !t.isTbm && !t.isCruise && interceptMs > 200) {
-      const leadTime = interceptMs - 5000;
-      setTimeout(() => {
-        const turn = (90 + Math.random() * 90) * (Math.random() < 0.5 ? 1 : -1);
-        t.heading = (t.heading + turn + 360) % 360;
-        t.isEvading = true;
-        setTimeout(() => {
-          t.isEvading = false;
-          t.heading   = bearing(t, bullseye);
-        }, 5000);
-      }, leadTime);
+          t.heading = bearing(t,bullseye);
+        },60000);
+      }, (interceptMs > 200 ? interceptMs-5000 : 0));
     }
   }, delay);
-});
+}
 
+// ② Now make your key handler call it:
+window.addEventListener('keydown', e => {
+  if (e.key==='w' && selectedTrack) {
     e.preventDefault();
-    selectedTrack.tag     = 'AWAY';
-    selectedTrack.tagTime = Date.now();
-    e.stopImmediatePropagation();
+    engageTrack(selectedTrack);
   }
 });
 
-
+// ③ And have launch() just call that same helper:
+function launch(t) {
+  engageTrack(t);
+}
 
 /* ───────── Guardian ↔ Bigfoot  v3.2 ───────── */
 
@@ -1735,16 +1701,7 @@ function inCov(o){
   if(nas&&distNm(nas,o)<=15) return true;
   return statics.some(r=>r.type==='rad'&&n>=r.disabledUntil
                       &&insideWedge(r,o)&&distNm(r,o)<=60);}
-function launch(t){
-  const nas=statics.find(s=>s.id==='NASAMS'); const inNas=nas&&distNm(nas,t)<=20;
-  const fu=inNas ? nas : closestFu(t); const d=distNm(fu,t);
-  if(fu.id==='NASAMS'){ if(checkNASAMSStatus(inNas)) return; }
-  else if(!processPatriotEngagement(fu,d)) return;
-  const v=((t.isTbm?5000:3600)/3600)/CFG.nmPerPixel;
-  [0,1000].forEach(o=>setTimeout(()=>missiles.push({
-    x:fu.x,y:fu.y,target:t,fu,speedPxPerSec:v,expire:Date.now()+7e4}),o));
-  scheduleImpactCheck(t);
-}
+
 function abort(t){
   missiles=missiles.filter(m=>m.target!==t);
   if(t.mslTimer){clearTimeout(t.mslTimer);t.mslTimer=null;}
@@ -4588,7 +4545,7 @@ window.addEventListener('keydown', e => {
         // duplicate your existing “W” logic, replacing `selectedTrack` with `t`
         const quadrant = getQuadrant(multiSelect[0]);  // assume same quadrant
         statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
-        t.tag     = 'AWAY';
+        t.tag     = 'ENGAGE';
           if (!t._engagementLogged) {          // first time this track is engaged
     t._engagementLogged = true;
     // we already added the missilesUsed counts—nothing else here
@@ -4688,6 +4645,8 @@ scheduleImpactCheck(t);
         }
       }, 5000);
       }
+
+      
 // ─── HOLD FIRE ─────────────────────────────────────────────
 else if (key === 'h') {
   if (multiSelect.length) {
