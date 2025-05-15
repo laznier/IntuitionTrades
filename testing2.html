@@ -2619,6 +2619,24 @@ function isTrackVisible(t){
   return !t.destroyed && (t._visible !== false);
 }
 
+/* ─── dynamic pick radius based on zoom ─────────────────────── */
+function getPickRadiusPx() {
+  // visible NM across the canvas right now
+  const visibleNm = canvas.width * CFG.nmPerPixel;   // ⬅ uses your globals
+  let r = 12;      // ← your current click cloud in pixels ─ adjust if needed
+  if (visibleNm <= 100) r *= 2;   // zoomed-in: double
+  if (visibleNm <=  50) r *= 3;   // super-tight: triple
+  return r;
+}
+// dynamic tap radius (in *screen* pixels)
+function dynamicClickRadius() {
+  const visibleNm = canvas.width * CFG.nmPerPixel / scale;   // current view-width
+  let r = CLICK_RADIUS_SCREEN;          // 15 px baseline
+  if (visibleNm <= 100) r *= 2;         // zoom-in ≤100 NM  → double
+  if (visibleNm <=  50) r *= 3;         // super-tight ≤50 NM → triple
+  return r;
+}
+
     // ─── UTILS ──────────────────────────────────────────────────────────
     const d2r = d=>d*Math.PI/180;
     function bearing(a, b) {
@@ -4400,7 +4418,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 function pickObject() {
   // translate that 12 px into world‑space by dividing by your current scale:
-  const HIT_R = CLICK_RADIUS_SCREEN / scale;
+  const HIT_R = dynamicClickRadius() / scale;
   const Y_OFF = 6;  // unchanged
 
   selectedTrack = tracks.find(t => {
@@ -4504,7 +4522,7 @@ canvas.addEventListener('contextmenu', e => {
   updateCursorLabel();
 
   // convert screen‑px into world‑px at current zoom:
-  const HIT_R_SCR = 20;                // 20 px ≈ 0.5 cm finger pad
+  const HIT_R_SCR = dynamicClickRadius();
 selectedTrack = tracks.find(t => {
   /* project track to current screen coords */
   const sx = (t.x - offX) * scale;
