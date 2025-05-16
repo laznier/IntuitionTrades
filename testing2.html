@@ -572,6 +572,7 @@
 
   <div id="cursorLabel"></div>
   <script>
+    
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
@@ -5814,6 +5815,76 @@ updateScoreDisplay();
     };
 
     
+/* Push-to-Talk Fix: Ensures compatibility for both desktop and mobile platforms, including iPhone */
+
+
+if (!SR) {
+  alert('Push-to-talk is not supported in this browser. For best results, use a desktop browser or an alternative supported platform.');
+} else {
+  // Initialize SpeechRecognition
+  let mic = false;
+  let recog;
+
+  function micInit() {
+    if (!recog) {
+      recog = new SR();
+      recog.continuous = true;
+      recog.interimResults = true;
+      recog.maxAlternatives = 1;
+      recog.lang = 'en-US';
+
+      recog.onresult = (e) => {
+        console.log('Speech recognized:', e.results[e.resultIndex][0].transcript);
+        /* Add your functionality here for recognized speech */
+      };
+
+      recog.onerror = (e) => {
+        console.error('Speech recognition error:', e);
+      };
+    }
+    recog.start();
+    console.log('Push-to-Talk activated');
+  }
+
+  /* Event Binding for Desktop and Mobile */
+  const micBtn = document.getElementById('micBtnRadio'); // Ensure the microphone button exists in your DOM
+
+  // Desktop Push-to-Talk Handling
+  micBtn.addEventListener('mousedown', () => {
+    micInit();
+    mic = true;
+    micBtn.textContent = '🎙️ Mic ON';
+  });
+
+  micBtn.addEventListener('mouseup', () => {
+    if (recog) recog.stop();
+    mic = false;
+    micBtn.textContent = '🎙️ Mic OFF';
+  });
+
+  // Mobile Push-to-Talk Handling
+  micBtn.addEventListener('touchstart', () => {
+    micInit();
+    mic = true;
+    micBtn.textContent = '🎙️ Mic ON';
+  }, { passive: true });
+
+  micBtn.addEventListener('touchend', () => {
+    if (recog) recog.stop();
+    mic = false;
+    micBtn.textContent = '🎙️ Mic OFF';
+  }, { passive: true });
+
+  /* Ensure Microphone Permissions */
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(() => {
+      console.log('Microphone access granted');
+    })
+    .catch(() => {
+      alert('Please enable microphone access in your browser settings.');
+    });
+}
+
     </script>
 
 </body>
