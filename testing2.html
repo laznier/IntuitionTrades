@@ -584,6 +584,9 @@ const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   let assetHits        = 0;   // ++ every time we take a hit
 let fratricideFatal  = false;
 
+// Holds all the little “+” markers
+let radarReturns = [];
+
   // *** 1) Capture all the new UI elements ***
   const disclaimer  = document.getElementById('disclaimerOverlay');
   const ackBtn      = document.getElementById('ackDisclaimer');
@@ -1104,6 +1107,7 @@ const quadrantStates = {
   SE: false
 };
 
+
 // helper to re‑paint one button:
 function updateQuadrantButton(q) {
   const btn = redwoodMenu.querySelector(`button[data-q="${q}"]`);
@@ -1244,16 +1248,26 @@ function reAssess(q) {
   }
 }
 
-// >10 hostiles && no friendlies
+// >5 hostiles && NMT1 friendly
 function checkHotCondition(q) {
+  // count the living hostiles in quadrant q
   const hostiles = tracks.filter(t =>
-    !t.destroyed && !t.friendly && inQuadrant(t, q)
+    !t.destroyed &&
+    !t.friendly &&
+    inQuadrant(t, q)
   ).length;
-  const anyFriendly = tracks.some(t =>
-    !t.destroyed && t.friendly && inQuadrant(t, q)
-  );
-  return hostiles > 10 && !anyFriendly;
+
+  // count the living friendlies in quadrant q
+  const friendlyCount = tracks.filter(t =>
+    !t.destroyed &&
+    t.friendly &&
+    inQuadrant(t, q)
+  ).length;
+
+  // now require ≥10 hostiles and ≤1 friendly
+  return hostiles >= 7 && friendlyCount <= 1;
 }
+
 
 // suppress ROE penalty inside HOT quadrant
 function roePenaltyAllowed(track) {
@@ -1408,6 +1422,71 @@ function getDetectionRange(alt) {
 function fireKey(k){
   window.dispatchEvent(new KeyboardEvent('keydown',{ key: k }));
 }
+/* ─── SPOKEN WORDS → 2-letter quadrant codes ─────────────────── */
+const spokenToQuad = {
+  'north west': 'NW',  'northwest': 'NW',  'nw': 'NW',
+  'north east': 'NE',  'northeast': 'NE',  'ne': 'NE',
+  'south west': 'SW',  'southwest': 'SW',  'sw': 'SW',
+  'south east': 'SE',  'southeast': 'SE',  'se': 'SE'
+};
+
+/* ─── Better TTS fixer ───────────────────────────────────────────
+   • SL      → “S L”
+   • ADAFCO  → “ah-daf-koh”
+   • NE/NW/SE/SW (word-level) → full words                        */
+function ttsFix(line){
+  // 1) callsigns
+  line = line
+    .replace(/\bSL\b/gi,        'S L')
+    .replace(/ADAFCO/gi,        'ah-daf-koh');
+
+  // 2) quadrant codes
+  const quadMap = {
+    'NE':'North East',  'NW':'North West',
+    'SE':'South East',  'SW':'South West'
+  };
+  line = line.replace(/\b(N[EW]|S[EW])\b/gi,
+    m => quadMap[m.toUpperCase()]              // map “SW” → “South West”
+  );
+
+  return line;
+}
+
+
+/**
+ * Detects “redwood hot …” in a transcript, presses the button,
+ * then speaks whichever APPROVED / DENIED line SL puts in statusEl.
+ * Returns true if it handled the utterance, false otherwise.
+ */
+function handleRedwoodHotVoice(txt){
+  const m = txt.match(/redwood\s+hot\s+([\w\s]+)/i);
+  if(!m) return false;                          // phrase not present
+
+  /* resolve quadrant from spoken words */
+  const words = m[1].trim().toLowerCase();
+  const key   = Object.keys(spokenToQuad)
+                       .find(k => words.includes(k));
+  if(!key) return false;                        // none matched
+  const q     = spokenToQuad[key];              // "NW", "NE", ...
+
+  /* open menu and press the normal button */
+  redwoodWrap.classList.add('open');
+  const btn = redwoodMenu.querySelector(`button[data-q="${q}"]`);
+  if(btn) btn.click();
+
+  /* speak SL’s response (Approved / Denied) once it appears */
+  const once = new MutationObserver(() => {
+    const resp = statusEl.textContent.trim();
+    if(/approved|denied/i.test(resp)){
+      once.disconnect();
+      speakFast( ttsFix(resp) );                // pronounce correctly
+    }
+  });
+  once.observe(statusEl,{childList:true,characterData:true,subtree:true});
+
+  return true;
+}
+
 
   /*****************************************************************
  *  SMART BULLSEYE MATCHER  –  FULL REPLACEMENT
@@ -1574,7 +1653,7 @@ function radioSay(line) {
 }
 function speakFast(text){
   const u = new SpeechSynthesisUtterance(text);
-  u.rate  = 2;               // << 2×
+  u.rate  = 1.9;               // << 2.1×
   u.lang  = 'en-US';
   speechSynthesis.speak(u);
 }
@@ -1770,7 +1849,7 @@ const synth = window.speechSynthesis;
 /* ===== speech helpers ===== */
 function speak(t){ if(!synth) return;
   const u = new SpeechSynthesisUtterance(t);
-  u.rate  = 1.5;
+  u.rate  = 1.9;
   u.lang  = 'en-US';
   synth.speak(u);
 }
@@ -1872,6 +1951,7 @@ function parseCmd(raw){
   });
 }
 
+
 /* ===== LAST-NUMBER FOLLOW-UP ===== */
 function repeatLastIfNumberOnly(txt){
   const m = txt.match(/\b(\d{5})\b/);
@@ -1894,6 +1974,10 @@ function micInit(){
   recog.onresult=e=>{
     const txt = e.results[e.resultIndex][0].transcript.toLowerCase();
     console.log('🗣',txt);
+    /* NEW: Redwood-Hot voice shortcut */
+ if (handleRedwoodHotVoice(txt)) return;
+
+
     // ── NEW: if user says "fireball" anywhere, trigger the button
   if (txt.includes('fireball')) {
     // simulate click (or call whatever handler you already have)
@@ -1930,7 +2014,48 @@ window.addEventListener('keyup',e=>{
   }
 });
 
+/* Turn “SL” into “S L” and “ADAFCO” into “adaf-co” for speech */
+function ttsFix(line){
+  return line
+    .replace(/\bSL\b/gi,   'S L')
+    .replace(/ADAFCO/gi,   'adaf-co');
+}
 
+/**
+ * parseBE(text):
+ *   takes the words spoken after “bullseye”
+ *   returns an object { bearing, range } if it finds at least two numbers,
+ *   or an empty object otherwise.
+ */
+ function parseBE(text) {
+  const word2num = {
+    zero:0, oh:0, one:1, two:2, three:3, four:4, five:5,
+    six:6, seven:7, eight:8, nine:9, ten:10, eleven:11,
+    twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16,
+    seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30,
+    forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90
+  };
+
+  // split into words, pull out any numeric or word‑number tokens
+  const parts = text.trim().toLowerCase().split(/\s+/);
+  const nums = [];
+  parts.forEach(w => {
+    if (/^\d+$/.test(w)) {
+      nums.push(parseInt(w, 10));
+    } else if (word2num[w] != null) {
+      nums.push(word2num[w]);
+    }
+    // ignore "hundred", "thousand", etc.
+  });
+
+  if (nums.length < 2) return {};
+
+  // last number is range, the rest form the bearing digits
+  const range   = nums.pop();
+  const bearing = parseInt(nums.map(n => String(n)).join(''), 10);
+
+  return { bearing, range };
+}
 
 /* parse voice command */
 function parseCmd(raw){
@@ -3344,23 +3469,46 @@ tracks.forEach(o => {
 
 
 
-    // 3a) special TBM icon
-    if (o.isTbm) {
-      for (let i = 0; i < 4; i++) {
-        ctx.save();
-        ctx.translate(o.x, o.y);
-        ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180);
-        ctx.beginPath();
+     // ─── TBM ICON ───────────────────────────────────────────────
+  if (o.isTbm) {
+    // ← your existing “4‑blade” rotating TBM icon:
+    for (let i = 0; i < 4; i++) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180);
+      ctx.beginPath();
         ctx.moveTo(0, -6);
         ctx.lineTo(3, 0);
         ctx.lineTo(-3, 0);
-        ctx.closePath();
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.restore();
-      }
-      return;
+      ctx.closePath();
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.restore();
     }
+
+    // ─── NEW: Velocity vector stick (twice as long) ────────
+    ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(d2r(o.heading));
+      const maxLen = 60;  // ← was 20
+      const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 0.5;
+      ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -len);
+      ctx.stroke();
+    ctx.restore();
+
+    // ─── NEW: Grey square around TBM ───────────────────────
+    const size = 10;    // 20×20px box
+    ctx.strokeStyle = 'grey';
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(o.x - size, o.y - size, size * 2, size * 2);
+
+    return;  // skip the normal‐track drawing
+  }
+    
 
     // 3b) normal hostile/friendly fill color
     ctx.fillStyle = o.friendly
@@ -3378,21 +3526,44 @@ tracks.forEach(o => {
       ctx.closePath();
       ctx.fill();
     ctx.restore();
-    // 3d) velocity vector stick
+    // ─── NEW: Velocity vector stick (twice as long) ────────
     ctx.save();
-      ctx.translate(o.x, o.y);
-      ctx.rotate(d2r(o.heading));
-      // length proportional to speed (maxLen in px at CFG.maxSpeedKts)
-      const maxLen = 20;
-      const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth   = 0.5;
-      ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -len);
-      ctx.stroke();
-    ctx.restore();
+    ctx.translate(o.x, o.y);
+    ctx.rotate(d2r(o.heading));
+    const maxLen = 30;  // ← doubled!
+    const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth   = 0.4;
+    ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -len);
+    ctx.stroke();
+  ctx.restore();
 
+   // — new: friendly return logic —
+if (o._visible && o.friendly) {
+  // if TPS‑75 is down, suspend like hostiles
+  if (!tps75 || now >= (tps75.disabledUntil || 0)) {
+    // start the 2 s timer when it first becomes visible
+    if (!o._friendlySince) o._friendlySince = now;
+    // once past 2 s, drop exactly one “+ in a box”
+    if (!o._hasFriendlyReturned && now - o._friendlySince > 2000) {
+      radarReturns.push({
+        x:       o.x,
+        y:       o.y,
+        expires: now + 60_000,
+        friendly: true          // tag it as friendly
+      });
+      o._hasFriendlyReturned = true;
+    }
+  }
+} else {
+  // reset both hostile & friendly timers/flags
+  o._visibleSince         = null;
+  o._hasReturned          = false;
+  o._friendlySince        = null;
+  o._hasFriendlyReturned  = false;
+} 
     // 3d) highlight selections
     if (o === selectedTrack) {
       ctx.strokeStyle = colText;
@@ -3509,6 +3680,36 @@ if (tagMode) {
     });
   }
 }
+/* ─── drawRadarReturns (only the colour lines changed) ───────── */
+function drawRadarReturns() {
+  const now = Date.now();
+  radarReturns = radarReturns.filter(r => r.expires > now);
+
+  ctx.lineWidth = 0.5;
+
+  radarReturns.forEach(r => {
+    /* FRIENDLY  → green   |   Hostile → grey  */
+    ctx.strokeStyle = r.friendly ? 'lime' : '#888';
+
+    /* draw the “+” */
+    ctx.beginPath();
+      ctx.moveTo(r.x - 3, r.y);
+      ctx.lineTo(r.x + 3, r.y);
+      ctx.moveTo(r.x, r.y - 3);
+      ctx.lineTo(r.x, r.y + 3);
+    ctx.stroke();
+
+    /* add the box if it’s a friendly return */
+    if (r.friendly) {
+      ctx.beginPath();
+        ctx.rect(r.x - 1, r.y - 1, 2, 2);
+      ctx.stroke();
+    }
+  });
+
+  ctx.restore();
+}
+
 
 
 // after your existing single‑selection highlight:
@@ -3958,13 +4159,60 @@ function updateVisibility(){
     o._lastSeen ??= -1;                     // initialise once
 
     o._visible = covered || (now - o._lastSeen) <= 10_000;
-   });
-
-   }
+ // —— NEW: radar‑return “+” generation ——
+  // only for hostile air tracks (no friendlies/TBMs/cruise)
+  if (o._visible && !o.isTbm) {
+    // if TPS‑75 is down, suspend
+    if (!tps75 || now >= (tps75.disabledUntil || 0)) {
+      // start the 2 s timer when it first becomes visible
+      if (!o._visibleSince) o._visibleSince = now;
+      // once past 2 s, drop exactly one marker
+      if (!o._hasReturned && now - o._visibleSince > 2000) {
+        radarReturns.push({
+          x: o.x,
+          y: o.y,
+          expires: now + 60000
+        });
+        o._hasReturned = true;
+      }
+    }
+  } else {
+    // reset if it goes invisible or isn’t eligible
+    o._visibleSince = null;
+    o._hasReturned  = false;
+  }
+});
+}
 updateVisibility();          
 
 // first pass before anyone draws
 setInterval(updateVisibility,1000);
+
+// every 10 s, drop a radar‑return “+” at each visible hostile air track
+setInterval(() => {
+  const now  = Date.now();
+  const tps75 = statics.find(s => s.type === 'c2Rad');
+  if (!tps75 || now < (tps75.disabledUntil || 0)) return;
+
+  tracks.forEach(o => {
+    if (o._visible) {
+      // hostile
+      if (!o.friendly && !o.isTbm) {
+        radarReturns.push({ x: o.x, y: o.y, expires: now + 60_000 });
+      }
+      // friendly
+      else if (o.friendly) {
+        radarReturns.push({
+          x:        o.x,
+          y:        o.y,
+          expires:  now + 60_000,
+          friendly: true
+        });
+      }
+    }
+  });
+}, 10_000);
+
 
     let lastTime=performance.now();
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
@@ -4228,7 +4476,7 @@ if (bgImg.complete) {
     ctx.arc(o.x, o.y, 14, 0, Math.PI*2);
     ctx.stroke();
   });
-
+  drawRadarReturns();    // ← draw the “+” markers here
   drawMissiles(); 
   drawBombs();  
   drawDragLine();
