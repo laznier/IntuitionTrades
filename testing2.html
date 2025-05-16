@@ -1486,6 +1486,167 @@ function handleRedwoodHotVoice(txt){
 
   return true;
 }
+/* word-digits → real digits (0-9) */
+const wordDigit = {
+  zero:'0', oh:'0', one:'1', two:'2', three:'3', four:'4', five:'5',
+  six:'6', seven:'7', eight:'8', nine:'9'
+};
+
+/* collapse words+digits into one 5-digit string (“one two three four five” → "12345") */
+function extractFiveDigits(arr){
+  const out = [];
+  arr.forEach(w=>{
+    if(/^\d$/.test(w))              out.push(w);           // literal “5”
+    else if(wordDigit[w]!==undefined) out.push(wordDigit[w]); // “five”
+  });
+  return out.length===5 ? out.join('') : null;
+}
+
+/* bearing/ range helpers */
+function bearing(a,b){ return (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;}
+function distNm(a,b){ return Math.round(Math.hypot(a.x-b.x,a.y-b.y)*CFG.nmPerPixel);}
+function angDiff(a,b){ return Math.min(Math.abs(a-b),360-Math.abs(a-b));}
+
+/* ────────────────────────────────────────────────────────────────
+   ENGAGE  ✧  “Guardian Bigfoot Engage Group Bullseye 12345 …”
+   • first 3 digits  → bearing  (001-360°)
+   • last  2 digits  → range NM
+   • hits every hostile or cruise-missile within ±3° & ±5 NM
+   • launches exactly 1 pair per contact via your engageTrack(t)
+   • speaks “birds away … n contacts” (or negate if none)
+─────────────────────────────────────────────────────────────────*/
+
+/* simple bearing & distance utilities (independent) */
+function brg(b,a){                  // bearing ° a→b
+  return (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;
+}
+function rng(b,a){                  // distance NM a↔b  (needs CFG.nmPerPixel)
+  return Math.round(Math.hypot(b.x-a.x,b.y-a.y)*CFG.nmPerPixel);
+}
+
+/**
+ * Main handler – call this from your SR callback
+ * Returns true if the utterance was handled.
+ */
+function engageGroupBullseyeVoice(raw){
+  const txt = raw.toLowerCase();
+
+const ENGAGE_BULLSEYE_RE =
+  /\b(?:guardian\b.*\bbigfoot\b.*)?\bengag(?:e|ed)\b.*\b(?:group\s+)?bullseye\b/i;
+
+/* quick gate to avoid wasting cycles */
+if (!ENGAGE_BULLSEYE_RE.test(txt)) return false;
+
+  /* extract the 5-digit B/E code */
+  const m = txt.match(/\bbullseye\s+(\d{5})\b/);
+  if(!m) return false;
+  const code    = m[1];              // e.g. "12345"
+  const bearing = +code.slice(0,3);  // 123°
+  const range   = +code.slice(3);    // 45 NM
+
+  /* find hostiles / cruise missiles in the ±3° / ±5 NM gate */
+  const cand = tracks.filter(t=>{
+    if(t.destroyed || t.friendly || t.isTbm) return false;
+    const a   = brg(t,bullseye);
+    const ad  = Math.min(Math.abs(a-bearing),360-Math.abs(a-bearing));
+    const rd  = Math.abs(rng(t,bullseye)-range);
+    return ad<=3 && rd<=5;
+  });
+
+  if(!cand.length){
+    speakFast(`birds negate group bullseye ${bearing}, ${range}`);
+    return true;
+  }
+
+  /* launch on each contact (your existing helper) */
+  cand.forEach(t=> engageTrack(t));
+
+  const n = cand.length;
+  speakFast(
+    `birds away group bullseye ${bearing}, ${range}, ${n} contact${n>1?'s':''}`
+  );
+  return true;
+}
+
+/**
+ * Voice-parser for “cover / engage / hold fire + 5-digit”
+ * – if 5-digit matches a live track ID ⇒ act on that track (only it)
+ * – else 5-digit ⇒ bearing/range; pick closest contact, then every
+ *   hostile/cruise within ±5 NM & ±5° around that “anchor” → act on group
+ * Returns true when it consumes the utterance.
+ */
+function coverEngageHoldFive(raw){
+  const txt   = raw.toLowerCase().replace(/[,/]/g,' ').replace(/\s+/g,' ');
+  const words = txt.split(' ');
+
+  /* verb gate --------------------------------------------------- */
+  let verb=null;
+  if(words.includes('cover'))         verb='cover';
+  else if(words.includes('engage'))   verb='engage';
+  else if(words.join(' ').includes('hold fire')) verb='hold';
+  if(!verb) return false;                                // not our command
+
+  /* require exactly one 5-digit numeric string ------------------ */
+  const code = extractFiveDigits(words);
+  if(!code) return false;
+
+  /* 1) match by Track-ID --------------------------------------- */
+  const byId = tracks.filter(t=>t.id===code && !t.destroyed);
+  if(byId.length){
+    executeAction(verb, byId);
+    return true;
+  }
+
+  /* 2) treat as bullseye B/R ----------------------------------- */
+  const bearingBrg = +code.slice(0,3) || 0;              // 000 → 360 OK
+  const rangeNm    = +code.slice(3);                     // 00-99
+
+  /* find the single nearest hostile/cruise to that B/E point */
+  const iax = bullseye.x + Math.sin(d2r(bearingBrg))* (rangeNm/CFG.nmPerPixel);
+  const iay = bullseye.y - Math.cos(d2r(bearingBrg))* (rangeNm/CFG.nmPerPixel);
+
+  let anchor=null, best=1e9;
+  tracks.forEach(t=>{
+    if(t.destroyed||t.friendly||t.isTbm) return;
+    const d = Math.hypot(t.x-iax,t.y-iay);
+    if(d<best){ best=d; anchor=t; }
+  });
+  if(!anchor){
+    speakFast(`birds negate group bullseye ${bearingBrg}/${rangeNm}`);
+    return true;
+  }
+
+  /* collect every hostile/cruise within ±5° & ±5 NM of anchor */
+  const group = tracks.filter(t=>{
+    if(t.destroyed||t.friendly||t.isTbm) return false;
+    const a = angDiff(bearing(anchor,t),bearing(anchor, bullseye)); // anchor-centric
+    return a<=5 && distNm(anchor,t)<=5;
+  });
+
+  if(!group.length){
+    speakFast(`birds negate group bullseye ${bearingBrg}/${rangeNm}`);
+    return true;
+  }
+
+  executeAction(verb, group, bearingBrg, rangeNm);
+  return true;
+}
+
+/* perform COVER / ENGAGE / HOLD on an array, plus voice-feedback */
+function executeAction(verb,list,brg,rg){
+  if(verb==='cover'){
+    doCover(list);
+    speakFast(`birds affirm group bullseye ${brg}/${rg}, ${list.length} contact${list.length>1?'s':''}`);
+  }
+  else if(verb==='engage'){
+    list.forEach(t=>engageTrack(t));        // your existing missiles-out helper
+    speakFast(`birds away group bullseye ${brg}/${rg}, ${list.length} contact${list.length>1?'s':''}`);
+  }
+  else{                                     // hold fire
+    doHold(list);
+    speakFast(`hold fire group bullseye ${brg}/${rg}`);
+  }
+}
 
 
   /*****************************************************************
@@ -1621,6 +1782,7 @@ function parseCmd(raw) {
   lastVoiceTargets = targets;
 
 }
+
 
 /*****************************************************************
  *  RADIO-SAY  (duplicate-line guard)
@@ -1974,6 +2136,11 @@ function micInit(){
   recog.onresult=e=>{
     const txt = e.results[e.resultIndex][0].transcript.toLowerCase();
     console.log('🗣',txt);
+
+    if (coverEngageHoldFive(txt)) return;     // ← add this line
+    
+    if (engageGroupBullseyeVoice(txt)) return;   // ← add this
+
     /* NEW: Redwood-Hot voice shortcut */
  if (handleRedwoodHotVoice(txt)) return;
 
@@ -5645,6 +5812,8 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
+
+    
     </script>
 
 </body>
