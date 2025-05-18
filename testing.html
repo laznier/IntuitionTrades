@@ -393,7 +393,7 @@
       <button id="mapBtn">Map</button>
       <button id="helpBtn">Help</button>
     </div>
-    <div id="status">ADW RED, WCS HOLD</div>
+    <div id="status">Free mode</div>
     <div id="score">Score: 0</div>
     <div id="feedback"></div>
   </header>
@@ -572,7 +572,6 @@
 
   <div id="cursorLabel"></div>
   <script>
-    
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
@@ -584,9 +583,6 @@ const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
 
   let assetHits        = 0;   // ++ every time we take a hit
 let fratricideFatal  = false;
-
-// Holds all the little “+” markers
-let radarReturns = [];
 
   // *** 1) Capture all the new UI elements ***
   const disclaimer  = document.getElementById('disclaimerOverlay');
@@ -1108,7 +1104,6 @@ const quadrantStates = {
   SE: false
 };
 
-
 // helper to re‑paint one button:
 function updateQuadrantButton(q) {
   const btn = redwoodMenu.querySelector(`button[data-q="${q}"]`);
@@ -1194,24 +1189,6 @@ function resetRedwood () {
   redwoodQuadrant = null;
   redwoodWrap.classList.remove('open');
 }
-/* ─── dynamic pick radius based on zoom ─────────────────────── */
-function getPickRadiusPx() {
-  // visible NM across the canvas right now
-  const visibleNm = canvas.width * CFG.nmPerPixel;   // ⬅ uses your globals
-  let r = 12;      // ← your current click cloud in pixels ─ adjust if needed
-  if (visibleNm <= 100) r *= 2;   // zoomed-in: double
-  if (visibleNm <=  50) r *= 3;   // super-tight: triple
-  return r;
-}
-// dynamic tap radius (in *screen* pixels)
-function dynamicClickRadius() {
-  const visibleNm = canvas.width * CFG.nmPerPixel / scale;   // current view-width
-  let r = CLICK_RADIUS_SCREEN;          // 15 px baseline
-  if (visibleNm <= 100) r *= 2;         // zoom-in ≤100 NM  → double
-  if (visibleNm <=  50) r *= 3;         // super-tight ≤50 NM → triple
-  return r;
-}
-
 
 /**
  * Returns true if object o lies in quadrant q (one of "NW","NE","SW","SE")
@@ -1249,26 +1226,16 @@ function reAssess(q) {
   }
 }
 
-// >5 hostiles && NMT1 friendly
+// >10 hostiles && no friendlies
 function checkHotCondition(q) {
-  // count the living hostiles in quadrant q
   const hostiles = tracks.filter(t =>
-    !t.destroyed &&
-    !t.friendly &&
-    inQuadrant(t, q)
+    !t.destroyed && !t.friendly && inQuadrant(t, q)
   ).length;
-
-  // count the living friendlies in quadrant q
-  const friendlyCount = tracks.filter(t =>
-    !t.destroyed &&
-    t.friendly &&
-    inQuadrant(t, q)
-  ).length;
-
-  // now require ≥10 hostiles and ≤1 friendly
-  return hostiles >= 7 && friendlyCount <= 1;
+  const anyFriendly = tracks.some(t =>
+    !t.destroyed && t.friendly && inQuadrant(t, q)
+  );
+  return hostiles > 10 && !anyFriendly;
 }
-
 
 // suppress ROE penalty inside HOT quadrant
 function roePenaltyAllowed(track) {
@@ -1340,27 +1307,6 @@ function showLogsOverlay(parent) {
   return hostiles;
 }
 
-// helper – cancel every shot currently aimed at a track, after a 5 min delay
-function abortTrack(t) {
-  // Schedule the abort logic to run in 5 minutes
-  setTimeout(() => {
-    // 1) cancel any scheduled intercept timer
-    if (t.mslTimer) {
-      clearTimeout(t.mslTimer);
-      t.mslTimer = null;
-    }
-    // 2) remove any in‑flight missiles targeting this track
-    missiles = missiles.filter(m => m.target !== t);
-    // 3) revert the tag to ENGAGE so it can be re-shot later
-    t.tag     = 'ENGAGE';
-    t.tagTime = Date.now();
-  }, 5 * 1000);  // 5 sec ms
-}
-
-// alias if you’re calling `abort()` elsewhere
-const abort = abortTrack;
-
-
 
 /**
  * Returns `true` if the shot should be blocked by NASAMS‐weapons‐red,
@@ -1418,76 +1364,7 @@ function getDetectionRange(alt) {
           helpOverlay= document.getElementById('helpOverlay');
     const label      = document.getElementById('cursorLabel');
 
-
     // ─── CONFIG & STATE ─────────────────────────────────────────────
-function fireKey(k){
-  window.dispatchEvent(new KeyboardEvent('keydown',{ key: k }));
-}
-
-
-
-
-
-/* ————————————————————————————————————————————————————————————————
-   utility: find best track
-——————————————————————————————————————————————————————————————— */
-function pickTrack(trackId,bearing,range){
-  /* 1) by explicit track number */
-  if(trackId){
-    const t = tracks.find(o=>o.id===trackId && !o.destroyed);
-    if(t) return t;
-  }
-  /* 2) fallback: any track within 5 NM of the spoken bullseye */
-  if(bearing!=null && range!=null){
-    return tracks.find(o=>{
-      if(o.destroyed) return false;
-      return Math.abs(bearingDiff(bearing,bearingBetween(bullseye,o)))<=6 &&
-             Math.abs(distNm(bullseye,o)-range)<=5;
-    });
-  }
-  return null;
-}
-function bearingBetween(a,b){ return bearing(a,b);}       // alias
-function bearingDiff(a,b){ let d=Math.abs(a-b)%360; return d>180?360-d:d; }
-
-/* ————————————————————————————————————————————————————————————————
-   geometry check  (Patriot wedge 60 NM ±60°  OR NASAMS  ≤15 NM)
-——————————————————————————————————————————————————————————————— */
-function trackInGeometry(t){
-  const now = Date.now();
-  const nas = statics.find(s=>s.id==='NASAMS');
-  if(nas && distNm(nas,t)<=15) return true;
-  return statics.some(rad=>
-    rad.type==='rad' &&
-    now >= rad.disabledUntil &&
-    insideWedge(rad,t) &&
-    distNm(rad,t)<=60
-  );
-}
-
-/* ————————————————————————————————————————————————————————————————
-   1-liner helper: dispatch virtual keypress so your existing hot-key
-   handlers run untouched.
-——————————————————————————————————————————————————————————————— */
-function fireKey(k){
-  window.dispatchEvent(new KeyboardEvent('keydown',{key:k}));
-}
-
-/* ————————————————————————————————————————————————————————————————
-   extract the missile-launching guts that were inside the old ‘W’ key
-   and make them callable from radio + from ‘W’ (cosmetic).
-——————————————————————————————————————————————————————————————— */
-function launchOnTrack(t){
-  /*  — put the EXACT contents of your old “W” handler’s
-       ‘launch two missiles’ block here —
-     (everything from closest-FU pick → scheduleImpactCheck)
-     You probably already have it factored as engageTbmWithPatriot()
-     etc.  Just call that same helper.
-  */
-  if(t.isTbm) engageTbmWithPatriot(t);          // example
-  else        fireKey('w');  // reuse existing code for conventional
-};
-
 
 
 // ↓↓↓  NEW – must be declared before fitMobileView() ever runs
@@ -2763,46 +2640,23 @@ tracks.forEach(o => {
 
 
 
-     // ─── TBM ICON ───────────────────────────────────────────────
-  if (o.isTbm) {
-    // ← your existing “4‑blade” rotating TBM icon:
-    for (let i = 0; i < 4; i++) {
-      ctx.save();
-      ctx.translate(o.x, o.y);
-      ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180);
-      ctx.beginPath();
+    // 3a) special TBM icon
+    if (o.isTbm) {
+      for (let i = 0; i < 4; i++) {
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.rotate((i * 90 + now * 0.02) * Math.PI / 180);
+        ctx.beginPath();
         ctx.moveTo(0, -6);
         ctx.lineTo(3, 0);
         ctx.lineTo(-3, 0);
-      ctx.closePath();
-      ctx.fillStyle = 'red';
-      ctx.fill();
-      ctx.restore();
+        ctx.closePath();
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.restore();
+      }
+      return;
     }
-
-    // ─── NEW: Velocity vector stick (twice as long) ────────
-    ctx.save();
-      ctx.translate(o.x, o.y);
-      ctx.rotate(d2r(o.heading));
-      const maxLen = 60;  // ← was 20
-      const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth   = 0.5;
-      ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -len);
-      ctx.stroke();
-    ctx.restore();
-
-    // ─── NEW: Grey square around TBM ───────────────────────
-    const size = 10;    // 20×20px box
-    ctx.strokeStyle = 'grey';
-    ctx.lineWidth   = 1;
-    ctx.strokeRect(o.x - size, o.y - size, size * 2, size * 2);
-
-    return;  // skip the normal‐track drawing
-  }
-    
 
     // 3b) normal hostile/friendly fill color
     ctx.fillStyle = o.friendly
@@ -2820,44 +2674,21 @@ tracks.forEach(o => {
       ctx.closePath();
       ctx.fill();
     ctx.restore();
-    // ─── NEW: Velocity vector stick (twice as long) ────────
+    // 3d) velocity vector stick
     ctx.save();
-    ctx.translate(o.x, o.y);
-    ctx.rotate(d2r(o.heading));
-    const maxLen = 30;  // ← doubled!
-    const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 0.4;
-    ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, -len);
-    ctx.stroke();
-  ctx.restore();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(d2r(o.heading));
+      // length proportional to speed (maxLen in px at CFG.maxSpeedKts)
+      const maxLen = 20;
+      const len    = Math.min(1, o.speed / CFG.maxSpeedKts) * maxLen;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 0.5;
+      ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -len);
+      ctx.stroke();
+    ctx.restore();
 
-   // — new: friendly return logic —
-if (o._visible && o.friendly) {
-  // if TPS‑75 is down, suspend like hostiles
-  if (!tps75 || now >= (tps75.disabledUntil || 0)) {
-    // start the 2 s timer when it first becomes visible
-    if (!o._friendlySince) o._friendlySince = now;
-    // once past 2 s, drop exactly one “+ in a box”
-    if (!o._hasFriendlyReturned && now - o._friendlySince > 2000) {
-      radarReturns.push({
-        x:       o.x,
-        y:       o.y,
-        expires: now + 60_000,
-        friendly: true          // tag it as friendly
-      });
-      o._hasFriendlyReturned = true;
-    }
-  }
-} else {
-  // reset both hostile & friendly timers/flags
-  o._visibleSince         = null;
-  o._hasReturned          = false;
-  o._friendlySince        = null;
-  o._hasFriendlyReturned  = false;
-} 
     // 3d) highlight selections
     if (o === selectedTrack) {
       ctx.strokeStyle = colText;
@@ -2974,36 +2805,6 @@ if (tagMode) {
     });
   }
 }
-/* ─── drawRadarReturns (only the colour lines changed) ───────── */
-function drawRadarReturns() {
-  const now = Date.now();
-  radarReturns = radarReturns.filter(r => r.expires > now);
-
-  ctx.lineWidth = 0.5;
-
-  radarReturns.forEach(r => {
-    /* FRIENDLY  → green   |   Hostile → grey  */
-    ctx.strokeStyle = r.friendly ? 'lime' : '#888';
-
-    /* draw the “+” */
-    ctx.beginPath();
-      ctx.moveTo(r.x - 3, r.y);
-      ctx.lineTo(r.x + 3, r.y);
-      ctx.moveTo(r.x, r.y - 3);
-      ctx.lineTo(r.x, r.y + 3);
-    ctx.stroke();
-
-    /* add the box if it’s a friendly return */
-    if (r.friendly) {
-      ctx.beginPath();
-        ctx.rect(r.x - 1, r.y - 1, 2, 2);
-      ctx.stroke();
-    }
-  });
-
-  ctx.restore();
-}
-
 
 
 // after your existing single‑selection highlight:
@@ -3453,60 +3254,13 @@ function updateVisibility(){
     o._lastSeen ??= -1;                     // initialise once
 
     o._visible = covered || (now - o._lastSeen) <= 10_000;
- // —— NEW: radar‑return “+” generation ——
-  // only for hostile air tracks (no friendlies/TBMs/cruise)
-  if (o._visible && !o.isTbm) {
-    // if TPS‑75 is down, suspend
-    if (!tps75 || now >= (tps75.disabledUntil || 0)) {
-      // start the 2 s timer when it first becomes visible
-      if (!o._visibleSince) o._visibleSince = now;
-      // once past 2 s, drop exactly one marker
-      if (!o._hasReturned && now - o._visibleSince > 2000) {
-        radarReturns.push({
-          x: o.x,
-          y: o.y,
-          expires: now + 60000
-        });
-        o._hasReturned = true;
-      }
-    }
-  } else {
-    // reset if it goes invisible or isn’t eligible
-    o._visibleSince = null;
-    o._hasReturned  = false;
-  }
-});
-}
+   });
+
+   }
 updateVisibility();          
 
 // first pass before anyone draws
 setInterval(updateVisibility,1000);
-
-// every 10 s, drop a radar‑return “+” at each visible hostile air track
-setInterval(() => {
-  const now  = Date.now();
-  const tps75 = statics.find(s => s.type === 'c2Rad');
-  if (!tps75 || now < (tps75.disabledUntil || 0)) return;
-
-  tracks.forEach(o => {
-    if (o._visible) {
-      // hostile
-      if (!o.friendly && !o.isTbm) {
-        radarReturns.push({ x: o.x, y: o.y, expires: now + 60_000 });
-      }
-      // friendly
-      else if (o.friendly) {
-        radarReturns.push({
-          x:        o.x,
-          y:        o.y,
-          expires:  now + 60_000,
-          friendly: true
-        });
-      }
-    }
-  });
-}, 10_000);
-
 
     let lastTime=performance.now();
   // ─── MAIN LOOP ──────────────────────────────────────────────────────
@@ -3770,7 +3524,7 @@ if (bgImg.complete) {
     ctx.arc(o.x, o.y, 14, 0, Math.PI*2);
     ctx.stroke();
   });
-  drawRadarReturns();    // ← draw the “+” markers here
+
   drawMissiles(); 
   drawBombs();  
   drawDragLine();
@@ -4039,8 +3793,7 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 function pickObject() {
   // translate that 12 px into world‑space by dividing by your current scale:
-  const HIT_R = dynamicClickRadius() / scale;
-
+  const HIT_R = CLICK_RADIUS_SCREEN / scale;
   const Y_OFF = 6;  // unchanged
 
   selectedTrack = tracks.find(t => {
@@ -4144,7 +3897,7 @@ canvas.addEventListener('contextmenu', e => {
   updateCursorLabel();
 
   // convert screen‑px into world‑px at current zoom:
-  const HIT_R_SCR = dynamicClickRadius();
+  const HIT_R_SCR = 20;                // 20 px ≈ 0.5 cm finger pad
 selectedTrack = tracks.find(t => {
   /* project track to current screen coords */
   const sx = (t.x - offX) * scale;
@@ -4233,8 +3986,111 @@ window.addEventListener('keydown', e => {
         if (!pendingEngagements.includes(t)) pendingEngagements.push(t);
         coverTimer = setTimeout(nextQueueTrack, 5000);
       }
-      
-      
+      // AWAY
+      else if (key === 'w') {
+        // duplicate your existing “W” logic, replacing `selectedTrack` with `t`
+        const quadrant = getQuadrant(multiSelect[0]);  // assume same quadrant
+        statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quadrant}`;
+        t.tag     = 'AWAY';
+          if (!t._engagementLogged) {          // first time this track is engaged
+    t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
+        t.tagTime = Date.now();
+
+              // ─── INSERT THE ROE PENALTY HERE ────────────────────────
+      if (t.tag !== 'ENGAGE' && !t.everEngaged) {
+          // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
+  if ( roePenaltyAllowed(t) ) {
+        changeScore(-5, 'ROE Violation: -5');
+        STATS.roeViolations++;
+        t.everEngaged = true;
+      }}
+        const delay = 2000 + Math.random() * 3000;
+        setTimeout(() => {
+          clearTimeout(coverTimer);
+          curTrack = t;
+          // launcher selection
+          const NAS = statics.find(s => s.id === 'NASAMS');
+          const inNAS = NAS && distNm(NAS, t) <= 20;
+          const fu = inNAS ? NAS : closestFu(t);
+          const distFu = distNm(fu, t);
+          if (fu.id === 'NASAMS') {
+            if (checkNASAMSStatus(inNAS)) return;
+          } else {
+            if (!processPatriotEngagement(fu, distFu)) return;
+          }
+          const speedPxPerSec = ((t.isTbm ? 5000 : 3600) / 3600) / CFG.nmPerPixel;
+          const ttlMs = 70 * 1000;
+          let target = t;
+          if (!t.isCruise) {
+            const nearbyF = tracks.find(o => o.friendly && distNm(o, t) <= 5);
+            if (nearbyF) target = nearbyF;
+          }
+          // fire two missiles
+          missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
+          setTimeout(() => {
+            missiles.push({ x: fu.x, y: fu.y, target, fu, speedPxPerSec, expire: Date.now()+ttlMs });
+          }, 2000);
+                 const interceptMs = scheduleImpactCheck(t);
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+// **NEW**: fire off the jink helper exactly as you do for single-track:
+       if (!t.friendly && !t.isTbm && !t.isCruise) {
+         const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+         if (Math.random() < jinkProb && interceptMs > 200) {
+          const leadTime = interceptMs - 5000;  // jink 5s before hit
+           setTimeout(() => {
+             const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+             t.heading = (t.heading + turn + 360) % 360;
+             t.isEvading = true;
+             setTimeout(() => {
+               t.isEvading = false;
+               t.heading   = bearing(t, bullseye);
+             }, 5000);
+           }, leadTime);
+         }
+       }
+        }, delay);
+      }
+      // KILL
+      else if (key === 'k') {
+        clearTimeout(coverTimer);
+        t.tag     = '#';
+        t.tagTime = Date.now();
+        setTimeout(() => {
+        t.tag       = null;
+        t.destroyed = true;
+        // after each kill, advance or finish level
+        const alive = tracks.filter(x =>
+          !x.destroyed && !x.friendly && !x.isTbm
+        );
+        if (alive.length === 0) {
+          showLevelComplete();
+          resetRedwood();
+
+        } else {
+          nextQueueTrack();
+        }
+      }, 5000);
+      }
 // ─── HOLD FIRE ─────────────────────────────────────────────
 else if (key === 'h') {
   if (multiSelect.length) {
@@ -4279,16 +4135,6 @@ else if (key === 'h') {
     // keep the cards up (or call clearMultiCards() if you prefer)
     return;
   }
-window.addEventListener('keydown', e => {
-  if (e.key.toLowerCase() === 'w' && multiSelect.length) {
-    e.preventDefault();
-    multiSelect.forEach(t => {
-      t.tag     = 'AWAY';
-      t.tagTime = Date.now();
-      // launch(t);
-    });
-  }
-});
 
 // ─── HOLD‑FIRE HOTKEY (H) ──────────────────────────────────────
 if (key === 'h') {
@@ -4383,6 +4229,176 @@ if (key === 'h') {
 
   return;
 }
+
+   // ───── AWAY (Birds Away) ──────────────────────────────────
+   if (k === 'w') {
+  e.preventDefault();
+  const st = selectedTrack;
+  if (!st) return;
+
+  // 0.5 Immediate W feedback
+   t.tag     = 'AWAY';
+     if (!t._engagementLogged) {          // first time this track is engaged
+   t._engagementLogged = true;
+    // we already added the missilesUsed counts—nothing else here
+  }
+   t.tagTime = Date.now();
+   // delay between 2–5 seconds
+   const delay = 2000 + Math.random() * 3000;
+   setTimeout(() => {
+     clearTimeout(coverTimer);
+     curTrack = t;
+
+// NEW:
+// 1) decide which launcher to use:
+const NASAMS       = statics.find(s => s.id === 'NASAMS');
+const inNASAMSRing = NASAMS && distNm(NASAMS, t) <= 20;
+const fu          = inNASAMSRing ? NASAMS : closestFu(t);
+
+// 2) check reload & ammo for this FU
+const distFu = distNm(fu, t);
+if (fu.id === 'NASAMS') {
+  // NASAMS uses checkNASAMSStatus (unchanged)
+  if (checkNASAMSStatus(inNASAMSRing)) return;
+  STATS.missilesUsed.aim120 += 2;   //  ← add this
+} else {
+  // Patriot uses our new mixed‑mag logic
+  if (!processPatriotEngagement(fu, distFu)) return;
+}
+
+
+const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
+const ttlMs         = 70 * 1000;
+
+// 2) if any friendly sits within 5 NM, only re‑target *non‑cruise* tracks
+let assignedTarget = t;
+if (!t.isCruise) {
+  const nearbyFriendly = tracks.find(o =>
+    o.friendly && distNm(o, t) <= 5
+  );
+  if (nearbyFriendly) assignedTarget = nearbyFriendly;
+}
+
+
+// ─── 3) launch two missiles, 2 s apart
+// → first missile immediately
+missiles.push({
+  x:           fu.x,
+  y:           fu.y,
+  target:      assignedTarget,
+  fu:          fu,
+  speedPxPerSec,
+  expire:      Date.now() + ttlMs
+});
+
+
+// → second missile after 2 s
+setTimeout(() => {
+  missiles.push({
+    x:           fu.x,
+    y:           fu.y,
+    target:      assignedTarget,
+    fu:          fu,
+    speedPxPerSec,
+    expire:      Date.now() + ttlMs
+  });
+}, 2000);
+
+
+// 4) schedule the impact check on the original hostile
+scheduleImpactCheck(t);
+
+
+   // ─── now do the level‑scaled jinking for any non‑friendly ─────────
+   const jinkProb = Math.min(1, 0.5 + 0.1*(level-1));
+   if (!t.friendly && !t.isTbm && !t.isCruise && Math.random() < jinkProb) {
+     const waitMs = (10 + Math.random()*20)*1000;
+     setTimeout(() => {
+       const turn = (90 + Math.random()*90) * (Math.random()<0.5?1:-1);
+       t.heading = (t.heading + turn + 360)%360;
+       t.isEvading = true;
+       setTimeout(() => {
+         t.isEvading = false;
+         t.heading   = bearing(t, bullseye);
+       }, 60000);
+     }, waitMs);
+   }
+
+   // NOW fall through into the rest of your friendly vs. hostile logic…
+
+  // check if this wedge is still red
+if (selectedStatic && selectedStatic.type === 'rad') {
+  const s = selectedStatic;
+  if (Date.now() < s.disabledUntil) {
+    feedbackEl.textContent = 'Radar Red—no Engagements possible from this FU';
+    return;
+  }
+}
+  
+    // ── now falls into Branch A1/B/C exactly as before ───────
+  // 1) Compute geometry gate
+  const now = Date.now();
+
+// ICC circle test stays the same
+const icc      = statics.find(s => s.type === 'icc');
+const inCircle = icc && distNm(icc, t) <= 15;
+
+// ONLY consider wedges that are both:
+//   • not mid‑animation  (animFrom == null)
+//   • not still red/disabled (now >= disabledUntil)
+const inWedge = statics
+  .filter(s =>
+    s.type       === 'rad'    &&
+    s.wedgeDir   != null      &&
+    s.animFrom   == null      &&
+    now          >= s.disabledUntil
+  )
+  .some(s => insideWedge(s, t));
+
+const possible = inCircle || inWedge;
+
+
+
+const isInsideCircle = NASAMS && distNm(NASAMS, t) <= 15;
+
+  // Only block if the selected FU is NASAMS and it’s reloading
+  if (fu.id === 'NASAMS' && checkNASAMSStatus(isInsideCircle)) {
+    return;
+  }
+
+// ─── All AWAY shots now go to intercept schedule ──────────────────
+ 
+  statusEl.textContent =
+    `SL, ADAFCO, BIRDS AWAY Track ${t.id}, B/E ${('000' + bearing(bullseye, t)).slice(-3)}/${distNm(bullseye, t)}`;
+
+    // only penalize birds‑away if SL never requested ENGAGE
+  if (t.tag !== 'ENGAGE' && !t.everEngaged) {
+      // only levy the ROE penalty when REDWOOD isn’t hot in this quadrant
+  if ( roePenaltyAllowed(t) ) {
+    changeScore(-5, 'ROE Violation: -5');
+    STATS.roeViolations++;
+    t.everEngaged = true;
+  }}
+
+  // schedule the impact check (inside or outside will be decided there)
+  scheduleImpactCheck(t);
+
+ 
+
+   }, delay);
+  return;
+ 
+
+    // ─── 50% chance for a hostile to evade ────────────────────────
+  if (!t.friendly && !t.isTbm && Math.random() < 0.5) {
+    // random turn between 90–180° left or right
+    const evAngle = (Math.random() * 90 + 90) * (Math.random() < 0.5 ? 1 : -1);
+    t.heading = (t.heading + evAngle + 360) % 360;
+    // after 60 s, turn back toward the ICC
+    setTimeout(() => {
+      t.heading = bearing(t, bullseye);
+    }, 60000);
+  }};
 
 
 
@@ -4939,8 +4955,6 @@ updateScoreDisplay();
       compassOn = !compassOn;
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
-
-    
     </script>
 
 </body>

@@ -2754,9 +2754,20 @@ statics
 const MISSION_LOG = [];            // { z:'HH:MM:SSZ', msg:'…' }
 
 function recordLog(msg) {
+  msg = msg.trim();
   if (!msg) return;                // ignore blanks
   const z = new Date().toISOString().slice(11, 19) + 'Z';
   MISSION_LOG.push({ z, msg });
+
+    // ── announce special events immediately ─────────────────
+  const lower = msg.toLowerCase();
+  let m;
+  if ((m = lower.match(/track\s+(\d{5})\s+vanished\b/))) {
+    speakFast(`${ADAFCO}, ${ICC}, Splash track ${m[1]}.`);
+  }
+  else if ((m = lower.match(/birds\s+trashed\s+track\s+(\d{5})\b/))) {
+    speakFast(`${ADAFCO}, ${ICC}, birds trashed track ${m[1]}.`);
+  }
 }
 
 /* 1 observer instance that we reuse for both elements */
@@ -5740,6 +5751,7 @@ function hardResetCurrentLevel () {
   /*  build the level exactly like the first time  */
   setupLevel(level);       // you already wrote this routine
 }
+
 
 
 function showLevelComplete(forceFail = false) {
