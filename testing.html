@@ -1220,6 +1220,8 @@ function getPickRadiusPx() {
   let r = 12;      // ← your current click cloud in pixels ─ adjust if needed
   if (visibleNm <= 100) r *= 2;   // zoomed-in: double
   if (visibleNm <=  50) r *= 3;   // super-tight: triple
+  if (visibleNm <=  40) r *= 3.5;   // new: super-close zoom
+  if (visibleNm <=  30) r *= 4;   // new: super-close zoom
   return r;
 }
 // dynamic tap radius (in *screen* pixels)
@@ -1228,6 +1230,8 @@ function dynamicClickRadius() {
   let r = CLICK_RADIUS_SCREEN;          // 15 px baseline
   if (visibleNm <= 100) r *= 2;         // zoom-in ≤100 NM  → double
   if (visibleNm <=  50) r *= 3;         // super-tight ≤50 NM → triple
+  if (visibleNm <=  40) r *= 3.5;   // new: super-close zoom
+  if (visibleNm <=  30) r *= 4;   // new: super-close zoom
   return r;
 }
 
@@ -1465,6 +1469,27 @@ function unlockMobileAudio() {
   } catch (e) {
     console.warn('AudioContext unlock failed:', e);
   }
+}
+/******************************************************************
+ * speakBE(bearing, range)
+ *   bearing – integer 0-360   →  "zero two five"
+ *   range   – integer 0-999   →  normal english words
+ ******************************************************************/
+const digitWord = ['zero','one','two','three','four','five','six','seven','eight','nine'];
+
+function speakBE(bearing, range) {
+  // 1) bearing: 3 digits, always zero-padded → words
+  const brgStr = ('000' + (bearing % 360 || 360)).slice(-3);   // 000→360
+  const brgW   = brgStr.split('').map(d => digitWord[+d]).join(' ');
+
+  // 2) range: use speech-friendly cardinal words
+  const rangeW = new Intl.NumberFormat('en', { notation:'standard' })
+                    .format(range)
+                    .replace(/,/g,'')               // strip thousands comma
+                    .split(' ')                     // "one hundred twenty"
+                    .join('-');                     //   → one-hundred-twenty
+
+  return `${brgW} ${rangeW}`;
 }
 
 
@@ -1722,11 +1747,18 @@ function groupBullseyeVoice(raw){
   if (verb === 'cover'){
     doCover(inCovList);
     const n = inCovList.length;
-    speakFast(`birds affirm group bullseye ${brgRef}, ${rngRef}, ${n} contact${n>1?'s':''}`);
+    speakFast(
+  `birds affirm group bullseye ${speakBE(brg, rg)}, ` +
+  `${list.length} contact${list.length > 1 ? 's' : ''}`
+);
   } else {                                        // engage
     inCovList.forEach(t => engageTrack(t));
     const n = inCovList.length;
-    speakFast(`birds away group bullseye ${brgRef}, ${rngRef}, ${n} contact${n>1?'s':''}`);
+    speakFast(
+  `birds away group bullseye ${speakBE(brgRef, rngRef)}, ` +
+  `${n} contact${n > 1 ? 's' : ''}`
+);
+    
   }
   return true;
 }
@@ -1801,11 +1833,17 @@ function coverEngageHoldFive(raw){
 function executeAction(verb,list,brg,rg){
   if(verb==='cover'){
     doCover(list);
-    speakFast(`birds affirm group bullseye ${brg}/${rg}, ${list.length} contact${list.length>1?'s':''}`);
+    speakFast(
+  `birds affirm group bullseye ${speakBE(brg, rg)}, ` +
+  `${list.length} contact${list.length > 1 ? 's' : ''}`
+);
   }
   else if(verb==='engage'){
     list.forEach(t=>engageTrack(t));        // your existing missiles-out helper
-    speakFast(`birds away group bullseye ${brg}/${rg}, ${list.length} contact${list.length>1?'s':''}`);
+    speakFast(
+  `birds away group bullseye ${speakBE(brgRef, rngRef)}, ` +
+  `${n} contact${n > 1 ? 's' : ''}`
+);
   }
   else{                                     // hold fire
     doHold(list);
@@ -2173,12 +2211,30 @@ function inCov(o){
   return statics.some(r => r.type==='rad' && n>=r.disabledUntil
                         && insideWedge(r,o) && distNm(r,o) <= 80);
 }
-function wordsBE(t){
-  const digitWord = n=>'zero one two three four five six seven eight nine'.split(' ')[n];
-  const b = ('000'+bearing(bullseye,t)).slice(-3),
-        r = distNm(bullseye,t).toString();
-  return `${b.split('').map(d=>digitWord(+d)).join(' ')}, ${r.split('').map(d=>digitWord(+d)).join(' ')}`;
+// put this once, near your helpers
+function speakBE(bearingDeg, rangeNm) {
+  const digits = ['zero','one','two','three','four','five',
+                  'six','seven','eight','nine'];
+
+  // bearing: force 3 digits (000→360) and speak each digit
+  const bStr = ('000' + (bearingDeg % 360 || 360)).slice(-3);   // 000→360
+  const bW   = bStr.split('').map(d => digits[+d]).join(' ');   // "zero two five"
+
+  // range: ordinary cardinal words (Intl handles 1-999 neatly)
+  const rW = new Intl.NumberFormat('en')
+                .format(rangeNm)
+                .replace(/,/g,'')
+                .split(' ')
+                .join('-');                                     // "twenty-five"
+
+  return `${bW} ${rW}`;
 }
+
+/* ⇣  replace the old version with this one ⇣ */
+function wordsBE(t) {
+  return speakBE(bearing(bullseye, t), distNm(bullseye, t));
+}
+
 
 /* ---------- ACTIONS ---------- */
 function doCover(list){
@@ -2286,65 +2342,72 @@ function repeatLastIfNumberOnly(txt){
 function handleSimpleCommandVoice(raw) {
   const lower = raw.toLowerCase();
 
-  // 1) Extract all digits in order; need at least 5
+  /* 1 — detect the verb first ----------------------------------- */
+  let action = null;
+  if (/\bhold(?:s|ing)?\b/.test(lower))        action = 'hold';
+  else if (/\bcover(?:s|ed|ing)?\b/.test(lower)) action = 'cover';
+  else if (/\bengag(?:e|ed|ing)?\b/.test(lower)) action = 'engage';
+  if (!action) return false;          // not our phrase → let other handlers try
+
+  /* 2 — grab every digit in order --------------------------------*/
   const allDigits = (raw.match(/\d/g) || []).join('');
-  if (allDigits.length < 5) return false;
+
+  /* 2a — verb but <5 digits → ask again and bail -----------------*/
+  if (allDigits.length < 5) {
+    speakFast(`${ADAFCO}, ${ICC}, say command and track number.`);
+    return true;                      // handled; no further processing
+  }
+
+  /* 3 — normal simple-command logic (unchanged) ------------------*/
   const code5 = allDigits.slice(0, 5);
   const code6 = allDigits.length >= 6 ? allDigits.slice(0, 6) : null;
 
-    // 2) Detect verb (catch engage/engaged/engaging, cover/covers/covered, hold/holds/holding)
-  let action = null;
-  if (/\bhold(?:s|ing)?\b/.test(lower))       action = 'hold';
-  else if (/\bcover(?:s|ed|ing)?\b/.test(lower)) action = 'cover';
-  else if (/\bengag(?:e|ed|ing)?\b/.test(lower)) action = 'engage';
-  if (!action) return false;  // no verb → not handled
-
-
-  // 3) Try EXACT track-ID first
+  // 3a — exact track-ID
   const trk = tracks.find(t => t.id === code5 && !t.destroyed);
   if (trk) {
-    if (action === 'cover')      doCover([trk]);
+    if (action === 'cover')       doCover([trk]);
     else if (action === 'engage') doEngage([trk]);
     else                          doHold([trk]);
     return true;
   }
 
-  // 4) 5-digit bullseye → pick hostiles/cruises ±3°/±5 NM
-  const br5 = (+code5.slice(0,3) || 360);
+  // 3b — 5-digit Bullseye gate ±3° / ±5 NM
+  const br5 = (+code5.slice(0, 3) || 360);
   const rn5 = +code5.slice(3);
   let hits = tracks.filter(t => {
     if (t.destroyed || t.friendly || t.isTbm) return false;
-    return angDiff(bearing(bullseye, t), br5) <= 3
-        && Math.abs(distNm(bullseye, t) - rn5) <= 5;
+    return angDiff(bearing(bullseye, t), br5) <= 3 &&
+           Math.abs(distNm(bullseye, t) - rn5) <= 5;
   });
   if (hits.length) {
-    if (action === 'cover')      doCover(hits);
+    if (action === 'cover')       doCover(hits);
     else if (action === 'engage') doEngage(hits);
     else                          doHold(hits);
     return true;
   }
 
-  // 5) 6-digit bullseye (if you spoke ≥6 digits)
+  // 3c — 6-digit Bullseye (if you spoke ≥6 digits)
   if (code6) {
-    const br6 = (+code6.slice(0,3) || 360);
+    const br6 = (+code6.slice(0, 3) || 360);
     const rn6 = +code6.slice(3);
     hits = tracks.filter(t => {
       if (t.destroyed || t.friendly || t.isTbm) return false;
-      return angDiff(bearing(bullseye, t), br6) <= 3
-          && Math.abs(distNm(bullseye, t) - rn6) <= 5;
+      return angDiff(bearing(bullseye, t), br6) <= 3 &&
+             Math.abs(distNm(bullseye, t) - rn6) <= 5;
     });
     if (hits.length) {
-      if (action === 'cover')      doCover(hits);
+      if (action === 'cover')       doCover(hits);
       else if (action === 'engage') doEngage(hits);
       else                          doHold(hits);
       return true;
     }
   }
 
-  // 6) Nothing matched → prompt for a track number
-  say(`${ADAFCO}, ${ICC}, say track number.`);
+  /* 4 — still nothing matched → generic prompt -------------------*/
+  speakFast(`${ADAFCO}, ${ICC}, say command and track number.`);
   return true;
 }
+
 
 
 
@@ -4232,16 +4295,23 @@ function drawRubber() {
   );
 }
 
-    function drawDragLine(){
-      if(isDragging && dragStart){
-        ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--yellow');
-        ctx.lineWidth=1;
-        ctx.beginPath();
-        ctx.moveTo(dragStart.wx,dragStart.wy);
-        ctx.lineTo(mouse.wx,mouse.wy);
-        ctx.stroke();
-      }
-    }
+   function drawDragLine () {
+  if (!isDragging || !dragStart) return;
+
+  ctx.strokeStyle =
+    getComputedStyle(document.documentElement).getPropertyValue('--yellow');
+
+  /* keep it ~1 CSS-pixel thick on the monitor */
+  const px = 1 / scale;                 // undo the current zoom
+  ctx.lineWidth = Math.max(0.5, px);    // clamp so it never vanishes
+
+  ctx.beginPath();
+  ctx.moveTo(dragStart.wx, dragStart.wy);
+  ctx.lineTo(mouse.wx,      mouse.wy);
+  ctx.stroke();
+}
+
+  
 
     function updateBombs(dt) {
   const now = Date.now();
