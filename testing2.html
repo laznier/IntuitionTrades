@@ -378,7 +378,7 @@
           <button id="btnAirBattle">Fight Air Battle</button>
         </div>
       </div>
-      
+  
   <header>
     <div id="controls">
         <div id="gameControls" style="display:none;">
@@ -1423,6 +1423,41 @@ function getDetectionRange(alt) {
 function fireKey(k){
   window.dispatchEvent(new KeyboardEvent('keydown',{ key: k }));
 }
+
+//////////////////////////////////////////////////////////////////
+/////////////////ALL VOICE CODE SECTION ///////////////////////////
+//////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+let lastRadioLine = '';
+
+/* ——— QUICK helper: triggers the Fireball button ———————————— */
+function fireballVoice(txt){
+  if(!txt.includes('fireball')) return false;   // didn’t fire
+  fireballBtn.click();                          // press the button
+  return true;                                  // handled
+}
+
+/* ——— Normalise common mis-hears before the main handlers ———— */
+function normaliseBullseye(str){
+  return str
+    .replace(/\bboth side\b/gi,  'bullseye')
+    .replace(/\bbull side\b/gi,  'bullseye')
+    .replace(/\bbulls eye\b/gi,  'bullseye')
+    // group homophones
+    .replace(/\bgrew(p|ve)?\b/gi, 'group');
+}
+
+// at top of your script
+function speakRedwood(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.2;           // slower than your default 1.9
+  u.lang = 'en-US';
+  speechSynthesis.speak(u);
+}
+
 /* ─── SPOKEN WORDS → 2-letter quadrant codes ─────────────────── */
 const spokenToQuad = {
   'north west': 'NW',  'northwest': 'NW',  'nw': 'NW',
@@ -1480,7 +1515,8 @@ function handleRedwoodHotVoice(txt){
     const resp = statusEl.textContent.trim();
     if(/approved|denied/i.test(resp)){
       once.disconnect();
-      speakFast( ttsFix(resp) );                // pronounce correctly
+      // use your new slower voice for Redwood
+      speakRedwood( ttsFix(resp) );
     }
   });
   once.observe(statusEl,{childList:true,characterData:true,subtree:true});
@@ -1525,49 +1561,59 @@ function rng(b,a){                  // distance NM a↔b  (needs CFG.nmPerPixel)
   return Math.round(Math.hypot(b.x-a.x,b.y-a.y)*CFG.nmPerPixel);
 }
 
-/**
- * Main handler – call this from your SR callback
- * Returns true if the utterance was handled.
- */
-function engageGroupBullseyeVoice(raw){
-  const txt = raw.toLowerCase();
+/* ─── cover / engage GROUP BULLSEYE (5- or 6-digit) ─────────────────────
+   Guardian Bigfoot cover|engage group [bullseye] 12345 / 123456
+   • first 3 digits  = bearing   (001–360 → map 000 → 360)
+   • last  2–3 digits = range NM
+   • gate ±3° / ±5 NM
+   • obeys coverage → birds affirm / birds negate
+------------------------------------------------------------------------ */
+function groupBullseyeVoice(raw){
+  /* ── one regex: “group … <number>” (bullseye word is optional) ── */
+  const m = raw.match(
+    /\bguardian\b.*\bbigfoot\b.*\b(cover|engage)\b.*\bgroup\b(?:\s+\w+)*?\s+(\d{5,6})\b/i
+  );
+  if (!m) return false;                           // not our phrase
 
-const ENGAGE_BULLSEYE_RE =
-  /\b(?:guardian\b.*\bbigfoot\b.*)?\bengag(?:e|ed)\b.*\b(?:group\s+)?bullseye\b/i;
+  const verb   = m[1].toLowerCase();              // cover | engage
+  const code   = m[2];                            // 5/6-digit string
+  const brgRef = (+code.slice(0,3) || 360);       // 000 ⇒ 360
+  const rngRef = +code.slice(3);                  // 2- or 3-digit range
 
-/* quick gate to avoid wasting cycles */
-if (!ENGAGE_BULLSEYE_RE.test(txt)) return false;
-
-  /* extract the 5-digit B/E code */
-  const m = txt.match(/\bbullseye\s+(\d{5})\b/);
-  if(!m) return false;
-  const code    = m[1];              // e.g. "12345"
-  const bearing = +code.slice(0,3);  // 123°
-  const range   = +code.slice(3);    // 45 NM
-
-  /* find hostiles / cruise missiles in the ±3° / ±5 NM gate */
-  const cand = tracks.filter(t=>{
-    if(t.destroyed || t.friendly || t.isTbm) return false;
-    const a   = brg(t,bullseye);
-    const ad  = Math.min(Math.abs(a-bearing),360-Math.abs(a-bearing));
-    const rd  = Math.abs(rng(t,bullseye)-range);
-    return ad<=3 && rd<=5;
+  /* ── pick contacts inside ±3° / ±5 NM gate ──────────────────── */
+  const gate   = tracks.filter(t=>{
+    if (t.destroyed || t.friendly || t.isTbm) return false;
+    const aErr = angDiff(bearing(bullseye,t), brgRef);
+    const rErr = Math.abs(distNm(bullseye,t) - rngRef);
+    return aErr<=3 && rErr<=5;
   });
 
-  if(!cand.length){
-    speakFast(`birds negate group bullseye ${bearing}, ${range}`);
+  if (!gate.length){
+    speakFast(`birds negate group bullseye ${brgRef}, ${rngRef}`);
     return true;
   }
 
-  /* launch on each contact (your existing helper) */
-  cand.forEach(t=> engageTrack(t));
+  /* ── coverage gate – same rule as parseCmd() ────────────────── */
+  const inCovList = gate.filter(inCov);           // reuse your helper
+  if (!inCovList.length){
+    speakFast(`birds negate group bullseye ${brgRef}, ${rngRef}`);
+    return true;
+  }
 
-  const n = cand.length;
-  speakFast(
-    `birds away group bullseye ${bearing}, ${range}, ${n} contact${n>1?'s':''}`
-  );
+  /* ── execute the requested action ───────────────────────────── */
+  if (verb === 'cover'){
+    doCover(inCovList);
+    const n = inCovList.length;
+    speakFast(`birds affirm group bullseye ${brgRef}, ${rngRef}, ${n} contact${n>1?'s':''}`);
+  } else {                                        // engage
+    inCovList.forEach(t => engageTrack(t));
+    const n = inCovList.length;
+    speakFast(`birds away group bullseye ${brgRef}, ${rngRef}, ${n} contact${n>1?'s':''}`);
+  }
   return true;
 }
+
+
 
 /**
  * Voice-parser for “cover / engage / hold fire + 5-digit”
@@ -1668,11 +1714,14 @@ function executeAction(verb,list,brg,rg){
 let lastVoiceTargets = null;
 
 function parseCmd(raw) {
-  /* 1 ─ normalise */
-  const txt = raw.toLowerCase()
-                 .replace(/[,/]/g, ' ')
-                 .replace(/\s+/g, ' ')
-                 .trim();
+  /* 1 ─ normalise (+bullseye homophones) */
+  const txt = normaliseBullseye(
+                raw.toLowerCase()
+                   .replace(/[,/]/g, ' ')
+                   .replace(/\s+/g, ' ')
+                   .trim()
+              );
+  if (txt.includes('bullseye') || txt.includes('group')) return false;
 
   /* 2 ─ must start with the callsigns */
   if (!txt.startsWith('guardian bigfoot ')) return;
@@ -1746,25 +1795,22 @@ function parseCmd(raw) {
         !t.destroyed && !t.friendly && distNm(ref, t) <= 5
       );
     }
+      /* ── no match?  let the next voice-handler try instead ── */
+  if (!targets.length) return false;
   }
 
-  /* 8 ─ verb but no ID yet → prompt once */
-  if (!targets.length) {
-    radioSay(`${ADAFCO}, ${ICC}, say track number`);
-    return;                     // duplicate-line guard prevents spam
-  }
 
-  /* 9 ─ coverage gate for cover/engage */
-  if (action !== 'hold' && !targets.some(inCov)) {
-    radioSay(`${ADAFCO}, ${ICC}, birds negate track ${targets[0].id}`);
-    return;
-  }
+/* 9 – coverage gate */
+if (action !== 'hold' && targets.length && !targets.some(inCov)) {
+  radioSay(`${ADAFCO}, ${ICC}, birds negate track ${targets[0].id}`);
+  return;
+}
+
 
   /* 10 ─ execute */
   switch (action) {
-    case 'cover':  doCover(targets);  break;
-    case 'engage':
-  doEngage(targets);
+   case 'cover':  doCover(targets);  return true;
+    case 'engage': doEngage(targets); return true;
 // ← right here, fire your “W” logic:
   // either simulate the keypress:
   window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -1775,31 +1821,15 @@ function parseCmd(raw) {
   break;
 
 
-    case 'hold':   doHold(targets);   break;
+    case 'hold':   doHold(targets);   return true;
   }
 
   /* 11 ─ remember for “follow-up number only” */
   lastVoiceAction  = action;
   lastVoiceTargets = targets;
+if (!targets.length) return false;
 
 }
-
-
-/*****************************************************************
- *  RADIO-SAY  (duplicate-line guard)
- *****************************************************************/
-let lastRadioLine = '';      // put this near other globals
-
-function radioSay(line) {
-  const msg = line.replace(/\s+/g, ' ').trim();
-  if (msg === lastRadioLine) return;   // never repeat verbatim
-  lastRadioLine = msg;
-
-  statusEl.textContent = msg;
-  speakFast(msg);
-}
-
-
 
 /*****************************************************************
  *  ACTION HELPERS  (use your existing logic wherever possible)
@@ -2064,8 +2094,10 @@ function doHold(list){
 
 /* ===== MAIN PARSER ===== */
 function parseCmd(raw){
-  /* 1 ─ normalise & callsigns check */
-  const txt = raw.toLowerCase()
+  /* 1 ─ normalise (and short-circuit if we saw "bullseye") */
+  const txt0 = raw.toLowerCase();
+  if (txt0.includes('bullseye')) return false;   // let other handlers try
+  const txt = txt0
                  .replace(/[,/]/g,' ')
                  .replace(/\s+/g,' ')
                  .trim();
@@ -2127,35 +2159,136 @@ function repeatLastIfNumberOnly(txt){
   return true;
 }
 
+/**
+ * Simplified, “ignore the rest” voice handler:
+ *  • Finds the first 5–6 digit block (slashes allowed)
+ *  • Throws away everything after it
+ *  • Detects one verb: hold|cover|engage
+ *  • If digits exactly match a live track ID → act on that track
+ *  • Otherwise → treat as bullseye (group) and act on all hits in ±3°/±5 NM
+ */
+function handleSimpleCommandVoice(raw) {
+  const lower = raw.toLowerCase();
+
+  // 1) Extract all digits in order; need at least 5
+  const allDigits = (raw.match(/\d/g) || []).join('');
+  if (allDigits.length < 5) return false;
+  const code5 = allDigits.slice(0, 5);
+  const code6 = allDigits.length >= 6 ? allDigits.slice(0, 6) : null;
+
+    // 2) Detect verb (catch engage/engaged/engaging, cover/covers/covered, hold/holds/holding)
+  let action = null;
+  if (/\bhold(?:s|ing)?\b/.test(lower))       action = 'hold';
+  else if (/\bcover(?:s|ed|ing)?\b/.test(lower)) action = 'cover';
+  else if (/\bengag(?:e|ed|ing)?\b/.test(lower)) action = 'engage';
+  if (!action) return false;  // no verb → not handled
+
+
+  // 3) Try EXACT track-ID first
+  const trk = tracks.find(t => t.id === code5 && !t.destroyed);
+  if (trk) {
+    if (action === 'cover')      doCover([trk]);
+    else if (action === 'engage') doEngage([trk]);
+    else                          doHold([trk]);
+    return true;
+  }
+
+  // 4) 5-digit bullseye → pick hostiles/cruises ±3°/±5 NM
+  const br5 = (+code5.slice(0,3) || 360);
+  const rn5 = +code5.slice(3);
+  let hits = tracks.filter(t => {
+    if (t.destroyed || t.friendly || t.isTbm) return false;
+    return angDiff(bearing(bullseye, t), br5) <= 3
+        && Math.abs(distNm(bullseye, t) - rn5) <= 5;
+  });
+  if (hits.length) {
+    if (action === 'cover')      doCover(hits);
+    else if (action === 'engage') doEngage(hits);
+    else                          doHold(hits);
+    return true;
+  }
+
+  // 5) 6-digit bullseye (if you spoke ≥6 digits)
+  if (code6) {
+    const br6 = (+code6.slice(0,3) || 360);
+    const rn6 = +code6.slice(3);
+    hits = tracks.filter(t => {
+      if (t.destroyed || t.friendly || t.isTbm) return false;
+      return angDiff(bearing(bullseye, t), br6) <= 3
+          && Math.abs(distNm(bullseye, t) - rn6) <= 5;
+    });
+    if (hits.length) {
+      if (action === 'cover')      doCover(hits);
+      else if (action === 'engage') doEngage(hits);
+      else                          doHold(hits);
+      return true;
+    }
+  }
+
+  // 6) Nothing matched → prompt for a track number
+  say(`${ADAFCO}, ${ICC}, say track number.`);
+  return true;
+}
+
+
+
+
+// 1) List your handlers in the exact order they should run:
+const voiceHandlers = [
+  { name: 'Redwood-Hot',         match: handleRedwoodHotVoice },
+  { name: 'Fireball',            match: fireballVoice },
+  { name: 'Group Bullseye',      match: groupBullseyeVoice },
+  { name: 'Cover/Engage 5-Digit',match: coverEngageHoldFive },
+  { name: 'Repeat Last Number',  match: repeatLastIfNumberOnly },
+  { name: 'Simple Command', match: handleSimpleCommandVoice },
+
+  // …any true “final fallback” you still want…
+];
+
+function onTranscript(raw) {
+  const txt = raw.toLowerCase().trim();
+  for (const { name, match } of voiceHandlers) {
+    try {
+      if ( match(txt) ) {
+        console.log(`🎙️  Voice handled by: ${name}`);  // <-- logs which handler ran
+        return;
+      }
+    } catch (err) {
+      console.error(`Error in handler ${name}:`, err);
+    }
+  }
+  // nothing matched
+  console.log(`❓  No handler matched for “${txt}”`);
+  radioSay(`${ADAFCO}, ${ICC}, say again last.`);
+}
+
 /* ===== speech-recognition wiring ===== */
 let recog=null, mic=false;
 function micInit(){
   if(!SR){ alert('Speech-to-text not supported'); return; }
   if(recog){ recog.start(); mic=true; return; }
 
+function normaliseBullseye(txt){
+  return txt
+    /* bullseye homophones (optional now) */
+    .replace(/\bside\b/gi,  'bullseye')
+    .replace(/\bsides\b/gi, 'bullseye')
+       .replace(/\bboth\b/gi, 'bullseye')
+    .replace(/\bbull side\b/gi,  'bullseye')
+       .replace(/\bbull\b/gi, 'bullseye')
+          .replace(/\beye\b/gi, 'bullseye')
+             .replace(/\bbulls\b/gi, 'bullseye')
+    /* NEW — group homophones */
+    .replace(/\bgrew(p|ve)?\b/gi, 'group')   // grew, grew-up, groove
+    .replace(/\bgroup\b/gi,      'group');
+}
+
+
   recog=new SR(); recog.lang='en-US'; recog.continuous=true; recog.interimResults=false;
-  recog.onresult=e=>{
-    const txt = e.results[e.resultIndex][0].transcript.toLowerCase();
-    console.log('🗣',txt);
-
-    if (coverEngageHoldFive(txt)) return;     // ← add this line
-    
-    if (engageGroupBullseyeVoice(txt)) return;   // ← add this
-
-    /* NEW: Redwood-Hot voice shortcut */
- if (handleRedwoodHotVoice(txt)) return;
-
-
-    // ── NEW: if user says "fireball" anywhere, trigger the button
-  if (txt.includes('fireball')) {
-    // simulate click (or call whatever handler you already have)
-    fireballBtn.click();
-    return;  // don’t run the normal parseCmd logic
-  }
-    if(repeatLastIfNumberOnly(txt)) return;   // quick follow-up
-    if(!(txt.includes(ICC)&&txt.includes(ADAFCO))) return;
-    parseCmd(txt);
-  };
+recog.onresult = e => {
+  const raw = e.results[e.resultIndex][0].transcript;
+  onTranscript(raw);
+};
   recog.onerror=e=>console.error(e);
   recog.start(); mic=true;
 }
@@ -2184,10 +2317,25 @@ window.addEventListener('keyup',e=>{
 
 /* Turn “SL” into “S L” and “ADAFCO” into “adaf-co” for speech */
 function ttsFix(line){
-  return line
+  // 1) callsigns
+  line = line
     .replace(/\bSL\b/gi,   'S L')
-    .replace(/ADAFCO/gi,   'adaf-co');
+    .replace(/ADAFCO/gi,   'ah-dahff-kho');
+
+  // 2) quadrant codes → full words + “Quadrant”
+  const quadMap = {
+    'NE': 'North East',
+    'NW': 'North West',
+    'SE': 'South East',
+    'SW': 'South West'
+  };
+  line = line.replace(/\b(N[EW]|S[EW])\b/gi,
+    m => quadMap[m.toUpperCase()]
+  );
+
+  return line;
 }
+
 
 /**
  * parseBE(text):
