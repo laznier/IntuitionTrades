@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <title>ADAFCO Bullseye/Air Battle Trainer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport"
+      content="width=device-width,
+               initial-scale=1,
+               maximum-scale=1,
+               minimum-scale=1,
+               user-scalable=no">
+
   <style>
     :root {
       --bg: #0a0a0d; --icc: #27e835;
@@ -355,6 +362,12 @@
   background: var(--icc); color:#000; border:none; border-radius:4px;
   cursor:pointer;
 }
+html, body {
+  touch-action: none;
+}
+#scope {
+  touch-action: pinch-zoom pan-x pan-y;
+}
 
   </style>
 </head>
@@ -579,7 +592,22 @@
 
   <div id="cursorLabel"></div>
   <script>
-    
+    document.addEventListener('DOMContentLoaded', () => {
+  // Prevent all touch gestures on the document *except* inside #scope
+  document.body.addEventListener('touchstart',  blockOutsideCanvas, { passive: false });
+  document.body.addEventListener('touchmove',   blockOutsideCanvas, { passive: false });
+  document.body.addEventListener('touchend',    blockOutsideCanvas, { passive: false });
+  document.body.addEventListener('gesturestart', blockOutsideCanvas, { passive: false });
+  document.body.addEventListener('gesturechange',blockOutsideCanvas, { passive: false });
+});
+
+function blockOutsideCanvas(e) {
+  // If the gesture originated inside your canvas, do nothing
+  if (e.target.closest('#scope')) return;
+  // Otherwise prevent the default (no scroll, no zoom)
+  e.preventDefault();
+}
+
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
