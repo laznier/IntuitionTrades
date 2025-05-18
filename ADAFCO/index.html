@@ -1455,6 +1455,21 @@ function unlockMobileAudio() {
   }
 }
 
+micBtn.onclick = () => {
+  // 1) Unlock audio (must be in a user‐gesture handler)
+  unlockMobileAudio();
+
+  // 2) Then toggle
+  if (!mic) {
+    micInit();
+    micBtn.textContent = '🎙️ Mic ON';
+  } else {
+    recog.stop();
+    mic = false;
+    micBtn.textContent = '🎙️ Mic OFF';
+  }
+};
+
 let lastRadioLine = '';
 
 /* ——— QUICK helper: triggers the Fireball button ———————————— */
@@ -2307,20 +2322,6 @@ function normaliseBullseye(txt){
     .replace(/\bgroup\b/gi,      'group');
 }
 
-micBtn.onclick = () => {
-  // 1) Unlock audio (must be in a user‐gesture handler)
-  unlockMobileAudio();
-
-  // 2) Then toggle
-  if (!mic) {
-    micInit();
-    micBtn.textContent = '🎙️ Mic ON';
-  } else {
-    recog.stop();
-    mic = false;
-    micBtn.textContent = '🎙️ Mic OFF';
-  }
-};
 
   recog=new SR(); recog.lang='en-US'; recog.continuous=true; recog.interimResults=false;
 recog.onresult = e => {
