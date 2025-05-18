@@ -469,6 +469,8 @@
     <tr><td><kbd>K</kbd></td><td>KILL (manual vanish)</td></tr>
     <tr><td><kbd>O</kbd></td><td>Re-orient selected Patriot radar<br>
         &nbsp;&nbsp;– Click the new azimuth on scope</td></tr>
+        
+        
 
     <tr><th colspan="2">Navigation</th></tr>
     <tr><td><kbd>↑ ↓ ← →</kbd></td><td>Pan map</td></tr>
@@ -476,7 +478,7 @@
     <tr><td><kbd>Shift + Drag</kbd></td><td>Multi-select box</td></tr>
     <tr><td><kbd>Double-drag</kbd></td><td>Zoom window to box</td></tr>
 
-    <tr><th colspan="2">Mobile toolbar<br>(shows automatically ≤ 768 px)</th></tr>
+    <tr><th colspan="2">Mobile toolbar<br></th></tr>
     <tr><td colspan="2">
       <code>A&nbsp;N&nbsp;W&nbsp;H&nbsp;O&nbsp;K</code> buttons replicate the keys.  
       Pinch-zoom and one-finger drag pan the map.
@@ -512,12 +514,21 @@
   <ul>
     <li><strong>+1</strong> Valid missile kill</li>
     <li><strong>+2</strong> FIREBALL intercept</li>
+    <li><strong>–0.5</strong> Contract Violation (communicate engagement status via [A] and [W] Hotkeys)</li>
     <li><strong>–1</strong> Birds/shots trashed (miss if no geometry)</li>
     <li><strong>–5</strong> ROE violation (engaged without authority)</li>
     <li><strong>–6</strong> Friendly fire (miss)</li>
     <li><strong>–20</strong> Fratricide</li>
     <li><strong>–5</strong> TBM craters island</li>
     <li><strong>–7</strong> ABT damages an asset</li>
+  </ul>
+
+    <h4>Mission Success &amp; Failure</h4>
+  <p>
+    <strong>Success:</strong> You win when you successfully defend the island from a full air attack level and maintain a positive score.<br>
+    <strong>Failure:</strong> You lose if DAL/assets are impacted 5 times, or 5 contract/ROE violations occur.<br>
+    The mission ends immediately if:<li><strong>Friendly Fire / Fratricide</strong> – an interceptor kills a friendly track</li>
+    
   </ul>
 
   <!-- ───────────────────────────────────────────────── Radar & Weapons -->
@@ -528,6 +539,7 @@
       Magazine per FU: 12 PAC-2, 16 PAC-3, 24 MSE  
       <br>Reload: 15 min 
       <br>Radar wedge: 60 NM / ±60° &nbsp;(<kbd>O</kbd> to slew, 90 s red)
+      <br>PTL can be set with [O] Hotkey or by directingP: "Guardian, Bigfoot, set/re-orient, SW PTL 270 degress."
     </dd>
 
     <dt>NASAMS FU x 1</dt>
@@ -1563,6 +1575,87 @@ function extractFiveDigits(arr){
   });
   return out.length===5 ? out.join('') : null;
 }
+/**
+ * Smoothly swing the selected radar’s wedge
+ * from its current wedgeDir to `newBearing`.
+ */
+function animateRadarSwing(radar, newBearing) {
+  radar.animFrom  = radar.wedgeDir;
+  radar.wedgeDir  = newBearing;
+  radar.animStart = Date.now();
+}
+
+
+/**
+ * Voice-driven PTL (“re-orient … radar … <bearing>”)
+ * – understands quadrant words OR explicit Patriot JTN
+ * – arms O-key flow, fires a synthetic click 50 NM from BULLSEYE
+ */
+function handleReorientVoice(raw) {
+  const txt = raw.toLowerCase();
+
+  /* 0 — must contain a trigger word */
+  if (!/(re[- ]?orient|ptl|radar|target(?:ing)? line)/.test(txt)) return false;
+
+  /* 1 — quadrant */
+  const quadRe = {
+    NW: /\b(?:north\s*west|northwest|nw)\b/,
+    NE: /\b(?:north\s*east|northeast|ne)\b/,
+    SW: /\b(?:south\s*west|southwest|sw)\b/,
+    SE: /\b(?:south\s*east|southeast|se)\b/,
+  };
+  let quad = null;
+  for (const [k, re] of Object.entries(quadRe)) if (re.test(txt)) { quad = k; break; }
+  if (!quad) return false;
+
+  /* 2 — which radar */
+  const quadrantMap = { NW:'00173', SW:'00171', SE:'00172', NE:'00170' };
+  const idMatch = txt.match(/\b0*?(00173|00171|00172|00170)\b/);
+  const radarId = idMatch ? idMatch[1] : quadrantMap[quad];
+  const radar   = statics.find(s => s.type === 'rad' && s.id.endsWith(radarId));
+  if (!radar) return false;
+
+  /* 3 — bearing: first 3 digits after we scrub the JTN */
+  const scrubbed = txt.replace(radarId, '');         // strip the digits that belong to the JTN
+  const digits   = (scrubbed.match(/\d/g) || []).slice(0, 3).join('');
+  if (digits.length < 3) return false;
+  const bearingCmd = (+digits || 360);               // 000 → 360°
+
+  /* 4 — arm the normal O-key flow */
+  selectedStatic  = radar;
+  pendingReorient = true;
+  pendingStatic   = radar;
+  statusEl.textContent   = `Tap on the scope to orient Launcher ${radar.id}`;
+  feedbackEl.textContent = '';
+
+  /* 5 — synthetic click 50 NM from BULLSEYE (fix) */
+  const rangeNm = 100000000;
+  const px      = rangeNm / CFG.nmPerPixel;
+  const rad     = bearingCmd * Math.PI / 180;        // 0° =N, 90° =E
+  const clickX  = bullseye.x + Math.sin(rad) * px;
+  const clickY  = bullseye.y - Math.cos(rad) * px;
+
+  const scope   = document.getElementById('scope');
+  const rect    = scope.getBoundingClientRect();
+  const clientX = rect.left + clickX;
+  const clientY = rect.top  + clickY;
+
+  ['pointerdown', 'pointerup', 'click'].forEach(type =>
+    scope.dispatchEvent(new PointerEvent(type, {
+      pointerType: 'mouse', bubbles: true, cancelable: true,
+      clientX, clientY,
+    }))
+  );
+
+  /* 6 — voice feedback */
+  radioSay(`${ADAFCO}, ${ICC}, Setting Patriot Target Line ${String(bearingCmd).padStart(3,'0')} degrees.`);
+  return true;
+}
+
+
+
+
+
 
 /* bearing/ range helpers */
 function bearing(a,b){ return (Math.atan2(b.x-a.x,a.y-b.y)*180/Math.PI+360)%360;}
@@ -1888,7 +1981,6 @@ function doCover(arr){
 /* ---------- ENGAGE ---------- */
 function doEngage(arr){
   arr.forEach(t=>{
-    t.tag='ENGAGE'; t.tagTime=Date.now();
     launch(t);              // missiles out
   });
   const be = formatBE(arr[0]);
@@ -2103,7 +2195,6 @@ function doEngage(list){
   const bad  = list.filter(t=>!inCov(t));
 
   ok.forEach(t=>{
-    t.tag='ENGAGE'; t.tagTime=Date.now();
     engageTrack(t);                    // full “W” logic
   });
 
@@ -2265,6 +2356,7 @@ const voiceHandlers = [
   { name: 'Group Bullseye',      match: groupBullseyeVoice },
   { name: 'Cover/Engage 5-Digit',match: coverEngageHoldFive },
   { name: 'Repeat Last Number',  match: repeatLastIfNumberOnly },
+  { name: 'PTL Reorient',       match: handleReorientVoice },
   { name: 'Simple Command', match: handleSimpleCommandVoice },
 
   // …any true “final fallback” you still want…
@@ -2465,8 +2557,10 @@ window.addEventListener('keydown',e=>{
   if(e.key.toLowerCase()==='w'&&selectedTrack){
     e.preventDefault();
     e.stopImmediatePropagation();   // ← blocks the original launcher
-    selectedTrack.tag='AWAY';
-    selectedTrack.tagTime=Date.now();
+    selectedTrack.tag     = 'AWAY';
+    selectedTrack.tagTime = Date.now();
+    // mark that user communicated Birds Away
+    selectedTrack._communicatedAway = true;
   }
 });
 
@@ -2788,7 +2882,20 @@ function recordLog(msg) {
   const lower = msg.toLowerCase();
   let m;
   if ((m = lower.match(/track\s+(\d{5})\s+vanished\b/))) {
-    speakFast(`${ADAFCO}, ${ICC}, Splash track ${m[1]}.`);
+    const id = m[1];  // ← grab the code
+   speakFast(`${ADAFCO}, ${ICC}, Splash track ${id}.`);
+   // penalty only if Birds Away was never communicated
+   const trk = tracks.find(t => t.id === id);
+    if (trk && !trk._communicatedAway && !trk._contractViolated) {
+      changeScore(-0.5, 'Contract Violation: Did not communicate BIRDS AWAY via [W] hotkey');
+      trk._contractViolated = true;
+      // also log the violation in the mission log
+      const z2 = new Date().toISOString().slice(11,19) + 'Z';
+      MISSION_LOG.push({
+        z:   z2,
+        msg: 'Contract Violation: Did not communicate BIRDS AWAY via [W] hotkey'
+      });
+    }
   }
   else if ((m = lower.match(/birds\s+trashed\s+track\s+(\d{5})\b/))) {
     speakFast(`${ADAFCO}, ${ICC}, birds trashed track ${m[1]}.`);
