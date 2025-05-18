@@ -2409,6 +2409,44 @@ function handleSimpleCommandVoice(raw) {
 }
 
 
+/* ------------------------------------------------------------------
+   getWeaponsState(fu)  →  'Green' | 'Yellow' | 'Red'
+   ------------------------------------------------------------------ */
+function getWeaponsState(fu){
+  /* Patriot: use fu.ammo totals; NASAMS: NASAMSMissiles               */
+  const remaining = fu.id === 'NASAMS'
+      ? NASAMSMissiles
+      : fu.ammo.pac2 + fu.ammo.pac3 + fu.ammo.mse;
+
+  const max = fu.id === 'NASAMS' ? 18 : 12+16+24;   // 18 AIM-120s  or 52 Patriot
+  const pct = remaining / max;
+
+  if (pct > 0.50) return 'Green';
+  if (pct > 0.25) return 'Yellow';
+  return 'Red';
+}
+
+/* ------------------------------------------------------------------*/
+/*  What-State voice query                                           */
+/* ------------------------------------------------------------------*/
+function handleWhatStateVoice(txt){
+  // allow any punctuation and optional “guardian bigfoot …”
+  if (!/what\s+state\b/i.test(txt)) return false;      // phrase absent
+  if (/\d{5}/.test(txt))          return false;        // ignore if numbers
+
+  const fus = statics.filter(s => s.type === 'fu');    // Patriots + NASAMS
+  const lines = fus.map(fu => {
+    const qMap = { NE:'North East', NW:'North West',
+                   SE:'South East', SW:'South West' };
+    const name = fu.id === 'NASAMS'
+      ? 'NAY-SAMs'
+      : qMap[getFuLabel(fu).split(' ')[0]] + ' Firing Unit';
+    return `${name} Weapons ${getWeaponsState(fu)}`;
+  });
+
+  speakFast(`${ADAFCO}, ${ICC}, ${lines.join(', ')}`);
+  return true;                                         // handled
+}
 
 
 
@@ -2416,6 +2454,7 @@ function handleSimpleCommandVoice(raw) {
 const voiceHandlers = [
   { name: 'Redwood-Hot',         match: handleRedwoodHotVoice },
   { name: 'Fireball',            match: fireballVoice },
+  { name:'What-State',    match:handleWhatStateVoice },  // ← new
   { name: 'Group Bullseye',      match: groupBullseyeVoice },
   { name: 'Cover/Engage 5-Digit',match: coverEngageHoldFive },
   { name: 'Repeat Last Number',  match: repeatLastIfNumberOnly },
