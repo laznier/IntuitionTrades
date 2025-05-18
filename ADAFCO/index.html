@@ -1438,6 +1438,23 @@ function fireKey(k){
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 
+// Global AudioContext, used to unlock mobile audio
+let _audioCtx = null;
+
+function unlockMobileAudio() {
+  if (_audioCtx) return;
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // a zero-length buffer to kick things off
+    const src = _audioCtx.createBufferSource();
+    src.buffer = _audioCtx.createBuffer(1, 1, 22050);
+    src.connect(_audioCtx.destination);
+    src.start(0);
+  } catch (e) {
+    console.warn('AudioContext unlock failed:', e);
+  }
+}
+
 let lastRadioLine = '';
 
 /* ——— QUICK helper: triggers the Fireball button ———————————— */
@@ -2290,6 +2307,20 @@ function normaliseBullseye(txt){
     .replace(/\bgroup\b/gi,      'group');
 }
 
+micBtn.onclick = () => {
+  // 1) Unlock audio (must be in a user‐gesture handler)
+  unlockMobileAudio();
+
+  // 2) Then toggle
+  if (!mic) {
+    micInit();
+    micBtn.textContent = '🎙️ Mic ON';
+  } else {
+    recog.stop();
+    mic = false;
+    micBtn.textContent = '🎙️ Mic OFF';
+  }
+};
 
   recog=new SR(); recog.lang='en-US'; recog.continuous=true; recog.interimResults=false;
 recog.onresult = e => {
