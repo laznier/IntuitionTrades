@@ -1714,8 +1714,9 @@ function rng(b,a){                  // distance NM a↔b  (needs CFG.nmPerPixel)
 function groupBullseyeVoice(raw){
   /* ── one regex: “group … <number>” (bullseye word is optional) ── */
   const m = raw.match(
-    /\bguardian\b.*\bbigfoot\b.*\b(cover|engage)\b.*\bgroup\b(?:\s+\w+)*?\s+(\d{5,6})\b/i
-  );
+  /\bguardian\b[\s,]*\bbigfoot\b[\s,]*\b(cover|engage)\b[\s,]*\bgroup\b[\s,]*(?:bullseye[\s,]*)?(\d{5,6})\b/i
+);
+
   if (!m) return false;                           // not our phrase
 
   const verb   = m[1].toLowerCase();              // cover | engage
@@ -1732,14 +1733,16 @@ function groupBullseyeVoice(raw){
   });
 
   if (!gate.length){
-    speakFast(`birds negate group bullseye ${brgRef}, ${rngRef}`);
+     speakFast(`${ADAFCO}, ${ICC}, clean group bullseye ${speakBE(brgRef, rngRef)}`
+);
     return true;
   }
 
   /* ── coverage gate – same rule as parseCmd() ────────────────── */
   const inCovList = gate.filter(inCov);           // reuse your helper
   if (!inCovList.length){
-    speakFast(`birds negate group bullseye ${brgRef}, ${rngRef}`);
+speakFast(`${ADAFCO}, ${ICC},birds negate group bullseye ${speakBE(brgRef, rngRef)}`
+);
     return true;
   }
 
@@ -1747,15 +1750,13 @@ function groupBullseyeVoice(raw){
   if (verb === 'cover'){
     doCover(inCovList);
     const n = inCovList.length;
-    speakFast(
-  `birds affirm group bullseye ${speakBE(brg, rg)}, ` +
+    speakFast(`${ADAFCO}, ${ICC}, birds affirm group bullseye ${speakBE(brg, rg)}, ` +
   `${list.length} contact${list.length > 1 ? 's' : ''}`
 );
   } else {                                        // engage
     inCovList.forEach(t => engageTrack(t));
     const n = inCovList.length;
-    speakFast(
-  `birds away group bullseye ${speakBE(brgRef, rngRef)}, ` +
+    speakFast(`${ADAFCO}, ${ICC}, birds away group bullseye ${speakBE(brgRef, rngRef)}, ` +
   `${n} contact${n > 1 ? 's' : ''}`
 );
     
@@ -1809,7 +1810,9 @@ function coverEngageHoldFive(raw){
     if(d<best){ best=d; anchor=t; }
   });
   if(!anchor){
-    speakFast(`birds negate group bullseye ${bearingBrg}/${rangeNm}`);
+speakFast(
+  `birds negate group bullseye ${speakBE(brgRef, rngRef)}`
+);
     return true;
   }
 
@@ -1821,7 +1824,9 @@ function coverEngageHoldFive(raw){
   });
 
   if(!group.length){
-    speakFast(`birds negate group bullseye ${bearingBrg}/${rangeNm}`);
+speakFast(
+  `birds negate group bullseye ${speakBE(brgRef, rngRef)}`
+);
     return true;
   }
 
@@ -2459,7 +2464,9 @@ const voiceHandlers = [
   { name: 'Cover/Engage 5-Digit',match: coverEngageHoldFive },
   { name: 'Repeat Last Number',  match: repeatLastIfNumberOnly },
   { name: 'PTL Reorient',       match: handleReorientVoice },
-  { name: 'Simple Command', match: handleSimpleCommandVoice },
+  { name: 'Simple Command',          match: handleSimpleCommandVoice }, 
+  
+
 
   // …any true “final fallback” you still want…
 ];
@@ -2985,7 +2992,6 @@ function recordLog(msg) {
   let m;
   if ((m = lower.match(/track\s+(\d{5})\s+vanished\b/))) {
     const id = m[1];  // ← grab the code
-   speakFast(`${ADAFCO}, ${ICC}, Splash track ${id}.`);
    // penalty only if Birds Away was never communicated
    const trk = tracks.find(t => t.id === id);
     if (trk && !trk._communicatedAway && !trk._contractViolated) {
@@ -2998,9 +3004,6 @@ function recordLog(msg) {
         msg: 'Contract Violation: Did not communicate BIRDS AWAY via [W] hotkey'
       });
     }
-  }
-  else if ((m = lower.match(/birds\s+trashed\s+track\s+(\d{5})\b/))) {
-    speakFast(`${ADAFCO}, ${ICC}, birds trashed track ${m[1]}.`);
   }
 }
 
@@ -3561,6 +3564,7 @@ if (covering.length &&
 if (inRing || inAnyWedgeGeom) {
   // 1) score the kill
   changeScore(1, `Track ${track.id} Vanished: +1`);
+  radioSay(`${ADAFCO}, ${ICC}, Splash track ${track.id}.`);
     if (!track._outcomeLogged) {
     track._outcomeLogged = true;
     STATS.engagementsGood++;
@@ -3608,11 +3612,14 @@ if (!track.isTbm && !track.isCruise) {
 
 /** Apply the trashed penalty & revert to ENGAGE at current position. */
 function markShotTrashed(t) {
-  changeScore(-1, 'BIRDS TRASHED: -1 point');
+  
   if (!t._outcomeLogged) {
    t._outcomeLogged = true;
     STATS.engagementsBad++;
+    changeScore(-1, `BIRDS TRASHED Track ${t.id}: -1 point`);
+  speakFast(`${ADAFCO}, ${ICC}, birds trashed track ${t.id}.`);
   }
+  
   t.tag           = 'ENGAGE';
   t.tagTime       = Date.now();
   t.everEngaged   = true;
