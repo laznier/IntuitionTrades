@@ -633,12 +633,6 @@ function speakFast(text) {
   window.speechSynthesis.speak(u);
 }
 
-function speakRedwood(text) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = isIOS ? 1.0 : 1.2;    // 1.0 on iOS, 1.2 elsewhere
-  u.lang = 'en-US';
-  window.speechSynthesis.speak(u);
-}
 
   // call once on the very first tap anywhere
 function primeAudio() {
@@ -2096,12 +2090,6 @@ if (!targets.length) return false;
 
   statusEl.textContent = msg;
   speakFast(msg);
-}
-function speakFast(text){
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate  = 1.9;               // << 2.1×
-  u.lang  = 'en-US';
-  speechSynthesis.speak(u);
 }
 
 /* ---------- COVER ---------- */
