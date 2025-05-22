@@ -5468,14 +5468,16 @@ function showCard2(obj,type) { renderCard(obj,type,    'right'); }
 
 
 function pickObject() {
-  // translate that 12 px into world‑space by dividing by your current scale:
-  const HIT_R = dynamicClickRadius() / scale;
+  const HIT_R = dynamicClickRadius(); // screen-px radius
 
-  const Y_OFF = 6;  // unchanged
-
+  // project each track into canvas coordinates
   selectedTrack = tracks.find(t => {
-    const dx = mouse.wx - t.x;
-    const dy = mouse.wy - (t.y - Y_OFF);
+    // translate world → canvas:
+    const sx = (t.x - offX) * scale;
+    const sy = (t.y - offY) * scale - 6 * scale;  // if you still need that Y-offset
+    // compute distance in SCREEN space:
+    const dx = mouse.sx - sx;
+    const dy = mouse.sy - sy;
     return Math.hypot(dx, dy) < HIT_R;
   }) || null;
 
