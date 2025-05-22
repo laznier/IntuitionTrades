@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
  <!-- iOS full-screen meta tags -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ADAFCO Trainer">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
-
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png",>
+<meta name="mobile-web-app-capable" content="yes">
   <!-- Trainer’s own manifest -->
   <link rel="manifest" href="/ADAFCO-manifest.json">
 
@@ -1568,6 +1568,32 @@ function getDetectionRange(alt) {
 function fireKey(k){
   window.dispatchEvent(new KeyboardEvent('keydown',{ key: k }));
 }
+// ─── speech-queue setup ────────────────────────────────────
+let micActive    = false;
+const speechQueue = [];
+
+// only override if the API exists
+if (window.speechSynthesis && typeof speechSynthesis.speak === 'function') {
+  // keep a reference to the original
+  const _origSpeak = speechSynthesis.speak.bind(speechSynthesis);
+
+  // install our wrapper
+  speechSynthesis.speak = utterance => {
+    try {
+      if (micActive) {
+        // queue it for later
+        speechQueue.push(utterance);
+      } else {
+        // speak immediately
+        _origSpeak(utterance);
+      }
+    } catch (err) {
+      console.error('speechSynthesis override failed:', err);
+      // fallback so nothing ever stops your game
+      _origSpeak(utterance);
+    }
+  };
+}
 
 //////////////////////////////////////////////////////////////////
 /////////////////ALL VOICE CODE SECTION ///////////////////////////
@@ -1575,6 +1601,7 @@ function fireKey(k){
 /////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
+
 
 // Global AudioContext, used to unlock mobile audio
 let _audioCtx = null;
@@ -6344,7 +6371,7 @@ updateScoreDisplay();
       compassBtn.textContent = `Compass: ${compassOn ? 'ON' : 'OFF'}`;
     };
 
-    
+ 
     </script>
 
 </body>
