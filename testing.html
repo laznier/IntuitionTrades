@@ -370,6 +370,18 @@
 @supports (-webkit-touch-callout: none) {
   #dictateBtn { display: block; }
 }
+/* in your main stylesheet */
+
+#micBtnRadio {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 10000;   /* above everything else */
+}
+
+#fireballBtn {
+  display: none !important;
+}
 
   </style>
 </head>
