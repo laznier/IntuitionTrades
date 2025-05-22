@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+ <!-- iOS full-screen meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ADAFCO Trainer">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+
+  <!-- Trainer’s own manifest -->
+  <link rel="manifest" href="/ADAFCO-manifest.json">
+
   <meta charset="UTF-8">
   <title>ADAFCO Bullseye/Air Battle Trainer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -319,8 +328,18 @@
 
 /* quadrant squares */
 #redwoodMenu button{
+  align-items: left;
   height: 32px !important;   /* match main-button height */
 }
+/* ── Move Redwood to bottom-left on phones ───────────────── */
+@media (max-width: 768px) {
+  #actionBar {
+    left: 1rem;     /* 1rem from the left edge */
+    right: auto;    /* cancel the right:1rem */
+    bottom: 3rem;   /* same vertical offset you already use */
+  }
+}
+
 /* in your <style> */
     #redwoodMenu button.cold {
   background: var(--icc);   /* green */
@@ -355,7 +374,33 @@
   background: var(--icc); color:#000; border:none; border-radius:4px;
   cursor:pointer;
 }
+/* hide by default */
+#dictateBtn { display: none; }
+/* show when on a touchscreen device with iOS Safari UA quirk */
+@supports (-webkit-touch-callout: none) {
+  #dictateBtn { display: block; }
+}
+/* in your main stylesheet */
+/* desktop & mobile positioning as you already have */
+#micBtnRadio {
+  position: fixed;
+  right: 1rem;
+  
+    /* below Redwood’s z-index:10 but above mobileControls z-index:4 */
+}
 
+/* If you ever need separate desktop/mobile adjustments, you can still wrap them in @media as before */
+@media (max-width: 768px) {
+  #micBtnRadio {
+    bottom: 3.2rem;  /* tweak if needed */
+    z-index: 5;
+  }
+}
+
+#fireballBtn {
+  display: none !important;
+
+}
   </style>
 </head>
 <body>
@@ -396,6 +441,15 @@
     <div id="status">ADW RED, WCS HOLD</div>
     <div id="score">Score: 0</div>
     <div id="feedback"></div>
+    <!-- place this somewhere in your page -->
+<button id="dictateBtn" style="position:fixed;bottom:1rem;left:1rem;z-index:1000;">
+  🎤 Dictate
+</button>
+<input id="dictateInput" type="text"
+       style="position:fixed;bottom:1rem;left:1rem;
+              width:1px;height:1px;opacity:0;pointer-events:none;"
+       autocomplete="off" autocorrect="off" autocapitalize="none" />
+
   </header>
 
   <!-- Action bar (bottom-right) -->
@@ -594,8 +648,72 @@
   
 
   <div id="cursorLabel"></div>
+
+
   <script>
+
+    // Detect iOS devices
+// detect iOS
+const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+
+// wrap speechSynthesis.speak so every utterance is slowed on iOS
+(function(){
+  const origSpeak = speechSynthesis.speak.bind(speechSynthesis);
+  speechSynthesis.speak = utterance => {
+    if (isIOS) {
+      utterance.rate = 1.3;     // or 0.9 if you prefer even slower
+      utterance.pitch = 1.3;    // keep pitch natural
+    }
+    return origSpeak(utterance);
+  };
+})();
+
+
+
+  // call once on the very first tap anywhere
+function primeAudio() {
+  window.removeEventListener('touchend', primeAudio);
+  // unlock Web AudioContext
+  const Actx = window.AudioContext || window.webkitAudioContext;
+  if (Actx) {
+    const ctx = new Actx();
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  // fire an empty utterance so future .speak() calls work
+  speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+}
+window.addEventListener('touchend', primeAudio, { once: true });
+
     
+const btn = document.getElementById('dictateBtn');
+const inp = document.getElementById('dictateInput');
+
+btn.addEventListener('click', () => {
+  // show the native keyboard (with mic button) by focusing
+  inp.value = '';
+  inp.style.pointerEvents = 'auto';
+  inp.style.opacity = 1;
+  inp.focus();
+});
+
+// when the user finishes (either taps “Done” or leaves the field)
+inp.addEventListener('blur', () => {
+  const txt = inp.value.trim();
+  if (txt) onTranscript(txt);    // reuse your voice‐parser
+  // hide it again
+  inp.style.pointerEvents = 'none';
+  inp.style.opacity = 0;
+});
+
+// optional: submit on Enter too
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    inp.blur();
+  }
+});
+
+
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
