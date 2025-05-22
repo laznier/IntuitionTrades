@@ -355,6 +355,12 @@
   background: var(--icc); color:#000; border:none; border-radius:4px;
   cursor:pointer;
 }
+/* hide by default */
+#dictateBtn { display: none; }
+/* show when on a touchscreen device with iOS Safari UA quirk */
+@supports (-webkit-touch-callout: none) {
+  #dictateBtn { display: block; }
+}
 
   </style>
 </head>
@@ -606,6 +612,25 @@
 
 
   <script>
+
+    // Detect iOS devices
+const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
+
+// Replace your speakFast and speakRedwood with these:
+function speakFast(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = isIOS ? 1.0 : 1.9;    // 1.0 on iOS, 1.9 elsewhere
+  u.lang = 'en-US';
+  window.speechSynthesis.speak(u);
+}
+
+function speakRedwood(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = isIOS ? 1.0 : 1.2;    // 1.0 on iOS, 1.2 elsewhere
+  u.lang = 'en-US';
+  window.speechSynthesis.speak(u);
+}
+
   // call once on the very first tap anywhere
 function primeAudio() {
   window.removeEventListener('touchend', primeAudio);
