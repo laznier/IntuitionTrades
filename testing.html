@@ -328,8 +328,18 @@
 
 /* quadrant squares */
 #redwoodMenu button{
+  align-items: left;
   height: 32px !important;   /* match main-button height */
 }
+/* ── Move Redwood to bottom-left on phones ───────────────── */
+@media (max-width: 768px) {
+  #actionBar {
+    left: 1rem;     /* 1rem from the left edge */
+    right: auto;    /* cancel the right:1rem */
+    bottom: 3rem;   /* same vertical offset you already use */
+  }
+}
+
 /* in your <style> */
     #redwoodMenu button.cold {
   background: var(--icc);   /* green */
@@ -371,18 +381,26 @@
   #dictateBtn { display: block; }
 }
 /* in your main stylesheet */
-
+/* desktop & mobile positioning as you already have */
 #micBtnRadio {
   position: fixed;
-  bottom: 1rem;
   right: 1rem;
-  z-index: 10000;   /* above everything else */
+  
+    /* below Redwood’s z-index:10 but above mobileControls z-index:4 */
+}
+
+/* If you ever need separate desktop/mobile adjustments, you can still wrap them in @media as before */
+@media (max-width: 768px) {
+  #micBtnRadio {
+    bottom: 3.2rem;  /* tweak if needed */
+    z-index: 5;
+  }
 }
 
 #fireballBtn {
   display: none !important;
-}
 
+}
   </style>
 </head>
 <body>
