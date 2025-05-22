@@ -623,15 +623,21 @@
   <script>
 
     // Detect iOS devices
+// detect iOS
 const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent);
 
-// Replace your speakFast and speakRedwood with these:
-function speakFast(text) {
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = isIOS ? 1.0 : 1.9;    // 1.0 on iOS, 1.9 elsewhere
-  u.lang = 'en-US';
-  window.speechSynthesis.speak(u);
-}
+// wrap speechSynthesis.speak so every utterance is slowed on iOS
+(function(){
+  const origSpeak = speechSynthesis.speak.bind(speechSynthesis);
+  speechSynthesis.speak = utterance => {
+    if (isIOS) {
+      utterance.rate = 1.3;     // or 0.9 if you prefer even slower
+      utterance.pitch = 1.3;    // keep pitch natural
+    }
+    return origSpeak(utterance);
+  };
+})();
+
 
 
   // call once on the very first tap anywhere
@@ -2090,6 +2096,12 @@ if (!targets.length) return false;
 
   statusEl.textContent = msg;
   speakFast(msg);
+}
+function speakFast(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate  = 1.9;               // << 2.1×
+  u.lang  = 'en-US';
+  speechSynthesis.speak(u);
 }
 
 /* ---------- COVER ---------- */
