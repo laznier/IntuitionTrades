@@ -396,6 +396,15 @@
     <div id="status">ADW RED, WCS HOLD</div>
     <div id="score">Score: 0</div>
     <div id="feedback"></div>
+    <!-- place this somewhere in your page -->
+<button id="dictateBtn" style="position:fixed;bottom:1rem;left:1rem;z-index:1000;">
+  🎤 Dictate
+</button>
+<input id="dictateInput" type="text"
+       style="position:fixed;bottom:1rem;left:1rem;
+              width:1px;height:1px;opacity:0;pointer-events:none;"
+       autocomplete="off" autocorrect="off" autocapitalize="none" />
+
   </header>
 
   <!-- Action bar (bottom-right) -->
@@ -594,8 +603,53 @@
   
 
   <div id="cursorLabel"></div>
+
+
   <script>
+  // call once on the very first tap anywhere
+function primeAudio() {
+  window.removeEventListener('touchend', primeAudio);
+  // unlock Web AudioContext
+  const Actx = window.AudioContext || window.webkitAudioContext;
+  if (Actx) {
+    const ctx = new Actx();
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  // fire an empty utterance so future .speak() calls work
+  speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+}
+window.addEventListener('touchend', primeAudio, { once: true });
+
     
+const btn = document.getElementById('dictateBtn');
+const inp = document.getElementById('dictateInput');
+
+btn.addEventListener('click', () => {
+  // show the native keyboard (with mic button) by focusing
+  inp.value = '';
+  inp.style.pointerEvents = 'auto';
+  inp.style.opacity = 1;
+  inp.focus();
+});
+
+// when the user finishes (either taps “Done” or leaves the field)
+inp.addEventListener('blur', () => {
+  const txt = inp.value.trim();
+  if (txt) onTranscript(txt);    // reuse your voice‐parser
+  // hide it again
+  inp.style.pointerEvents = 'none';
+  inp.style.opacity = 0;
+});
+
+// optional: submit on Enter too
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    inp.blur();
+  }
+});
+
+
 // at the top of your script, pick whatever on‑screen radius you like:
 const CLICK_RADIUS_SCREEN = 15;  // pixels on the canvas
   /* -------------------------------------------------------------
