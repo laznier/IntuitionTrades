@@ -5189,31 +5189,32 @@ function createRadarReturnElement (r) {
 /* ———————————————————————————————
      Hover → fill the fixed sidebar
   ———————————————————————————————— */
-  el.addEventListener('pointerenter', () => {
+  el.addEventListener('pointerenter', (e) => {   /* pass the event */
     radarInfo.innerHTML = `
       <div>TPS-75</div>
       <div>${altFt.toLocaleString()} ft</div>
       ${octalLine}
       <div>${beStr}</div>`;
     radarInfo.style.display = 'block';
-     moveInfo(e);                   // <- position it once
- retEl.addEventListener('pointermove', moveInfo);
+      moveInfo(e);                   // position it once
+     el.addEventListener('pointermove', moveInfo);  /* same element */
  
   });
+  el.addEventListener('pointerleave', () => radarInfo.style.display = 'none');
+
 el.addEventListener('pointerdown', ev => ev.preventDefault());
   /* helper – always keep the box 12×12 px offset from the cursor */
 function moveInfo(ev){
   const x = ev.clientX + 12;
-  const y = ev.clientY - info.offsetHeight - 12;
-  info.style.left = x + 'px';
-  info.style.top  = y + 'px';
+  const y = ev.clientY - radarInfo.offsetHeight - 12;
+  radarInfo.style.left = x + 'px';
+  radarInfo.style.top  = y + 'px';
 }
 
-  /* Leave → hide the sidebar card */
-  el.addEventListener('pointerleave', () => {
-    radarInfo.style.display = 'none';
-    retEl.removeEventListener('pointermove', moveInfo);
-  });
+el.addEventListener('pointerleave', () => {
+  radarInfo.style.display = 'none';
+  el.removeEventListener('pointermove', moveInfo);
+});
   returnLayer.appendChild(el);
   setTimeout(() => el.remove(), expires - Date.now());
 }
