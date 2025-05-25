@@ -4831,7 +4831,8 @@ missiles.forEach(m => {
 
 
     // ─── TRACKS UPDATE ─── (overwrite existing updateTracks)
-    function updateTracks(dt) {
+    function updateTracks(dt, now) {
+      
   const pps = CFG.nmPerPixel/3600 * CFG.frameRate;
   const icc = statics.find(s => s.type === 'icc');
 
@@ -5230,7 +5231,7 @@ window.addEventListener('pointerup', () => {
     if (paused)           dt = 0;                 // freeze when paused
     else if (fastForward) dt *= fastFactor;       // scale by 2 × or 4 ×
   // ─── 2) update track positions, spawns, etc. ────────────
-  updateTracks(dt);
+  updateTracks(dt, now);
 
   // ─── 3) process any AFFIRMed tracks waiting to ENGAGE ─────────
   if (mode === 'practice') {      // ← run this block ONLY in Air-Battle
