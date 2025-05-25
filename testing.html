@@ -136,6 +136,10 @@
   pointer-events: auto;
   transform-origin: 0 0;           /* so each child scales from its own top-left */
 }
+.radar-return{
+  user-select: none;   /* text can’t be highlighted, caret never shows */
+  cursor: default;     /* optional – normal arrow instead of I-beam */
+}
 
     /* ─── GAME OVER OVERLAY STYLES ─────────────────────────────────────── */
 #gameOverOverlay {
@@ -509,6 +513,31 @@
 #uiLayer .card .close-btn {
   pointer-events: auto;
 }
+/* ─── compact radar-return popup ───────────────────────────── */
+#radarInfo{
+  position:absolute;        /* follow the cursor */
+
+  /* “way smaller” footprint */
+  width:110px;
+  height:70px;
+  max-width:110px;
+  max-height:70px;
+
+  background: rgba(0,0,0,0.5);
+  border:1px solid #333;
+  border-radius:8px;
+  padding:.5rem .75rem;
+  color:#f8f8f8;
+  font-size:.75rem;          /* smaller text so it fits */
+  line-height:1;
+  overflow:auto;
+
+  display:none;              /* JS still toggles this */
+  pointer-events:none;       /* stays transparent to clicks */
+  z-index:20;
+}
+
+
   </style>
 </head>
 <body>
@@ -829,6 +858,10 @@ function syncReturnLayer(){
   returnLayer.style.transform =
     `translate(${-offX * scale}px, ${-offY * scale}px) scale(${scale})`;
 }
+/* fixed sidebar card for radar-return details */
+const radarInfo = document.createElement('div');
+radarInfo.id = 'radarInfo';
+document.body.appendChild(radarInfo);
 
 
 // at the top of your script, pick whatever on‑screen radius you like:
@@ -5123,6 +5156,7 @@ updateVisibility();
 
 // first pass before anyone draws
 setInterval(updateVisibility,1000);
+
 function createRadarReturnElement (r) {
   const { track, x, y, expires, friendly } = r;
 
@@ -5152,13 +5186,34 @@ function createRadarReturnElement (r) {
     top:  `${y - 6}px`,
     pointerEvents: 'auto'
   });
-  el.innerHTML = `
-    <div class="tooltip">
+/* ———————————————————————————————
+     Hover → fill the fixed sidebar
+  ———————————————————————————————— */
+  el.addEventListener('pointerenter', () => {
+    radarInfo.innerHTML = `
       <div>TPS-75</div>
       <div>${altFt.toLocaleString()} ft</div>
       ${octalLine}
-      <div>${beStr}</div>
-    </div>`;
+      <div>${beStr}</div>`;
+    radarInfo.style.display = 'block';
+     moveInfo(e);                   // <- position it once
+ retEl.addEventListener('pointermove', moveInfo);
+ 
+  });
+el.addEventListener('pointerdown', ev => ev.preventDefault());
+  /* helper – always keep the box 12×12 px offset from the cursor */
+function moveInfo(ev){
+  const x = ev.clientX + 12;
+  const y = ev.clientY - info.offsetHeight - 12;
+  info.style.left = x + 'px';
+  info.style.top  = y + 'px';
+}
+
+  /* Leave → hide the sidebar card */
+  el.addEventListener('pointerleave', () => {
+    radarInfo.style.display = 'none';
+    retEl.removeEventListener('pointermove', moveInfo);
+  });
   returnLayer.appendChild(el);
   setTimeout(() => el.remove(), expires - Date.now());
 }
