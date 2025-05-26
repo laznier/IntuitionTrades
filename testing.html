@@ -4191,7 +4191,7 @@ else if (s.type === 'c2Rad') {
     // 6 rev/min → 360°×6/60s = 36°/s → 0.036°/ms
     s._spinAngle = (s._spinAngle + Δms * 0.036) % 360;
   }
-  const w = 24, h = 12;
+  const w = 14, h = 10;
 
   // 1) draw green rectangle
   ctx.save();
@@ -4205,14 +4205,32 @@ else if (s.type === 'c2Rad') {
   ctx.save();
     ctx.translate(s.x, s.y);
     ctx.rotate(ang);
-    ctx.strokeStyle = 'limegreen';
-    ctx.lineWidth   = 2;
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth   = 1;
     ctx.beginPath();
       ctx.moveTo(0, -h/2 + 2);
       ctx.lineTo(0,  h/2 - 2);
     ctx.stroke();
   ctx.restore();
+ctx.save();
+ctx.strokeStyle = 'limegreen';   // same colour as the radar outline
+ctx.lineWidth   = 2;             // match the rectangle’s stroke
 
+const STEM = 4;    // length of the vertical stem
+const FOOT = 4;    // half-length of the horizontal foot
+// bottom-centre of the rectangle
+const baseX = s.x;
+const baseY = s.y + h / 2;
+
+ctx.beginPath();
+// vertical stem
+ctx.moveTo(baseX, baseY);
+ctx.lineTo(baseX, baseY + STEM);
+// horizontal foot
+ctx.moveTo(baseX - FOOT, baseY + STEM);
+ctx.lineTo(baseX + FOOT, baseY + STEM);
+ctx.stroke();
+ctx.restore();
     
     /* ─── NASAMS launcher & 15 NM ring ─────────────────────────── */
 } else if (s.id === 'NASAMS') {
@@ -4244,7 +4262,10 @@ else if (s.type === 'c2Rad') {
    
 
  
-} else if (s.type === 'fu') {
+}
+
+
+else if (s.type === 'fu') {
       // draw a little SAM launcher icon angled up
       ctx.fillStyle = colICC;
       ctx.save();
@@ -4278,68 +4299,126 @@ else if (s.type === 'c2Rad') {
     }
     
     else if (s.type === 'C2') {
+       ctx.save();
+  const R_OUT = 6;
+  const R_INNER = R_OUT / 2;
   // draw C2 as a little shaded dot
-  ctx.save();
-  ctx.fillStyle = 'rgba(0,255,0,0.8)';   // pick whatever color + alpha you like
+  /* yellow filled disk */
+  ctx.fillStyle = '#ffd60a';          // same colour as --yellow
   ctx.beginPath();
-    ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);  // radius = 6px (tweak as desired)
+  ctx.arc(s.x, s.y, R_OUT, 0, Math.PI * 2);
   ctx.fill();
+
+  /* white outer ring */
+  ctx.lineWidth   = 1;
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
+
+  /* white inner ring (½ radius) */
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, R_INNER, 0, Math.PI * 2);
+  ctx.stroke();
+
   ctx.restore();
     }
-  
-    else if (s.type === 'icc') {
-  const size       = 16;  // side length of the square
-  const half       = size / 2;
-  const arrowLen   = 6;   // length of each arrowhead
-  const arrowOff   = 4;   // how far the arrowhead points back
+  /* ─── HHQ / AOC – identical yellow bull-eye ─────────────────────── */
+ else if (s.type === 'AOC') {
+  ctx.save();
+  const R_OUT = 6;
+  const R_INNER = R_OUT / 2;
 
-  // 1) green square
-  ctx.strokeStyle = colICC;
-  ctx.lineWidth   = 2;
-  ctx.strokeRect(s.x - half, s.y - half, size, size);
+  ctx.fillStyle = '#ffd60a';
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, R_OUT, 0, Math.PI * 2);
+  ctx.fill();
 
- 
+  ctx.lineWidth   = 1;
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
 
+  ctx.beginPath();
+  ctx.arc(s.x, s.y, R_INNER, 0, Math.PI * 2);
+  ctx.stroke();
 
-  // 3) arrowheads
-  ctx.fillStyle = 'yellow';
-  // left arrow
-  ctx.beginPath();
-    ctx.moveTo(s.x - half, s.y);
-    ctx.lineTo(s.x - half + arrowLen, s.y - arrowOff);
-    ctx.lineTo(s.x - half + arrowLen, s.y + arrowOff);
-  ctx.closePath();
-  ctx.fill();
-  // right arrow
-  ctx.beginPath();
-    ctx.moveTo(s.x + half, s.y);
-    ctx.lineTo(s.x + half - arrowLen, s.y - arrowOff);
-    ctx.lineTo(s.x + half - arrowLen, s.y + arrowOff);
-  ctx.closePath();
-  ctx.fill();
-  // top arrow
-  ctx.beginPath();
-    ctx.moveTo(s.x, s.y - half);
-    ctx.lineTo(s.x - arrowOff, s.y - half + arrowLen);
-    ctx.lineTo(s.x + arrowOff, s.y - half + arrowLen);
-  ctx.closePath();
-  ctx.fill();
-  // bottom arrow
-  ctx.beginPath();
-    ctx.moveTo(s.x, s.y + half);
-    ctx.lineTo(s.x - arrowOff, s.y + half - arrowLen);
-    ctx.lineTo(s.x + arrowOff, s.y + half - arrowLen);
-  ctx.closePath();
-  ctx.fill();
+  ctx.restore();
+
 }
+ /* ─── ICC  (Bigfoot) – red bull-eye + “T-bar” cross-hairs ───────── */
+ else if (s.type === 'icc') {
+  ctx.save();
+  ctx.translate(s.x, s.y);
 
-    else {
+  /* sizes (tweak to taste) */
+  const R_OUT   = 6;          // radius of the red disk
+  const R_INNER = R_OUT / 2;   // inner white ring
+  const BAR_LEN = 6;           // cross-bar half-length (each “T” top)
+  const STEM    = 6;           // stem length outward from the bar
+  const GAP     = 2;           // gap from disk edge → start of bar
+
+  /* 1 – red disk */
+  ctx.fillStyle = 'red';
+  ctx.beginPath();
+  ctx.arc(0, 0, R_OUT, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* 2 – white outer ring */
+  ctx.lineWidth   = 1;
+  ctx.strokeStyle = 'white';
+  ctx.stroke();
+
+  /* 3 – inner white ring (½ radius) */
+  ctx.beginPath();
+  ctx.arc(0, 0, R_INNER, 0, Math.PI * 2);
+  ctx.stroke();
+
+ /* T-bars: shorter caps, longer stems, pulled inward */
+const INSET = 1;                 // bring each T this many px toward centre
+const BAR   = BAR_LEN / 2;       // cap half as long
+const LIMB  = STEM + 2;          // stem 2 px longer
+const BASE  = R_OUT - INSET;     // where the stem begins
+
+ctx.lineWidth   = 1;
+ctx.strokeStyle = 'lime';        // or your CSS var
+ctx.beginPath();
+
+/* Top */
+ctx.moveTo(0, -BASE);
+ctx.lineTo(0, -BASE - LIMB);
+ctx.moveTo(-BAR, -BASE - LIMB);
+ctx.lineTo( BAR, -BASE - LIMB);
+
+/* Right */
+ctx.moveTo(BASE, 0);
+ctx.lineTo(BASE + LIMB, 0);
+ctx.moveTo(BASE + LIMB, -BAR);
+ctx.lineTo(BASE + LIMB,  BAR);
+
+/* Bottom */
+ctx.moveTo(0,  BASE);
+ctx.lineTo(0,  BASE + LIMB);
+ctx.moveTo(-BAR, BASE + LIMB);
+ctx.lineTo( BAR, BASE + LIMB);
+
+/* Left */
+ctx.moveTo(-BASE, 0);
+ctx.lineTo(-BASE - LIMB, 0);
+ctx.moveTo(-BASE - LIMB, -BAR);
+ctx.lineTo(-BASE - LIMB,  BAR);
+
+ctx.stroke();
+
+
+  ctx.restore();          // <-- add this brace to close the ICC block
+
+ } 
+ else {
       // default icon for other statics
       ctx.strokeStyle = colICC;
       ctx.beginPath();
       ctx.arc(s.x, s.y, 6, 0, 2 * Math.PI);
       ctx.stroke();
     }
+
     
     // ─── CONDITIONAL STATIC LABELS ─────────────────────────────────
     // only draw when tags are ON (tagMode > 0)
