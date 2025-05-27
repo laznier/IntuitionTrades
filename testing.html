@@ -2106,11 +2106,20 @@ function groupBullseyeVoice(raw){
     return true;
   }
 
-  /* ── coverage gate – same rule as parseCmd() ────────────────── */
+  // ── coverage gate – same rule as parseCmd() ──────────────────
   const inCovList = gate.filter(inCov);           // reuse your helper
-  if (!inCovList.length){
-speakFast(`${ADAFCO}, ${ICC},birds negate group bullseye ${speakBE(brgRef, rngRef)}`
-);
+
+  // 🚫 if this is an ENGAGE and NASAMS is chosen but reloading → NEGATE
+  if (verb === 'engage') {
+    const nas = statics.find(s => s.id === 'NASAMS');
+    if (nas && Date.now() < NASAMSDisabledUntil) {
+      speakFast(`${ADAFCO}, ${ICC}, birds negate group bullseye ${speakBE(brgRef, rngRef)}`);
+      return true;
+    }
+  }
+
+  if (!inCovList.length) {
+    speakFast(`${ADAFCO}, ${ICC}, birds negate group bullseye ${speakBE(brgRef, rngRef)}`);
     return true;
   }
 
@@ -2412,27 +2421,39 @@ function doHold(arr){
 
 
 // ① Extract all of your “W” logic into one helper:
-function engageTrack(t) {
-  // 1) immediate SL/AWAY call‑out
+
+ function engageTrack(t) {
+  // ── 0) pick NASAMS and check its reload
+   const NASAMS       = statics.find(s => s.id === 'NASAMS');
+   const inNASAMSRing = NASAMS && distNm(NASAMS, t) <= 20;
+  if (inNASAMSRing && Date.now() < NASAMSDisabledUntil) {
+    return radioSay(`${ADAFCO}, ${ICC}, birds negate track ${t.id}`);
+  }
+
+   // ── 1) choose the actual FU now that NASAMS is cleared
+   const fu = inNASAMSRing ? NASAMS : closestFu(t);
+   const distFu = distNm(fu, t);
+
+
+ // ── 2) attempt to fire; bail if we didn’t actually launch
+  let didFire;
+  if (fu.id === 'NASAMS') {
+    didFire = !checkNASAMSStatus(inNASAMSRing);        // ETIC spoken inside
+    if (didFire) STATS.missilesUsed.aim120 += 2;
+  } else {
+    // first, block if the **radar** is down / weapons-red
+    if (checkPatriotStatus(fu)) {
+      didFire = false;        // UI & voice already updated in checkPatriotStatus()
+    } else {
+      // then pick missile type & consume
+      didFire = processPatriotEngagement(fu, distFu);
+    }
+  }
+  if (!didFire) return;    // ← never reaches Birds Away unless a shot really left
+
+  // ── 3) now it’s safe to announce Birds Away
   const quad = getQuadrant(t);
-  statusEl.textContent    = `SL, ADAFCO, BIRDS AWAY ${quad}`;
-
-  // NEW:
-// 1) decide which launcher to use:
-const NASAMS       = statics.find(s => s.id === 'NASAMS');
-const inNASAMSRing = NASAMS && distNm(NASAMS, t) <= 20;
-const fu          = inNASAMSRing ? NASAMS : closestFu(t);
-
-// 2) check reload & ammo for this FU
-const distFu = distNm(fu, t);
-if (fu.id === 'NASAMS') {
-  // NASAMS uses checkNASAMSStatus (unchanged)
-  if (checkNASAMSStatus(inNASAMSRing)) return;
-  STATS.missilesUsed.aim120 += 2;   //  ← add this
-} else {
-  // Patriot uses our new mixed‑mag logic
-  if (!processPatriotEngagement(fu, distFu)) return;
-}
+  statusEl.textContent = `SL, ADAFCO, BIRDS AWAY ${quad}`;
 
 
 const speedPxPerSec = ( (t.isTbm ? 5000 : 3600) / 3600 ) / CFG.nmPerPixel;
@@ -2859,8 +2880,8 @@ function onTranscript(raw) {
 /* ===== speech-recognition wiring ===== */
 let recog=null, mic=false;
 function micInit(){
-  if(!SR){ alert('Speech-to-text not supported'); return; }
-  if(recog){ recog.start(); mic=true; return; }
+if(!SR){ alert('Speech-to-text not supported'); return; }
+  if(recog) return;                // only init once
 
 function normaliseBullseye(txt){
   return txt
@@ -2877,15 +2898,15 @@ function normaliseBullseye(txt){
     .replace(/\bgroup\b/gi,      'group');
 }
 
-
   recog=new SR(); recog.lang='en-US'; recog.continuous=true; recog.interimResults=false;
 recog.onresult = e => {
   const raw = e.results[e.resultIndex][0].transcript;
   onTranscript(raw);
 };
   recog.onerror=e=>console.error(e);
-  recog.start(); mic=true;
 }
+
+
 
 /* ===== mic button & Ctrl push-to-talk ===== */
 (()=>{ if(document.getElementById('micBtnRadio')) return;
@@ -2899,7 +2920,8 @@ const micBtn = document.getElementById('micBtnRadio');
 window.addEventListener('keydown',e=>{
   if(!e.repeat && e.key==='Control'){
     if(speechSynthesis.speaking) speechSynthesis.cancel();
-    micInit(); mic=true; micBtn.textContent='🎙️ Mic ON';
+    micInit();                     // ensure recognizer is created
+    recog.start(); mic=true; micBtn.textContent='🎙️ Mic ON';
   }
 });
 window.addEventListener('keyup',e=>{
@@ -3256,7 +3278,7 @@ function buildStatics(){
 
         statics = [
   // ─── ICC at center ───────────────────────────────────────────
-  { type: 'icc',   id: 'ICC',            x: cx,                  y: cy },
+  { type: 'icc',   id: '00731',            x: cx,                  y: cy },
 
   // ─── Patriot MPQ‑53 radars + launchers ───────────────────────
   // launcher 1 (NE)
@@ -3287,21 +3309,22 @@ function buildStatics(){
 ];
 
 
-// ── C2 (friendly) icon ─────────────────────
+  /* ── SENTINEL radar truck (replaces C2) ────────────── */
   statics.push({
-    type:'C2',
-    id:   'CRC',            // label it “BIGFOOT”
-    system:        'TPS‑75',          // distinct system
-    label:         'FRIEND',          // ID field for card
-    x:    cx - 3 / CFG.nmPerPixel,  
-    y:    cy + 4 / CFG.nmPerPixel, 
+    type:   'sentinel',
+    id:     '00175',      // ← JTN here
+    system: 'AN/MPQ-64',
+    label:  'FRIEND',
+    x:      cx - 3 / CFG.nmPerPixel,
+    y:      cy + 4 / CFG.nmPerPixel,
+    disabledUntil: 0
   });
 
 
-  // ── HHQ (friendly) icon ─────────────────────
+  // ── C@ (friendly) icon ─────────────────────
   statics.push({
-    type:'AOC',
-    id:   'HHQ',            // label it “BIGFOOT”
+    type:'crc',
+    id:   '00225',            // label it “BIGFOOT”
     label:         'FRIEND',          // ID field for card
     x:    cx + 3 / CFG.nmPerPixel,  
     y:    cy + 1 / CFG.nmPerPixel, 
@@ -3559,50 +3582,6 @@ function getFuLabel(fu) {
   return `${hemiNS}${hemiEW} PATRIOT`;
 }
 
-// Returns true if this FU is out of action (weapons‑red or reloading),
-// and updates feedback + schedules reload when needed.
-// Otherwise decrements its missile count and possibly shows a warning.
-function checkPatriotStatus(fu) {
-  const now = Date.now();
-  // lazy‑init magazine & reload timer
-  if (fu.missilesRemaining == null) {
-    fu.missilesRemaining   = 8;
-    fu.disabledUntilFu     = 0;
-  }
-  const label = getFuLabel(fu);
-  // still reloading?
-    if (now < fu.disabledUntilFu) {
-   const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
-    const msg  = `ADAFCO, TD, CANTCO, ${label} Reload, ETIC ${mins} min`;
-    statusEl.textContent   = msg;
-    feedbackEl.textContent = msg;
-    return true;
-  }
-  // empty magazine → start reload
-  if (fu.missilesRemaining <= 0) {
-        fu.disabledUntilFu = now + 15*60*1000;
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Reloading. Down for 15 minutes`;
-    // ─── turn its paired radar red for the same duration ─────────────────
-    const radars = statics.filter(s => s.type === 'rad');
-    const paired = radars.reduce((best, s) =>
-      !best || distNm(fu, s) < distNm(fu, best) ? s : best,
-    null);
-    paired.disabledUntil = fu.disabledUntilFu;
-
-    setTimeout(() => { fu.missilesRemaining = 8; }, 15*60*1000);
-    return true;
-  }
-  // consume one
-  fu.missilesRemaining--;
-  // warnings
-  if (fu.missilesRemaining === 4) {
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
-  } else if (fu.missilesRemaining === 2) {
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Red`;
-  }
-  return false;
-}
-
 
 function initTracks () {
   tracks = Array.from({ length: CFG.trackCount }, newTrack);
@@ -3678,9 +3657,10 @@ function spawnTbmWave() {
 function engageTbmWithPatriot(tbm) {
   const fu = closestFu(tbm);
   const d  = distNm(fu, tbm);
+  // everything—including reload, magazine-empty and wedge-hit—now lives
+  // in processPatriotEngagement(): if it returns false, don’t fire.
   if (!processPatriotEngagement(fu, d)) return;
- // Patriot‑magazine check
-  if (checkPatriotStatus(fu)) return;
+
   const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
@@ -3942,12 +3922,14 @@ if (inRing || inAnyWedgeGeom) {
 if (!track.isTbm && !track.isCruise) {
   console.log(`☠️ Valid kill of ${track.id} — checking friendlies`);
   tracks.forEach(f => {
-    if (f.friendly && !f.destroyed) {
+     if (f.friendly && !f.destroyed) {
       const d = distNm(f, track);
       console.log(`   • friendly ${f.id} is ${d} NM away`);
       if (d <= 5) {
         console.log(`   → FRATRICIDE: destroying ${f.id}`);
-        f.destroyed = true;
+            f.destroyed  = true;
+            f.tag        = null;     // clear any lingering tag
+            f._visible   = false;    // force it off the screen immediately
         changeScore(-20, `Fratricide! Friendly ${f.id} within ${d} NM of ${track.id}`);
       }
     }
@@ -4131,12 +4113,11 @@ function drawStatics() {
     !best || distNm(f, s) < distNm(best, s) ? f : best,
   null);
 
+  // 2) only radar‐outages ever turn red; reloads leave it green
   const isOutage = now < s.disabledUntil;
-  const isReload = pairedFu && now < pairedFu.disabledUntilFu;
-  let fillColor;
-  if (isOutage)       fillColor = 'rgba(255,0,0,0.1)';
-  else if (isReload)  fillColor = 'rgba(255,165,0,0.1)';
-  else                fillColor = 'rgba(0,255,0,0.1)';     // green when active
+  const fillColor = isOutage
+    ? 'rgba(255,0,0,0.1)'
+    : 'rgba(0,255,0,0.1)';
 
   // 3) draw the 60 NM ±60° wedge with that color
   ctx.save();
@@ -4156,173 +4137,401 @@ function drawStatics() {
       ctx.fill();
   ctx.restore();
 
-  // 4) draw the little dish icon unchanged
-  ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.strokeStyle = colICC;
-    ctx.lineWidth   = 2;
-    // dish arc
-    ctx.beginPath();
-      ctx.arc(0, 0, 8, -Math.PI*0.7, Math.PI*0.7);
-      ctx.stroke();
-    // stem + base
-    ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(0, 10);
-      ctx.stroke();
-    ctx.fillStyle = colICC;
-    ctx.fillRect(-4, 10, 8, 3);
-  ctx.restore();
+/* 4) Patriot radar symbol – 50 % smaller version */
+ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.lineJoin = ctx.lineCap = 'round';
+
+/* uniform scale factor — 0.25 = 75 % smaller (keeps maths tidy) */
+const SCALE = 0.5;
+
+/* ── geometry (base values × SCALE) ───────────────────────────── */
+const BASE_W  = 10  * SCALE,
+      BASE_H  =  3  * SCALE,
+      TOWER_H = 10  * SCALE,
+      TOWER_W =  8  * SCALE,
+      DISH_R  =  8  * SCALE,
+      TILT    = -35 * Math.PI / 180;   // unchanged
+
+/* ── colours & stroke width ───────────────────────────────────── */
+const CLR_DISH   = '#5a5a5a',
+      CLR_TRUSS  = '#4a4a4a',
+      CLR_BASE   = '#3c3c3c',
+      CLR_STROKE = '#202020';
+
+ctx.lineWidth = 1.2 * SCALE;
+
+/* ── base block ─────────────────────────────────────────── */
+ctx.fillStyle = CLR_BASE;
+ctx.fillRect(-BASE_W/2, -BASE_H, BASE_W, BASE_H);
+
+/* ── truss legs & braces ───────────────────────────────── */
+ctx.fillStyle   = CLR_TRUSS;
+ctx.strokeStyle = CLR_STROKE;
+
+/* side legs */
+ctx.beginPath();
+  ctx.moveTo(-TOWER_W/2, -BASE_H);
+  ctx.lineTo( 0,          -BASE_H - TOWER_H);
+  ctx.lineTo( TOWER_W/2, -BASE_H);
+ctx.closePath();
+ctx.fill();
+
+/* X-braces */
+ctx.beginPath();
+  ctx.moveTo(-TOWER_W/2,        -BASE_H);
+  ctx.lineTo( TOWER_W/2, -BASE_H - TOWER_H);
+  ctx.moveTo( TOWER_W/2,        -BASE_H);
+  ctx.lineTo(-TOWER_W/2, -BASE_H - TOWER_H);
+ctx.stroke();
+
+/* small mounting plate */
+ctx.beginPath();
+  ctx.moveTo(-3 * SCALE, -BASE_H - TOWER_H);
+  ctx.lineTo( 3 * SCALE, -BASE_H - TOWER_H);
+ctx.stroke();
+
+/* ── dish & feed-horn ─────────────────────────────────── */
+ctx.save();
+  ctx.translate(0, -BASE_H - TOWER_H);
+  ctx.rotate(TILT);
+
+  /* concave side faces feed-horn */
+  ctx.fillStyle   = CLR_DISH;
+  ctx.beginPath();
+    ctx.arc(0, 0, DISH_R, -Math.PI/2, Math.PI/2, false);
+    ctx.lineTo(0, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  /* feed-horn stub */
+  const hx = DISH_R * 0.6;
+  ctx.beginPath();
+    ctx.moveTo(hx, 0);
+    ctx.lineTo(hx + 4 * SCALE, 0);
+  ctx.stroke();
+  ctx.beginPath();
+    ctx.arc(hx + 4 * SCALE, 0, 1.5 * SCALE, 0, Math.PI * 2);
+  ctx.fillStyle = CLR_STROKE;
+  ctx.fill();
+ctx.restore();   // leave dish rotation
+
+ctx.restore();   // leave icon transform
 
 }
-else if (s.type === 'c2Rad') {
-  // ─── TPS‑75: green rectangle + central spinner (6 RPM) ─────────────────
+
+/* ─── TPS-75 planar-array radar with animated sweep ─────────────── */
+ else if (s.type === 'c2Rad') {
   const now = Date.now();
-  // init spinner state
-  if (s._spinLast == null) {
-    s._spinLast  = now;
-    s._spinAngle = 0;
-  }
-  // only advance when radar is up
-  const active = now >= (s.disabledUntil || 0) && s.animFrom == null;
-  const Δms    = now - s._spinLast;
-  s._spinLast  = now;
+
+  /* ── init + 6 RPM sweep angle (unchanged) ────────────────────── */
+  if (s._spinLast == null) { s._spinLast = now; s._spinAngle = 0; }
+  const active  = now >= (s.disabledUntil || 0) && s.animFrom == null;
+  const Δms     = now - s._spinLast;
+  s._spinLast   = now;
   if (active) {
-    // 6 rev/min → 360°×6/60s = 36°/s → 0.036°/ms
+    // 6 rev/min  →  360° ×6 / 60 s  =  36 °/s  →  0.036 °/ms
     s._spinAngle = (s._spinAngle + Δms * 0.036) % 360;
   }
-  const w = 14, h = 10;
 
-  // 1) draw green rectangle
+  /* ── geometry / colours ─────────────────────────────────────── */
+  const W = 8, H = 6;               // panel width / height  (px)
+  const PADDING = 2;                  // border inset
+  const STEM_H  = 4;                  // support-stem length
+  const FOOT_W  = 4;                  // half length of the horizontal foot
+
+const CLR_FILL   = '#2f3a33';   // darker, muted green face
+const CLR_FRAME  = '#1f2421';   // very dark frame
+const CLR_SWEEP  = '#4f7a53';   // deeper, subdued sweep bar
+const CLR_BASE   = '#1f2433';   // match the frame for supports
+
+  /* ── 1) planar array panel ─────────────────────────────────── */
   ctx.save();
-    ctx.strokeStyle = 'limegreen';
-    ctx.lineWidth   = 2;
-    ctx.strokeRect(s.x - w/2, s.y - h/2, w, h);
+    ctx.fillStyle   = CLR_FILL;
+    ctx.strokeStyle = CLR_FRAME;
+    ctx.lineWidth   = 1;
+
+    // filled face
+    ctx.fillRect(s.x - W/2, s.y - H/2, W, H);
+
+    // frame border
+    ctx.strokeRect(s.x - W/2, s.y - H/2, W, H);
   ctx.restore();
 
-  // 2) draw spinner line
-  const ang = s._spinAngle * Math.PI / 180;
+  /* ── 2) animated sweep bar (slides across face) ────────────── */
+  // convert 0–360° sweepAngle to 0–W movement L→R
+  const sweepX = ((s._spinAngle / 360) * (W - 2*PADDING)) - (W/2 - PADDING);
+
   ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.rotate(ang);
-    ctx.strokeStyle = 'yellow';
+    ctx.strokeStyle = CLR_SWEEP;
     ctx.lineWidth   = 1;
+
     ctx.beginPath();
-      ctx.moveTo(0, -h/2 + 2);
-      ctx.lineTo(0,  h/2 - 2);
+      ctx.moveTo(s.x + sweepX,        s.y - H/1.5 + PADDING);
+      ctx.lineTo(s.x + sweepX,        s.y + H/1.5 - PADDING);
     ctx.stroke();
   ctx.restore();
-ctx.save();
-ctx.strokeStyle = 'limegreen';   // same colour as the radar outline
-ctx.lineWidth   = 2;             // match the rectangle’s stroke
 
-const STEM = 4;    // length of the vertical stem
-const FOOT = 4;    // half-length of the horizontal foot
-// bottom-centre of the rectangle
-const baseX = s.x;
-const baseY = s.y + h / 2;
+  /* ── 3) upside-down-T support mast (unchanged size) ─────────── */
+  ctx.save();
+    ctx.strokeStyle = CLR_BASE;
+    ctx.lineWidth   = 1.5;
 
-ctx.beginPath();
-// vertical stem
-ctx.moveTo(baseX, baseY);
-ctx.lineTo(baseX, baseY + STEM);
-// horizontal foot
-ctx.moveTo(baseX - FOOT, baseY + STEM);
-ctx.lineTo(baseX + FOOT, baseY + STEM);
-ctx.stroke();
-ctx.restore();
-    
-    /* ─── NASAMS launcher & 15 NM ring ─────────────────────────── */
-} else if (s.id === 'NASAMS') {
-    // 15 NM NASAMS ring: red if weapons disabled, else yellow
-    const now      = Date.now();
-    const disabled = now < NASAMSDisabledUntil;
-    ctx.save();
-         ctx.fillStyle = disabled
-       ? 'rgba(255,0,0,0.1)'
-       : 'rgba(0,255,0,0.1)';     // green when ready
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI*2);
-      ctx.fill();
-    ctx.restore();
+    const baseX = s.x;
+    const baseY = s.y + H / 1.8;
 
-// launcher icon (unfilled)
-    ctx.strokeStyle = colICC;
-    ctx.lineWidth   = 1;
-    ctx.save();
-      ctx.translate(s.x, s.y);
-      ctx.strokeRect(-3, -12, 6, 12);             // outline body
-      ctx.beginPath();                            // outline nose
-        ctx.moveTo(-4, -12);
-        ctx.lineTo(0, -20);
-        ctx.lineTo(4, -12);
-      ctx.closePath();
-      ctx.stroke();
-    ctx.restore();
-   
+    // vertical stem
+    ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo(baseX, baseY + STEM_H);
+    ctx.stroke();
 
- 
+    // horizontal foot
+    ctx.beginPath();
+      ctx.moveTo(baseX - FOOT_W, baseY + STEM_H);
+      ctx.lineTo(baseX + FOOT_W, baseY + STEM_H);
+    ctx.stroke();
+  ctx.restore();
 }
 
 
-else if (s.type === 'fu') {
-      // draw a little SAM launcher icon angled up
-      ctx.fillStyle = colICC;
-      ctx.save();
-        ctx.translate(s.x, s.y);
-        // missile body (12px tall) goes upward from the origin
-        ctx.fillRect(-3, -12, 6, 12);
-        // nose cone sits above the body
-        ctx.beginPath();
-        ctx.moveTo(-4, -12);
-        ctx.lineTo(0, -20);
-        ctx.lineTo(4, -12);
-        ctx.closePath();
-        ctx.fill();
-      ctx.restore();
-    } 
-      else if (s.type === 'corr') {
-     // draw a cyan cross for correlation track
-     ctx.save();
-        ctx.strokeStyle = 'rgba(0,255,255,0.7)';
-        ctx.lineWidth   = 2;
-        const size = 10;
-        ctx.beginPath();
-        ctx.moveTo(s.x - size, s.y);
-        ctx.lineTo(s.x + size, s.y);
-        ctx.moveTo(s.x, s.y - size);
-        ctx.lineTo(s.x, s.y + size);
-        ctx.stroke();
-        ctx.fillStyle = 'cyan';
-        ctx.fillText(s.id, s.x + 8, s.y - 8);
-      ctx.restore();
-    }
+/* ─── SENTINEL radar – mini truck + planar array ─────── */
+ else if (s.type === 'sentinel') {
+  /* panel sweep angle (re-use _spinAngle) */
+  const now   = Date.now();
+  if (s._spinLast == null) { s._spinLast = now; s._spinAngle = 0; }
+  const active = now >= s.disabledUntil;
+  const dMs    = now - s._spinLast;
+  s._spinLast  = now;
+  if (active) s._spinAngle = (s._spinAngle + dMs * 0.05) % 360;   // ~8 RPM
+
+  const SCALE = 0.40;                // keeps it small
+  const B   = 14 * SCALE, H =  4 * SCALE;   // truck bed
+  const CAB =  4 * SCALE;
+  const WHEEL = 1.5 * SCALE;
+  const PNL_W = 5 * SCALE, PNL_H =  6 * SCALE;
+
+  ctx.save();
+  ctx.translate(s.x, s.y);
+
+  /* truck bed */
+  ctx.fillStyle = '#303030';
+  ctx.fillRect(-B/2, -H/2, B, H);
+  /* cab */
+  ctx.fillStyle = '#404040';
+  ctx.fillRect( B/2 - CAB, -H/2, CAB, H);
+  /* wheels (pair) */
+  ctx.fillStyle = '#0a1a1a';
+  [-B*0.25, B*0.15].forEach(x => {
+    ctx.beginPath(); ctx.arc(x, H/2 + WHEEL, WHEEL, 0, Math.PI*2); ctx.fill();
+  });
+
+  /* planar array panel */
+  ctx.save();
+    ctx.translate(-B/2 + 2*SCALE, -H/2);      // just behind cab
+    ctx.rotate(-20 * Math.PI/180);            // slight tilt
+    ctx.fillStyle   = '#505c4f';
+    ctx.strokeStyle = '#323d37';
+    ctx.lineWidth   = 0.3;
+    ctx.fillRect(0, -PNL_H, PNL_W, PNL_H);
+    ctx.strokeRect(0, -PNL_H, PNL_W, PNL_H);
+
+    /* moving sweep bar */
+    const xOff = (s._spinAngle/360) * (PNL_W-4) + 2;
+    ctx.strokeStyle = '#505050';
+    ctx.beginPath();
+      ctx.moveTo(xOff, -PNL_H+2);
+      ctx.lineTo(xOff, -2);
+    ctx.stroke();
+  ctx.restore();
+
+  ctx.restore();
+
+  /* grey-out when disabled */
+  if (now < s.disabledUntil) {
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(s.x-PNL_W/2, s.y-PNL_H-H/2, PNL_W, PNL_H+H);
+  }}
+
     
-    else if (s.type === 'C2') {
-       ctx.save();
-  const R_OUT = 6;
-  const R_INNER = R_OUT / 2;
-  // draw C2 as a little shaded dot
-  /* yellow filled disk */
-  ctx.fillStyle = '#ffd60a';          // same colour as --yellow
+/* ─── NASAMS launcher – simple 1-tube pack split in half ───────── */
+ else if (s.id === 'NASAMS') {
+  /* 1 ─ 15 NM engagement ring (unchanged) */
+  const now      = Date.now();
+  const disabled = now < NASAMSDisabledUntil;
+  ctx.save();
+    ctx.fillStyle = disabled
+      ? 'rgba(255,0,0,0.1)'
+      : 'rgba(0,255,0,0.1)';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI * 2);
+    ctx.fill();
+  ctx.restore();
+
+ctx.save();
+  ctx.translate(s.x, s.y);
+
+  /* — 50% scaled constants — */
+  const TRUCK_L   =  6;      // was 16
+  const TRUCK_H   =  1.5;      // was 4
+  const CAB_L     =  1.5;      // was 4
+  const SMALL_R   = 0.60;    // was 1.5
+  const LAUNCH_L  = 3.5;     // was 13
+  const LAUNCH_H  = 1.5;     // was 3
+  const ARM_LEN   = 2.5;     // was 7
+  const ELEVATE   = -45 * Math.PI / 180;
+
+  /* — body — */
+  ctx.fillStyle = '#505c4f';
+  ctx.fillRect(-TRUCK_L/2, -TRUCK_H/2, TRUCK_L, TRUCK_H);
+
+  /* — cab — */
+  ctx.fillStyle = '#323d37';
   ctx.beginPath();
-  ctx.arc(s.x, s.y, R_OUT, 0, Math.PI * 2);
+    ctx.moveTo( TRUCK_L/2 - CAB_L, -TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2,          -TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2,           TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2 - CAB_L,   TRUCK_H/2);
+  ctx.closePath();
   ctx.fill();
 
-  /* white outer ring */
-  ctx.lineWidth   = 1;
-  ctx.strokeStyle = 'white';
-  ctx.stroke();
+  /* — wheels (two pairs) — */
+  ctx.fillStyle = '#323d37';
+  const axleOff = TRUCK_L * 0.3;
+  const pairGap = SMALL_R * 0.5 + 0.5;
+  const wheelY  = TRUCK_H/2 + SMALL_R;
+  const xs = [
+    -axleOff - pairGap/2,
+    -axleOff + pairGap/2,
+     axleOff - pairGap/2,
+     axleOff + pairGap/2
+  ];
+  xs.forEach(x => {
+    ctx.beginPath();
+    ctx.arc(x, wheelY, SMALL_R, 0, Math.PI*2);
+    ctx.fill();
+  });
 
-  /* white inner ring (½ radius) */
+/* — launcher canister (3 tubes stacked) — */
+const pivotX = -TRUCK_L / 2 + 1;   // hinge on the trailer
+const pivotY = -TRUCK_H / 2;
+ctx.save();
+  ctx.translate(pivotX, pivotY);
+  ctx.rotate(ELEVATE);
+
+  /* ↑-↓ thickness is larger; length stays the same */
+  const PACK_L = LAUNCH_L;        // keep previous length (≈6.5)
+  const PACK_H = 3.0;             // ↑ taller ⇒ looks “wider” in side-view
+
+  // main body
+  ctx.fillStyle = '#4d5640';      // dark-olive green
+  const yTop = -PACK_H / 1;
+  ctx.fillRect(0, yTop, PACK_L, PACK_H);
+
+  // horizontal dividers : ⅓ & ⅔ down the height
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth   = 0.3;
+  for (let i = 1; i <= 2; i++) {
+    const y = yTop + (i * PACK_H) / 3;
+    ctx.beginPath();
+      ctx.moveTo(0,     y);
+      ctx.lineTo(PACK_L, y);
+    ctx.stroke();
+  }
+
+ctx.restore();
+
+
+  ctx.restore();
+}
+
+
+
+
+
+/* ─── Patriot FU (not NASAMS) – slanted track-launcher ─────────── */
+ else if (s.type === 'fu') {
+ctx.save();
+  ctx.translate(s.x, s.y);
+
+  /* — 50% scaled constants — */
+  const TRUCK_L   =  8;      // was 16
+  const TRUCK_H   =  2;      // was 4
+  const CAB_L     =  2;      // was 4
+  const SMALL_R   = 0.75;    // was 1.5
+  const LAUNCH_L  = 6.5;     // was 13
+  const LAUNCH_H  = 1.5;     // was 3
+  const ARM_LEN   = 3.5;     // was 7
+  const ELEVATE   = -45 * Math.PI / 180;
+
+  /* — body — */
+  ctx.fillStyle = '#2b2b2b';
+  ctx.fillRect(-TRUCK_L/2, -TRUCK_H/2, TRUCK_L, TRUCK_H);
+
+  /* — cab — */
+  ctx.fillStyle = '#3a3a3a';
   ctx.beginPath();
-  ctx.arc(s.x, s.y, R_INNER, 0, Math.PI * 2);
+    ctx.moveTo( TRUCK_L/2 - CAB_L, -TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2,          -TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2,           TRUCK_H/2);
+    ctx.lineTo( TRUCK_L/2 - CAB_L,   TRUCK_H/2);
+  ctx.closePath();
+  ctx.fill();
+
+  /* — wheels (two pairs) — */
+  ctx.fillStyle = '#0a0a0a';
+  const axleOff = TRUCK_L * 0.3;
+  const pairGap = SMALL_R * 0.5 + 0.5;
+  const wheelY  = TRUCK_H/2 + SMALL_R;
+  const xs = [
+    -axleOff - pairGap/2,
+    -axleOff + pairGap/2,
+     axleOff - pairGap/2,
+     axleOff + pairGap/2
+  ];
+  xs.forEach(x => {
+    ctx.beginPath();
+    ctx.arc(x, wheelY, SMALL_R, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  /* — launcher canister — */
+  const pivotX = -TRUCK_L/2 + 1;  // half of previous +1px
+  const pivotY = -TRUCK_H/2;
+  ctx.save();
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(ELEVATE);
+
+    ctx.fillStyle = '#4d5640';
+    ctx.fillRect(0, -LAUNCH_H/2 - 1, LAUNCH_L, LAUNCH_H);
+
+    /* centre-line: yMid = -1 px above pivot */
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth   = 0.2;
+    const yMid = -1;
+    ctx.beginPath();
+    ctx.moveTo(0, yMid);
+    ctx.lineTo(LAUNCH_L, yMid);
+    ctx.stroke();
+  ctx.restore();
+
+  /* — support arm — */
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth   = 1.4;
+  ctx.beginPath();
+    ctx.moveTo(pivotX, pivotY);
+    ctx.lineTo(
+      pivotX + ARM_LEN * Math.cos(ELEVATE),
+      pivotY + ARM_LEN * Math.sin(ELEVATE)
+    );
   ctx.stroke();
 
   ctx.restore();
-    }
-  /* ─── HHQ / AOC – identical yellow bull-eye ─────────────────────── */
- else if (s.type === 'AOC') {
+}
+    
+  /* ─── CRC / C2 – identical yellow bull-eye ─────────────────────── */
+ else if (s.type === 'crc') {
   ctx.save();
   const R_OUT = 6;
   const R_INNER = R_OUT / 2;
@@ -4371,11 +4580,11 @@ else if (s.type === 'fu') {
   ctx.arc(0, 0, R_INNER, 0, Math.PI * 2);
   ctx.stroke();
 
- /* T-bars: shorter caps, longer stems, pulled inward */
-const INSET = 1;                 // bring each T this many px toward centre
-const BAR   = BAR_LEN / 2;       // cap half as long
-const LIMB  = STEM + 2;          // stem 2 px longer
-const BASE  = R_OUT - INSET;     // where the stem begins
+ /* T-bars: pull them in tighter around the disk */
+  const INSET = 3;                 // ↑ move each T 3px closer to center
+  const BAR   = BAR_LEN / 2;       // keep cap half-length
+  const LIMB  = STEM;              // restore stem to original length
+  const BASE  = R_OUT - INSET;     // new stem-start
 
 ctx.lineWidth   = 1;
 ctx.strokeStyle = 'lime';        // or your CSS var
@@ -4447,7 +4656,7 @@ ctx.stroke();
       ctx.fillStyle    = colICC;
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'middle';
-      ctx.font         = '10px monospace';
+      ctx.font         = '7px monospace';
       const xOff   = 8;    // px right of icon
       const yStep  = 12;   // px between lines
 
@@ -4992,18 +5201,29 @@ missiles.forEach(m => {
   const d = distNm(o, o.cruiseTarget);
   if (d <= 1) {
     const tgt = o.cruiseTarget;
-    // radar damage same as bombs
-    if (tgt.system === 'MPQ‑53' || tgt.system === 'TPS‑75') {
-      const pts = tgt.system === 'TPS‑75' ? -10 : -7;
-      const msg = tgt.system === 'TPS‑75'
-        ? 'CREW, SL, TPS‑75 was damaged. Loss of sensor coverage for 10 min.'
-        : `ADAFCO, ICC, ${getQuadrant(tgt)} radar was damaged. Down for 10 min.`;
+    // radar damage (Patriot, TPS-75, **Sentinel**)
+    if (tgt.system === 'MPQ-53' || tgt.system === 'TPS-75' || tgt.system === 'AN/MPQ-64') {
+      /* points & message by radar type */
+      const pts = tgt.system === 'TPS-75'      ? -10 : -7;
+      const msg =
+        tgt.system === 'TPS-75'
+          ? 'CREW, SL, TPS-75 was damaged. Loss of sensor coverage for 10 min.'
+          : tgt.system === 'AN/MPQ-64'
+              ? 'Sentinel radar damaged – 5 min outage.'
+              : `ADAFCO, ICC, ${getQuadrant(tgt)} radar was damaged. Down for 10 min.`;
       changeScore(pts, msg);
-      // disable for 10 min
-      tgt.disabledUntil = Date.now() + 10*60*1000;
-      tpsDownStart           = now;
-       STATS.radarDowntime += 10 * 60;
- STATS.impacts.push('TPS-75');
+      /* downtime: 10 min (TPS-75) vs 5 min (Sentinel) vs 10 min (Patriot) */
+      const downMs =
+        tgt.system === 'AN/MPQ-64' ? 5 * 60 * 1000 : 10 * 60 * 1000;
+      tgt.disabledUntil = Date.now() + downMs;
+
+      /* only TPS-75 sets the global blackout flag */
+      if (tgt.system === 'TPS-75') tpsDownStart = now;
+
+      STATS.radarDowntime += downMs / 1000;
+      STATS.impacts.push(
+        tgt.system === 'AN/MPQ-64' ? 'Sentinel radar' : 'TPS-75'
+      );
     } else {
       // non‑radar static
       changeScore(-10, `Crew, SL, Quail Impact ${tgt.id}`);
@@ -5852,32 +6072,47 @@ function renderCard(obj, type, side) {
       </ul>
         `;
     } else {
-        // Distinguish MPQ‑53, TPS‑75 vs. everything else
+// Distinguish MPQ-53, TPS-75, Sentinel vs. everything else
     const now = Date.now();
-    if (obj.type === 'rad' || obj.type === 'c2Rad') {
-      const name = obj.system === 'TPS‑75'
-        ? 'TPS‑75' : 'Patriot MPQ‑53';
-      const isUp  = now >= (obj.disabledUntil || 0);
+    if (obj.type === 'rad' || obj.type === 'c2Rad' || obj.type === 'sentinel') {
+      // pick the human-readable name
+      const name =
+        obj.type === 'c2Rad'             ? 'TPS-75'        :
+        obj.type === 'rad'               ? 'Patriot MPQ-53':
+        /* obj.type === 'sentinel' */       `Sentinel ${obj.system}`;
+      const isUp = now >= (obj.disabledUntil || 0);
       html += `
         <h3>${name} Radar</h3>
         <div>JTN:   ${obj.id}</div>
         <div>ID:    ${obj.label || '—'}</div>
         <div>Status:${isUp ? ' Active' : ' Inactive'}</div>
       `;
-    } else {
-      // non‑radar statics
-      const titleMap = {
-        fu:  'Patriot Launcher',
-        icc: 'ICC',
-        C2:  'C2',
-        // add HHQ here if needed
-      };
-      const title = titleMap[obj.type] || obj.type.toUpperCase();
-      html += `
-        <h3>${title}</h3>
-        <div>ID: ${obj.id}</div>
-        <div>Status: Active</div>
-      `;
+  } else {
+      // ICC & CRC get a “JTN + ID: FRIEND” card
+      if (obj.type === 'icc' || obj.type === 'crc') {
+        const name = obj.type === 'icc' ? 'ICC' : 'CRC';
+        html += `
+          <h3>${name}</h3>
+          <div>JTN:   ${obj.id}</div>
+          <div>ID:    ${obj.label || 'FRIEND'}</div>
+          <div>Status: Active</div>
+        `;
+      }
+      // everyone else falls back to the generic titleMap
+      else {
+        const titleMap = {
+          fu:  'Patriot Launcher',
+          icc: 'ICC',
+          C2:  'C2',
+          crc: 'CRC',
+        };
+        const title = titleMap[obj.type] || obj.type.toUpperCase();
+        html += `
+          <h3>${title}</h3>
+          <div>ID: ${obj.id}</div>
+          <div>Status: Active</div>
+        `;
+      }
     }
     }}
 
