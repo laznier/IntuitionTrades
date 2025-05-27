@@ -4359,8 +4359,22 @@ const CLR_BASE   = '#1f2433';   // match the frame for supports
 
 /* ─── SENTINEL radar – mini truck + planar array ─────── */
  else if (s.type === 'sentinel') {
+  /* 1 ─ 15 NM engagement ring (unchanged) */
+  const now      = Date.now();
+    const disabled =
+      /* ① explicit status flag */   (typeof s.status === 'string' &&
+                                       s.status.toLowerCase() !== 'active') ||
+      /* ② boolean active flag  */   (s.hasOwnProperty('active') && !s.active) ||
+      /* ③ timed-out downtime  */    now < (s.disabledUntil || 0);
+  ctx.save();
+    ctx.fillStyle = disabled
+      ? 'rgba(255,0,0,0.1)'
+      : 'rgba(0,255,0,0.1)';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI * 2);
+    ctx.fill();
+  ctx.restore();
   /* panel sweep angle (re-use _spinAngle) */
-  const now   = Date.now();
   if (s._spinLast == null) { s._spinLast = now; s._spinAngle = 0; }
   const active = now >= s.disabledUntil;
   const dMs    = now - s._spinLast;
@@ -4418,18 +4432,6 @@ const CLR_BASE   = '#1f2433';   // match the frame for supports
     
 /* ─── NASAMS launcher – simple 1-tube pack split in half ───────── */
  else if (s.id === 'NASAMS') {
-  /* 1 ─ 15 NM engagement ring (unchanged) */
-  const now      = Date.now();
-  const disabled = now < NASAMSDisabledUntil;
-  ctx.save();
-    ctx.fillStyle = disabled
-      ? 'rgba(255,0,0,0.1)'
-      : 'rgba(0,255,0,0.1)';
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, nmToPx(15), 0, Math.PI * 2);
-    ctx.fill();
-  ctx.restore();
-
 ctx.save();
   ctx.translate(s.x, s.y);
 
@@ -5251,6 +5253,16 @@ missiles.forEach(m => {
     o.cruiseTarget = allTargets[
       Math.floor(Math.random() * allTargets.length)
     ];
+    /* --- give Quail a 30 % chance to hunt the Sentinel --- */
+    if (!o.cruiseTarget) {
+      const sentinel = statics.find(s => s.type === 'sentinel');
+      if (sentinel && Math.random() < 0.30) {
+        o.cruiseTarget = sentinel;
+      } else {
+        const pool = statics.filter(s => s.type !== 'icc' && s !== sentinel);
+        o.cruiseTarget = pool[Math.floor(Math.random() * pool.length)];
+      }
+    }
   }
 
   // 2) steer straight at it
@@ -5449,7 +5461,7 @@ function updateVisibility(){
   const nasams    = statics.find(s => s.id === 'NASAMS');
   const tps75     = statics.find(s => s.type === 'c2Rad');
   const activeRad = statics.filter(s =>
-    (s.type === 'rad' || s.type === 'c2Rad') &&
+    (s.type === 'rad' || s.type === 'c2Rad' || s.type === 'sentinel') &&
     now >= (s.disabledUntil||0) &&
     s.animFrom == null
   );
@@ -5461,7 +5473,8 @@ function updateVisibility(){
     // 1) Patriot wedge
     for (const r of activeRad) {
       const d = distNm(r, o);
-      if (r.type === 'rad'   && insideWedge(r, o) && d <= altLim ||
+      if (r.type === 'sentinel'      && distNm(r, o) <= 30                   ||  /* 30 NM bubble */
+     r.type === 'rad'           && insideWedge(r, o) && d <= altLim      ||
           r.type === 'c2Rad' && d <= Math.min(190, altLim)) {
         covered = true;
         break;
