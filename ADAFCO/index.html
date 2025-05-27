@@ -2373,11 +2373,38 @@ if (!targets.length) return false;
   statusEl.textContent = msg;
   speakFast(msg);
 }
+
+/* ───────── PUSH-TO-TALK (hold CTRL) ───────── */
+const _ttsQueue = [];          // buffered utterances
+let   _micHot   = false;       // true while CTRL is held
+
+window.addEventListener('keydown', e=>{
+  if (e.key === 'Control') {
+    _micHot = true;
+    speechSynthesis.cancel();  // stop talking over you
+  }
+});
+
+window.addEventListener('keyup', e=>{
+  if (e.key === 'Control') {
+    _micHot = false;
+    while (_ttsQueue.length) _ttsQueue.shift()();  // flush queue
+  }
+});
+
 function speakFast(text){
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate  = 1.9;               // << 2.1×
-  u.lang  = 'en-US';
-  speechSynthesis.speak(u);
+  const job = () => {
+    const u  = new SpeechSynthesisUtterance(text);
+    u.rate   = 1.9;            // ≈2× normal
+    u.lang   = 'en-US';
+    speechSynthesis.speak(u);
+  };
+
+  if (_micHot) {               // user is transmitting
+    _ttsQueue.push(job);       // → speak later
+  } else {
+    job();                     // → speak now
+  }
 }
 
 /* ---------- COVER ---------- */
@@ -2612,29 +2639,83 @@ function wordsBE(t) {
   return speakBE(bearing(bullseye, t), distNm(bullseye, t));
 }
 
+/**
+ * Returns true if the launcher that would engage track `t`
+ * currently has ammo *and* isn’t reloading.
+ */
+function hasMissiles(t) {
+  const now = Date.now();
+
+  // 1) Is it a NASAMS shot (inside 20 NM)?
+  const nasams       = statics.find(s => s.id === 'NASAMS');
+  const inNasamsRing = nasams && distNm(nasams, t) <= 20;
+
+  // 2) Pick the right launcher
+  const launcher = inNasamsRing
+    ? nasams
+    : closestFu(t);         // your existing helper, finds nearest FU
+
+  if (!launcher) return false;
+
+  // 3) NASAMS needs 2 AIM-120s per intercept, and obeys its reload timer
+  if (launcher.id === 'NASAMS') {
+    if (now < NASAMSDisabledUntil)          return false;  // still reloading
+    return NASAMSMissiles >= 2;                      // need ≥2 missiles
+  }
+
+  // 4) Patriots consume “engagements” (2 missiles) and obey their reload timer
+  if (now < launcher.disabledUntilFu)     return false;  // FU still reloading
+  return launcher.engagementsRemaining > 0;              // need ≥1 engagement left
+}
 
 /* ---------- ACTIONS ---------- */
+// ———————— COVER ————————
 function doCover(list){
-  const affirm   = list.filter(inCov);
-  const negate   = list.filter(t=>!inCov(t));
-  affirm.forEach(t=>{ t.tag='COVER'; t.tagTime=Date.now(); });
-  if(affirm.length)
-    speak(`${ADAFCO}, ${ICC}, birds affirm track ${affirm.map(t=>t.id).join(', ')}.`);
-  if(negate.length)
-    speak(`${ADAFCO}, ${ICC}, birds negate track ${negate.map(t=>t.id).join(', ')}.`);
-}
-function doEngage(list){
-  const ok   = list.filter(inCov);
-  const bad  = list.filter(t=>!inCov(t));
+  // in coverage & have ammo
+  const affirm     = list.filter(t => inCov(t) && hasMissiles(t));
+  // in coverage but no ammo
+  const noAmmo     = list.filter(t => inCov(t) && !hasMissiles(t));
+  // out of coverage (we don’t care about ammo here)
+  const negate     = list.filter(t => !inCov(t));
 
-  ok.forEach(t=>{
-    engageTrack(t);                    // full “W” logic
+  affirm.forEach(t=>{
+    t.tag     = 'COVER';
+    t.tagTime = Date.now();
   });
 
-  if(ok.length)
+  if (affirm.length) {
+    speak(`${ADAFCO}, ${ICC}, birds affirm track ${affirm.map(t=>t.id).join(', ')}.`);
+  }
+  if (noAmmo.length) {
+    speak(`${ADAFCO}, ${ICC}, birds negate track ${noAmmo.map(t=>t.id).join(', ')} (no missiles).`);
+  }
+  if (negate.length) {
+    speak(`${ADAFCO}, ${ICC}, birds negate track ${negate.map(t=>t.id).join(', ')}.`);
+  }
+}
+
+// ———————— ENGAGE ————————
+function doEngage(list){
+  // in coverage & have ammo → we can actually engage (birds away)
+  const ok         = list.filter(t => inCov(t) && hasMissiles(t));
+  // in coverage but no ammo → can’t engage
+  const noAmmo     = list.filter(t => inCov(t) && !hasMissiles(t));
+  // out of coverage
+  const bad        = list.filter(t => !inCov(t));
+
+  ok.forEach(t=>{
+    engageTrack(t);  // your existing W-logic
+  });
+
+  if (ok.length) {
     speak(`${ADAFCO}, ${ICC}, birds away track ${ok.map(t=>t.id).join(', ')}.`);
-  if(bad.length)
+  }
+  if (noAmmo.length) {
+    speak(`${ADAFCO}, ${ICC}, birds negate track ${noAmmo.map(t=>t.id).join(', ')} (no missiles).`);
+  }
+  if (bad.length) {
     speak(`${ADAFCO}, ${ICC}, birds negate track ${bad.map(t=>t.id).join(', ')}.`);
+  }
 }
 function doHold(list){
   list.forEach(t=>abort(t));   // reuse existing abort()
@@ -3564,50 +3645,6 @@ function getFuLabel(fu) {
   return `${hemiNS}${hemiEW} PATRIOT`;
 }
 
-// Returns true if this FU is out of action (weapons‑red or reloading),
-// and updates feedback + schedules reload when needed.
-// Otherwise decrements its missile count and possibly shows a warning.
-function checkPatriotStatus(fu) {
-  const now = Date.now();
-  // lazy‑init magazine & reload timer
-  if (fu.missilesRemaining == null) {
-    fu.missilesRemaining   = 8;
-    fu.disabledUntilFu     = 0;
-  }
-  const label = getFuLabel(fu);
-  // still reloading?
-    if (now < fu.disabledUntilFu) {
-   const mins = Math.ceil((fu.disabledUntilFu - now) / 60000);
-    const msg  = `ADAFCO, TD, CANTCO, ${label} Reload, ETIC ${mins} min`;
-    statusEl.textContent   = msg;
-    feedbackEl.textContent = msg;
-    return true;
-  }
-  // empty magazine → start reload
-  if (fu.missilesRemaining <= 0) {
-        fu.disabledUntilFu = now + 15*60*1000;
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Reloading. Down for 15 minutes`;
-    // ─── turn its paired radar red for the same duration ─────────────────
-    const radars = statics.filter(s => s.type === 'rad');
-    const paired = radars.reduce((best, s) =>
-      !best || distNm(fu, s) < distNm(fu, best) ? s : best,
-    null);
-    paired.disabledUntil = fu.disabledUntilFu;
-
-    setTimeout(() => { fu.missilesRemaining = 8; }, 15*60*1000);
-    return true;
-  }
-  // consume one
-  fu.missilesRemaining--;
-  // warnings
-  if (fu.missilesRemaining === 4) {
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Yellow`;
-  } else if (fu.missilesRemaining === 2) {
-    feedbackEl.textContent = `ADAFCO, TD, ${label} Weapons Red`;
-  }
-  return false;
-}
-
 
 function initTracks () {
   tracks = Array.from({ length: CFG.trackCount }, newTrack);
@@ -3684,8 +3721,6 @@ function engageTbmWithPatriot(tbm) {
   const fu = closestFu(tbm);
   const d  = distNm(fu, tbm);
   if (!processPatriotEngagement(fu, d)) return;
- // Patriot‑magazine check
-  if (checkPatriotStatus(fu)) return;
   const speedPxPerSec = (5000/3600)/CFG.nmPerPixel;
   [0, 1000].forEach(offset => {
     setTimeout(() => {
