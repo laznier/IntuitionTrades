@@ -2,11 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>IntuitionTrades Two-Party Translator</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live Translate & Connect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     /*──────────────────────────────────────────────────────────────────────────
-      Basic two-column layout with controls on top and panes below
+      Simple single‐column layout:
+      - Top: room join / language selectors / “Start Speaking” button
+      - Middle: two panes (left = Translation, right = Transcript) for local speech
+      - Bottom: two panes (left = Partner’s Translation, right = Partner’s Transcript)
     ──────────────────────────────────────────────────────────────────────────*/
     html, body {
       margin: 0;
@@ -15,38 +18,26 @@
       background: #111;
       color: #eee;
     }
-    #container {
-      display: flex;
-      height: 100%;
-    }
-    .col {
-      flex: 1;
-      border-left: 1px solid #333;
-      display: flex;
-      flex-direction: column;
-    }
-    .col:first-child { border-left: none; }
-
-    .header {
+    #header {
       background: #222;
       padding: 0.75rem;
       display: flex;
-      justify-content: space-around;
       align-items: center;
+      justify-content: space-around;
       border-bottom: 1px solid #333;
     }
-    .header label, .header button {
+    #header label, #header button {
       font-size: 1rem;
       margin: 0 0.5rem;
     }
-    .header select {
+    #header select {
       background: #444;
       color: #eee;
       padding: 0.5rem;
       border: none;
       border-radius: 4px;
     }
-    .header button {
+    #header button {
       background: #27e835;
       color: #000;
       border: none;
@@ -54,117 +45,103 @@
       padding: 0.5rem 1rem;
       cursor: pointer;
     }
-    .header button.listening {
+    #header button.listening {
       background: #ff5252;
       color: #fff;
     }
 
-    .panes {
+    #content {
+      display: flex;
+      flex-direction: column;
+      height: calc(100% - 60px); /* leave room for header (≈60px) */
+    }
+    .half {
       flex: 1;
+      display: flex;
+    }
+    .pane {
+      flex: 1;
+      border: 1px solid #333;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-    .pane {
+    .pane-title {
+      background: #222;
+      padding: 0.5rem;
+      font-weight: bold;
+      border-bottom: 1px solid #333;
+    }
+    .pane-content {
       flex: 1;
       padding: 1rem;
       overflow-y: auto;
       white-space: pre-wrap;
-      border-bottom: 1px solid #333;
     }
-    .pane:last-child { border-bottom: none; }
-
-    .pane-title {
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-    .pane-content {
-      /* This is where dynamic text will appear */
-    }
-
-    button:disabled {
-      background: #555;
-      color: #aaa;
-      cursor: not-allowed;
+    /* Keep a little spacing between local and partner halves */
+    .half + .half {
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
 
-  <!--────────────────────────────────────────────────────────────────────────
-    Two Columns: Speaker A (left) and Speaker B (right)
-  ─────────────────────────────────────────────────────────────────────────-->
-  <div id="container">
+  <!-- ─── Header: Room ID, Lang selectors, Connect & Speak ────────────────── -->
+  <div id="header">
+    <label>
+      Room ID:
+      <input type="text" id="roomId" placeholder="e.g. room123" style="padding:0.5rem; border-radius:4px; border:none; width:120px;" />
+    </label>
+    <button id="connectBtn">Connect to Room</button>
 
-    <!-- ─── Speaker A Column ─────────────────────────────────────────────────── -->
-    <div class="col" id="colA">
-      <div class="header">
-        <label>
-          A speaks:
-          <select id="srcLangA">
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="ru">Russian</option>
-          </select>
-        </label>
-        <label>
-          A hears:
-          <select id="tgtLangA">
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="ru">Russian</option>
-          </select>
-        </label>
-        <button id="toggleA" disabled>Start A</button>
+    <label>
+      I speak:
+      <select id="srcLangLocal">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="ru">Russian</option>
+      </select>
+    </label>
+    <label>
+      I hear:
+      <select id="tgtLangLocal">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="ru">Russian</option>
+      </select>
+    </label>
+    <button id="toggleLocal" disabled>Start Speaking</button>
+  </div>
+
+  <!-- ─── Main Content: Local panes, then Partner’s panes ─────────────────── -->
+  <div id="content">
+
+    <!-- Local User’s Panes -->
+    <div class="half" id="localHalf">
+      <div class="pane">
+        <div class="pane-title">Local: Translation</div>
+        <div id="localTrans" class="pane-content"></div>
       </div>
-      <div class="panes">
-        <div class="pane">
-          <div class="pane-title">A: Recognized</div>
-          <div id="origA" class="pane-content"></div>
-        </div>
-        <div class="pane">
-          <div class="pane-title">A: Received Translation</div>
-          <div id="transA" class="pane-content"></div>
-        </div>
+      <div class="pane">
+        <div class="pane-title">Local: Transcript</div>
+        <div id="localOrig" class="pane-content"></div>
       </div>
     </div>
 
-    <!-- ─── Speaker B Column ─────────────────────────────────────────────────── -->
-    <div class="col" id="colB">
-      <div class="header">
-        <label>
-          B speaks:
-          <select id="srcLangB">
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="ru">Russian</option>
-          </select>
-        </label>
-        <label>
-          B hears:
-          <select id="tgtLangB">
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="ru">Russian</option>
-          </select>
-        </label>
-        <button id="toggleB" disabled>Start B</button>
+    <!-- Partner’s Panes -->
+    <div class="half" id="remoteHalf">
+      <div class="pane">
+        <div class="pane-title">Partner: Translation</div>
+        <div id="remoteTrans" class="pane-content"></div>
       </div>
-      <div class="panes">
-        <div class="pane">
-          <div class="pane-title">B: Recognized</div>
-          <div id="origB" class="pane-content"></div>
-        </div>
-        <div class="pane">
-          <div class="pane-title">B: Received Translation</div>
-          <div id="transB" class="pane-content"></div>
-        </div>
+      <div class="pane">
+        <div class="pane-title">Partner: Transcript</div>
+        <div id="remoteOrig" class="pane-content"></div>
       </div>
     </div>
 
   </div>
 
-  <!-- Socket.IO client & our custom client.js -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="client.js"></script>
 </body>

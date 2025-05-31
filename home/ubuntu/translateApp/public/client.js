@@ -1,228 +1,191 @@
 // client.js
-//  ──────────────────────────────────────────────────────────────────────────
-//  Uses Web Speech Recognition → sends text + languages to server via Socket.IO
-//  → receives translated text and uses Web Speech Synthesis to play it aloud
-//  -------------------------------------------
-//  Must be served over HTTPS (or http://localhost) for SpeechRecognition to work.
+// ────────────────────────────────────────────────────────────────────────────
+// Handles:
+//  1) Web Speech Recognition → local transcript/translation
+//  2) Emitting “translateMessage” to the server (with room, text, fromLang, toLang)
+//  3) Receiving “translatedMessage” from server (for Partner) → display & speak aloud
+//  4) Room join logic via “Connect to Room”
+// ────────────────────────────────────────────────────────────────────────────
 
-const socket = io();   // auto-connects to the same origin
+const socket = io(); // connects to the same host that served index.html
 
-// Automatically join “main” room (or generate a random room ID if you want private rooms)
-socket.emit('joinRoom', 'main');
+// ─── DOM Elements ───────────────────────────────────────────────────────────
+const roomIdInput    = document.getElementById('roomId');
+const connectBtn     = document.getElementById('connectBtn');
+const srcLangLocal   = document.getElementById('srcLangLocal');
+const tgtLangLocal   = document.getElementById('tgtLangLocal');
+const toggleLocal    = document.getElementById('toggleLocal');
 
-// -------------- Speaker A elements --------------
-const srcLangA   = document.getElementById('srcLangA');
-const tgtLangA   = document.getElementById('tgtLangA');
-const toggleA    = document.getElementById('toggleA');
-const origA      = document.getElementById('origA');
-const transA     = document.getElementById('transA');
+const localTransEl   = document.getElementById('localTrans');
+const localOrigEl    = document.getElementById('localOrig');
+const remoteTransEl  = document.getElementById('remoteTrans');
+const remoteOrigEl   = document.getElementById('remoteOrig');
 
-// -------------- Speaker B elements --------------
-const srcLangB   = document.getElementById('srcLangB');
-const tgtLangB   = document.getElementById('tgtLangB');
-const toggleB    = document.getElementById('toggleB');
-const origB      = document.getElementById('origB');
-const transB     = document.getElementById('transB');
+// ─── State Variables ─────────────────────────────────────────────────────────
+let recognitionLocal, listeningLocal = false;
+let bufferLocal = '', debounceLocal = null;
+let currentRoom = null;
 
-// -------------- Common helpers --------------
-
-function supported() {
-  return !!(window.SpeechRecognition || window.webkitSpeechRecognition) && 'speechSynthesis' in window;
-}
-
-if (!supported()) {
-  alert('Your browser does not support Web Speech APIs. Use Chrome or Edge on HTTPS/localhost.');
-}
-
-function codeToSpeechVoice(code) {
-  // We’ll pick the first matching voice name from speechSynthesis.getVoices()
+// Utility: pick a TTS voice matching the code (“en”, “es”, “ru”)
+function getVoiceForLang(code) {
   const voices = speechSynthesis.getVoices();
-  if (code === 'en') return voices.find(v => v.lang.startsWith('en'))  || null;
-  if (code === 'es') return voices.find(v => v.lang.startsWith('es'))  || null;
   if (code === 'ru') return voices.find(v => v.lang.startsWith('ru'))  || null;
-  return null;
+  if (code === 'es') return voices.find(v => v.lang.startsWith('es'))  || null;
+  return voices.find(v => v.lang.startsWith('en')) || null;
 }
 
+// Speak a piece of text in the chosen language
 function speakText(text, langCode) {
   if (!text) return;
   const utter = new SpeechSynthesisUtterance(text);
-  // pick an appropriate voice
-  const voice = codeToSpeechVoice(langCode);
-  if (voice) utter.voice = voice;
   utter.lang = langCode === 'ru' ? 'ru-RU'
-              : langCode === 'es' ? 'es-ES'
-              : 'en-US';
+            : langCode === 'es' ? 'es-ES'
+            : 'en-US';
+  const voice = getVoiceForLang(langCode);
+  if (voice) utter.voice = voice;
   speechSynthesis.speak(utter);
 }
 
-// -------------- Recognition & Translation for A --------------
-let recogA, listeningA = false, bufferA = '', debounceA = null;
+// ─── Room Join Logic ─────────────────────────────────────────────────────────
+connectBtn.addEventListener('click', () => {
+  const room = roomIdInput.value.trim() || 'main';
+  currentRoom = room;
+  socket.emit('joinRoom', room);
+  connectBtn.disabled = true;
+  roomIdInput.disabled = true;
+  connectBtn.textContent = `Joined: ${room}`;
+  // Now that we’re in a room, enable the “Start Speaking” button
+  toggleLocal.disabled = false;
+});
 
-function initRecogA() {
-  recogA = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recogA.interimResults = true;
-  recogA.continuous     = true;
-  updateRecogA();
+// ─── Local Speech Recognition ────────────────────────────────────────────────
+function initRecognitionLocal() {
+  recognitionLocal = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognitionLocal.interimResults = true;
+  recognitionLocal.continuous     = true;
+  updateRecognitionLocal();
 
-  recogA.onresult = (e) => {
-    let interim = '', final = '';
+  recognitionLocal.onresult = (e) => {
+    let interim = '';
+    let final   = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const w = e.results[i][0].transcript;
       if (e.results[i].isFinal) final += w + ' ';
       else interim += w;
     }
-    bufferA += final;
-    origA.textContent = bufferA + interim;
+    bufferLocal += final;
+    localOrigEl.textContent = bufferLocal + interim;
 
-    clearTimeout(debounceA);
-    debounceA = setTimeout(() => {
-      // send only finalized text to server
-      const textToSend = bufferA + interim;
+    clearTimeout(debounceLocal);
+    debounceLocal = setTimeout(() => {
+      const textToSend = bufferLocal + interim;
       if (textToSend.trim()) {
+        // Show local translation immediately (optimistic UI)
+        translateLocally(textToSend);
+
+        // Emit to server so partner(s) in this room also get it
         socket.emit('translateMessage', {
-          text:      textToSend,
-          fromLang:  srcLangA.value,
-          toLang:    tgtLangA.value
+          room:     currentRoom,
+          text:     textToSend,
+          fromLang: srcLangLocal.value,
+          toLang:   tgtLangLocal.value
         });
       }
     }, 300);
   };
 
-  recogA.onend = () => {
-    if (listeningA) recogA.start();
+  recognitionLocal.onend = () => {
+    if (listeningLocal) recognitionLocal.start();
   };
-  recogA.onerror = (err) => console.warn('[recogA.error]', err);
+  recognitionLocal.onerror = (err) => console.warn('[LocalRecog error]', err);
 }
 
-function updateRecogA() {
-  if (!recogA) return;
-  // e.g. “en→en-US”, “es→es-ES”, “ru→ru-RU”
-  recogA.lang = srcLangA.value === 'ru' ? 'ru-RU'
-               : srcLangA.value === 'es' ? 'es-ES'
-               : 'en-US';
-  bufferA = '';
-  origA.textContent = '';
-  transA.textContent = '';
+function updateRecognitionLocal() {
+  if (!recognitionLocal) return;
+  const src = srcLangLocal.value;
+  recognitionLocal.lang = src === 'ru' ? 'ru-RU'
+                            : src === 'es' ? 'es-ES'
+                            : 'en-US';
+  // Clear local buffers when language changes
+  bufferLocal = '';
+  localOrigEl.textContent = '';
+  localTransEl.textContent = '';
 }
 
-srcLangA.addEventListener('change', () => {
-  if (listeningA) {
-    recogA.stop();
-    listeningA = false;
-    toggleA.textContent = 'Start A';
-    toggleA.classList.remove('listening');
-  }
-  updateRecogA();
-});
-
-toggleA.addEventListener('click', () => {
-  if (!recogA) initRecogA();
-  if (listeningA) {
-    recogA.stop();
-    listeningA = false;
-    toggleA.textContent = 'Start A';
-    toggleA.classList.remove('listening');
-  } else {
-    recogA.start();
-    listeningA = true;
-    toggleA.textContent = 'Stop A';
-    toggleA.classList.add('listening');
-  }
-});
-
-//  When A receives a translated message, show and speak it
-socket.on('translatedMessage', ({ original, translated }) => {
-  // Only show‐and‐play if this client is “A” AND the target language matches A’s chosen “hearing” language
-  if (tgtLangA.value) {
-    transA.textContent = translated;
-    speakText(translated, tgtLangA.value);
-  }
-});
-
-// -------------- Recognition & Translation for B --------------
-let recogB, listeningB = false, bufferB = '', debounceB = null;
-
-function initRecogB() {
-  recogB = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recogB.interimResults = true;
-  recogB.continuous     = true;
-  updateRecogB();
-
-  recogB.onresult = (e) => {
-    let interim = '', final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const w = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += w + ' ';
-      else interim += w;
+// Perform a local translation for “Local” UI, so user sees their own translation
+async function translateLocally(text) {
+  const fromLang = srcLangLocal.value;
+  const toLang   = tgtLangLocal.value;
+  const ENDPOINTS = [
+    'https://translate.terraprint.co/translate',
+    'https://lt.vern.cc/translate',
+    'https://libretranslate.de/translate'
+  ];
+  let translated = '';
+  for (const url of ENDPOINTS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          q:      text,
+          source: fromLang,
+          target: toLang,
+          format: 'text'
+        })
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      translated = data.translatedText || '';
+      if (translated) break;
+    } catch (err) {
+      console.warn(`[Local translate] ${url} error:`, err);
     }
-    bufferB += final;
-    origB.textContent = bufferB + interim;
-
-    clearTimeout(debounceB);
-    debounceB = setTimeout(() => {
-      const textToSend = bufferB + interim;
-      if (textToSend.trim()) {
-        socket.emit('translateMessage', {
-          text:      textToSend,
-          fromLang:  srcLangB.value,
-          toLang:    tgtLangB.value
-        });
-      }
-    }, 300);
-  };
-
-  recogB.onend = () => {
-    if (listeningB) recogB.start();
-  };
-  recogB.onerror = (err) => console.warn('[recogB.error]', err);
-}
-
-function updateRecogB() {
-  if (!recogB) return;
-  recogB.lang = srcLangB.value === 'ru' ? 'ru-RU'
-               : srcLangB.value === 'es' ? 'es-ES'
-               : 'en-US';
-  bufferB = '';
-  origB.textContent = '';
-  transB.textContent = '';
-}
-
-srcLangB.addEventListener('change', () => {
-  if (listeningB) {
-    recogB.stop();
-    listeningB = false;
-    toggleB.textContent = 'Start B';
-    toggleB.classList.remove('listening');
   }
-  updateRecogB();
-});
+  localTransEl.textContent = translated;
+  speakText(translated, toLang);
+}
 
-toggleB.addEventListener('click', () => {
-  if (!recogB) initRecogB();
-  if (listeningB) {
-    recogB.stop();
-    listeningB = false;
-    toggleB.textContent = 'Start B';
-    toggleB.classList.remove('listening');
+// Start/Stop local recognition
+toggleLocal.addEventListener('click', () => {
+  if (!recognitionLocal) initRecognitionLocal();
+  if (listeningLocal) {
+    recognitionLocal.stop();
+    listeningLocal = false;
+    toggleLocal.textContent = 'Start Speaking';
+    toggleLocal.classList.remove('listening');
   } else {
-    recogB.start();
-    listeningB = true;
-    toggleB.textContent = 'Stop B';
-    toggleB.classList.add('listening');
+    recognitionLocal.start();
+    listeningLocal = true;
+    toggleLocal.textContent = 'Stop Speaking';
+    toggleLocal.classList.add('listening');
   }
 });
 
-socket.on('translatedMessage', ({ original, translated }) => {
-  // Only show‐and‐play if this client is “B” AND the target matches B’s “hearing” language
-  if (tgtLangB.value) {
-    transB.textContent = translated;
-    speakText(translated, tgtLangB.value);
+// If user changes “I speak” dropdown, reset local recognition
+srcLangLocal.addEventListener('change', () => {
+  if (listeningLocal) {
+    recognitionLocal.stop();
+    listeningLocal = false;
+    toggleLocal.textContent = 'Start Speaking';
+    toggleLocal.classList.remove('listening');
   }
+  updateRecognitionLocal();
 });
 
-// --------------- Enable buttons once voices populate ---------------
+// ─── Handle messages from the server (Partner’s speech) ────────────────────
+socket.on('translatedMessage', ({ original, translated, from }) => {
+  // We don’t show messages we ourselves sent (Socket.IO echo is only for others).
+  // So whenever ANY other client in this room speaks, we land here:
+  remoteOrigEl.textContent = original;
+  remoteTransEl.textContent = translated;
+  // Speak it aloud in the local “hearing” language that *this* client expects:
+  speakText(translated, tgtLangLocal.value);
+});
+
+// ─── Enable “Start Speaking” only after TTS voices load ─────────────────────
 window.speechSynthesis.onvoiceschanged = () => {
-  // We know voices are ready; now enable toggles
-  toggleA.disabled = false;
-  toggleB.disabled = false;
+  // Now that voices are ready, user can connect or speak
+  connectBtn.disabled = false;
+  toggleLocal.disabled = false;
 };
