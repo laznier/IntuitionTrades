@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RU → EN Live Transcribe & Translate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /*──────────────────────────────────────────────────────────────────────────
+      Split-screen layout: left = English, right = Russian transcript
+    ──────────────────────────────────────────────────────────────────────────*/
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: sans-serif;
+      background: #111;
+      color: #eee;
+    }
+    #wrap {
+      display: flex;
+      height: 100%;
+    }
+    .pane {
+      flex: 1;
+      padding: 1rem;
+      box-sizing: border-box;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      user-select: text; /* allow text selection & “Look Up” */
+      position: relative;
+    }
+    #en {
+      border-right: 1px solid #333;
+    }
+    button {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: .6rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #27e835;
+      color: #000;
+      cursor: pointer;
+      z-index: 10;
+    }
+    button.listening {
+      background: #ff5252;
+      color: #fff;
+    }
+    /* Highlight style for clicked words */
+    .highlight {
+      background-color: yellow;
+      color: black;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <button id="toggle">Start</button>
+  <div id="wrap">
+    <div id="en"  class="pane" aria-label="English translation"></div>
+    <div id="ru"  class="pane" aria-label="Russian transcript"></div>
+  </div>
+
+  <script>
+    /*──────────────────────────────────────────────────────────────────────────
+      1) Set up Web Speech Recognition for Russian
+    ──────────────────────────────────────────────────────────────────────────*/
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Web Speech API not supported in this browser.');
+    }
+
+    const recog = new SpeechRecognition();
+    recog.lang            = 'ru-RU';
+    recog.continuous      = true;
+    recog.interimResults  = true;
+
+    const ruPane = document.getElementById('ru');
+    const enPane = document.getElementById('en');
+    const button = document.getElementById('toggle');
+    let listening = false;
+
+    // Store “plain text” versions so we can re-inject them when clearing highlights
+    let plainRU = '';
+    let plainEN = '';
+
+    button.onclick = () => {
+      listening ? stopRecognition() : startRecognition();
+    };
+
+    function startRecognition() {
+      recog.start();
+      listening = true;
+      button.textContent = 'Stop';
+      button.classList.add('listening');
+    }
+    function stopRecognition() {
+      recog.stop();
+      listening = false;
+      button.textContent = 'Start';
+      button.classList.remove('listening');
+    }
+
+    recog.onerror = err => console.warn('Speech error', err);
+    recog.onend   = () => {
+      // If mic drops, auto-restart as long as we didn’t manually stop
+      listening && recog.start();
+    };
+
+    /*──────────────────────────────────────────────────────────────────────────
+      2) Translation via LibreTranslate (anonymous, no-save endpoint)
+         We’ll use a helper that can translate in either direction.
+    ──────────────────────────────────────────────────────────────────────────*/
+    async function translateLang(text, source, target) {
+      if (!text.trim()) return '';
+      try {
+        const res = await fetch('https://libretranslate.de/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            q: text,
+            source: source,
+            target: target,
+            format: 'text'
+          })
+        });
+        const data = await res.json();
+        return data.translatedText || '';
+      } catch (e) {
+        console.warn('Translation API error:', e);
+        return '';
+      }
+    }
+
+    /*──────────────────────────────────────────────────────────────────────────
+      3) Handle streaming recognition → update both panes in real time
+    ──────────────────────────────────────────────────────────────────────────*/
+    let bufferRU = '';       // all finalized Russian text so far
+    let debounceId = null;   // for throttling translate calls
+
+    recog.onresult = async (e) => {
+      let interimRU = '';
+      let finalRU   = '';
+
+      // Collect interim and final pieces from this event
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        const spoken = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalRU += spoken + ' ';
+        else                    interimRU += spoken;
+      }
+
+      bufferRU += finalRU;
+      const displayRU = bufferRU + interimRU;
+      ruPane.textContent = displayRU;
+
+      // Throttle translation: wait 300 ms after last speech event
+      clearTimeout(debounceId);
+      debounceId = setTimeout(async () => {
+        const fullText = bufferRU + interimRU;
+        const enText = await translateLang(fullText, 'ru', 'en');
+        enPane.textContent = enText;
+
+        // Save plain versions for highlight resets
+        plainRU = ruPane.textContent;
+        plainEN = enPane.textContent;
+
+        // Auto-scroll to bottom
+        ruPane.scrollTop = ruPane.scrollHeight;
+        enPane.scrollTop = enPane.scrollHeight;
+      }, 300);
+    };
+
+    /*──────────────────────────────────────────────────────────────────────────
+      4) Highlighting logic: double-click a word → find & highlight its counterpart
+    ──────────────────────────────────────────────────────────────────────────*/
+    // Helper to strip any existing <span class="highlight"> wrappers
+    function clearAllHighlights() {
+      ruPane.innerText = plainRU;
+      enPane.innerText = plainEN;
+    }
+
+    // Helper: wrap the FIRST occurrence of `word` in pane.innerHTML with a <span>
+    function highlightInPane(pane, word) {
+      if (!word) return false;
+      // Use a regex-safe version of the word
+      const escaped = word.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+      // Word boundary: try to match whole-word, but fallback to substring
+      const re = new RegExp(`\\b${escaped}\\b`, 'iu');
+      const html = pane.innerHTML;
+      if (re.test(html)) {
+        pane.innerHTML = html.replace(re, match => `<span class="highlight">${match}</span>`);
+        return true;
+      }
+      // fallback: simple substring
+      const idx = html.toLowerCase().indexOf(word.toLowerCase());
+      if (idx >= 0) {
+        const before = html.slice(0, idx);
+        const match  = html.slice(idx, idx + word.length);
+        const after  = html.slice(idx + word.length);
+        pane.innerHTML = `${before}<span class="highlight">${match}</span>${after}`;
+        return true;
+      }
+      return false;
+    }
+
+    // When user double-clicks inside a pane, the browser auto-selects that word.
+    // We grab selection.toString(), then run a one-word translation & highlight.
+    function onDoubleClick(e) {
+      const sel = window.getSelection().toString().trim();
+      if (!sel) return; 
+      const clickedPane = e.currentTarget;
+
+      // Clear previous highlights first
+      clearAllHighlights();
+
+      if (clickedPane.id === 'ru') {
+        // User double-clicked a Russian word → translate RU→EN, highlight both
+        (async () => {
+          highlightInPane(ruPane, sel);
+          const enWord = await translateLang(sel, 'ru', 'en');
+          highlightInPane(enPane, enWord);
+        })();
+      } else {
+        // User double-clicked an English word → translate EN→RU, highlight both
+        (async () => {
+          highlightInPane(enPane, sel);
+          const ruWord = await translateLang(sel, 'en', 'ru');
+          highlightInPane(ruPane, ruWord);
+        })();
+      }
+    }
+
+    // Attach dblclick listener to both panes
+    ruPane.addEventListener('dblclick', onDoubleClick);
+    enPane.addEventListener('dblclick', onDoubleClick);
+
+    // Ensure right-click (contextmenu) is not prevented: let browser handle it
+    // (no code needed here, as we never call e.preventDefault())
+
+  </script>
+</body>
+</html>
