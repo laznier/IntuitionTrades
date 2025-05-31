@@ -2,12 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>RU &rarr; EN Live Transcribe &amp; Translate</title>
+  <title>RU → EN Live Transcribe & Translate (sentence‐highlight)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /*──────────────────────────────────────────────────────────────────────────
-      Split-screen: left = English, right = Russian transcript
-    ──────────────────────────────────────────────────────────────────────────*/
     html, body {
       margin: 0;
       height: 100%;
@@ -18,87 +15,110 @@
     #wrap {
       display: flex;
       height: 100%;
+      margin-top: 3.5rem;    /* leave space for header */
+      margin-bottom: 3.5rem; /* leave space for footer */
     }
     .pane {
       flex: 1;
-      padding: 1rem;
-      box-sizing: border-box;
       overflow-y: auto;
+      padding: 1rem;
       white-space: pre-wrap;
-      user-select: text; /* allow native “Look Up” on right-click */
-      position: relative;
+      user-select: text; /* allow right-click Look Up */
     }
     #en {
       border-right: 1px solid #333;
     }
-    button {
+
+    /* ─── header + footer for buttons ───────────────────────────────────────── */
+    header, footer {
       position: fixed;
-      top: 50rem;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: .6rem 1.2rem;
-      font-size: 1rem;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.7);
+    }
+    header {
+      top: 0;
+      padding: 0.5rem 0;
+    }
+    footer {
+      bottom: 0;
+      padding: 0.5rem 0;
+    }
+    header button, footer button {
       border: none;
       border-radius: 6px;
       background: #27e835;
       color: #000;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
       cursor: pointer;
-      z-index: 10;
     }
-    button.listening {
+    header button.listening {
       background: #ff5252;
       color: #fff;
     }
+    footer button {
+      background: #444;
+      color: #eee;
+      font-size: 0.9rem;
+      padding: 0.4rem 0.9rem;
+    }
+
+    /* highlight style */
     .highlight {
       background-color: yellow;
       color: black;
       border-radius: 2px;
       padding: 0 2px;
     }
-
   </style>
 </head>
 <body>
-  <!-- Start / Stop Listening -->
-  <button id="toggle">Start</button>
 
-  <!-- Panes: Left = English, Right = Russian -->
+  <!-- ─── fixed header with Start/Stop ──────────────────────────────────────── -->
+  <header>
+    <button id="toggle">Start</button>
+  </header>
+
+  <!-- ─── main panes: left=EN, right=RU ─────────────────────────────────────── -->
   <div id="wrap">
-    <div id="en"  class="pane" aria-label="English translation"></div>
-    <div id="ru"  class="pane" aria-label="Russian transcript"></div>
+    <div id="en" class="pane" aria-label="English translation"></div>
+    <div id="ru" class="pane" aria-label="Russian transcript"></div>
   </div>
 
-  <!-- Test Translation API Reachability -->
-  <button id="testBtn">Test Translation API</button>
 
   <script>
-    /*──────────────────────────────────────────────────────────────────────────
-      1. Web Speech Recognition (Russian, ru-RU)
-    ──────────────────────────────────────────────────────────────────────────*/
+    /*────────────────────────────────────────────────────────────────────────
+      1) Web Speech Recognition (ru-RU)
+    ─────────────────────────────────────────────────────────────────────────*/
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert('Web Speech API not supported in this browser.');
     }
 
     const recog = new SpeechRecognition();
-    recog.lang           = 'ru-RU';
-    recog.continuous     = true;
+    recog.lang = 'ru-RU';
+    recog.continuous = true;
     recog.interimResults = true;
 
-    const ruPane    = document.getElementById('ru');
-    const enPane    = document.getElementById('en');
+    const ruPane = document.getElementById('ru');
+    const enPane = document.getElementById('en');
     const toggleBtn = document.getElementById('toggle');
-    const testBtn   = document.getElementById('testBtn');
+    const testBtn = document.getElementById('testBtn');
 
     let listening = false;
-
-    // Keep “clean” text so we can reset highlights:
     let plainRU = '';
     let plainEN = '';
+    let bufRU = '';
+    let debounceId = null;
 
-    toggleBtn.onclick = () => {
+    toggleBtn.addEventListener('click', () => {
+      console.log('[toggleBtn] clicked');
       listening ? stopRecognition() : startRecognition();
-    };
+    });
 
     function startRecognition() {
       recog.start();
@@ -113,150 +133,208 @@
       toggleBtn.classList.remove('listening');
     }
 
-    recog.onerror = (err) => console.warn('Speech error:', err);
-    recog.onend   = () => {
-      // If the mic dropped unexpectedly, keep it alive unless user clicked Stop
-      listening && recog.start();
+    recog.onend = () => {
+      if (listening) {
+        console.log('[recog.onend] restarting recognition');
+        recog.start();
+      }
     };
+    recog.onerror = (err) => console.warn('[recog.onerror]', err);
 
-    /*──────────────────────────────────────────────────────────────────────────
-      2. Translation via LibreTranslate mirror @ translate.flossboxin.org.in
-      (no API key required, public mirror) :contentReference[oaicite:0]{index=0}
-    ──────────────────────────────────────────────────────────────────────────*/
+    /*────────────────────────────────────────────────────────────────────────
+      2) Translation with auto‐fallback across mirrors
+    ─────────────────────────────────────────────────────────────────────────*/
+    const ENDPOINTS = [
+      'https://translate.terraprint.co/translate',
+      'https://lt.vern.cc/translate',
+      'https://libretranslate.de/translate'
+    ];
+    let goodUrl = null;
+
     async function translateLang(text, source, target) {
       if (!text.trim()) return '';
-      try {
-        console.log(`[translateLang] → "${text.slice(0, 50)}..." (${source}→${target})`);
-        const res = await fetch('https://translate.flossboxin.org.in/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            q: text,
-            source: source,
-            target: target,
-            format: 'text'
-          })
-        });
-        if (!res.ok) {
-          console.warn(`[translateLang] Non-OK: ${res.status} ${res.statusText}`);
-          return '';
+      const urls = goodUrl
+        ? [goodUrl, ...ENDPOINTS.filter(u => u !== goodUrl)]
+        : ENDPOINTS.slice();
+
+      for (const url of urls) {
+        try {
+          console.log(`[translateLang] trying ${url}`);
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: text, source, target, format: 'text' })
+          });
+          if (!res.ok) {
+            console.warn(`[translateLang] ${url} returned ${res.status}`);
+            continue;
+          }
+          const data = await res.json();
+          goodUrl = url; // cache working endpoint
+          console.log(`[translateLang] success from ${url}`, data);
+          return data.translatedText || '';
+        } catch (err) {
+          console.warn(`[translateLang] ${url} fetch error`, err);
         }
-        const data = await res.json();
-        console.log('[translateLang] ←', data);
-        return data.translatedText || '';
-      } catch (err) {
-        console.warn('Translation API error:', err);
-        return '';
       }
+      console.warn('[translateLang] all endpoints failed');
+      return '';
     }
 
-    /*──────────────────────────────────────────────────────────────────────────
-      3. Stream recognition results → update panes
-    ──────────────────────────────────────────────────────────────────────────*/
-    let bufferRU   = '';
-    let debounceId = null;
-
-    recog.onresult = async (e) => {
-      let interimRU = '';
-      let finalRU   = '';
-
+    /*────────────────────────────────────────────────────────────────────────
+      3) Stream recognition → update panes in real-time
+    ─────────────────────────────────────────────────────────────────────────*/
+    recog.onresult = e => {
+      let interim = '';
+      let finalRU = '';
       for (let i = e.resultIndex; i < e.results.length; ++i) {
         const snippet = e.results[i][0].transcript;
         if (e.results[i].isFinal) finalRU += snippet + ' ';
-        else                    interimRU += snippet;
+        else interim += snippet;
       }
-
-      bufferRU += finalRU;
-      const displayRU = bufferRU + interimRU;
-      ruPane.textContent = displayRU;
+      bufRU += finalRU;
+      ruPane.textContent = bufRU + interim;
 
       clearTimeout(debounceId);
       debounceId = setTimeout(async () => {
-        const fullText = bufferRU + interimRU;
-        const enText   = await translateLang(fullText, 'ru', 'en');
-        enPane.textContent = enText;
-
-        // Save “clean” copies so we can reapply highlights later:
+        const fullText = bufRU + interim;
+        const translated = await translateLang(fullText, 'ru', 'en');
+        enPane.textContent = translated;
         plainRU = ruPane.textContent;
         plainEN = enPane.textContent;
-
-        // Auto-scroll to bottom
         ruPane.scrollTop = ruPane.scrollHeight;
         enPane.scrollTop = enPane.scrollHeight;
       }, 300);
     };
 
-    /*──────────────────────────────────────────────────────────────────────────
-      4. Double-click → highlight selected word & its counterpart
-    ──────────────────────────────────────────────────────────────────────────*/
-    function clearAllHighlights() {
+    /*────────────────────────────────────────────────────────────────────────
+      4) Double-click → highlight word or entire sentence & counterpart
+    ─────────────────────────────────────────────────────────────────────────*/
+    function clearHighlights() {
       ruPane.innerText = plainRU;
       enPane.innerText = plainEN;
     }
 
-    function highlightInPane(pane, word) {
-      if (!word) return false;
-      // Escape regex‐special characters
-      const escaped = word.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-      // Try whole‐word match
+    function highlightInPane(pane, fragment) {
+      if (!fragment) return false;
+      const escaped = fragment.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
       const re = new RegExp(`\\b${escaped}\\b`, 'iu');
       const html = pane.innerHTML;
-
       if (re.test(html)) {
         pane.innerHTML = html.replace(re, match => `<span class="highlight">${match}</span>`);
         return true;
       }
-      // Fallback: substring match
-      const idx = html.toLowerCase().indexOf(word.toLowerCase());
+      // fallback to substring match
+      const idx = html.toLowerCase().indexOf(fragment.toLowerCase());
       if (idx >= 0) {
-        const before = html.slice(0, idx);
-        const match  = html.slice(idx, idx + word.length);
-        const after  = html.slice(idx + word.length);
-        pane.innerHTML = `${before}<span class="highlight">${match}</span>${after}`;
+        pane.innerHTML =
+          html.slice(0, idx) +
+          `<span class="highlight">${html.slice(idx, idx + fragment.length)}</span>` +
+          html.slice(idx + fragment.length);
         return true;
       }
       return false;
     }
 
-    async function onDoubleClickPane(e) {
+    function findSentence(text, index) {
+      const len = text.length;
+      // Look backward for punctuation (. ! ?)
+      let start = -1;
+      ['.', '!', '?'].forEach(p => {
+        const pos = text.lastIndexOf(p, index - 1);
+        if (pos > start) start = pos;
+      });
+      const sentenceStart = (start < 0) ? 0 : start + 1;
+
+      // Look forward for punctuation
+      let end = len;
+      ['.', '!', '?'].forEach(p => {
+        const pos = text.indexOf(p, index);
+        if (pos !== -1 && pos < end) end = pos;
+      });
+      const sentenceEnd = (end === len) ? len : end + 1;
+
+      return text.slice(sentenceStart, sentenceEnd).trim();
+    }
+
+    async function onPaneDblClick(e) {
       const sel = window.getSelection().toString().trim();
       if (!sel) return;
 
       const clickedPane = e.currentTarget;
-      clearAllHighlights();
+      const isRU = clickedPane.id === 'ru';
 
-      if (clickedPane.id === 'ru') {
-        // Russian word clicked → translate RU→EN & highlight both
-        highlightInPane(ruPane, sel);
-        const enWord = await translateLang(sel, 'ru', 'en');
-        highlightInPane(enPane, enWord);
+      // Determine plain text of clicked pane
+      const plainText = isRU ? plainRU : plainEN;
+      // Find first occurrence of the exact selected word (case‐insensitive)
+      const idx = plainText.toLowerCase().indexOf(sel.toLowerCase());
+      if (idx < 0) {
+        // Fallback: just highlight the word alone
+        clearHighlights();
+        if (isRU) {
+          highlightInPane(ruPane, sel);
+          const enW = await translateLang(sel, 'ru', 'en');
+          highlightInPane(enPane, enW);
+        } else {
+          highlightInPane(enPane, sel);
+          const ruW = await translateLang(sel, 'en', 'ru');
+          highlightInPane(ruPane, ruW);
+        }
+        return;
+      }
+
+      // Extract the full sentence that contains this index
+      const sentence = findSentence(plainText, idx);
+      if (!sentence) {
+        // If somehow empty, fallback to word
+        clearHighlights();
+        if (isRU) {
+          highlightInPane(ruPane, sel);
+          const enW = await translateLang(sel, 'ru', 'en');
+          highlightInPane(enPane, enW);
+        } else {
+          highlightInPane(enPane, sel);
+          const ruW = await translateLang(sel, 'en', 'ru');
+          highlightInPane(ruPane, ruW);
+        }
+        return;
+      }
+
+      // Now highlight that sentence in the clicked pane
+      clearHighlights();
+      const targetPane = isRU ? ruPane : enPane;
+      highlightInPane(targetPane, sentence);
+
+      // Translate that sentence and highlight its counterpart
+      if (isRU) {
+        const enSentence = await translateLang(sentence, 'ru', 'en');
+        highlightInPane(enPane, enSentence);
       } else {
-        // English word clicked → translate EN→RU & highlight both
-        highlightInPane(enPane, sel);
-        const ruWord = await translateLang(sel, 'en', 'ru');
-        highlightInPane(ruPane, ruWord);
+        const ruSentence = await translateLang(sentence, 'en', 'ru');
+        highlightInPane(ruPane, ruSentence);
       }
     }
 
-    ruPane.addEventListener('dblclick', onDoubleClickPane);
-    enPane.addEventListener('dblclick', onDoubleClickPane);
+    ruPane.addEventListener('dblclick', onPaneDblClick);
+    enPane.addEventListener('dblclick', onPaneDblClick);
 
-    /*──────────────────────────────────────────────────────────────────────────
-      5. “Test Translation” → verify endpoint reachability
-    ──────────────────────────────────────────────────────────────────────────*/
-    testBtn.onclick = async () => {
+    /*────────────────────────────────────────────────────────────────────────
+      5) Test Translation API button
+    ─────────────────────────────────────────────────────────────────────────*/
+    testBtn.addEventListener('click', async () => {
+      console.log('[testBtn] clicked');
       testBtn.textContent = 'Testing…';
-      const example = 'Привет, как дела?'; // “Hello, how are you?”
-      const result  = await translateLang(example, 'ru', 'en');
+      const example = 'Привет, как дела?';
+      const result = await translateLang(example, 'ru', 'en');
       if (result) {
-        alert(`Test succeeded:\n"${example}" → "${result}"`);
-        console.log('[Test] Success:', result);
+        alert(`Success:\n"${example}" → "${result}"`);
+        console.log('[testBtn] translation result:', result);
       } else {
-        alert('Test failed. Check console for errors.');
-        console.warn('[Test] Failed or empty response');
+        alert('All translation mirrors failed. Check console/network.');
+        console.warn('[testBtn] all mirrors failed');
       }
       testBtn.textContent = 'Test Translation API';
-    };
+    });
   </script>
 </body>
 </html>
