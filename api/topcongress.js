@@ -1,39 +1,37 @@
-// If using Next.js, place this in pages/api/topcongress.js
-// If using a standard Express app, adapt to an Express route.
-
 export default async function handler(req, res) {
-  // Allow cross-origin requests (optional)
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Allow", "GET, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const quiverApiKey = process.env.QUIVERQUANT_API_KEY;
+  if (!quiverApiKey) {
+    return res.status(500).json({ error: "Missing QUIVERQUANT_API_KEY environment variable." });
+  }
 
   try {
-    const quiverApiKey = process.env.QUIVERQUANT_API_KEY;
-    if (!quiverApiKey) {
-      return res.status(500).json({
-        error: "Missing QUIVERQUANT_API_KEY environment variable."
-      });
-    }
-
-    // QuiverQuant bulk endpoint for congressional trading
-    const url = "https://api.quiverquant.com/beta/bulk/congresstrading";
-    const response = await fetch(url, {
+    const response = await fetch("https://api.quiverquant.com/beta/bulk/congresstrading", {
       headers: {
         Accept: "application/json",
-        Authorization: `Bearer ${quiverApiKey}`
-      }
+        Authorization: `Bearer ${quiverApiKey}`,
+      },
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      return res.status(response.status).json({
-        error: "Error fetching data from QuiverQuant",
-        details: errorText
-      });
+      return res.status(502).json({ error: "Market data provider request failed" });
     }
 
-    // QuiverQuant returns a raw array of trade objects
     const rawData = await response.json();
+    if (!Array.isArray(rawData)) {
+      return res.status(502).json({ error: "Unexpected response from QuiverQuant." });
+    }
 
-    // Wrap it in { data: ... } for consistency
     return res.status(200).json({ data: rawData });
   } catch (error) {
     console.error("Error in /api/topcongress route:", error);

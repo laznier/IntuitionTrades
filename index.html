@@ -1199,7 +1199,7 @@ footer {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  display: flex;
+  display: none;
   flex-direction: column; /* so icon and text stack vertically */
   justify-content: center;
   align-items: center;
@@ -1248,7 +1248,7 @@ footer {
   width: 100%;
   height: 100%;
   background-color: rgba(0,0,0,0.5); /* 50% transparent black */
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: flex-end;  /* Place content at the right edge */
   padding-right: 5px; /* Optional: add some spacing from the edge */
@@ -1331,31 +1331,13 @@ footer {
            <!-- Basic Tools -->
           <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
           <li><a href="risk/">Risk Reward Index</a></li>
-          <!-- Premium (Locked) Tool 1 -->
-          <li class="premium-dropdown-item" id="premiumLink1">
-            <a href="top5/">Top Stocks Scanner</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="top5/">Top Stocks Scanner</a></li>
           <!-- Basic Tools -->
           <li><a href="intraday/">Stock Chart</a></li>
-          <!-- Premium (Locked) Tool 1 -->
-          <li class="premium-dropdown-item" id="premiumLink3">
-            <a href="support/">Support Bounce Scanner</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="support/">Support Bounce Scanner</a></li>
           <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
           <li><a href="congress/">Congress Trades</a></li>
-          <!-- Premium (Locked) Tool 2 -->
-          <li class="premium-dropdown-item" id="premiumLink2">
-            <a href="topcongress/">Top Congress Stocks</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="topcongress/">Top Congress Stocks</a></li>
           <!-- Remaining Tools -->
           <li><a href="analyst/">Combined Analyst Ratings</a></li>
           <li><a href="sentiment/">Market Sentiment</a></li>
@@ -1392,31 +1374,13 @@ footer {
           <!-- Basic Tools -->
           <li><a href="stocks/">Comprehensive Stock Analysis</a></li>
           <li><a href="risk/">Risk Reward Index</a></li>
-          <!-- Premium (Locked) Tool 1 -->
-          <li class="premium-dropdown-item" id="premiumLink1">
-            <a href="top5/">Top Stocks Scanner</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="top5/">Top Stocks Scanner</a></li>
           <!-- Basic Tools -->
           <li><a href="intraday/">Stock Chart</a></li>
-          <!-- Premium (Locked) Tool 1 -->
-          <li class="premium-dropdown-item" id="premiumLink3">
-            <a href="support/">Support Bounce Scanner</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="support/">Support Bounce Scanner</a></li>
           <li><a href="fundamental/">Combined Fundamental Analysis</a></li>
           <li><a href="congress/">Congress Trades</a></li>
-          <!-- Premium (Locked) Tool 2 -->
-          <li class="premium-dropdown-item" id="premiumLink2">
-            <a href="topcongress/">Top Congress Stocks</a>
-            <div class="premium-dropdown-overlay">
-              <img src="images/lock.png" alt="Lock" class="dropdown-lock-icon" />
-            </div>
-          </li>
+          <li><a href="topcongress/">Top Congress Stocks</a></li>
           <!-- Remaining Tools -->
           <li><a href="analyst/">Combined Analyst Ratings</a></li>
           <li><a href="sentiment/">Market Sentiment</a></li>
@@ -1442,14 +1406,9 @@ footer {
    
 <!-- Sign‑in container aligned to the right -->
 <div class="header-right">
-  <div id="user-type-indicator">Not signed in</div>
-
-  <!-- Sign‑In buttons -->
-  <a href="/login.html" class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></a>
-  <a href="/login.html" class="login-btn" id="emailSignInBtn">Sign In</a>
-
-  <!-- Sign‑Out button (hidden by default) -->
-  <a href="#" class="login-btn" id="signOutBtn" style="display:none;">Sign Out</a>
+  <div id="user-type-indicator">Public Access</div>
+  <a href="/app" class="login-btn" id="browseToolsBtn">Open Modern App</a>
+  <a href="/feedback.html" class="login-btn" id="feedbackBtn">Feedback</a>
 </div>
 
 
@@ -1714,8 +1673,7 @@ footer {
           <p>Assess risk vs reward using a double Heston stochastic volatility jump‐diffusion (dbHJ) model with realtime calibration.</p>
           <a href="risk/" class="tool-button">Open Tool</a>
         </div>
-        <!-- Premium Tool (locked by default) -->
-        <div class="tool-card premium" id="premiumCard">
+        <div class="tool-card basic">
           <!-- VIDEO INSTEAD OF IMAGE -->
           <video
           class="tool-video"
@@ -1728,11 +1686,7 @@ footer {
             Auto evaluate thousands of tickers for Risk/Reward, Technical, 
             Sentiment, Insider, Fundamental, and Congress signals.
           </p>
-          <div class="premium-overlay" id="premiumOverlay">
-            Premium Locked<br>
-            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
-          </div>
-          <a href="top5/" class="tool-button">Open Premium Tool</a>
+          <a href="top5/" class="tool-button">Open Tool</a>
         </div>
                        
 
@@ -1743,8 +1697,7 @@ footer {
           <a href="intraday/" class="tool-button">Open Tool</a>
         </div>
         
-        <!-- Premium Tool (locked by default) -->
-        <div class="tool-card premium" id="premiumCard">
+        <div class="tool-card basic">
           <!-- VIDEO INSTEAD OF IMAGE -->
           <video
           class="tool-video"
@@ -1756,11 +1709,7 @@ footer {
           <p>
             Scan thousands of tickers to find stocks near key support levels. 
           </p>
-          <div class="premium-overlay" id="premiumOverlay">
-            Premium Locked<br>
-            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
-          </div>
-          <a href="support/" class="tool-button">Open Premium Tool</a>
+          <a href="support/" class="tool-button">Open Tool</a>
         </div>
 
         <div class="tool-card basic">
@@ -1775,7 +1724,7 @@ footer {
           <p>Discover if politicians are trading your favorite stocks.</p>
           <a href="congress/" class="tool-button">Open Tool</a>
         </div>
-        <div class="tool-card premium" id="premiumCard2">
+        <div class="tool-card basic">
           <video
             class="tool-video"
             src="videos/topcongress.mp4"
@@ -1790,11 +1739,7 @@ footer {
         
           <h2>Top Congress Stocks</h2>
           <p>Display the top 5 stocks most bought or sold by Congress or individual politicians</p>
-          <div class="premium-overlay" id="premiumOverlay2">
-            Premium Locked<br>
-            <img src="images/lock.png" alt="Lock Icon" class="lock-icon"/>
-          </div>
-          <a href="topcongress/" class="tool-button">Open Premium Tool</a>
+          <a href="topcongress/" class="tool-button">Open Tool</a>
         </div>
         
         <div class="tool-card basic">
@@ -1913,84 +1858,16 @@ footer {
   
   
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    
+  <script>
+    window.currentUserType = "public";
 
-    // 1) Paste your config here
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive‑net‑456607‑g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-    
-    // 2) Init
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getDatabase(app);
-    
-    //2.4 for the popup
-    window.currentUserType = "guest"; // globally accessible
-
-   // 3) Watch auth & update UI
-onAuthStateChanged(auth, async user => {
-  const indicator   = document.getElementById("user-type-indicator");
-  const googleBtn   = document.getElementById("googleSignInBtn");
-  const emailBtn    = document.getElementById("emailSignInBtn");
-  const signOutBtn  = document.getElementById("signOutBtn");
-
-  if (!user || user.isAnonymous) { // ← explicitly handle anonymous or not signed in
-    indicator.textContent = "Welcome Guest";
-    //added this for the popup
-    window.currentUserType = "guest"; // default at the top of your file
-    //
-    googleBtn.style.display  = "";
-    emailBtn.style.display   = "";
-    signOutBtn.style.display = "none";
-    
-    // Re-run premium UI adjustments to lock everything correctly
-    adjustPremiumUI();
-    return;
-  }
-
-  // At this point, user is explicitly NOT anonymous
-  const snap = await get(ref(db, "users/" + user.uid));
-  
-  let role = "basic", name = "User";
-  if (snap.exists()) {
-    ({ role, name } = snap.val());
-  }
-
-  indicator.textContent = role === "premium"
-    ? `Welcome ${name} (Premium)`
-    : `Welcome ${name} (Basic)`;
-
-    //added this for the popup
-    window.currentUserType = role;  // <----- add this
-//
-
-  googleBtn.style.display   = "none";
-  emailBtn.style.display    = "none";
-  signOutBtn.style.display  = "";
-
-  signOutBtn.onclick = async e => {
-    e.preventDefault();
-    await auth.signOut();
-    window.location.reload();
-  };
-
-  // Re-run premium UI adjustments
-  adjustPremiumUI();
-});
-
-
-    </script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const indicator = document.getElementById("user-type-indicator");
+      if (indicator) {
+        indicator.textContent = "Public Access";
+      }
+    });
+  </script>
     
 
   <!-- ============================================================
@@ -2669,132 +2546,52 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <script>
-    // 1) Creates or removes the “Account” link for Premium users
-    function ensureAccountButton(isPremium) {
-      const signOutBtn = document.getElementById('signOutBtn');
-      let acctBtn = document.getElementById('accountBtn');
-  
-      if (isPremium) {
-        if (!acctBtn) {
-          acctBtn = document.createElement('a');
-          acctBtn.id = 'accountBtn';
-          acctBtn.href = 'manage.html';
-          acctBtn.textContent = 'Account';
-          acctBtn.className = 'login-btn';
-          acctBtn.style.marginLeft = '8px';
-          signOutBtn.insertAdjacentElement('beforebegin', acctBtn);
-        }
-      } else if (acctBtn) {
-        acctBtn.remove();
-      }
-    }
-  
-    // 2) Creates or removes the “Upgrade” link for Basic users
-    function ensureUpgradeButton(isBasic) {
-      const signOutBtn = document.getElementById('signOutBtn');
-      let upgBtn = document.getElementById('upgradeBtn');
-  
-      if (isBasic) {
-        if (!upgBtn) {
-          upgBtn = document.createElement('a');
-          upgBtn.id = 'upgradeBtn';
-          upgBtn.href = 'checkout.html';
-          upgBtn.textContent = 'Upgrade';
-          upgBtn.className = 'login-btn';
-          upgBtn.style.marginLeft = '8px';
-          signOutBtn.insertAdjacentElement('beforebegin', upgBtn);
-        }
-      } else if (upgBtn) {
-        upgBtn.remove();
-      }
-    }
-  
-    // 3) Existing overlay logic + injections of Account/Upgrade buttons
-    function adjustPremiumUI() {
-      const indicator = document.getElementById("user-type-indicator");
-      const text      = indicator ? indicator.textContent : "";
-      const isPremium = text.includes("Premium");
-      const isBasic   = text.includes("Basic");
-  
-      // reset any old handlers on lock overlays
+    function unlockPublicUI() {
       document
         .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
-        .forEach(el => el.replaceWith(el.cloneNode(true)));
-  
-      // re‑attach or remove overlays
+        .forEach(el => el.remove());
+
       document
-        .querySelectorAll(".premium-overlay, .premium-dropdown-overlay")
-        .forEach(el => {
-          if (isPremium) {
-            el.remove();
-          } else {
-            const target = isBasic ? "/checkout.html" : "/login.html";
-            el.style.cursor = "pointer";
-            el.addEventListener("click", e => {
-              e.preventDefault();
-              window.location.href = target;
-            });
-          }
-        });
-  
-      // inject or remove the Account button
-      ensureAccountButton(isPremium);
-      // inject or remove the Upgrade button
-      ensureUpgradeButton(isBasic);
+        .querySelectorAll(".premium, .premium-dropdown-item")
+        .forEach(el => el.classList.add("unlocked"));
+
+      ["accountBtn", "upgradeBtn", "googleSignInBtn", "emailSignInBtn", "signOutBtn"]
+        .forEach(id => document.getElementById(id)?.remove());
     }
-  
-    // 4) Run it once on page load
-    document.addEventListener("DOMContentLoaded", adjustPremiumUI);
+
+    document.addEventListener("DOMContentLoaded", unlockPublicUI);
   </script>
   
  
 <!-- ===================================== 
-      POPUPS for Guest & Basic Users
+      PUBLIC GUIDANCE POPUP
 ====================================== -->
 
-<!-- Tip Popup for Guests -->
 <div id="tips-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999;">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-    <div id="tip-counter">1/5</div>
+    <div id="tip-counter">1/4</div>
     <button id="tips-close" style="background:none; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">&times;</button>
   </div>
   <div id="tip-text" style="font-size:1rem; margin-bottom:1rem;">Loading tip...</div>
-  <!-- Buttons area inside #tips-popup -->
 <div style="display:flex; justify-content:space-between; align-items:center;">
-  <button id="tips-signup" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Sign Up Free</button>
   <button id="tips-feedback" style="display:none; padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; cursor:pointer;">Submit Feedback</button>
   <button id="tips-next" style="margin-left:auto; padding:0.5rem 1rem; background:#0ea5e9; color:#fff; border:none; border-radius:5px; cursor:pointer;">Next</button>
 </div>
 </div>
 
-<!-- Premium Upsell Popup for Basic Users -->
-<div id="premium-popup" style="display:none; position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:1rem; border-radius:10px; width:90%; max-width:400px; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999; text-align:center;">
-  <div style="font-size:1rem; margin-bottom:1rem;">
-    Please consider upgrading to Premium to unlock full access to stock scanners for each of our tools!
-  </div>
-  <a href="/checkout.html" style="padding:0.5rem 1rem; background:#16a34a; color:#fff; border:none; border-radius:5px; text-decoration:none;">Upgrade to Premium</a>
-</div>
-
 <script>
-// ================================
-// Popup Logic
-// ================================
-
 const tips = [
   "Our Top 5 stock picks are updated weekly! Select any ticker to generate a detailed analysis.",
-  "We invite you to sign up for a free account to unlock unlimited use of all basic tools!",
-  "For guests who prefer not to sign up for an account, your daily usage limit resets every 24 hours.",
-  "For savvy investors: Each tool has a detailed explanation breaking down the math, references, and data sources.",
-  "Submit feedback and unlock early access to new tools—such as the upcoming Social Media Stock Scanner!"
+  "All public tools now run without account creation, subscriptions, or payment prompts.",
+  "Each tool includes explanation content so you can inspect the logic and data sources more easily.",
+  "Submit feedback if a migrated page feels unclear or if a legacy tool still implies premium access."
 ];
 
 const tipPopup = document.getElementById('tips-popup');
-const premiumPopup = document.getElementById('premium-popup');
 const tipText = document.getElementById('tip-text');
 const tipCounter = document.getElementById('tip-counter');
 const tipNext = document.getElementById('tips-next');
 const tipClose = document.getElementById('tips-close');
-const tipSignup = document.getElementById('tips-signup');
 const tipFeedback = document.getElementById('tips-feedback');
 
 
@@ -2809,12 +2606,7 @@ function showTipPopup() {
 function updateTip() {
   tipText.textContent = tips[currentTip];
   tipCounter.textContent = `${currentTip + 1}/${tips.length}`;
-  
-  // Only show signup button on tip 2 (index 1)
-  tipSignup.style.display = (currentTip === 1) ? 'inline-block' : 'none';
-  
-  // Only show feedback button on tip 5 (index 4)
-  tipFeedback.style.display = (currentTip === 4) ? 'inline-block' : 'none';
+  tipFeedback.style.display = (currentTip === tips.length - 1) ? 'inline-block' : 'none';
 }
 
 
@@ -2833,52 +2625,12 @@ tipClose.onclick = () => {
   localStorage.setItem('dismissedTips', 'true');
 };
 
-tipSignup.onclick = () => {
-  window.location.href = "/login.html";
-};
-
 tipFeedback.onclick = () => {
   window.location.href = "/feedback.html";
 };
 
-// ================================
-// Premium Upsell for Basic Users
-// ================================
-function showPremiumPopup() {
-  if (localStorage.getItem('premiumPopupLastShown')) {
-    const lastShown = parseInt(localStorage.getItem('premiumPopupLastShown'), 10);
-    if (Date.now() - lastShown < 24*60*60*1000) return; // Only once every 24 hours
-  }
-  premiumPopup.style.display = 'block';
-  setTimeout(() => { premiumPopup.style.display = 'none'; }, 10000); // auto close after 10 sec
-  localStorage.setItem('premiumPopupLastShown', Date.now().toString());
-}
-
-// ================================
-// Detect User Type using currentUserType
-// ================================
-// ===================================
-// Reliable Popup Trigger based on User Type
-// ===================================
-
-function waitForFinalUserType(retries = 20) {
-  if (typeof window.currentUserType !== 'undefined' && window.currentUserType !== 'guest') {
-    // Final role loaded (basic or premium)
-    if (window.currentUserType === 'basic') {
-      setTimeout(showPremiumPopup, 3000);
-    }
-  } else if (retries > 0) {
-    setTimeout(() => waitForFinalUserType(retries - 1), 300); // Retry every 300ms
-  } else {
-    // If still no valid role after retries, assume guest
-    if (window.currentUserType === 'guest') {
-      setTimeout(showTipPopup, 3000);
-    }
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  waitForFinalUserType();
+  setTimeout(showTipPopup, 3000);
 });
 
 </script>

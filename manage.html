@@ -1,126 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <head>
-    <!-- other tags… -->
-    <meta name="robots" content="noindex, nofollow">
-  </head>
-  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Manage Subscription | Intuition Trades</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Billing Retired | Intuition Trades</title>
   <style>
     body {
-      background: #111;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
       color: #fff;
       font-family: Arial, sans-serif;
-      padding: 2rem;
-      text-align: center;
     }
     .card {
-      background: #222;
+      width: min(100%, 42rem);
       padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.5);
-      max-width: 500px;
-      margin: 2rem auto;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.82);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
     }
-    h1 { margin-bottom: 1rem; }
-    p  { color: #ccc; margin-bottom: 2rem; }
-    button {
-      background: #16a34a;
-      color: #fff;
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      border: none;
-      cursor: pointer;
+    h1 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: clamp(2rem, 5vw, 3rem);
     }
-    button:hover { background: #22c55e; }
+    p {
+      color: #cbd5e1;
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
     a {
-      color: #16a34a;
-      display: inline-block;
-      margin-top: 2rem;
-    }
-    a:hover { text-decoration: underline; }
-
-    .tool-promo {
-      margin: 2rem auto;
-      background: #000;
-      padding: 1rem;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.4);
-      max-width: 600px;
-    }
-    .tool-promo video {
-      width: 100%;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-    }
-    .tool-promo h2 {
-      margin: 0.5rem 0;
-      font-size: 1.4rem;
-    }
-    .tool-promo p {
-      margin-bottom: 1rem;
-      color: #ccc;
-    }
-    .tool-promo a {
-      display: inline-block;
-      margin-top: 0.5rem;
-      padding: 0.6rem 1.2rem;
-      background: #000;
-      border-radius: 8px;
-      border: 1px solid #16a34a;
-      color: #16a34a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 999px;
       text-decoration: none;
+      font-weight: bold;
     }
-    .tool-promo a:hover {
-      background: #16a34a;
-      color: #000;
+    .primary {
+      background: #0f766e;
+      color: #fff;
+    }
+    .secondary {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #fff;
     }
   </style>
 </head>
 <body>
-
-  <!-- Premium Status Confirmation -->
   <div class="card">
-    <h1>You're a Premium Member</h1>
-    <p>Manage or cancel your subscription anytime.</p>
-    <button onclick="window.location.href='https://billing.stripe.com/p/login/bIY8xueS4baQeOsbII'">
-      Go to Stripe Portal
-    </button>
-    <a href="/index.html">← Back to Home</a>
+    <h1>Billing has been retired</h1>
+    <p>
+      Intuition Trades is being migrated away from subscriptions and Stripe billing. This account
+      management page is no longer part of the active product.
+    </p>
+    <p>
+      The current direction is a public research experience with no login, payment, or subscription
+      requirement.
+    </p>
+    <div class="actions">
+      <a class="primary" href="/">Return Home</a>
+      <a class="secondary" href="/top5/">Open Public Picks</a>
+    </div>
   </div>
-
-  <!-- Promote Premium Tools -->
-  <div class="tool-promo">
-    <video src="videos/top5.mp4" poster="images/top5.png" autoplay muted loop playsinline></video>
-    <h2>Top Stocks Scanner</h2>
-    <p>Auto-ranks 3,500+ stocks using Risk/Reward, Technicals, Insider, Congress, Fundamentals & Sentiment.</p>
-    <a href="/top5/">Launch Scanner</a>
-  </div>
-
-  <div class="tool-promo">
-    <video src="videos/topcongress.mp4" poster="images/topcongress.png" autoplay muted loop playsinline></video>
-    <h2>Top Congress Stocks</h2>
-    <p>See which stocks Congress is buying or selling the most—ranked by political activity & volume.</p>
-    <a href="/topcongress/">Explore Picks</a>
-  </div>
-
-  <!-- Newsletter Signup -->
-  <section id="newsletter-signup" style="margin-top: 3rem;">
-    <h2>Stay in the Loop</h2>
-    <p>Receive our weekly stock picks every Monday—even without a premium subscription.</p>
-    <script>
-      (function(w,d,e,u,f,l,n){w[f]=w[f]||function(){(w[f].q=w[f].q||[]).push(arguments);},
-      l=d.createElement(e),l.async=1,l.src=u,
-      n=d.getElementsByTagName(e)[0],n.parentNode.insertBefore(l,n);})
-      (window,document,'script','https://assets.mailerlite.com/js/universal.js','ml');
-      ml('account', '1422635');
-    </script>
-    <div class="ml-embedded" data-form="N78gvr"></div>
-  </section>
-
 </body>
 </html>

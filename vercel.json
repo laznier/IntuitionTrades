@@ -1,20 +1,62 @@
 {
-  "version": 2,
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:web",
   "functions": {
     "api/**/*.js": {
       "maxDuration": 30
     }
   },
-  "rewrites": [
+  "installCommand": "npm install && npm --prefix frontend install",
+  "redirects": [
+    {
+      "source": "/login.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/manage.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/checkout.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/checkoutbackup.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/success.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/cancel.html",
+      "destination": "/",
+      "permanent": false
+    },
     {
       "source": "/auth/callback",
-      "destination": "/auth/callback/index.html"
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/auth/callback/:path*",
+      "destination": "/",
+      "permanent": false
     }
   ],
-  "crons": [
+  "rewrites": [
     {
-      "path": "/api/downgrade-expired-trials",
-      "schedule": "0 0 * * *"
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/app/index.html"
     }
   ]
 }

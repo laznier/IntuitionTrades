@@ -217,57 +217,16 @@ button:hover {
   </div>
 
   <!-- *********************************************************************** 
-     * Premium Check and Secure Init
+      * Public Init
      *********************************************************************** -->
-     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-      import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-      import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    
-      // ——— Firebase configuration & initialization ———
-      const firebaseConfig = {
-        apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-        authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-        databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-        projectId: "persuasive-net-456607-g8",
-        storageBucket: "persuasive-net-456607-g8.appspot.com",
-        messagingSenderId: "1019332250475",
-        appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e"
-      };
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getDatabase(app);
-    
-      // Hide the page until we verify premium status
-      document.body.style.visibility = "hidden";
-    
-      // ——— Premium check & initialization ———
-      const unsubscribe = onAuthStateChanged(auth, async user => {
-        unsubscribe();
-        if (!user) {
-          return window.location.replace("/login.html");
-        }
-        try {
-          const roleSnap = await get(ref(db, `users/${user.uid}/role`));
-          const role = roleSnap.exists() ? roleSnap.val() : null;
-          if (role === "premium") {
-            console.log("✅ Premium user verified.");
-            document.body.style.visibility = "visible";
-            initializeCongressTool();
-          } else {
-            window.location.replace("/checkout.html");
-          }
-        } catch (err) {
-          console.error("🔥 Premium check failed:", err);
-          alert("Error verifying your account. Please try again.");
-          window.location.replace("/login.html");
-        }
+     <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.body.style.visibility = "visible";
+        console.info("Public access enabled on Top Congress.");
       });
-    
-      // ——— Main tool initialization ———
-      function initializeCongressTool() {
-        let allData = [];
-        let debounceTimeout, countdownInterval, searchingInterval;
+
+      let allData = [];
+      let debounceTimeout, countdownInterval, searchingInterval;
     
     // Full list of congress and senate members from your provided list
     const politicianNames = [

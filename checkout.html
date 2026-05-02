@@ -1,320 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- 1) Vercel Insights -->
-    <script>
-      window.va = window.va || function () {
-        (window.vaq = window.vaq || []).push(arguments);
-      };
-      // record this initial page view
-      window.va('page');
-    </script>
-    <script defer src="/_vercel/insights/script.js"></script>
-  
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-16923466474');
-</script>
-    
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Upgrade to Premium | Intuition Trades</title>
-  <script src="https://js.stripe.com/v3/"></script>
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Payments Retired | Intuition Trades</title>
   <style>
-    :root {
-      --font-family: 'Arial', sans-serif;
-      --text-color: #fff;
-      --primary-bg: #333;
-      --section-bg: rgba(0, 0, 0, 0.33);
-      --accent-color: #16a34a;
-      --accent-hover: #22c55e;
-      --border-radius: 12px;
-    }
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
     body {
-      font-family: var(--font-family);
-      background-color: #111;
-      color: var(--text-color);
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      color: #fff;
+      font-family: Arial, sans-serif;
     }
-
-    /* Background */
-    .background-fixed {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-position: center center;
-      z-index: -9999;
-      transform: translateZ(0);
-    }
-    body.day .background-fixed {
-      background-image: url('/images/day-background.png');
-    }
-    body.night .background-fixed {
-      background-image: url('/images/night-background.png');
-    }
-
-    /* Nav */
-    .topnav {
-      background-color: var(--primary-bg);
-      overflow-x: auto;
-      white-space: nowrap;
-    }
-    .topnav ul {
-      display: flex;
-      list-style: none;
-    }
-    .topnav ul li a {
-      display: block;
-      padding: .875rem 1.25rem;
-      color: var(--text-color);
-      text-decoration: none;
-    }
-    .topnav ul li a:hover {
-      background-color: #ddd;
-      color: #333;
-    }
-
-    /* Main Plan Box */
-    .main-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    .card {
+      width: min(100%, 42rem);
       padding: 2rem;
-      min-height: calc(100vh - 50px);
-    }
-    .plan-box {
-      background: #222;
-      border-radius: var(--border-radius);
-      padding: 2rem;
-      box-shadow: 0 0 12px rgba(0,0,0,0.3);
-      max-width: 400px;
-      width: 100%;
-      text-align: center;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.82);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
     }
     h1 {
-      font-size: 1.8rem;
+      margin-top: 0;
       margin-bottom: 1rem;
-      color: var(--accent-color);
+      font-size: clamp(2rem, 5vw, 3rem);
     }
     p {
-      margin-bottom: .75rem;
-      font-size: 1rem;
-      color: #ccc;
+      color: #cbd5e1;
+      line-height: 1.6;
     }
-    .price {
-      font-size: 1.5rem;
-      color: var(--accent-color);
-      margin: 1rem 0;
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
     }
-    button {
-      background: var(--accent-color);
-      color: white;
+    a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.75rem;
       padding: .75rem 1.5rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background .3s ease;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: bold;
     }
-    button:hover {
-      background: var(--accent-hover);
-    }
-
-    /* Loading Overlay */
-    #loadingOverlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    .loader {
-      border: 8px solid #f3f3f3;
-      border-top: 8px solid var(--accent-color);
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Error Container */
-    #errorContainer {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      align-items: center;
-      justify-content: center;
-      z-index: 1001;
-    }
-    .error-box {
-      background: #222;
-      padding: 2rem;
-      border-radius: var(--border-radius);
-      text-align: center;
-      max-width: 400px;
-      width: 80%;
+    .primary {
+      background: #0f766e;
       color: #fff;
     }
-    .error-box p {
-      margin-bottom: 1rem;
-    }
-    .error-box button {
-      margin: 0 .5rem;
+    .secondary {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #fff;
     }
   </style>
 </head>
 <body>
-  <div class="background-fixed"></div>
-
-  <header>
-    <nav class="topnav">
-      <ul>
-        <li><a href="/">Home</a></li>
-      </ul>
-    </nav>
-  </header>
-
-  <main class="main-content">
-    <div class="plan-box">
-      <h1>Premium Membership</h1>
-      <p>🚀 Unlimited tools</p>
-      <p>🔒 No ads, no distractions</p>
-      <p>⚡ Cancel anytime</p>
-      <div class="price">$9.99 / month</div>
-      <button id="subscribeBtn">Subscribe Now</button>
+  <main class="card">
+    <h1>Payments have been retired</h1>
+    <p>
+      Intuition Trades is moving away from subscriptions and Stripe checkout. This payment flow is
+      no longer active.
+    </p>
+    <p>
+      Public tools will remain available as the migration continues.
+    </p>
+    <div class="actions">
+      <a class="primary" href="/">Return Home</a>
+      <a class="secondary" href="/topcongress/">Open Public Congress Picks</a>
     </div>
   </main>
-
-  <!-- Loading Overlay -->
-  <div id="loadingOverlay">
-    <div class="loader"></div>
-  </div>
-
-  <!-- Error Container -->
-  <div id="errorContainer">
-    <div class="error-box">
-      <p id="errorMessage">Oops—something went wrong.</p>
-      <button id="retryBtn">Retry</button>
-      <button id="backupBtn">Use Backup Checkout</button>
-    </div>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-
-    // --- Firebase Init ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com",
-      projectId: "persuasive-net-456607-g8"
-    };
-    const app  = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db   = getDatabase(app);
-
-    // --- UI Elements ---
-    const btn             = document.getElementById("subscribeBtn");
-    const loadingOverlay  = document.getElementById("loadingOverlay");
-    const errorContainer  = document.getElementById("errorContainer");
-    const errorMessageEl  = document.getElementById("errorMessage");
-    const retryBtn        = document.getElementById("retryBtn");
-    const backupBtn       = document.getElementById("backupBtn");
-    const priceId         = "price_1RGXodFEfvI8pkt9Iy7vN0wU";
-    const success_url     = window.location.origin + "/success.html";
-    const cancel_url      = window.location.origin + "/cancel.html";
-
-    function showLoading() {
-      loadingOverlay.style.display = "flex";
-    }
-    function hideLoading() {
-      loadingOverlay.style.display = "none";
-    }
-    function showError(msg) {
-      hideLoading();
-      errorMessageEl.textContent = msg;
-      errorContainer.style.display = "flex";
-    }
-
-    // Retry & Backup handlers
-    retryBtn .addEventListener("click", () => location.reload());
-    backupBtn.addEventListener("click", () => window.location.href = "/checkoutbackup.html");
-
-    // Authentication & Subscribe flow
-    onAuthStateChanged(auth, user => {
-      if (!user) {
-        alert("Please sign in first.");
-        window.location.href = "/login.html";
-        return;
-      }
-
-      btn.addEventListener("click", () => {
-  showLoading();
-  btn.disabled = true;
-
-  const sessionRef = push(ref(db, `customers/${user.uid}/checkout_sessions`));
-  set(sessionRef, {
-    price:       priceId,
-    success_url: success_url,
-    cancel_url:  cancel_url
-  });
-
-  let fallbackTimer = setTimeout(() => {
-    showError("Stripe is taking too long to respond. Try again or use the backup.");
-  }, 15000); // ⏱ 15 seconds fallback
-
-  const unsubscribe = onValue(sessionRef, snap => {
-    const data = snap.val() || {};
-    if (data.error) {
-      clearTimeout(fallbackTimer);
-      unsubscribe();
-      showError(data.error.message || "Internal error");
-    }
-    if (data.url) {
-      clearTimeout(fallbackTimer);
-      unsubscribe();
-      window.location.assign(data.url);
-    }
-  });
-}, { once: true });
-
-    });
-  </script>
-
-  <script>
-    // Day/Night background toggle
-    document.addEventListener("DOMContentLoaded", () => {
-      const hour = new Date().getHours();
-      if (hour >= 19 || hour < 6) {
-        document.body.classList.add('night');
-      } else {
-        document.body.classList.add('day');
-      }
-    });
-  </script>
 </body>
 </html>

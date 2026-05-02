@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
       <!-- tool.html -->
-<!-- 1️⃣ initialise Firebase / expose globals -->
+<!-- Load the public compatibility auth shim for legacy pages. -->
 <script type="module" src="/authGate.js"></script>
 
-<!-- 2️⃣ now the logger can see window.firebaseAuth, etc. -->
+<!-- Load legacy client logging after compatibility globals are available. -->
 <script type="module" src="/logger.js"></script>
 
   <!-- Google tag (gtag.js) -->

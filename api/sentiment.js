@@ -1,62 +1,61 @@
-// api/sentiment.js
+const SYMBOL_PATTERN = /^[A-Za-z0-9.,-]{1,60}$/;
+const TOPIC_PATTERN = /^[A-Za-z0-9,_-]{1,80}$/;
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  // If needed:
-  // res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  // res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  
+  res.setHeader("Allow", "GET, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const symbol = req.query.symbol ? String(req.query.symbol).trim().toUpperCase() : "";
+  if (symbol && !SYMBOL_PATTERN.test(symbol)) {
+    return res.status(400).json({ error: "Symbol contains unsupported characters." });
+  }
+
+  const topic = req.query.topic ? String(req.query.topic).trim() : "";
+  if (topic && !TOPIC_PATTERN.test(topic)) {
+    return res.status(400).json({ error: "Topic contains unsupported characters." });
+  }
+
+  const parsedLimit = Number.parseInt(String(req.query.limit || "20"), 10);
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+    return res.status(400).json({ error: "Limit must be an integer between 1 and 100." });
+  }
+
+  const apiKey = process.env.ALPHA_VANTAGE_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "Missing ALPHA_VANTAGE_KEY env var" });
+  }
+
   try {
-    const { symbol, topic, limit } = req.query;
-
-    // Use your hidden API key
-    const apiKey = process.env.ALPHA_VANTAGE_KEY;
-    if (!apiKey) {
-      return res
-        .status(500)
-        .json({ error: "Missing ALPHA_VANTAGE_KEY env var" });
-    }
-
-    // Build the Alpha Vantage URL
-    let url = `https://www.alphavantage.co/query?function=NEWS_SENTIMENT`;
-
-    // If a symbol is provided, add it as tickers
+    let url = "https://www.alphavantage.co/query?function=NEWS_SENTIMENT";
     if (symbol) {
-      url += `&tickers=${symbol}`;
+      url += `&tickers=${encodeURIComponent(symbol)}`;
     }
-
-    // If a topic is provided, add it as topics
     if (topic) {
-      url += `&topics=${topic}`;
+      url += `&topics=${encodeURIComponent(topic)}`;
+    }
+    url += `&limit=${parsedLimit}&apikey=${apiKey}`;
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) {
+      return res.status(502).json({ error: "Market data provider request failed" });
     }
 
-    // If neither symbol nor topic was provided, 
-    // we do NOT throw an error anymore — it fetches "All News"
-    // (Alpha Vantage will return the latest news if no tickers/topics are specified).
-
-    // Apply limit if provided, otherwise default to 20
-    const finalLimit = limit ? parseInt(limit, 10) : 20;
-    url += `&limit=${finalLimit}`;
-
-    // Append your API key
-    url += `&apikey=${apiKey}`;
-
-    console.log("Fetching from Alpha Vantage URL:", url);
-
-    // Fetch data from Alpha Vantage
-    const response = await fetch(url);
     const data = await response.json();
-
-    // Check if the data is valid
     if (!data.feed) {
-      return res.status(500).json({
+      return res.status(502).json({
         error: "Error fetching news sentiment data from Alpha Vantage",
         details: data,
       });
     }
 
-    // Return the fetched data
-    return res.json(data);
+    return res.status(200).json(data);
   } catch (error) {
     console.error("Error in /api/sentiment route:", error);
     return res.status(500).json({ error: "Internal Server Error" });

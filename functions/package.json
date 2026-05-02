@@ -1,6 +1,6 @@
 {
     "name": "functions",
-    "description": "Cloud Functions for Firebase",
+    "description": "Retired compatibility stubs for legacy function routes",
     "version": "1.0.0",
     "type": "commonjs",
     "main": "index.js",
@@ -9,16 +9,14 @@
     },
     "scripts": {
         "lint": "eslint .",
-        "serve": "firebase emulators:start --only functions",
-        "shell": "firebase functions:shell",
+        "serve": "echo Legacy Firebase function emulation is retired",
+        "shell": "echo Legacy Firebase function shell is retired",
         "start": "npm run shell",
-        "deploy": "firebase deploy --only functions",
-        "logs": "firebase functions:log"
+        "deploy": "echo Legacy Firebase function deploy is retired",
+        "logs": "echo Legacy Firebase function logs are retired"
     },
     "dependencies": {
-        "firebase-admin": "^13.2.0",
-        "firebase-functions": "^6.3.2",
-        "stripe": "^18.0.0"
+        "firebase-functions": "^6.3.2"
     },
     "devDependencies": {
         "@eslint/js": "^9.25.0",

@@ -1,11 +1,7 @@
 {
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20",
-    "secrets": [
-      "STRIPE_SECRET",
-      "STRIPE_WEBHOOK_SECRET"
-    ]
+    "runtime": "nodejs20"
   },
   "database": {
     "rules": "database.rules.json"

@@ -1,632 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-    <!-- 1) Vercel Insights -->
-    <script>
-      window.va = window.va || function () {
-        (window.vaq = window.vaq || []).push(arguments);
-      };
-      // record this initial page view
-      window.va('page');
-    </script>
-    <script defer src="/_vercel/insights/script.js"></script>
-  
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-16923466474"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-16923466474');
-</script>
-  <!-- Event snippet for Page view conversion page -->
-  <script>
-    gtag('event', 'conversion', {'send_to': 'AW-16923466474/8zbcCPz-lL0aEOq13oU_'});
-  </script>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Login | Intuition Trades</title>
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Accounts Retired | Intuition Trades</title>
   <style>
-    /* RESET & BASE */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin: 0;
       min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
     }
-  
-    /* CONTAINER */
-    .login-container {
-      background: #222;
+    .card {
+      width: min(100%, 42rem);
       padding: 2rem;
-      border-radius: 8px;
-      width: 100%;
-      max-width: 360px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.82);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
     }
-  
-    .login-container h1, .login-container h2 {
-      text-align: center;
-      font-size: 1.5rem;
-    }
-    .login-container h2 {
-      margin-bottom: 0.2rem;
-    }
-    .login-container h1 {
-      margin-bottom: 1.5rem;
-    }
-  
-    .error-message {
-      display: none;
-      color: #dc3545;
-      text-align: center;
+    h1 {
+      margin-top: 0;
       margin-bottom: 1rem;
+      font-size: clamp(2rem, 5vw, 3rem);
     }
-  
-    /* FORMS */
-    .login-form, .signup-form {
-      display: none;
-      flex-direction: column;
+    p {
+      color: #cbd5e1;
+      line-height: 1.6;
     }
-    .login-form.active, .signup-form.active {
+    .actions {
       display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
     }
-  
-    .login-container input {
-      margin-bottom: 1rem;
-      padding: 0.75rem;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-  
-    /* FLEX ROW for SIGN-IN + GOOGLE */
-    .signin-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 1rem;
-    }
-  
-    /* Google Button */
-    .google-circle-btn {
-      width: 40px;
-      height: 40px;
-      background-color: #000;
-      background-image: url('/google-icons/png@3x/dark/web_dark_rd_na@3x.png');
-      background-repeat: no-repeat;
-      background-size: 40px;
-      background-position: center;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-  
-    /* Green Sign-In/Sign-Up Button beside Google */
-    .login-btn {
-      flex-grow: 1;
-      height: 40px;
-      line-height: 1;
-      padding: 0 1rem;
-      background: #16a34a;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
+    a {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      min-height: 2.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: 999px;
       text-decoration: none;
+      font-weight: bold;
     }
-  
-    .login-btn:hover {
-      background: #22c55e;
-      text-decoration: none;
+    .primary {
+      background: #0f766e;
+      color: #f8fafc;
     }
-  
-    /* TOGGLE LINKS */
-    .toggle-link, .back-link {
-      text-align: center;
-      color: #16a34a;
-      cursor: pointer;
-      text-decoration: underline;
-      font-size: 0.9rem;
-    }
-  
-    .back-link {
-      margin-top: 0.5rem;
-    }
-  
-    /* TRIAL OVERLAY */
-    .overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      justify-content: center;
-      align-items: center;
-      z-index: 1100;
-    }
-  
-    .overlay.visible {
-      display: flex;
-    }
-  
-    .overlay-card {
-      background: #222;
-      padding: 2rem;
-      border-radius: 8px;
-      text-align: center;
-      max-width: 360px;
-      width: 90%;
-    }
-  
-    .overlay-card h2 {
-      margin-bottom: 1rem;
-      font-size: 1.3rem;
-    }
-  
-    .overlay-card p {
-      margin-bottom: 1.5rem;
-    }
-  
-    .overlay-actions button {
-      margin: 0 .5rem;
-      padding: .75rem 1.25rem;
-      border-radius: 4px;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-  
-    #trialYesBtn {
-      background: #16a34a;
-      color: #fff;
-      border: none;
-    }
-  
-    #trialNoBtn {
-      background: transparent;
-      color: #16a34a;
-      border: 1px solid #16a34a;
-    }
-  
-    /* Resend button */
-    #resendVerifyBtn {
-      background: none;
-      border: 1px solid #16a34a;
-      color: #16a34a;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      width: 100%;
-      margin-top: 1rem;
-    }
-  
-    #resendVerifyBtn:hover {
-      background: #16a34a;
-      color: #000;
+    .secondary {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: #f8fafc;
     }
   </style>
-  
 </head>
-
 <body>
-  <div class="login-container">
-    <h2>Welcome to</h2>
-      <h1>Intuition Trades</h1>
-    <div class="error-message" id="errorMessage"></div>
-
-    <!-- LOGIN FORM -->
-    <div class="login-form active" id="loginForm">
-      <input type="email"    id="loginEmail"    placeholder="Email"    required />
-      <input type="password" id="loginPassword" placeholder="Password" required />
-      <div class="signin-row">
-        <button class="google-circle-btn" id="googleSignInBtn" aria-label="Sign in with Google"></button>
-        <button class="login-btn fullwidth" id="emailSignInBtn">Sign In</button>
-      </div>
-      
-      
-      <div class="toggle-link" id="forgotPasswordLink">Forgot Password?</div>
-      <div class="toggle-link" id="toggleToSignUp">
-        Don't have an account? Sign Up
-      </div>
-    </div>
-
-    <!-- SIGNUP FORM -->
-    <div class="signup-form" id="signupForm">
-      <input type="text"     id="signupName"     placeholder="Name"     required />
-      <input type="email"    id="signupEmail"    placeholder="Email"    required />
-      <input type="password" id="signupPassword" placeholder="Password" required />
-        <div class="signin-row">
-        <div class="google-circle-btn" id="googleSignUpBtn" aria-label="Sign up with Google"></div>
-        <a href="#" class="login-btn" id="emailSignUpBtn">Sign Up</a>
-      </div>
-      <div class="toggle-link" id="toggleToLogin">
-        Already have an account? Sign In
-      </div>
-    </div>
-    <div class="back-link" id="backToMain">Back to Home</div>
-    <!-- Resend Verification Button -->
-    <div style="text-align:center; margin-top:1rem;">
-      <button id="resendVerifyBtn" style="background:none; border:1px solid #16a34a; color:#16a34a; padding:0.5rem 1rem; border-radius:4px; cursor:pointer; font-size:0.9rem;">
-        Resend Verification Email
-      </button>
-    </div>
-    
-
-  </div>
-
- <!-- 🔓 PREMIUM PREVIEW OVERLAY -->
-<div id="trialOverlay" class="overlay">
-  <div class="overlay-card">
-    <h2>Preview Premium Tools for 24 Hours</h2>
-    <p style="margin-bottom: 0.75rem;">
-      Instant access. No credit card required.
+  <main class="card">
+    <h1>Accounts are retired</h1>
+    <p>
+      Intuition Trades is being rebuilt as a public, account-free product. Login, signup, and
+      premium account management are no longer part of the active experience.
     </p>
-    <p style="color: #16a34a; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 1.5rem;">
-      <span style="font-size: 1.1rem;">✅</span>
-      See full functionality before you commit.
+    <p>
+      Use the public tools and feedback pages while the migration continues.
     </p>
-    <div class="overlay-actions">
-      <button id="trialYesBtn">Start Free Preview</button>
-      <button id="trialNoBtn">No, Thanks</button>
+    <div class="actions">
+      <a class="primary" href="/">Return Home</a>
+      <a class="secondary" href="/feedback.html">Send Feedback</a>
     </div>
-  </div>
-</div>
-
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
-  sendEmailVerification,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  sendPasswordResetEmail
-} from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-
-    import {
-      getDatabase,
-      ref,
-      get,
-      set,
-      update
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-  
-    // --- Firebase init
-    const firebaseConfig = {
-      apiKey: "AIzaSyCw3AOOCQhYz1gn5-R8xxqdXFYMMEoPPH8",
-      authDomain: "persuasive-net-456607-g8.firebaseapp.com",
-      projectId: "persuasive-net-456607-g8",
-      storageBucket: "persuasive-net-456607-g8.appspot.com",
-      messagingSenderId: "1019332250475",
-      appId: "1:1019332250475:web:3b931ad7fd0a72e1949a2e",
-      databaseURL: "https://persuasive-net-456607-g8-default-rtdb.firebaseio.com"
-    };
-    const app      = initializeApp(firebaseConfig);
-    const auth     = getAuth(app);
-    const db       = getDatabase(app);
-    const provider = new GoogleAuthProvider();
-  
-    // --- Helpers
-    const showError        = msg => {
-      const el = document.getElementById("errorMessage");
-      el.textContent = msg;
-      el.style.display = "block";
-    };
-    const clearError       = () => {
-      const el = document.getElementById("errorMessage");
-      el.textContent = "";
-      el.style.display = "none";
-    };
-    const redirectToMain   = () => window.location.href = "index.html";
-    const showTrialOverlay = () => document.getElementById("trialOverlay").classList.add("visible");
-  
-    async function handleUserData(user, profile = {}) {
-  const userRef = ref(db, `users/${user.uid}`);
-  const snap    = await get(userRef);
-  if (!snap.exists()) {
-    await set(userRef, {
-      email:     profile.email || user.email,
-      name:      profile.name  || user.displayName || "", 
-      createdAt: Date.now(),
-      role:      "basic"
-    });
-  }
-}
-  
-    let justSignedIn = false;
-    let justSignedUp = false;
-
-  
-    window.addEventListener("DOMContentLoaded", () => {
-
-
-      // Sign‑In with Email
-      document.getElementById("emailSignInBtn").addEventListener("click", async e => {
-  e.preventDefault();
-  clearError();
-
-  const email = document.getElementById("loginEmail").value.trim();
-  const pass  = document.getElementById("loginPassword").value.trim();
-  if (!email || !pass) {
-    return showError("Enter email and password.");
-  }
-
-  // 1) Look up existing sign‑in methods for this email
-  let methods = [];
-  try {
-    methods = await fetchSignInMethodsForEmail(auth, email);
-  } catch {
-    return showError("That doesn’t look like a valid email address.");
-  }
-
-  // 2) If they only ever used Google → nudge them to click the Google button
-  if (methods.includes("google.com") && !methods.includes("password")) {
-    return showError(
-      "It looks like you signed up with Google—please click the Google button to sign in."
-    );
-  }
-
-  // 3) Otherwise attempt normal password sign‑in
-  try {
-    justSignedIn = true;
-    await signInWithEmailAndPassword(auth, email, pass);
-    const idToken = await auth.currentUser.getIdToken();
-    localStorage.setItem("googleToken", idToken);
-    // …then your post‑sign‑in logic…
-  } catch (err) {
-    // Handle the “invalid‑credential” (and password errors) together:
-    if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password") {
-      showError("Incorrect password. Try again or reset your password.");
-    }
-    else if (err.code === "auth/user-not-found") {
-      showError("No account found. Please sign up first.");
-      toggleToSignUp();
-    }
-    else {
-      showError(err.message);
-    }
-  }
-});
-
-  
-  
-    // —————————————————————————————————————————
-// Email Sign‑Up with duplicate‑email & Google‑only checks
-// —————————————————————————————————————————
-document.getElementById("emailSignUpBtn")
-.addEventListener("click", async e => {
-  e.preventDefault();
-  clearError();
-
-  const name  = document.getElementById("signupName").value.trim();
-  const email = document.getElementById("signupEmail").value.trim();
-  const pass  = document.getElementById("signupPassword").value.trim();
-
-  if (!name) 
-    return showError("Please enter your name.");
-  if (!email || pass.length < 6)
-    return showError("Valid email + minimum 6‑character password.");
-
-  // 1) Look up existing sign‑in methods for this email
-  let methods = [];
-  try {
-    methods = await fetchSignInMethodsForEmail(auth, email);
-  } catch {
-    return showError("That doesn’t look like a valid email address.");
-  }
-
-  // 2) If they already signed up via Google only…
-  if (methods.includes("google.com") && !methods.includes("password")) {
-    return showError(
-      "It looks like you signed up with Google—please click the Google button to sign in."
-    );
-  }
-
-  // 3) If they already have an email/password account…
-  if (methods.includes("password")) {
-    // **don’t** toggle away — just show the message and let them click “Already have an account?”
-    return showError(
-      "That email is already registered. Please switch to Sign In or reset your password."
-    );
-  }
-
-  // 4) Otherwise, try to create the account:
-  try {
-    justSignedUp = true;
-    const res = await createUserWithEmailAndPassword(auth, email, pass);
-    await handleUserData(res.user, { name, email });
-    await sendEmailVerification(res.user);
-    alert("Verification email sent. Please check your inbox before signing in.");
-    await auth.signOut();
-    toggleToLogin();   // only here, after successful sign‑up & email send
-  } catch (err) {
-    if (err.code === "auth/email-already-in-use") {
-      // last‑ditch duplicate‑email catch:
-      return showError(
-        "That email is already registered. Please switch to Sign In or reset your password."
-      );
-    }
-    showError(err.message);
-  }
-});
-
-
-
-
-  
-      // Google Sign‑In / Sign‑Up
-      document.getElementById("googleSignInBtn").addEventListener("click", async e => {
-        e.preventDefault();
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-          const idToken = await auth.currentUser.getIdToken();
-          localStorage.setItem("googleToken", idToken);
-        } catch (err) {
-          showError(err.message);
-        }
-      });
-      document.getElementById("googleSignUpBtn").addEventListener("click", async e => {
-        e.preventDefault();
-        clearError();
-        try {
-          justSignedIn = true;
-          const result = await signInWithPopup(auth, provider);
-          await handleUserData(result.user, {
-            name:  result.user.displayName,
-            email: result.user.email
-          });
-          const idToken = await auth.currentUser.getIdToken();
-          localStorage.setItem("googleToken", idToken);
-          showTrialOverlay();
-        } catch (err) {
-          showError(err.message);
-        }
-      });
-  
-      // Trial overlay actions
-      document.getElementById("trialYesBtn").addEventListener("click", async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-        await update(ref(db, `users/${user.uid}`), {
-          role:       "premium",
-          trialStart: Date.now(),
-          trialUsed:  true
-        });
-        document.getElementById("trialOverlay").classList.remove("visible");
-        redirectToMain();
-      });
-      document.getElementById("trialNoBtn").addEventListener("click", () => {
-        document.getElementById("trialOverlay").classList.remove("visible");
-        redirectToMain();
-      });
-  
-      // Auth state listener
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return;               // not signed in
-
-  // Skip the very first “just signed up” event so handleUserData can finish
-  if (justSignedUp) {
-    justSignedUp = false;
-    return;
-  }
-
-  // Skip checks for anonymous users (used by gating)
-if (user.isAnonymous) {
-  return;  // Don't check email verification for anon accounts
-}
-
-// 1) Block unverified emails for regular (non-anonymous) accounts
-if (!user.emailVerified) {
-  showError("Your email is not verified. Please check your inbox.");
-  await auth.signOut();
-  return;
-}
-
-
-  // 2) Load user record
-  const userRef = ref(db, `users/${user.uid}`);
-  const snap    = await get(userRef);
-  const data    = snap.val() || {};
-  const now     = Date.now();
-  const trialStart = data.trialStart || 0;
-const trialUsed  = data.trialUsed  === true;
-const subscriptionExpiry = data.subscriptionExpiry || 0;
-const isPremium  = data.role === "premium";
-
-// 3) If they've never taken a trial AND are still basic, show the overlay
-if (!trialUsed && !isPremium) {
-  showTrialOverlay();
-  return;
-}
-
- // 4) Determine trial and subscription status
-const isTrialExpired = trialUsed && (trialStart + 24 * 60 * 60 * 1000 <= now);
-const isSubscriptionActive = subscriptionExpiry && now < subscriptionExpiry;
-
-// 🔻 If they’re on a trial and it expired, AND there’s no active subscription, downgrade
-if (isPremium && isTrialExpired && !isSubscriptionActive) {
-  await update(userRef, { role: "basic" });
-}
-
-
-
-  // 5) Finally, send them on their way
-  redirectToMain();
-});
-
-
-  
-document.getElementById("resendVerifyBtn").addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (user && !user.emailVerified) {
-    await sendEmailVerification(user);
-    alert("Verification email resent.");
-  }
-});
-document
-  .getElementById("forgotPasswordLink")
-  .addEventListener("click", async () => {
-    clearError();
-    const email = document.getElementById("loginEmail").value.trim();
-    if (!email) {
-      return showError("Enter your email above first.");
-    }
-    try {
-      // ← use the imported helper, not a method on `auth`
-      await sendPasswordResetEmail(auth, email);
-      alert("Password reset email sent. Check your inbox.");
-    } catch (err) {
-      showError("Failed to send reset email: " + err.message);
-    }
-  });
-
-
-      // UI toggles
-      document.getElementById("toggleToSignUp").addEventListener("click", () => {
-        clearError();
-        document.getElementById("loginForm").classList.remove("active");
-        document.getElementById("signupForm").classList.add("active");
-      });
-      document.getElementById("toggleToLogin").addEventListener("click", () => {
-        clearError();
-        document.getElementById("signupForm").classList.remove("active");
-        document.getElementById("loginForm").classList.add("active");
-      });
-
-  // Switch the UI back to the login form
-function toggleToLogin() {
-  document.getElementById("signupForm").classList.remove("active");
-  document.getElementById("loginForm").classList.add("active");
-  clearError();
-}
-
-      // Back to home
-      document.getElementById("backToMain").addEventListener("click", redirectToMain);
-    });
-  </script>
-  
+  </main>
+</body>
+</html>
