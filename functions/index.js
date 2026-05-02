@@ -1,48 +1,48 @@
-// index.js
-
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
-
 const RETIRED_MESSAGE = "Accounts, billing, subscriptions, and usage-gating have been retired.";
 
-exports.downgradeExpiredTrials = onSchedule(
-  {
-    schedule: "every 24 hours",
-    timeZone: "Etc/UTC",
-    region: "us-central1",
-    memory: "256MiB",
-  },
-  async () => {
-    console.info("downgradeExpiredTrials skipped: account system retired.");
-    return null;
+function createRetiredError() {
+  const error = new Error(RETIRED_MESSAGE);
+  error.code = "failed-precondition";
+  return error;
+}
+
+async function retiredScheduler(name) {
+  console.info(`${name} skipped: legacy account automation is retired.`);
+  return null;
+}
+
+async function retiredHttpHandler(_req, res) {
+  if (res && typeof res.status === "function") {
+    return res.status(410).json({ error: RETIRED_MESSAGE });
   }
-);
 
-exports.stripeWebhook = onRequest({ region: "us-central1" }, async (_req, res) => {
-  return res.status(410).json({ error: RETIRED_MESSAGE });
-});
-
-exports.createBackupCheckoutSession = onCall({ region: "us-central1" }, async () => {
-  throw new HttpsError("failed-precondition", RETIRED_MESSAGE);
-});
-
-exports.checkUsageLimit = onCall({ region: "us-central1" }, async () => {
   return {
-    allowed: true,
-    retired: true,
-    message: RETIRED_MESSAGE,
+    status: 410,
+    error: RETIRED_MESSAGE,
   };
+}
+
+exports.retiredMetadata = {
+  accounts: false,
+  billing: false,
+  subscriptions: false,
+  payments: false,
+  provider: "retired",
+};
+
+exports.downgradeExpiredTrials = async () => retiredScheduler("downgradeExpiredTrials");
+
+exports.stripeWebhook = retiredHttpHandler;
+
+exports.createBackupCheckoutSession = async () => {
+  throw createRetiredError();
+};
+
+exports.checkUsageLimit = async () => ({
+  allowed: true,
+  retired: true,
+  message: RETIRED_MESSAGE,
 });
 
-exports.purgeAnonymousEvery24hours = onSchedule(
-  {
-    schedule: "every 24 hours",
-    timeZone: "Etc/UTC",
-    region: "us-central1",
-    memory: "256MiB",
-  },
-  async () => {
-    console.info("purgeAnonymousEvery24hours skipped: anonymous account storage retired.");
-    return null;
-  }
-);
+exports.purgeAnonymousEvery24hours = async () =>
+  retiredScheduler("purgeAnonymousEvery24hours");

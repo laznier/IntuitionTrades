@@ -22,11 +22,11 @@ export function ToolsPage() {
     <div className="page-stack">
       <section className="content-panel" aria-labelledby="tool-catalog-title">
         <div className="section-heading">
-          <p className="eyebrow">Tool inventory</p>
-          <h1 id="tool-catalog-title">Migration catalog</h1>
+          <p className="eyebrow">Tool workspace</p>
+          <h1 id="tool-catalog-title">Public market research tools</h1>
           <p className="lead compact-lead">
-            Each card maps a current public tool to its migration path. Until a React replacement is
-            complete, the legacy page remains reachable.
+            Each card opens the React tool surface first. Legacy pages remain reachable only as
+            compatibility fallbacks.
           </p>
         </div>
 
@@ -59,10 +59,10 @@ export function ToolsPage() {
               <p className="tool-focus">{tool.migrationFocus}</p>
               <div className="tool-actions">
                 <Link className="inline-link" to={`/tools/${tool.slug}`}>
-                  Migration detail
+                  Open tool
                 </Link>
                 <a className="inline-link muted-link" href={tool.legacyPath}>
-                  Open legacy tool
+                  Legacy fallback
                 </a>
               </div>
             </article>

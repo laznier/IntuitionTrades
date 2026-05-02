@@ -8,21 +8,21 @@ export function HomePage() {
     <div className="page-stack">
       <section className="hero-panel" aria-labelledby="home-title">
         <div className="hero-copy">
-          <p className="eyebrow">Phase 1 Foundation</p>
-          <h1 id="home-title">A safer, clearer front end for public market research</h1>
+          <p className="eyebrow">Live Product Surface</p>
+          <h1 id="home-title">Accessible market research tools with backend-owned scoring</h1>
           <p className="lead">
-            This React workspace starts the migration away from static page sprawl, Firebase
-            identity, and Stripe-driven gating. The target is a public, accessible product with
-            backend-protected proprietary logic and stronger API boundaries.
+            Intuition Trades now centers on public market research tools with hardened APIs,
+            server-owned calculations, and an accessible React shell. Accounts, billing, and
+            payment gating are retired.
           </p>
         </div>
 
         <div className="hero-actions">
           <Link className="button button-primary" to="/tools">
-            Browse tool migration
+            Open tool workspace
           </Link>
           <Link className="button button-secondary" to="/about">
-            Review architecture goals
+            Read architecture notes
           </Link>
         </div>
       </section>
@@ -30,7 +30,7 @@ export function HomePage() {
       <section className="stat-grid" aria-label="Migration principles">
         <article className="stat-card">
           <h2>No accounts</h2>
-          <p>Authentication, roles, anonymous usage tracking, and premium gating are being removed.</p>
+          <p>Authentication, roles, anonymous usage tracking, and premium gating have been removed.</p>
         </article>
         <article className="stat-card">
           <h2>Secure compute</h2>
@@ -44,8 +44,8 @@ export function HomePage() {
 
       <section className="content-panel" aria-labelledby="featured-tools-title">
         <div className="section-heading">
-          <p className="eyebrow">Now in scope</p>
-          <h2 id="featured-tools-title">Priority tools for the first migration wave</h2>
+          <p className="eyebrow">Featured tools</p>
+          <h2 id="featured-tools-title">Start with the core public workflows</h2>
         </div>
         <div className="tool-grid">
           {featuredTools.map((tool) => (
@@ -55,7 +55,7 @@ export function HomePage() {
               <p>{tool.summary}</p>
               <p className="tool-focus">{tool.migrationFocus}</p>
               <Link className="inline-link" to={`/tools/${tool.slug}`}>
-                View migration notes
+                Open tool
               </Link>
             </article>
           ))}

@@ -9,7 +9,7 @@ export function ToolDetailPage() {
     return (
       <section className="content-panel" aria-labelledby="tool-not-found-title">
         <p className="eyebrow">Unknown tool</p>
-        <h1 id="tool-not-found-title">This migration note does not exist yet</h1>
+        <h1 id="tool-not-found-title">This tool entry does not exist</h1>
         <p>The catalog entry was not found. Use the tool index to continue.</p>
         <Link className="button button-primary" to="/tools">
           Back to tool catalog
@@ -35,23 +35,22 @@ export function ToolDetailPage() {
             <dd>{tool.legacyPath}</dd>
           </div>
           <div className="detail-card detail-card-wide">
-            <dt>Immediate migration focus</dt>
+            <dt>Current design focus</dt>
             <dd>{tool.migrationFocus}</dd>
           </div>
         </dl>
 
         <div className="callout">
-          <h2>What changes for this tool</h2>
+          <h2>How this tool is framed</h2>
           <p>
-            The React version will remove authentication checks, avoid client-side proprietary
-            formulas, and standardize loading, error, and accessibility behavior around a shared UI
-            shell.
+            The React version avoids client-side proprietary formulas and keeps loading, error, and
+            accessibility behavior consistent across the public tool workspace.
           </p>
         </div>
 
         <div className="tool-actions">
           <a className="button button-primary" href={tool.legacyPath}>
-            Open current tool
+            Open legacy fallback
           </a>
           <Link className="button button-secondary" to="/tools">
             Return to catalog

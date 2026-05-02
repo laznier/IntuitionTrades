@@ -2,8 +2,8 @@ import type { PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
 
 const navigation = [
-  { to: '/', label: 'Overview' },
-  { to: '/tools', label: 'Tool Catalog' },
+  { to: '/', label: 'Home' },
+  { to: '/tools', label: 'Tools' },
   { to: '/about', label: 'Architecture' },
 ];
 
@@ -14,8 +14,8 @@ export function AppShell({ children }: PropsWithChildren) {
         Skip to content
       </a>
       <header className="site-header">
-        <div className="brand-block" aria-label="Intuition Trades Modernization">
-          <p className="eyebrow">Migration Workspace</p>
+        <div className="brand-block" aria-label="Intuition Trades">
+          <p className="eyebrow">Public Research Platform</p>
           <NavLink className="brand-link" to="/">
             Intuition Trades
           </NavLink>
@@ -47,7 +47,7 @@ export function AppShell({ children }: PropsWithChildren) {
       </main>
 
       <footer className="site-footer">
-        <p>React migration foundation. Legacy pages remain available while tools are moved behind a modern shell.</p>
+        <p>Accessible public market research tools with backend-owned scoring and legacy fallbacks only where compatibility still matters.</p>
       </footer>
     </div>
   );

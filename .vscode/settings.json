@@ -1,0 +1,11 @@
+{
+  "files.exclude": {
+    "**/.history": true,
+    "frontend/dist": true
+  },
+  "search.exclude": {
+    "**/.history": true,
+    "frontend/dist": true,
+    "app/assets": true
+  }
+}
